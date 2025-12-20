@@ -1,204 +1,145 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
 
-export default function YazarProfili({ params }) {
-  const { username } = use(params);
-  const router = useRouter();
-
-  const [data, setData] = useState({ books: [], profile: null, stats: { views: 0 }, isFollowing: false, user: null });
-  const [followersList, setFollowersList] = useState([]);
-  const [followingList, setFollowingList] = useState([]);
-  const [activeModal, setActiveModal] = useState(null);
+export default function YazarProfili() {
+  const { username } = useParams();
+  const [author, setAuthor] = useState(null);
+  const [books, setBooks] = useState([]);
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [modalType, setModalType] = useState(null); // 'followers' veya 'following'
 
   useEffect(() => {
     async function getAuthorData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      // Kendi profiline bakıyorsa yönlendir
-      if (user) {
-        const myName = user.user_metadata?.username || user.email.split('@')[0];
-        if (myName === username) { router.push('/profil'); return; }
-      }
-
-      const { data: books } = await supabase.from('books').select('*').eq('username', username).order('created_at', { ascending: false });
+      // 1. Yazarı bul
       const { data: profile } = await supabase.from('profiles').select('*').eq('username', username).single();
+      
+      if (profile) {
+        setAuthor(profile);
+        
+        // 2. Kitaplarını getir
+        const { data: b } = await supabase.from('books').select('*').eq('user_email', profile.email || profile.id).order('created_at', { ascending: false });
+        setBooks(b || []);
 
-      let totalViews = 0;
-      if (books && books.length > 0) {
-        const bookIds = books.map(b => b.id);
-        const { data: chapters } = await supabase.from('chapters').select('views').in('book_id', bookIds);
-        totalViews = chapters?.reduce((acc, curr) => acc + (curr.views || 0), 0) || 0;
+        // 3. Takipçilerini getir
+        const { data: f } = await supabase.from('author_follows').select('*').eq('followed_username', username);
+        setFollowers(f || []);
+
+        // 4. Takip ettiklerini getir
+        const { data: fing } = await supabase.from('author_follows').select('*').eq('follower_username', username);
+        setFollowing(fing || []);
       }
-
-      const { data: followers } = await supabase.from('author_follows').select('follower_username').eq('followed_username', username);
-      const { data: following } = await supabase.from('author_follows').select('followed_username').eq('follower_username', username);
-
-      const namesToFetch = [];
-      if (followers) namesToFetch.push(...followers.map(f => f.follower_username));
-      if (following) namesToFetch.push(...following.map(f => f.followed_username));
-
-      let avatarMap = {};
-      if (namesToFetch.length > 0) {
-        const { data: profiles } = await supabase.from('profiles').select('username, avatar_url').in('username', namesToFetch);
-        if (profiles) profiles.forEach(p => { avatarMap[p.username] = p.avatar_url });
-      }
-
-      const finalFollowers = followers?.map(f => ({ ...f, avatar_url: avatarMap[f.follower_username] })) || [];
-      const finalFollowing = following?.map(f => ({ ...f, avatar_url: avatarMap[f.followed_username] })) || [];
-
-      let isFollowing = false;
-      if (user) {
-        const { data: f } = await supabase.from('author_follows').select('*').eq('followed_username', username).eq('follower_email', user.email).single();
-        isFollowing = !!f;
-      }
-
-      setData({ books: books || [], profile, stats: { views: totalViews }, isFollowing, user });
-      setFollowersList(finalFollowers);
-      setFollowingList(finalFollowing);
       setLoading(false);
     }
     getAuthorData();
-  }, [username, router]);
+  }, [username]);
 
-  // HIZLI TAKİP FONKSİYONU (SAYFA YENİLEMEDEN)
-  async function handleAuthorFollow() {
-    if (!data.user) return toast.error("Giriş yapmalısın.");
-    const myUsername = data.user.user_metadata?.username || data.user.email.split('@')[0];
-
-    try {
-      if (data.isFollowing) {
-        await supabase.from('author_follows').delete().eq('followed_username', username).eq('follower_email', data.user.email);
-        setFollowersList(prev => prev.filter(f => f.follower_username !== myUsername));
-        setData(prev => ({ ...prev, isFollowing: false }));
-        toast.success("Takip bırakıldı.");
-      } else {
-        const newFollower = { followed_username: username, follower_email: data.user.email, follower_username: myUsername };
-        await supabase.from('author_follows').insert([newFollower]);
-        
-        // Takipçi listesini anlık güncelle
-        setFollowersList(prev => [...prev, { follower_username: myUsername, avatar_url: data.user.user_metadata?.avatar_url }]);
-        setData(prev => ({ ...prev, isFollowing: true }));
-        
-        if (data.books.length > 0) {
-          await supabase.from('notifications').insert([{ recipient_email: data.books[0].user_email, actor_username: myUsername, type: 'follow' }]);
-        }
-        toast.success("Takip edildi!");
-      }
-    } catch (err) {
-      toast.error("Bir sorun oluştu.");
-    }
-  }
-
-  if (loading) return <div className="py-40 text-center font-black opacity-10 text-5xl italic animate-pulse">YAZIO</div>;
+  if (loading) return <div className="py-40 text-center font-black opacity-10 text-4xl italic animate-pulse uppercase">YAZIO</div>;
+  if (!author) return <div className="py-40 text-center font-black uppercase tracking-widest text-gray-400 italic">Yazar bulunamadı kral...</div>;
 
   return (
-    <div className="min-h-screen py-20 px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors">
-      <Toaster />
-      
-      {/* MODAL (Hafifletilmiş ve Oval) */}
-      {activeModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md" onClick={() => setActiveModal(null)}>
-          <div className="w-full max-w-sm bg-white dark:bg-[#0f0f0f] rounded-[3rem] overflow-hidden shadow-2xl border dark:border-white/5 animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
-            <div className="p-6 border-b dark:border-white/5 flex justify-between items-center">
-              <h3 className="font-black uppercase tracking-widest text-[10px] dark:text-gray-400">
-                {activeModal === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 text-gray-400 hover:text-red-600 transition-colors">✕</button>
+    <div className="min-h-screen py-10 md:py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black transition-colors">
+      <div className="max-w-6xl mx-auto">
+        
+        {/* YAZAR HEADER */}
+        <header className="mb-12 flex flex-col md:flex-row items-center gap-6 md:gap-10 bg-white dark:bg-white/5 p-6 md:p-10 rounded-[2.5rem] md:rounded-[4rem] border dark:border-white/5 shadow-sm">
+          <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-white/10 rounded-[2.5rem] overflow-hidden shrink-0 flex items-center justify-center border dark:border-white/10 shadow-inner">
+            {author.avatar_url ? (
+              <img src={author.avatar_url} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-3xl md:text-5xl font-black text-gray-300 dark:text-gray-700">{author.username[0].toUpperCase()}</span>
+            )}
+          </div>
+
+          <div className="flex-1 text-center md:text-left w-full">
+            <h1 className="text-2xl md:text-4xl font-black dark:text-white tracking-tighter uppercase leading-tight">
+              {author.full_name || author.username}
+            </h1>
+            <p className="text-xs md:text-sm text-gray-400 italic mb-6 uppercase tracking-widest">@{author.username}</p>
+            
+            {/* İSTATİSTİKLER - Tıklanabilir yapıldı */}
+            <div className="grid grid-cols-2 md:flex justify-center md:justify-start gap-y-6 gap-x-4 md:gap-12 border-t dark:border-white/5 pt-8 mt-2">
+              <div className="text-center md:text-left">
+                <p className="text-xl md:text-2xl font-black dark:text-white">{books.length}</p>
+                <p className="text-[8px] md:text-[9px] font-black uppercase text-gray-400 tracking-widest">Eser</p>
+              </div>
+              
+              <button onClick={() => setModalType('followers')} className="text-center md:text-left hover:opacity-70 transition-all outline-none">
+                <p className="text-xl md:text-2xl font-black dark:text-white">{followers.length}</p>
+                <p className="text-[8px] md:text-[9px] font-black uppercase text-gray-400 tracking-widest underline decoration-red-600/20 underline-offset-4">Takipçi</p>
+              </button>
+              
+              <button onClick={() => setModalType('following')} className="text-center md:text-left hover:opacity-70 transition-all outline-none">
+                <p className="text-xl md:text-2xl font-black dark:text-white">{following.length}</p>
+                <p className="text-[8px] md:text-[9px] font-black uppercase text-gray-400 tracking-widest underline decoration-red-600/20 underline-offset-4">Takip</p>
+              </button>
             </div>
-            <div className="max-h-[50vh] overflow-y-auto p-4 no-scrollbar">
-              {(activeModal === 'followers' ? followersList : followingList).length === 0 ? (
-                <div className="py-10 text-center text-gray-400 text-[10px] font-black uppercase italic">Henüz kimse yok.</div>
+          </div>
+        </header>
+
+        {/* ESERLER GRİDİ */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-10">
+          {books.length === 0 ? (
+            <div className="col-span-full py-20 text-center text-[10px] font-black uppercase text-gray-400 italic tracking-[0.3em]">
+              Henüz bir eser yayınlamamış...
+            </div>
+          ) : (
+            books.map(k => (
+              <div key={k.id} className="group flex flex-col">
+                <Link href={`/kitap/${k.id}`} className="aspect-[2/3] mb-4 overflow-hidden rounded-[1.8rem] md:rounded-[2.8rem] border dark:border-white/5 shadow-md hover:-translate-y-1 transition-all duration-500">
+                  {k.cover_url ? (
+                    <img src={k.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  ) : (
+                    <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center font-black opacity-20 text-[8px]">KAPAK YOK</div>
+                  )}
+                </Link>
+                <h3 className="font-black text-[9px] md:text-[10px] text-center dark:text-white truncate uppercase italic px-2 tracking-tight">{k.title}</h3>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* TAKİPÇİ/TAKİP MODAL'I - 404 HATASI DÜZELTİLDİ */}
+      {modalType && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#0f0f0f] w-full max-w-md rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden">
+            <div className="p-6 border-b dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
+              <h3 className="text-xs font-black uppercase tracking-widest dark:text-white">
+                {modalType === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}
+              </h3>
+              <button onClick={() => setModalType(null)} className="text-[10px] font-black text-red-600 uppercase tracking-widest">Kapat</button>
+            </div>
+            <div className="max-h-[350px] overflow-y-auto p-4 space-y-3 no-scrollbar">
+              {(modalType === 'followers' ? followers : following).length === 0 ? (
+                <p className="text-center py-10 text-[10px] text-gray-500 italic uppercase tracking-widest">Burada kimse yok kral...</p>
               ) : (
-                (activeModal === 'followers' ? followersList : followingList).map((item, i) => {
-                  const targetUser = activeModal === 'followers' ? item.follower_username : item.followed_username;
-                  const targetAvatar = item.avatar_url;
-                  
+                (modalType === 'followers' ? followers : following).map((person, i) => {
+                  const targetUsername = modalType === 'followers' ? person.follower_username : person.followed_username;
                   return (
-                    <Link key={i} href={`/yazar/${targetUser}`} onClick={() => setActiveModal(null)} className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-white/5 rounded-[2rem] transition-all group">
-                      <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-black overflow-hidden border dark:border-white/10 group-hover:border-red-600 transition-colors">
-                        {targetAvatar ? <img src={targetAvatar} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-xs text-gray-400">{targetUser[0].toUpperCase()}</div>}
+                    <Link 
+                      key={i} 
+                      href={`/yazar/${targetUsername}`} // BURASI ARTIK DOĞRU YOLDA (404 FIX)
+                      onClick={() => setModalType(null)}
+                      className="flex items-center gap-4 p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 hover:border-red-600 transition-all"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-red-600/10 flex items-center justify-center font-black text-red-600 text-[10px]">
+                        {targetUsername[0].toUpperCase()}
                       </div>
-                      <span className="font-bold text-sm dark:text-white group-hover:text-red-600 transition-colors">@{targetUser}</span>
+                      <span className="text-xs font-bold dark:text-white tracking-tight">@{targetUsername}</span>
                     </Link>
-                  )
+                  );
                 })
               )}
             </div>
           </div>
         </div>
       )}
-
-      <div className="max-w-6xl mx-auto">
-        {/* ÜST PROFİL ALANI */}
-        <div className="text-center mb-24 relative">
-          <div className="w-32 h-32 bg-gray-100 dark:bg-white/5 rounded-full mx-auto mb-8 p-1 border dark:border-white/5 shadow-2xl relative group">
-            <div className="w-full h-full rounded-full overflow-hidden bg-red-600 flex items-center justify-center text-white text-5xl font-black">
-              {data.profile?.avatar_url ? <img src={data.profile.avatar_url} className="w-full h-full object-cover" /> : username[0].toUpperCase()}
-            </div>
-          </div>
-          
-          <h1 className="text-5xl font-black dark:text-white mb-6 tracking-tighter italic">@{username}</h1>
-          {data.profile?.bio && <p className="max-w-lg mx-auto text-gray-500 dark:text-gray-400 font-serif italic mb-8 leading-relaxed">"{data.profile.bio}"</p>}
-          
-          {/* İSTATİSTİK BARI (OKUNMA EKLENDİ) */}
-          <div className="flex justify-center gap-10 md:gap-16 mb-12 py-10 border-y dark:border-white/5 w-full max-w-2xl mx-auto">
-            <div className="text-center">
-              <p className="text-3xl font-black dark:text-white">{data.books.length}</p>
-              <p className="text-[9px] uppercase font-black text-gray-400 tracking-[0.2em]">Eser</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-black dark:text-white">{data.stats.views}</p>
-              <p className="text-[9px] uppercase font-black text-red-600 tracking-[0.2em]">Okunma</p>
-            </div>
-            <button onClick={() => setActiveModal('followers')} className="text-center group transition-transform active:scale-95">
-              <p className="text-3xl font-black dark:text-white group-hover:text-red-600 transition-colors">{followersList.length}</p>
-              <p className="text-[9px] uppercase font-black text-gray-400 tracking-[0.2em]">Takipçi</p>
-            </button>
-            <button onClick={() => setActiveModal('following')} className="text-center group transition-transform active:scale-95">
-              <p className="text-3xl font-black dark:text-white group-hover:text-red-600 transition-colors">{followingList.length}</p>
-              <p className="text-[9px] uppercase font-black text-gray-400 tracking-[0.2em]">Takip</p>
-            </button>
-          </div>
-
-          <button onClick={handleAuthorFollow} className={`px-16 py-4 rounded-full font-black text-[10px] uppercase tracking-[0.3em] transition-all shadow-xl
-            ${data.isFollowing ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : 'bg-black dark:bg-white text-white dark:text-black hover:bg-red-600 hover:text-white shadow-red-600/20'}`}>
-            {data.isFollowing ? 'Takibi Bırak' : 'Yazarı Takip Et'}
-          </button>
-        </div>
-
-        {/* ESER GRİDİ (BADGE VE PREMIUM KARTLAR) */}
-        <h2 className="text-sm font-black uppercase tracking-[0.5em] text-gray-300 dark:text-gray-700 mb-12 text-center italic">Tüm Eserleri</h2>
-        
-        {data.books.length === 0 ? (
-          <div className="text-center py-20 font-black opacity-10 text-3xl uppercase tracking-widest italic">Henüz bir eser yok.</div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-10">
-            {data.books.map((kitap) => (
-              <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="group">
-                <div className="relative aspect-[2/3] w-full mb-6 overflow-hidden rounded-[2.5rem] border dark:border-white/5 transition-all shadow-lg group-hover:shadow-2xl group-hover:shadow-red-600/10 group-hover:-translate-y-2">
-                  {kitap.cover_url ? (
-                    <img src={kitap.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                  ) : (
-                    <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center font-black text-[10px] text-gray-400 italic uppercase">Kapak Yok</div>
-                  )}
-                  {/* Kategori Badge */}
-                  {kitap.category && (
-                    <div className="absolute top-4 left-4 px-3 py-1 bg-black/60 backdrop-blur-md rounded-full">
-                      <span className="text-[8px] font-black text-white uppercase tracking-widest">{kitap.category}</span>
-                    </div>
-                  )}
-                </div>
-                <h3 className="font-black text-[11px] text-center dark:text-white px-2 leading-tight uppercase tracking-tight group-hover:text-red-600 transition-colors line-clamp-2 italic">{kitap.title}</h3>
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 }
