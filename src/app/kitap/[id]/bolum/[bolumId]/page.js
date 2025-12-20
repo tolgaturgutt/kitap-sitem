@@ -15,30 +15,40 @@ export default function BolumDetay({ params }) {
 
   useEffect(() => {
     async function getFullData() {
-      // OKUNMA SAYISI FIX: target_chapter_id olarak gönderiyoruz
-      await supabase.rpc('increment_views', { target_chapter_id: bolumId }); 
-      
-      const { data: chapter } = await supabase.from('chapters').select('*').eq('id', bolumId).single();
-      const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
-      const { data: all } = await supabase.from('chapters').select('id, title').eq('book_id', id).order('order_no', { ascending: true });
-      
-      const { data: counts } = await supabase.from('comments').select('paragraph_id').eq('chapter_id', bolumId).not('paragraph_id', 'is', null);
-      const countMap = {};
-      counts?.forEach(c => { countMap[c.paragraph_id] = (countMap[c.paragraph_id] || 0) + 1; });
+      if (!bolumId || !id) return;
 
-      setData({ book, chapter, allChapters: all || [] });
-      setParaCommentCounts(countMap);
-      setLoading(false);
+      try {
+        // OKUNMA SAYISI FIX: Parametre adını 'target_chapter_id' yaptık
+        await supabase.rpc('increment_views', { target_chapter_id: bolumId }); 
+        
+        // Veri çekerken 406 almamak için varlığını kontrol ediyoruz
+        const { data: chapter, error: chError } = await supabase.from('chapters').select('*').eq('id', bolumId).single();
+        const { data: book, error: bkError } = await supabase.from('books').select('*').eq('id', id).single();
+        
+        if (chError || bkError) {
+          console.error("Veri bulunamadı, 406 hatası bu yüzden çıkıyor.");
+          setLoading(false);
+          return;
+        }
+
+        const { data: all } = await supabase.from('chapters').select('id, title').eq('book_id', id).order('order_no', { ascending: true });
+        
+        const { data: counts } = await supabase.from('comments').select('paragraph_id').eq('chapter_id', bolumId).not('paragraph_id', 'is', null);
+        const countMap = {};
+        counts?.forEach(c => { countMap[c.paragraph_id] = (countMap[c.paragraph_id] || 0) + 1; });
+
+        setData({ book, chapter, allChapters: all || [] });
+        setParaCommentCounts(countMap);
+      } catch (err) {
+        console.error("Beklenmedik hata:", err);
+      } finally {
+        setLoading(false);
+      }
     }
     getFullData();
   }, [id, bolumId]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-black opacity-10 animate-pulse text-5xl italic tracking-tighter">YUKLENIYOR</div>;
-
-  const currentIndex = data.allChapters.findIndex(c => c.id == bolumId);
-  const prevChapter = data.allChapters[currentIndex - 1];
-  const nextChapter = data.allChapters[currentIndex + 1];
-
+  
   return (
     <div className="min-h-screen bg-[#fdfdfd] dark:bg-[#0a0a0a]">
       <Toaster />
