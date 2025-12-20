@@ -95,7 +95,7 @@ export default function Home() {
   return (
     <div className="min-h-screen py-16 px-6 md:px-16 bg-[#fafafa] dark:bg-black">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-5xl font-black mb-20 tracking-tighter dark:text-white italic">Yazio<span className="text-red-600">.</span></h1>
+        
 
         {/* OKUMAYA DEVAM ET KARTI (BURAYA EKLENDİ) */}
         {continueReading && continueReading.books && (
