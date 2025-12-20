@@ -33,13 +33,13 @@ export default function Navbar() {
     getUserData();
 
     const handleClickOutside = (e) => {
+      // Tıklanan yer arama kutusu veya bildirim paneli değilse kapat
       if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ENTER'A BASINCA ARAMA SAYFASINA GİTME FONKSİYONU
   const handleSearch = (e) => {
     if (e.key === 'Enter' && query.trim() !== '') {
       router.push(`/arama?q=${query.trim()}`);
@@ -78,61 +78,73 @@ export default function Navbar() {
   const socialNotifs = notifications.filter(n => n.type === 'follow');
 
   return (
-    <nav className="w-full border-b sticky top-0 z-50 backdrop-blur-md bg-white/80 dark:bg-black/90 border-gray-100 dark:border-gray-800 transition-all">
+    <nav className="w-full border-b sticky top-0 z-[100] backdrop-blur-md bg-white/80 dark:bg-black/90 border-gray-100 dark:border-gray-800 transition-all">
       <div className="max-w-7xl mx-auto px-4 md:px-6 h-20 flex items-center justify-between gap-4 md:gap-8">
-        
-        {/* LOGO: Mobilde biraz küçüldü */}
         <Link href="/" className="text-2xl md:text-3xl font-extrabold tracking-tighter shrink-0 italic">
           Yazio<span className="text-red-600">.</span>
         </Link>
 
-        {/* ARAMA ÇUBUĞU: Mobilde esnek yapıldı */}
-        <div className="flex-1 max-w-md relative order-last md:order-none absolute md:relative top-24 left-0 w-full px-4 md:top-0 md:px-0" ref={searchRef}>
+        <div className="flex-1 max-w-md relative" ref={searchRef}>
           <div className="relative">
-            <input 
-              type="text" 
-              value={query} 
-              onChange={(e) => setQuery(e.target.value)} 
-              onKeyDown={handleSearch} // Enter takibi eklendi
-              placeholder="Eser veya yazar ara..." 
-              className="w-full h-10 md:h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full px-10 md:px-12 py-2 text-xs md:text-sm outline-none focus:ring-2 ring-red-600/20 transition-all" 
-            />
-            <span className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm md:text-base">🔍</span>
+            <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleSearch} placeholder="Eser veya yazar ara..." className="w-full h-10 md:h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full px-10 md:px-12 py-2 text-xs md:text-sm outline-none transition-all" />
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
           </div>
         </div>
 
         <div className="flex items-center gap-2 md:gap-4">
           {user ? (
             <>
-              <Link href="/kitap-ekle" className="hidden sm:flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 md:px-5 py-2 md:py-2.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-lg shadow-red-600/20 transition-all active:scale-95">
-                <span>+</span> Yaz
+              <Link href="/kitap-ekle" className="hidden sm:flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-full text-[9px] font-black uppercase tracking-widest shadow-lg shadow-red-600/20">
+                <span>+</span> YAZ
               </Link>
 
               <div className="relative" ref={notifRef}>
-                <button onClick={() => { setShowNotifs(!showNotifs); if(!showNotifs) markAsRead(); }} className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full transition-all ${showNotifs ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-red-600'}`}>
-                  <span className="text-lg md:text-xl">🔔</span>
-                  {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-600 border-2 border-white dark:border-black rounded-full animate-pulse"></span>}
+                <button onClick={() => { setShowNotifs(!showNotifs); if(!showNotifs) markAsRead(); }} className={`w-10 h-10 flex items-center justify-center rounded-full transition-all ${showNotifs ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-red-600'}`}>
+                  <span className="text-xl">🔔</span>
+                  {unreadCount > 0 && <span className="absolute top-2 right-2 w-3 h-3 bg-red-600 border-2 border-white dark:border-black rounded-full animate-pulse"></span>}
                 </button>
 
                 {showNotifs && (
-                  <div className="absolute top-14 right-[-80px] md:right-0 w-[280px] md:w-[450px] bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-[2rem] md:rounded-[2.8rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-                    {/* Bildirim içeriği aynı kalıyor... */}
+                  <div className="absolute top-14 right-[-80px] md:right-0 w-[280px] md:w-[450px] bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200 z-[110]">
+                    <div className="p-5 border-b dark:border-white/5 flex justify-between items-center bg-gray-50/50 dark:bg-white/5">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Canlı Hareketler</span>
+                      <button onClick={() => setShowNotifs(false)} className="text-[9px] font-black text-red-600 uppercase">Kapat</button>
+                    </div>
+
+                    <div className="flex divide-x dark:divide-white/5 h-[350px]">
+                      <div className="flex-1 overflow-y-auto no-scrollbar p-4">
+                        <p className="text-[8px] font-black uppercase text-red-600 mb-4 tracking-widest text-center">Eserler</p>
+                        {bookNotifs.length === 0 ? <p className="text-[9px] text-center text-gray-500 py-10 italic">Yorum yok.</p> : bookNotifs.map(n => (
+                          <div key={n.id} className="mb-3 p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 text-[9px]">
+                             <span className="text-red-600 font-bold">@{n.actor_username}</span> {n.type === 'vote' ? 'oyladı.' : 'yorum yaptı.'}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex-1 overflow-y-auto no-scrollbar p-4 bg-gray-50/30 dark:bg-white/[0.02]">
+                        <p className="text-[8px] font-black uppercase text-blue-600 mb-4 tracking-widest text-center">Sosyal</p>
+                        {socialNotifs.length === 0 ? <p className="text-[9px] text-center text-gray-500 py-10 italic">Takipçi yok.</p> : socialNotifs.map(n => (
+                          <div key={n.id} className="mb-3 p-3 rounded-2xl bg-white dark:bg-white/5 border dark:border-white/5 text-[9px]">
+                             <span className="text-blue-600 font-bold">@{n.actor_username}</span> seni takip etti.
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
 
-              <Link href="/profil" className="w-9 h-9 md:w-11 md:h-11 rounded-full overflow-hidden border-2 border-transparent hover:border-red-600 transition-all bg-gray-100 dark:bg-white/5 flex items-center justify-center shadow-sm">
-                {user.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" /> : <span className="font-black text-[10px] md:text-xs">{user.email[0].toUpperCase()}</span>}
+              <Link href="/profil" className="w-10 h-10 rounded-full overflow-hidden border-2 border-transparent hover:border-red-600 transition-all bg-gray-100 dark:bg-white/5 flex items-center justify-center">
+                {user.user_metadata?.avatar_url ? <img src={user.user_metadata.avatar_url} className="w-full h-full object-cover" /> : <span className="font-black text-xs">{user.email[0].toUpperCase()}</span>}
               </Link>
 
-              <button onClick={handleLogout} className="hidden md:block text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-colors">Çıkış</button>
+              <button onClick={handleLogout} className="hidden md:block text-[9px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600">Çıkış</button>
             </>
           ) : (
-            <Link href="/giris" className="bg-black dark:bg-white text-white dark:text-black px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest">Giriş Yap</Link>
+            <Link href="/giris" className="bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest">Giriş Yap</Link>
           )}
 
           <div className="h-6 w-[1px] bg-gray-200 dark:bg-gray-800 mx-1"></div>
-          <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 hover:scale-110 transition-transform">
+          <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5">
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
         </div>
