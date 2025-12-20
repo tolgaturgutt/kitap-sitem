@@ -1,0 +1,140 @@
+'use client';
+
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import Link from 'next/link';
+
+function AramaIcerik() {
+  const searchParams = useSearchParams();
+  const query = searchParams.get('q') || '';
+  
+  const [results, setResults] = useState({ books: [], users: [] });
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'books', 'users'
+
+  useEffect(() => {
+    async function performDeepSearch() {
+      if (!query) return;
+      setLoading(true);
+
+      // PARALEL DERİN ARAMA: Navbar'dan daha detaylı veri çekiyoruz
+      const [booksRes, usersRes] = await Promise.all([
+        supabase
+          .from('books')
+          .select('id, title, summary, cover_url, username, category')
+          .ilike('title', `%${query}%`),
+        supabase
+          .from('profiles')
+          .select('username, avatar_url, bio')
+          .ilike('username', `%${query}%`)
+      ]);
+
+      setResults({ 
+        books: booksRes.data || [], 
+        users: usersRes.data || [] 
+      });
+      setLoading(false);
+    }
+    performDeepSearch();
+  }, [query]);
+
+  const totalCount = results.books.length + results.users.length;
+
+  return (
+    <div className="min-h-screen bg-[#fafafa] dark:bg-[#080808] pt-12 pb-24 px-6">
+      <div className="max-w-5xl mx-auto">
+        
+        {/* BAŞLIK VE İSTATİSTİK */}
+        <header className="mb-16">
+          <h1 className="text-4xl font-black tracking-tighter dark:text-white mb-2">
+            "{query}" <span className="text-gray-400 font-light">için sonuçlar</span>
+          </h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600">
+            {totalCount} Eşleşme Bulundu
+          </p>
+        </header>
+
+        {/* KATEGORİ SEKMELERİ (OVAL) */}
+        <div className="flex gap-3 mb-12">
+          {['all', 'books', 'users'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`px-8 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all
+                ${activeTab === tab 
+                  ? 'bg-black dark:bg-white text-white dark:text-black shadow-xl' 
+                  : 'bg-white dark:bg-white/5 text-gray-400 hover:text-red-600 border dark:border-white/5'}`}
+            >
+              {tab === 'all' ? 'Hepsi' : tab === 'books' ? 'Eserler' : 'Yazarlar'}
+            </button>
+          ))}
+        </div>
+
+        {loading ? (
+          <div className="py-20 text-center font-black opacity-10 text-6xl italic animate-pulse">ARANIYOR...</div>
+        ) : (
+          <div className="space-y-20">
+            
+            {/* KİTAP SONUÇLARI */}
+            {(activeTab === 'all' || activeTab === 'books') && results.books.length > 0 && (
+              <section>
+                <h2 className="text-sm font-black uppercase tracking-[0.4em] text-gray-300 dark:text-gray-700 mb-8 italic">Eser Koleksiyonu</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {results.books.map(book => (
+                    <Link key={book.id} href={`/kitap/${book.id}`} className="flex gap-6 p-4 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2.5rem] hover:scale-[1.02] transition-transform group shadow-sm">
+                      <div className="w-28 h-40 rounded-2xl overflow-hidden shrink-0 shadow-lg group-hover:shadow-red-600/20 transition-all">
+                        {book.cover_url ? <img src={book.cover_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-100 dark:bg-black/40 flex items-center justify-center text-[10px] font-black uppercase text-gray-400">Kapak Yok</div>}
+                      </div>
+                      <div className="flex flex-col justify-center py-2">
+                        <span className="text-[9px] font-black uppercase text-red-600 mb-1">{book.category}</span>
+                        <h3 className="text-xl font-bold dark:text-white mb-2 group-hover:text-red-600 transition-colors">{book.title}</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 italic mb-4">@{book.username}</p>
+                        <p className="text-[11px] text-gray-400 dark:text-gray-500 line-clamp-2 leading-relaxed">{book.summary}</p>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* YAZAR SONUÇLARI */}
+            {(activeTab === 'all' || activeTab === 'users') && results.users.length > 0 && (
+              <section>
+                <h2 className="text-sm font-black uppercase tracking-[0.4em] text-gray-300 dark:text-gray-700 mb-8 italic">Kalem Sahipleri</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  {results.users.map(u => (
+                    <Link key={u.username} href={`/yazar/${u.username}`} className="flex flex-col items-center p-8 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[3rem] text-center hover:border-red-600 transition-all group">
+                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all mb-4">
+                        {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200 dark:bg-black/50 flex items-center justify-center font-black">?</div>}
+                      </div>
+                      <p className="font-bold dark:text-white group-hover:text-red-600 transition-colors">@{u.username}</p>
+                      <p className="text-[10px] text-gray-400 uppercase font-black mt-2 tracking-widest">Yazar</p>
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {totalCount === 0 && (
+              <div className="py-40 text-center">
+                <p className="text-2xl font-serif italic text-gray-400 mb-6">"Aradığın hikaye henüz yazılmamış olabilir..."</p>
+                <Link href="/" className="px-10 py-3 bg-black dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all">Anasayfaya Dön</Link>
+              </div>
+            )}
+            
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Next.js 15 Suspense zorunluluğu için sarmalıyoruz
+export default function AramaSayfasi() {
+  return (
+    <Suspense fallback={<div className="py-40 text-center font-black opacity-10 text-6xl">YÜKLENİYOR</div>}>
+      <AramaIcerik />
+    </Suspense>
+  );
+}
