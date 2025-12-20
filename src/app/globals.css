@@ -9,3 +9,50 @@
     -ms-overflow-style: none;  /* IE ve Edge */
     scrollbar-width: none;  /* Firefox */
 }
+/* src/app/globals.css */
+
+@layer utilities {
+  /* 1. Mobilde devasa yuvarlak köşeleri dizginle */
+  @media (max-width: 768px) {
+    .rounded-\[4rem\] {
+      border-radius: 2rem !important;
+    }
+    .rounded-\[3rem\] {
+      border-radius: 1.5rem !important;
+    }
+    .rounded-\[2\.8rem\] {
+      border-radius: 1.2rem !important;
+    }
+
+    /* 2. Mobildeki çok geniş boşlukları (p-10 gibi) otomatik daralt */
+    .p-10 {
+      padding: 1.5rem !important;
+    }
+    .p-8 {
+      padding: 1.25rem !important;
+    }
+    
+    /* 3. Mobilde devasa gapleri (gap-10) küçült */
+    .gap-10 {
+      gap: 1.5rem !important;
+    }
+
+    /* 4. Başlıkların mobilde ekrandan taşmasını engelle */
+    .text-4xl {
+      font-size: 1.875rem !important; /* text-3xl seviyesine çek */
+      line-height: 2.25rem !important;
+    }
+    .text-3xl {
+      font-size: 1.5rem !important; /* text-2xl seviyesine çek */
+    }
+  }
+}
+
+/* 5. Mobilde yatay kaydırma çubuğunu gizle (Sekmeler için) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
