@@ -28,7 +28,7 @@ export default function Navbar() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-        const { data: n } = await supabase.from('notifications').select('*').eq('recipient_email', session.user.email).order('created_at', { ascending: false }).limit(10);
+        const { data: n } = await supabase.from('notifications').select('*').eq('recipient_email', session.user.email).order('created_at', { ascending: false }).limit(20);
         setNotifications(n || []);
       }
     };
@@ -64,6 +64,10 @@ export default function Navbar() {
 
   if (!mounted) return null;
 
+  // BİLDİRİMLERİ İKİYE AYIRMA MANTIĞI
+  const bookNotifs = notifications.filter(n => n.type === 'vote' || n.type === 'comment');
+  const socialNotifs = notifications.filter(n => n.type === 'follow');
+
   return (
     <nav className="w-full border-b sticky top-0 z-[100] backdrop-blur-md bg-white/80 dark:bg-black/90 border-gray-100 dark:border-gray-800 transition-all h-20">
       <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between gap-8">
@@ -93,14 +97,33 @@ export default function Navbar() {
                   <span className="text-xl">🔔</span>
                 </button>
                 {showNotifs && (
-                  <div className="absolute top-14 right-0 w-[320px] bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden z-[120]">
-                    <div className="p-4 border-b dark:border-white/5 bg-gray-50 dark:bg-white/5 font-black text-[10px] uppercase opacity-40">Bildirimler</div>
-                    <div className="max-h-[300px] overflow-y-auto">
-                      {notifications.length === 0 ? <p className="p-10 text-[10px] text-center opacity-40">Henüz bildirim yok.</p> : notifications.map(n => (
-                        <div key={n.id} className="p-4 border-b dark:border-white/5 text-[10px] font-bold">
-                          <span className="text-red-600">@{n.actor_username}</span> {n.type === 'vote' ? 'oyladı.' : 'yorum yaptı.'}
-                        </div>
-                      ))}
+                  <div className="absolute top-14 right-[-80px] md:right-0 w-[280px] md:w-[450px] bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden z-[120]">
+                    <div className="p-4 border-b dark:border-white/5 bg-gray-50 dark:bg-white/5 font-black text-[10px] uppercase opacity-40 flex justify-between">
+                      <span>Bildirimler</span>
+                      <button onClick={() => setShowNotifs(false)} className="text-red-600">Kapat</button>
+                    </div>
+                    
+                    {/* İKİYE AYRILAN PANEL */}
+                    <div className="flex divide-x dark:divide-white/5 h-[350px]">
+                      {/* SOL SÜTUN: ESERLER */}
+                      <div className="flex-1 overflow-y-auto no-scrollbar p-3">
+                        <p className="text-[8px] font-black uppercase text-red-600 mb-3 tracking-widest text-center">Eserler</p>
+                        {bookNotifs.length === 0 ? <p className="text-[9px] text-center text-gray-400 py-10 italic">Hareket yok.</p> : bookNotifs.map(n => (
+                          <div key={n.id} className="mb-2 p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 text-[9px] font-bold">
+                             <span className="text-red-600">@{n.actor_username}</span> {n.type === 'vote' ? 'eserini oyladı.' : 'yorum yaptı.'}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* SAĞ SÜTUN: SOSYAL */}
+                      <div className="flex-1 overflow-y-auto no-scrollbar p-3 bg-gray-50/30 dark:bg-white/[0.02]">
+                        <p className="text-[8px] font-black uppercase text-blue-600 mb-3 tracking-widest text-center">Sosyal</p>
+                        {socialNotifs.length === 0 ? <p className="text-[9px] text-center text-gray-400 py-10 italic">Takipçi yok.</p> : socialNotifs.map(n => (
+                          <div key={n.id} className="mb-2 p-2.5 rounded-xl bg-white dark:bg-white/5 border dark:border-white/5 text-[9px] font-bold">
+                             <span className="text-blue-600">@{n.actor_username}</span> seni takip etti.
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
