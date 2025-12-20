@@ -15,11 +15,26 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
       const { data: { user: u } } = await supabase.auth.getUser();
       setUser(u);
       
-      // 406 Hatası için fkey belirterek sorgu yapıyoruz
-      let query = supabase.from('comments').select('*, profiles!comments_user_id_fkey(username, avatar_url)').order('created_at', { ascending: false });
-      if (type === 'book') query = query.eq('book_id', targetId).is('chapter_id', null);
-      if (type === 'chapter') query = query.eq('chapter_id', targetId).is('paragraph_id', null);
-      if (type === 'paragraph') query = query.eq('chapter_id', targetId).eq('paragraph_id', paraId);
+      // 406 ve 400 hatalarını önlemek için sorgu başlangıcı
+      let query = supabase
+        .from('comments')
+        .select('*, profiles!comments_user_id_fkey(username, avatar_url)')
+        .order('created_at', { ascending: false });
+
+      if (type === 'book') {
+        query = query.eq('book_id', targetId).is('chapter_id', null);
+      } else if (type === 'chapter') {
+        query = query.eq('chapter_id', targetId).is('paragraph_id', null);
+      } else if (type === 'paragraph') {
+        query = query.eq('chapter_id', targetId);
+        // 400 FIX: paraId null ise .is() değilse .eq() kullanıyoruz
+        if (paraId === null) {
+          query = query.is('paragraph_id', null);
+        } else {
+          query = query.eq('paragraph_id', paraId);
+        }
+      }
+
       const { data } = await query;
       setComments(data || []);
     }
@@ -33,12 +48,11 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
     const payload = { 
       content: newComment, 
       user_id: user.id,
-      book_id: bookId, // image_0d4d4e hatasını buradaki bookId çözer
+      book_id: bookId, 
       chapter_id: type === 'book' ? null : targetId,
       paragraph_id: paraId || null
     };
 
-    // Yeni yorumu ekle ve sonucu profil bilgisiyle beraber geri al
     const { data: insertedData, error } = await supabase
       .from('comments')
       .insert([payload])
@@ -46,7 +60,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
       .single();
 
     if (!error && insertedData) { 
-        setComments(prev => [insertedData, ...prev]); // Sayfayı YENİLEMEDEN listeye ekle
+        setComments(prev => [insertedData, ...prev]); 
         setNewComment(''); 
         toast.success("Yorum eklendi");
     } else {
@@ -79,12 +93,23 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
       <div className="space-y-6">
         {comments.map(c => (
           <div key={c.id} className="flex gap-4 animate-in fade-in duration-500">
-            <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden shrink-0 border dark:border-white/5">
-              {c.profiles?.avatar_url ? <img src={c.profiles.avatar_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[9px] font-black">{c.profiles?.username?.[0]}</div>}
+            <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden shrink-0 border dark:border-white/5 flex items-center justify-center">
+              {/* 406 FIX: avatar_url'in geçerli bir link olduğunu (http) kontrol ediyoruz */}
+              {c.profiles?.avatar_url && c.profiles.avatar_url.includes('http') ? (
+                <img src={c.profiles.avatar_url} className="w-full h-full object-cover" />
+              ) : (
+                <div className="text-[9px] font-black opacity-30 italic">
+                  {(c.profiles?.username || "U")[0].toUpperCase()}
+                </div>
+              )}
             </div>
             <div className="flex-1">
-              <p className="text-[10px] font-black dark:text-white mb-1">@{c.profiles?.username}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">{c.content}</p>
+              <p className="text-[10px] font-black dark:text-white mb-1 tracking-tighter uppercase italic opacity-60">
+                @{c.profiles?.username}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+                {c.content}
+              </p>
             </div>
           </div>
         ))}
