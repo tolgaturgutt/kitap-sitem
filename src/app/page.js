@@ -49,9 +49,24 @@ export default function Home() {
   const [featuredBooks, setFeaturedBooks] = useState([]);
   const [booksByCategory, setBooksByCategory] = useState({});
   const [loading, setLoading] = useState(true);
+  const [continueReading, setContinueReading] = useState(null); // EKLENDİ
 
   useEffect(() => {
     async function fetchData() {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // OKUMA GEÇMİŞİNİ ÇEK (BURAYA EKLENDİ)
+      if (user) {
+        const { data: history } = await supabase.from('reading_history')
+          .select('*, books(*), chapters(*)')
+          .eq('user_email', user.email)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (history) setContinueReading(history);
+      }
+
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       const { data: allBooks } = await supabase.from('books').select('*');
@@ -81,6 +96,29 @@ export default function Home() {
     <div className="min-h-screen py-16 px-6 md:px-16 bg-[#fafafa] dark:bg-black">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-5xl font-black mb-20 tracking-tighter dark:text-white italic">Yazio<span className="text-red-600">.</span></h1>
+
+        {/* OKUMAYA DEVAM ET KARTI (BURAYA EKLENDİ) */}
+        {continueReading && continueReading.books && (
+          <div className="mb-14 animate-in slide-in-from-top duration-700">
+            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 mb-6 italic">Okumaya Devam Et</h2>
+            <Link href={`/kitap/${continueReading.book_id}/bolum/${continueReading.chapter_id}`} 
+                  className="group block bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-6 md:p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-24 md:w-20 md:h-28 rounded-2xl overflow-hidden shrink-0 border dark:border-white/5 shadow-lg">
+                  <img src={continueReading.books.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl md:text-2xl font-black dark:text-white mb-1 group-hover:text-red-600 transition-colors uppercase">{continueReading.books.title}</h3>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Kaldığın Bölüm: {continueReading.chapters?.title}</p>
+                  <div className="inline-flex items-center gap-2 text-[9px] font-black uppercase bg-black dark:bg-white text-white dark:text-black px-5 py-2.5 rounded-full tracking-tighter">
+                    Hemen Devam Et →
+                  </div>
+                </div>
+              </div>
+            </Link>
+          </div>
+        )}
+
         <CategoryRow title="Öne Çıkanlar" books={featuredBooks} isFeatured={true} />
         {Object.entries(booksByCategory).map(([cat, books]) => <CategoryRow key={cat} title={cat} books={books} />)}
       </div>
