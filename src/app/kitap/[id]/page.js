@@ -364,7 +364,7 @@ export default function KitapDetay({ params }) {
                   {isAuthor && (
                     <div className="flex gap-2 mt-2 ml-20 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Link 
-                        href={`/bolum-duzenle/${id}/${c.id}`} 
+                        href={`/kitap/${id}/bolum-duzenle/${c.id}`}
                         className="text-[9px] font-black uppercase text-blue-600 hover:text-blue-700 transition-colors px-3 py-1 bg-blue-50 dark:bg-blue-950/20 rounded-full"
                       >
                         ✏️ Düzenle
