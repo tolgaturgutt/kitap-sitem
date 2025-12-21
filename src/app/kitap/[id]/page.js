@@ -13,7 +13,13 @@ export default function KitapDetay({ params }) {
     book: null, 
     authorProfile: null, 
     chapters: [], 
-    stats: { views: 0, votes: 0, follows: 0 }, 
+    stats: { 
+      views: 0, 
+      votes: 0, 
+      follows: 0, 
+      comments: 0,
+      chapters: 0 
+    }, 
     isFollowing: false, 
     hasVoted: false, 
     user: null 
@@ -36,10 +42,17 @@ export default function KitapDetay({ params }) {
         authorProfile = profile;
       }
       
+      // OKUNMA SAYISI
       const totalViews = chapters?.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
       
+      // OY SAYISI
       const { count: votes } = await supabase.from('book_votes').select('*', { count: 'exact', head: true }).eq('book_id', id);
+      
+      // KÜTÜPHANE SAYISI
       const { count: follows } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('book_id', id);
+      
+      // YORUM SAYISI (TÜM BÖLÜMLER + KİTAP YORUMLARI)
+      const { count: comments } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('book_id', id);
       
       let following = false, voted = false;
       if (user) {
@@ -53,7 +66,13 @@ export default function KitapDetay({ params }) {
         book, 
         authorProfile, 
         chapters: chapters || [], 
-        stats: { views: totalViews, votes: votes || 0, follows: follows || 0 }, 
+        stats: { 
+          views: totalViews, 
+          votes: votes || 0, 
+          follows: follows || 0,
+          comments: comments || 0,
+          chapters: chapters?.length || 0
+        }, 
         isFollowing: following, 
         hasVoted: voted, 
         user 
@@ -116,74 +135,196 @@ export default function KitapDetay({ params }) {
   return (
     <div className="min-h-screen py-16 px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
       <Toaster />
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-12 mb-24 items-start">
-          <div className="w-full md:w-80 aspect-[2/3] shrink-0 rounded-[2.5rem] overflow-hidden shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20">
-            {data.book.cover_url ? <img src={data.book.cover_url} className="w-full h-full object-cover" alt={data.book.title} /> : <div className="w-full h-full flex items-center justify-center font-black text-gray-300 italic text-sm">Kapak Yok</div>}
+      <div className="max-w-6xl mx-auto">
+        
+        {/* ÜST BÖLÜM */}
+        <div className="flex flex-col lg:flex-row gap-12 mb-20 items-start">
+          
+          {/* KAPAK */}
+          <div className="w-full lg:w-80 shrink-0">
+            <div className="aspect-[2/3] w-full rounded-[2.5rem] overflow-hidden shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20 sticky top-24">
+              {data.book.cover_url ? (
+                <img src={data.book.cover_url} className="w-full h-full object-cover" alt={data.book.title} />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center font-black text-gray-300 italic text-sm">Kapak Yok</div>
+              )}
+            </div>
           </div>
           
-          <div className="flex-1 pt-6">
-            <span className="text-[10px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/20 px-4 py-1.5 rounded-full tracking-[0.2em]">{data.book.category}</span>
-            <h1 className="text-5xl md:text-6xl font-black my-6 tracking-tighter dark:text-white leading-tight uppercase">{data.book.title}</h1>
+          {/* BİLGİLER */}
+          <div className="flex-1">
+            <span className="inline-block text-[10px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/20 px-4 py-1.5 rounded-full tracking-[0.2em] mb-4">
+              {data.book.category}
+            </span>
             
+            <h1 className="text-5xl md:text-6xl font-black my-6 tracking-tighter dark:text-white leading-tight uppercase">
+              {data.book.title}
+            </h1>
+            
+            {/* YAZAR BİLGİSİ */}
             <Link href={`/yazar/${data.book.username}`} className="flex items-center gap-4 mb-10 group w-fit">
-              <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-xs uppercase">
-                {data.authorProfile?.avatar_url ? <img src={data.authorProfile.avatar_url} className="w-full h-full object-cover" alt="" /> : data.book.username[0]}
+              <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-sm uppercase">
+                {data.authorProfile?.avatar_url && data.authorProfile.avatar_url.includes('http') ? (
+                  <img src={data.authorProfile.avatar_url} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  data.book.username[0]
+                )}
               </div>
               <div>
-                <p className="text-sm font-black dark:text-white group-hover:text-red-600 transition-colors">@{data.book.username}</p>
+                <p className="text-sm font-black dark:text-white group-hover:text-red-600 transition-colors">
+                  @{data.book.username}
+                </p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Eser Sahibi</p>
               </div>
             </Link>
             
-            <div className="flex gap-12 mb-10 border-y dark:border-white/5 py-8">
+            {/* İSTATİSTİKLER */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-10 bg-white dark:bg-white/5 p-8 rounded-[2rem] border dark:border-white/5">
               <div className="text-center">
-                 <p className="text-2xl font-black dark:text-white">{data.stats.views}</p>
-                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest">Okunma</p>
+                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.views}</p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
+                  👁️ Okunma
+                </p>
               </div>
-              <div className="text-center"><p className="text-2xl font-black dark:text-white">{data.stats.votes}</p><p className="text-[9px] uppercase text-gray-400 font-black tracking-widest">Oy</p></div>
-              <div className="text-center"><p className="text-2xl font-black dark:text-white">{data.stats.follows}</p><p className="text-[9px] uppercase text-gray-400 font-black tracking-widest">Kitaplık</p></div>
+              <div className="text-center">
+                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.votes}</p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
+                  ⭐ Oy
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.follows}</p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
+                  📚 Kitaplık
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.comments}</p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
+                  💬 Yorum
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.chapters}</p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
+                  📖 Bölüm
+                </p>
+              </div>
             </div>
 
-            <p className="text-xl text-gray-600 dark:text-gray-400 font-serif italic mb-12 leading-relaxed">{data.book.summary}</p>
+            {/* ÖZET */}
+            <div className="mb-10 p-8 bg-white dark:bg-white/5 rounded-[2rem] border dark:border-white/5">
+              <p className="text-lg text-gray-600 dark:text-gray-400 font-serif italic leading-relaxed">
+                {data.book.summary}
+              </p>
+            </div>
             
+            {/* BUTONLAR */}
             <div className="flex flex-wrap gap-4">
-               <button onClick={handleBookVote} className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${data.hasVoted ? 'bg-red-600 text-white shadow-lg' : 'bg-white dark:bg-black border dark:border-white/5 dark:text-white'}`}>{data.hasVoted ? 'OYLANDI ⭐' : 'OY VER'}</button>
-               <button onClick={handleLibrary} className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${data.isFollowing ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : 'bg-black dark:bg-white text-white dark:text-black hover:bg-red-600 dark:hover:bg-red-600 dark:hover:text-white'}`}>{data.isFollowing ? 'KÜTÜPHANEDE 📚' : 'KÜTÜPHANEYE EKLE'}</button>
+               <button 
+                 onClick={handleBookVote} 
+                 className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${
+                   data.hasVoted 
+                     ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' 
+                     : 'bg-white dark:bg-black border-2 border-gray-200 dark:border-white/10 dark:text-white hover:border-red-600'
+                 }`}
+               >
+                 {data.hasVoted ? '⭐ OYLANDI' : 'OY VER'}
+               </button>
+               
+               <button 
+                 onClick={handleLibrary} 
+                 className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${
+                   data.isFollowing 
+                     ? 'bg-gray-100 dark:bg-white/5 text-gray-400 border-2 border-gray-200 dark:border-white/10' 
+                     : 'bg-black dark:bg-white text-white dark:text-black hover:bg-red-600 dark:hover:bg-red-600 dark:hover:text-white border-2 border-black dark:border-white'
+                 }`}
+               >
+                 {data.isFollowing ? '📚 KÜTÜPHANEDE' : 'KÜTÜPHANEYE EKLE'}
+               </button>
+               
                {isAuthor && (
                  <>
-                   <Link href={`/kitap/${id}/bolum-ekle`} className="px-10 py-4 bg-blue-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20">BÖLÜM EKLE</Link>
-                   <Link href={`/kitap-duzenle/${id}`} className="px-10 py-4 bg-gray-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest">DÜZENLE</Link>
+                   <Link 
+                     href={`/kitap/${id}/bolum-ekle`} 
+                     className="px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all"
+                   >
+                     + BÖLÜM EKLE
+                   </Link>
+                   <Link 
+                     href={`/kitap-duzenle/${id}`} 
+                     className="px-10 py-4 bg-gray-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-gray-700 transition-all"
+                   >
+                     ⚙️ DÜZENLE
+                   </Link>
                  </>
                )}
             </div>
           </div>
         </div>
 
-        <div className="max-w-3xl mb-32">
-          <h2 className="text-2xl font-black mb-10 dark:text-white uppercase tracking-widest italic">Eserin Bölümleri</h2>
+        {/* BÖLÜMLER LİSTESİ */}
+        <div className="mb-32">
+          <div className="flex items-center justify-between mb-10">
+            <h2 className="text-3xl font-black dark:text-white uppercase tracking-tighter italic flex items-center gap-3">
+              📖 Eserin Bölümleri
+              <span className="text-sm text-gray-400 font-normal">({data.stats.chapters})</span>
+            </h2>
+          </div>
+          
           <div className="space-y-4">
-            {data.chapters.map(c => (
-              <div key={c.id} className="flex items-center gap-4 group">
-                <Link href={`/kitap/${id}/bolum/${c.id}`} className="flex-1 flex items-center justify-between p-6 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2rem] hover:border-red-600 transition-all shadow-sm">
-                  <div className="flex items-center gap-6">
-                     <span className="text-[10px] font-black text-gray-300 dark:text-gray-700 tracking-widest">{String(c.order_no).padStart(2, '0')}</span>
-                     <span className="font-bold text-base dark:text-white">{c.title}</span>
-                     <span className="text-[9px] text-gray-400 opacity-40">({c.views || 0} okuma)</span>
-                  </div>
-                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">OKU →</span>
-                </Link>
-                {isAuthor && (
-                  <Link href={`/bolum-duzenle/${id}/${c.id}`} className="px-4 py-2 bg-gray-100 dark:bg-white/5 text-gray-500 rounded-full text-[9px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity">
-                    DÜZENLE
-                  </Link>
-                )}
+            {data.chapters.length === 0 ? (
+              <div className="text-center py-20 bg-white dark:bg-white/5 rounded-[2rem] border dark:border-white/5">
+                <span className="text-5xl block mb-4">📝</span>
+                <p className="text-xl font-black text-gray-400">Henüz bölüm eklenmemiş</p>
               </div>
-            ))}
+            ) : (
+              data.chapters.map((c, idx) => (
+                <div key={c.id} className="group">
+                  <Link 
+                    href={`/kitap/${id}/bolum/${c.id}`} 
+                    className="flex items-center justify-between p-6 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2rem] hover:border-red-600 hover:shadow-xl transition-all"
+                  >
+                    <div className="flex items-center gap-6 flex-1">
+                      <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center">
+                        <span className="text-sm font-black text-red-600">{String(c.order_no).padStart(2, '0')}</span>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg dark:text-white mb-1 group-hover:text-red-600 transition-colors">
+                          {c.title}
+                        </h3>
+                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                          👁️ {c.views || 0} okuma
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                      OKU →
+                    </span>
+                  </Link>
+                  
+                  {isAuthor && (
+                    <div className="flex gap-2 mt-2 ml-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Link 
+                        href={`/bolum-duzenle/${id}/${c.id}`} 
+                        className="text-[9px] font-black uppercase text-gray-400 hover:text-blue-600 transition-colors"
+                      >
+                        ✏️ Düzenle
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
 
+        {/* YORUMLAR */}
         <div className="pt-20 border-t dark:border-white/5">
+           <h2 className="text-3xl font-black dark:text-white uppercase tracking-tighter italic mb-10 flex items-center gap-3">
+             💬 Eser Hakkında Yorumlar
+             <span className="text-sm text-gray-400 font-normal">({data.stats.comments})</span>
+           </h2>
            <YorumAlani type="book" targetId={id} bookId={id} />
         </div>
       </div>

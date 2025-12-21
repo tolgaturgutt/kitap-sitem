@@ -148,6 +148,17 @@ export default function ProfilSayfasi() {
         </div>
       </div>
 
+      {/* FLOATING ACTION BUTTON - KİTAP EKLE */}
+      <Link 
+        href="/kitap-ekle"
+        className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-br from-red-600 to-orange-600 text-white rounded-full shadow-2xl shadow-red-600/50 flex items-center justify-center font-black text-2xl hover:scale-110 active:scale-95 transition-all z-50 group"
+      >
+        <span className="group-hover:rotate-90 transition-transform duration-300">+</span>
+        <div className="absolute -top-12 right-0 bg-black text-white text-[9px] font-black px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+          YENİ KİTAP YAZ
+        </div>
+      </Link>
+
       {modalType && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-[#0f0f0f] w-full max-w-md rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden">
