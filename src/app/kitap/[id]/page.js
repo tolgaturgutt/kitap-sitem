@@ -5,9 +5,11 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import YorumAlani from '@/components/YorumAlani';
+import { useRouter } from 'next/navigation';
 
 export default function KitapDetay({ params }) {
-  const { id } = use(params); 
+  const { id } = use(params);
+  const router = useRouter(); 
   
   const [data, setData] = useState({ 
     book: null, 
@@ -125,6 +127,56 @@ export default function KitapDetay({ params }) {
        setData(prev => ({ ...prev, isFollowing: true, stats: { ...prev.stats, follows: prev.stats.follows + 1 } }));
        toast.success("Kütüphaneye eklendi");
      }
+  }
+
+  // KİTABI SİL
+  async function handleDeleteBook() {
+    if (!window.confirm('Bu kitabı silmek istediğinizden emin misiniz? Tüm bölümler ve yorumlar silinecek!')) return;
+    
+    try {
+      // Önce bölümleri sil
+      await supabase.from('chapters').delete().eq('book_id', id);
+      // Yorumları sil
+      await supabase.from('comments').delete().eq('book_id', id);
+      // Oyları sil
+      await supabase.from('book_votes').delete().eq('book_id', id);
+      // Takipleri sil
+      await supabase.from('follows').delete().eq('book_id', id);
+      // Bildirimleri sil
+      await supabase.from('notifications').delete().eq('book_id', id);
+      // Kitabı sil
+      await supabase.from('books').delete().eq('id', id);
+      
+      toast.success('Kitap silindi');
+      router.push('/profil');
+    } catch (error) {
+      toast.error('Silme sırasında hata oluştu');
+      console.error(error);
+    }
+  }
+
+  // BÖLÜMÜ SİL
+  async function handleDeleteChapter(chapterId) {
+    if (!window.confirm('Bu bölümü silmek istediğinizden emin misiniz?')) return;
+    
+    try {
+      // Bölüm yorumlarını sil
+      await supabase.from('comments').delete().eq('chapter_id', chapterId);
+      // Bölümü sil
+      await supabase.from('chapters').delete().eq('id', chapterId);
+      
+      // State'i güncelle
+      setData(prev => ({
+        ...prev,
+        chapters: prev.chapters.filter(c => c.id !== chapterId),
+        stats: { ...prev.stats, chapters: prev.stats.chapters - 1 }
+      }));
+      
+      toast.success('Bölüm silindi');
+    } catch (error) {
+      toast.error('Silme sırasında hata oluştu');
+      console.error(error);
+    }
   }
 
   if (loading) return <div className="py-40 text-center font-black opacity-10 italic text-5xl animate-pulse uppercase">YAZIO</div>;
@@ -257,6 +309,12 @@ export default function KitapDetay({ params }) {
                    >
                      ⚙️ DÜZENLE
                    </Link>
+                   <button
+                     onClick={handleDeleteBook}
+                     className="px-10 py-4 bg-red-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all"
+                   >
+                     🗑️ KİTABI SİL
+                   </button>
                  </>
                )}
             </div>
@@ -307,10 +365,16 @@ export default function KitapDetay({ params }) {
                     <div className="flex gap-2 mt-2 ml-20 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Link 
                         href={`/bolum-duzenle/${id}/${c.id}`} 
-                        className="text-[9px] font-black uppercase text-gray-400 hover:text-blue-600 transition-colors"
+                        className="text-[9px] font-black uppercase text-blue-600 hover:text-blue-700 transition-colors px-3 py-1 bg-blue-50 dark:bg-blue-950/20 rounded-full"
                       >
                         ✏️ Düzenle
                       </Link>
+                      <button
+                        onClick={() => handleDeleteChapter(c.id)}
+                        className="text-[9px] font-black uppercase text-red-600 hover:text-red-700 transition-colors px-3 py-1 bg-red-50 dark:bg-red-950/20 rounded-full"
+                      >
+                        🗑️ Sil
+                      </button>
                     </div>
                   )}
                 </div>
