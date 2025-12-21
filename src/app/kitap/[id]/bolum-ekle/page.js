@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function BolumEkle({ params }) {
-  const { id } = use(params); // Kitap ID'si
+  const { id } = use(params);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,33 +20,67 @@ export default function BolumEkle({ params }) {
 
     setLoading(true);
 
-    // Mevcut bölüm sayısını bulup sıra numarası (order_no) verelim
-    const { count } = await supabase
-      .from('chapters')
-      .select('*', { count: 'exact', head: true })
-      .eq('book_id', id);
+    try {
+      // Kitap bilgisini al
+      const { data: book } = await supabase
+        .from('books')
+        .select('title, username')
+        .eq('id', id)
+        .single();
 
-    const sirasi = (count || 0) + 1;
+      // Mevcut bölüm sayısını bulup sıra numarası ver
+      const { count } = await supabase
+        .from('chapters')
+        .select('*', { count: 'exact', head: true })
+        .eq('book_id', id);
 
-    const { error } = await supabase
-      .from('chapters')
-      .insert([{
-        book_id: id,
-        title: title,
-        content: content,
-        order_no: sirasi
-      }]);
+      const sirasi = (count || 0) + 1;
 
-    if (error) {
-      console.error(error);
-      toast.error('Bir hata oluştu.');
-      setLoading(false);
-    } else {
-      toast.success('Bölüm başarıyla yayınlandı.');
+      const { data: newChapter, error } = await supabase
+        .from('chapters')
+        .insert([{
+          book_id: id,
+          title: title,
+          content: content,
+          order_no: sirasi
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // TAKİPÇİLERE BİLDİRİM GÖNDER
+      const { data: followers } = await supabase
+        .from('follows')
+        .select('user_email')
+        .eq('book_id', id);
+
+      if (followers && followers.length > 0) {
+        const notifications = followers.map(f => ({
+          recipient_email: f.user_email,
+          actor_username: book.username,
+          type: 'new_chapter',
+          book_title: book.title,
+          book_id: parseInt(id),
+          chapter_id: newChapter.id,
+          is_read: false,
+          created_at: new Date()
+        }));
+
+        await supabase.from('notifications').insert(notifications);
+      }
+
+      toast.success('Bölüm başarıyla yayınlandı!');
       setTimeout(() => {
-        router.push(`/kitap/${id}`); // Kitap detayına geri dön
+        router.push(`/kitap/${id}`);
         router.refresh();
       }, 1000);
+
+    } catch (error) {
+      console.error(error);
+      toast.error('Bir hata oluştu.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -90,9 +124,9 @@ export default function BolumEkle({ params }) {
             <button
               onClick={bolumKaydet}
               disabled={loading}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition"
+              className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition disabled:opacity-50"
             >
-              {loading ? 'Kaydediliyor...' : 'Yayınla'}
+              {loading ? 'Kaydediliyor...' : 'Yayınla 🚀'}
             </button>
           </div>
         </div>

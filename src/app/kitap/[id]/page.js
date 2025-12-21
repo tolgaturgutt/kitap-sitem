@@ -85,6 +85,8 @@ export default function KitapDetay({ params }) {
            actor_username: username,
            type: 'vote',
            book_title: data.book.title,
+           book_id: parseInt(id),
+           chapter_id: null,
            is_read: false,
            created_at: new Date()
          });

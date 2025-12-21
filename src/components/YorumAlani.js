@@ -103,6 +103,8 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
           actor_username: username,
           type: 'comment',
           book_title: book.title,
+          book_id: parseInt(bookId),
+          chapter_id: type === 'book' ? null : parseInt(targetId),
           is_read: false,
           created_at: new Date()
         });

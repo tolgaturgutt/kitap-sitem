@@ -21,6 +21,7 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
+  const [userProfile, setUserProfile] = useState(null);
 
   useEffect(() => {
     setMounted(true);
@@ -29,6 +30,14 @@ export default function Navbar() {
       if (session?.user) {
         setUser(session.user);
         await loadNotifications(session.user.email);
+        
+        // Profil bilgisini çek
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('avatar_url, username')
+          .eq('id', session.user.id)
+          .single();
+        setUserProfile(profile);
       }
     };
     loadSession();
@@ -240,22 +249,43 @@ export default function Navbar() {
                               <span className="text-3xl block mb-2 opacity-20">😴</span>
                               <p className="text-[9px] text-gray-400 italic">Henüz hareket yok</p>
                             </div>
-                          ) : bookNotifs.map(n => (
+                          ) : bookNotifs.map(n => {
+                            // LİNK OLUŞTUR
+                            let linkUrl = '#';
+                            if (n.type === 'vote' && n.book_id) {
+                              linkUrl = `/kitap/${n.book_id}`;
+                            } else if (n.type === 'comment' && n.book_id) {
+                              if (n.chapter_id) {
+                                linkUrl = `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
+                              } else {
+                                linkUrl = `/kitap/${n.book_id}`;
+                              }
+                            } else if (n.type === 'new_chapter' && n.book_id && n.chapter_id) {
+                              linkUrl = `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
+                            }
+
+                            return (
                             <Link
                               key={n.id}
-                              href={n.book_id ? `/kitap/${n.book_id}` : '#'}
+                              href={linkUrl}
                               onClick={() => setShowNotifs(false)}
                               className="block p-3 rounded-2xl transition-all group hover:scale-[1.02] bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/20"
                             >
                               <div className="flex items-start gap-3">
                                 <div className="w-8 h-8 rounded-full bg-red-600/10 flex items-center justify-center shrink-0">
-                                  <span className="text-xs">{n.type === 'vote' ? '⭐' : '💬'}</span>
+                                  <span className="text-xs">
+                                    {n.type === 'vote' ? '⭐' : n.type === 'new_chapter' ? '🆕' : '💬'}
+                                  </span>
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-[10px] font-bold leading-relaxed">
                                     <span className="text-red-600 font-black">@{n.actor_username}</span>
                                     {' '}
-                                    {n.type === 'vote' ? 'eserini oyladı' : 'eserine yorum yaptı'}
+                                    {n.type === 'vote' 
+                                      ? 'eserini oyladı' 
+                                      : n.type === 'new_chapter'
+                                      ? 'yeni bölüm yayınladı'
+                                      : 'eserine yorum yaptı'}
                                   </p>
                                   {n.book_title && (
                                     <p className="text-[9px] text-gray-500 mt-1 truncate italic">"{n.book_title}"</p>
@@ -266,7 +296,7 @@ export default function Navbar() {
                                 </div>
                               </div>
                             </Link>
-                          ))}
+                          )})}
                         </div>
                       </div>
 
@@ -313,8 +343,12 @@ export default function Navbar() {
                 )}
               </div>
 
-              <Link href="/profil" className="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-xs uppercase hover:scale-110 transition-transform">
-                {user.email[0]}
+              <Link href="/profil" className="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-xs uppercase hover:scale-110 transition-transform overflow-hidden">
+                {userProfile?.avatar_url && userProfile.avatar_url.includes('http') ? (
+                  <img src={userProfile.avatar_url} className="w-full h-full object-cover" alt="Profil" />
+                ) : (
+                  user.email[0].toUpperCase()
+                )}
               </Link>
               <button onClick={handleLogout} className="hidden md:block text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-colors">
                 Çıkış
