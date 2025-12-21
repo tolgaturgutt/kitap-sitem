@@ -395,3 +395,6 @@ export default function KitapDetay({ params }) {
     </div>
   );
 }
+
+
+//denemeee
