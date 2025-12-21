@@ -20,16 +20,13 @@ export default function YazarProfili() {
 
   useEffect(() => {
     async function load() {
-      // 1. Giriş yapan kullanıcıyı al
       const { data: { session } } = await supabase.auth.getSession();
       setCurrentUser(session?.user || null);
 
-      // 2. Sayfasına bakılan yazarı al
       const { data: p } = await supabase.from('profiles').select('*').eq('username', username).single();
       if (p) {
         setAuthor(p);
         
-        // 3. Eserlerini, Takipçilerini ve Takip Ettiklerini al
         const { data: b } = await supabase.from('books').select('*').eq('user_email', p.email || p.id).order('created_at', { ascending: false });
         const { data: f } = await supabase.from('author_follows').select('*').eq('followed_username', username);
         const { data: fing } = await supabase.from('author_follows').select('*').eq('follower_username', username);
@@ -38,7 +35,6 @@ export default function YazarProfili() {
         setFollowers(f || []);
         setFollowing(fing || []);
 
-        // 4. Takip durumu kontrolü
         if (session?.user) {
           const isFollowingThisUser = f?.some(item => item.follower_email === session.user.email);
           setIsFollowing(isFollowingThisUser);
@@ -49,24 +45,36 @@ export default function YazarProfili() {
     load();
   }, [username]);
 
-  // TAKİP ETME FONKSİYONU
   async function handleFollow() {
     if (!currentUser) return toast.error("Önce giriş yapmalısın.");
     
+    // Kullanıcı adını al
+    const { data: profile } = await supabase.from('profiles').select('username').eq('id', currentUser.id).single();
+    const followerUsername = profile?.username || currentUser.user_metadata?.username || currentUser.email.split('@')[0];
+    
     const { error } = await supabase.from('author_follows').insert({
       follower_email: currentUser.email,
-      follower_username: currentUser.user_metadata?.username || currentUser.email.split('@')[0],
+      follower_username: followerUsername,
       followed_username: author.username
     });
 
     if (!error) {
       setIsFollowing(true);
-      setFollowers([...followers, { follower_username: currentUser.user_metadata?.username }]);
-      toast.success("Takip edildi.");
+      setFollowers([...followers, { follower_username: followerUsername }]);
+      toast.success("Takip edildi 🎉");
+      
+      // BİLDİRİM OLUŞTUR
+      await supabase.from('notifications').insert({
+        recipient_email: author.email,
+        actor_username: followerUsername,
+        type: 'follow',
+        book_title: null,
+        is_read: false,
+        created_at: new Date()
+      });
     }
   }
 
-  // TAKİBİ BIRAKMA FONKSİYONU
   async function handleUnfollow() {
     const { error } = await supabase.from('author_follows').delete()
       .eq('follower_email', currentUser.email)
@@ -74,8 +82,10 @@ export default function YazarProfili() {
 
     if (!error) {
       setIsFollowing(false);
-      setFollowers(followers.filter(f => f.follower_username !== (currentUser.user_metadata?.username || currentUser.email.split('@')[0])));
-      toast.success("Takip bırakıldı.");
+      const { data: profile } = await supabase.from('profiles').select('username').eq('id', currentUser.id).single();
+      const followerUsername = profile?.username || currentUser.user_metadata?.username || currentUser.email.split('@')[0];
+      setFollowers(followers.filter(f => f.follower_username !== followerUsername));
+      toast.success("Takip bırakıldı");
     }
   }
 
@@ -88,7 +98,7 @@ export default function YazarProfili() {
       <div className="max-w-6xl mx-auto">
         <header className="mb-12 flex flex-col md:flex-row items-center gap-10 bg-white dark:bg-white/5 p-10 rounded-[4rem] border dark:border-white/5 shadow-sm">
           <div className="w-32 h-32 bg-gray-100 dark:bg-white/10 rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-3xl shrink-0">
-            {author.avatar_url ? <img src={author.avatar_url} className="w-full h-full object-cover" /> : author.username[0].toUpperCase()}
+            {author.avatar_url ? <img src={author.avatar_url} className="w-full h-full object-cover" alt="" /> : author.username[0].toUpperCase()}
           </div>
           <div className="flex-1 text-center md:text-left w-full">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
@@ -97,7 +107,6 @@ export default function YazarProfili() {
                 <p className="text-xs text-gray-400 uppercase italic">@{author.username}</p>
               </div>
               
-              {/* TAKİP BUTONU */}
               {currentUser && currentUser.email !== author.email && (
                 <button 
                   onClick={isFollowing ? handleUnfollow : handleFollow}
@@ -107,7 +116,7 @@ export default function YazarProfili() {
                     : 'bg-red-600 text-white shadow-lg shadow-red-600/20 active:scale-95'
                   }`}
                 >
-                  {isFollowing ? 'Takibi Bırak' : 'Takip Et'}
+                  {isFollowing ? 'Takibi Bırak' : 'Takip Et ➕'}
                 </button>
               )}
             </div>
@@ -137,7 +146,7 @@ export default function YazarProfili() {
               {books.map(k => (
                 <Link key={k.id} href={`/kitap/${k.id}`} className="group flex flex-col">
                   <div className="aspect-[2/3] rounded-[2rem] overflow-hidden border dark:border-white/5 mb-3 shadow-md group-hover:-translate-y-1 transition-all duration-500">
-                    {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center font-black opacity-20 text-[8px]">KAPAK YOK</div>}
+                    {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center font-black opacity-20 text-[8px]">KAPAK YOK</div>}
                   </div>
                   <h3 className="text-[10px] font-black text-center uppercase truncate italic">{k.title}</h3>
                 </Link>
@@ -147,7 +156,6 @@ export default function YazarProfili() {
         </div>
       </div>
 
-      {/* TAKİPÇİ/TAKİP MODAL'I */}
       {modalType && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-[#0f0f0f] w-full max-w-md rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden">

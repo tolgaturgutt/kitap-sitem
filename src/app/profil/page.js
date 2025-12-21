@@ -12,7 +12,7 @@ export default function ProfilSayfasi() {
   const [followedAuthors, setFollowedAuthors] = useState([]);
   const [myFollowers, setMyFollowers] = useState([]); 
   const [loading, setLoading] = useState(true);
-  const [totalViews, setTotalViews] = useState(0); // Okunma state'ini geri ekledik
+  const [totalViews, setTotalViews] = useState(0);
   const [activeTab, setActiveTab] = useState('eserler');
   const [modalType, setModalType] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -46,8 +46,26 @@ export default function ProfilSayfasi() {
         setTotalViews(total);
       }
 
-      const { data: lib } = await supabase.from('book_follows').select('books(*)').eq('user_email', activeUser.email);
-      setFollowedBooks(lib?.map(item => item.books).filter(b => b !== null) || []);
+      // 3. TAKİP EDİLEN KİTAPLARI GETİR (DÜZELTİLDİ)
+      const { data: followsList } = await supabase
+        .from('follows')
+        .select('book_id')
+        .eq('user_email', activeUser.email);
+
+      // Kitap ID'lerini topla
+      const bookIds = followsList?.map(f => f.book_id).filter(Boolean) || [];
+
+      // Eğer takip edilen kitap varsa, kitap bilgilerini çek
+      if (bookIds.length > 0) {
+        const { data: followedBooksData } = await supabase
+          .from('books')
+          .select('*')
+          .in('id', bookIds);
+        
+        setFollowedBooks(followedBooksData || []);
+      } else {
+        setFollowedBooks([]);
+      }
 
       const { data: following } = await supabase.from('author_follows').select('followed_username').eq('follower_email', activeUser.email);
       const { data: followers } = await supabase.from('author_follows').select('follower_username').eq('followed_username', currentUsername);
@@ -76,7 +94,6 @@ export default function ProfilSayfasi() {
       <div className="max-w-6xl mx-auto">
         <header className="mb-12 flex flex-col md:flex-row items-center gap-10 bg-white dark:bg-white/5 p-10 rounded-[4rem] border dark:border-white/5">
           <div className="w-32 h-32 bg-gray-100 dark:bg-white/10 rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-3xl shrink-0">
-            {/* 406 FIX: avatar_url'in gerçekten bir URL olduğunu (http içerdiğini) kontrol ediyoruz */}
             {profileData.avatar_url && profileData.avatar_url.includes('http') ? (
               <img src={profileData.avatar_url} className="w-full h-full object-cover" />
             ) : (
@@ -100,7 +117,6 @@ export default function ProfilSayfasi() {
             )}
             <div className="flex justify-center md:justify-start gap-12 border-t dark:border-white/5 pt-8 mt-6">
               <div className="text-center"><p className="text-2xl font-black">{myBooks.length}</p><p className="text-[9px] uppercase opacity-40">Eser</p></div>
-              {/* OKUNMA BURADA GÖZÜKECEK */}
               <div className="text-center"><p className="text-2xl font-black text-red-600">{totalViews}</p><p className="text-[9px] uppercase opacity-40">Okunma</p></div>
               <button onClick={() => setModalType('followers')} className="text-center outline-none"><p className="text-2xl font-black">{myFollowers.length}</p><p className="text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takipçi</p></button>
               <button onClick={() => setModalType('following')} className="text-center outline-none"><p className="text-2xl font-black">{followedAuthors.length}</p><p className="text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takip</p></button>

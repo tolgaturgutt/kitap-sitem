@@ -25,7 +25,6 @@ export default function KitapDetay({ params }) {
       const { data: { user } } = await supabase.auth.getUser();
       const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
       
-      // Bölümleri ve okunma sayılarını çekiyoruz
       const { data: chapters } = await supabase.from('chapters')
         .select('*')
         .eq('book_id', id)
@@ -37,10 +36,8 @@ export default function KitapDetay({ params }) {
         authorProfile = profile;
       }
       
-      // OKUNMA HESAPLAMA: Bölümlerdeki views kolonlarını topluyoruz
       const totalViews = chapters?.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
       
-      // OY VE KÜTÜPHANE SAYILARI
       const { count: votes } = await supabase.from('book_votes').select('*', { count: 'exact', head: true }).eq('book_id', id);
       const { count: follows } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('book_id', id);
       
@@ -66,26 +63,46 @@ export default function KitapDetay({ params }) {
     fetchAll();
   }, [id]);
 
-  // Sayfayı yenilemeden durumu güncellemek için (Reload yerine jilet gibi çözüm)
   async function handleBookVote() {
      if (!data.user) return toast.error("Giriş yapmalısın.");
+     
      if (data.hasVoted) {
        await supabase.from('book_votes').delete().eq('book_id', id).eq('user_email', data.user.email);
        setData(prev => ({ ...prev, hasVoted: false, stats: { ...prev.stats, votes: prev.stats.votes - 1 } }));
+       toast.success("Oy geri alındı");
      } else {
        await supabase.from('book_votes').insert([{ book_id: id, user_email: data.user.email }]);
        setData(prev => ({ ...prev, hasVoted: true, stats: { ...prev.stats, votes: prev.stats.votes + 1 } }));
+       toast.success("Oy verildi");
+       
+       // BİLDİRİM OLUŞTUR (kendine oy vermemişse)
+       if (data.book.user_email !== data.user.email) {
+         const { data: profile } = await supabase.from('profiles').select('username').eq('id', data.user.id).single();
+         const username = profile?.username || data.user.user_metadata?.username || data.user.email.split('@')[0];
+         
+         await supabase.from('notifications').insert({
+           recipient_email: data.book.user_email,
+           actor_username: username,
+           type: 'vote',
+           book_title: data.book.title,
+           is_read: false,
+           created_at: new Date()
+         });
+       }
      }
   }
 
   async function handleLibrary() {
      if (!data.user) return toast.error("Giriş yapmalısın.");
+     
      if (data.isFollowing) {
        await supabase.from('follows').delete().eq('book_id', id).eq('user_email', data.user.email);
        setData(prev => ({ ...prev, isFollowing: false, stats: { ...prev.stats, follows: prev.stats.follows - 1 } }));
+       toast.success("Kütüphaneden çıkarıldı");
      } else {
        await supabase.from('follows').insert([{ book_id: id, user_email: data.user.email }]);
        setData(prev => ({ ...prev, isFollowing: true, stats: { ...prev.stats, follows: prev.stats.follows + 1 } }));
+       toast.success("Kütüphaneye eklendi");
      }
   }
 
@@ -100,7 +117,7 @@ export default function KitapDetay({ params }) {
       <div className="max-w-5xl mx-auto">
         <div className="flex flex-col md:flex-row gap-12 mb-24 items-start">
           <div className="w-full md:w-80 aspect-[2/3] shrink-0 rounded-[2.5rem] overflow-hidden shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20">
-            {data.book.cover_url ? <img src={data.book.cover_url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center font-black text-gray-300 italic text-sm">Kapak Yok</div>}
+            {data.book.cover_url ? <img src={data.book.cover_url} className="w-full h-full object-cover" alt={data.book.title} /> : <div className="w-full h-full flex items-center justify-center font-black text-gray-300 italic text-sm">Kapak Yok</div>}
           </div>
           
           <div className="flex-1 pt-6">
@@ -109,7 +126,7 @@ export default function KitapDetay({ params }) {
             
             <Link href={`/yazar/${data.book.username}`} className="flex items-center gap-4 mb-10 group w-fit">
               <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-xs uppercase">
-                {data.authorProfile?.avatar_url ? <img src={data.authorProfile.avatar_url} className="w-full h-full object-cover" /> : data.book.username[0]}
+                {data.authorProfile?.avatar_url ? <img src={data.authorProfile.avatar_url} className="w-full h-full object-cover" alt="" /> : data.book.username[0]}
               </div>
               <div>
                 <p className="text-sm font-black dark:text-white group-hover:text-red-600 transition-colors">@{data.book.username}</p>
@@ -119,7 +136,6 @@ export default function KitapDetay({ params }) {
             
             <div className="flex gap-12 mb-10 border-y dark:border-white/5 py-8">
               <div className="text-center">
-                 {/* OKUNMA SAYISI BURADA */}
                  <p className="text-2xl font-black dark:text-white">{data.stats.views}</p>
                  <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest">Okunma</p>
               </div>
@@ -130,9 +146,14 @@ export default function KitapDetay({ params }) {
             <p className="text-xl text-gray-600 dark:text-gray-400 font-serif italic mb-12 leading-relaxed">{data.book.summary}</p>
             
             <div className="flex flex-wrap gap-4">
-               <button onClick={handleBookVote} className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${data.hasVoted ? 'bg-red-600 text-white shadow-lg' : 'bg-white dark:bg-black border dark:border-white/5 dark:text-white'}`}>{data.hasVoted ? 'OYLANDI' : 'OY VER'}</button>
-               <button onClick={handleLibrary} className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${data.isFollowing ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : 'bg-black dark:bg-white text-white dark:text-black hover:bg-red-600 dark:hover:bg-red-600 dark:hover:text-white'}`}>{data.isFollowing ? 'KÜTÜPHANEDE' : 'KÜTÜPHANEYE EKLE'}</button>
-               {isAuthor && <Link href={`/kitap/${id}/bolum-ekle`} className="px-10 py-4 bg-blue-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20">BÖLÜM EKLE</Link>}
+               <button onClick={handleBookVote} className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${data.hasVoted ? 'bg-red-600 text-white shadow-lg' : 'bg-white dark:bg-black border dark:border-white/5 dark:text-white'}`}>{data.hasVoted ? 'OYLANDI ⭐' : 'OY VER'}</button>
+               <button onClick={handleLibrary} className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${data.isFollowing ? 'bg-gray-100 dark:bg-white/5 text-gray-400' : 'bg-black dark:bg-white text-white dark:text-black hover:bg-red-600 dark:hover:bg-red-600 dark:hover:text-white'}`}>{data.isFollowing ? 'KÜTÜPHANEDE 📚' : 'KÜTÜPHANEYE EKLE'}</button>
+               {isAuthor && (
+                 <>
+                   <Link href={`/kitap/${id}/bolum-ekle`} className="px-10 py-4 bg-blue-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/20">BÖLÜM EKLE</Link>
+                   <Link href={`/kitap-duzenle/${id}`} className="px-10 py-4 bg-gray-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest">DÜZENLE</Link>
+                 </>
+               )}
             </div>
           </div>
         </div>
@@ -146,11 +167,15 @@ export default function KitapDetay({ params }) {
                   <div className="flex items-center gap-6">
                      <span className="text-[10px] font-black text-gray-300 dark:text-gray-700 tracking-widest">{String(c.order_no).padStart(2, '0')}</span>
                      <span className="font-bold text-base dark:text-white">{c.title}</span>
-                     {/* Bireysel bölüm okunması (Kontrol için) */}
                      <span className="text-[9px] text-gray-400 opacity-40">({c.views || 0} okuma)</span>
                   </div>
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">OKU →</span>
                 </Link>
+                {isAuthor && (
+                  <Link href={`/bolum-duzenle/${id}/${c.id}`} className="px-4 py-2 bg-gray-100 dark:bg-white/5 text-gray-500 rounded-full text-[9px] font-black uppercase opacity-0 group-hover:opacity-100 transition-opacity">
+                    DÜZENLE
+                  </Link>
+                )}
               </div>
             ))}
           </div>

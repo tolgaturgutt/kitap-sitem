@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
-export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
+export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [user, setUser] = useState(null);
@@ -15,7 +15,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
       const { data: { user: u } } = await supabase.auth.getUser();
       setUser(u);
       
-      // 406 ve 400 hatalarını önlemek için sorgu başlangıcı
       let query = supabase
         .from('comments')
         .select('*, profiles!comments_user_id_fkey(username, avatar_url)')
@@ -27,7 +26,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
         query = query.eq('chapter_id', targetId).is('paragraph_id', null);
       } else if (type === 'paragraph') {
         query = query.eq('chapter_id', targetId);
-        // 400 FIX: paraId null ise .is() değilse .eq() kullanıyoruz
         if (paraId === null) {
           query = query.is('paragraph_id', null);
         } else {
@@ -45,9 +43,20 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
     if (!newComment.trim() || !user || isSending) return;
     setIsSending(true);
 
+    // Kullanıcı bilgilerini profile'dan al
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
+
+    const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
+
     const payload = { 
       content: newComment, 
       user_id: user.id,
+      user_email: user.email, // Eski sistemle uyumluluk için
+      username: username,     // Eski sistemle uyumluluk için
       book_id: bookId, 
       chapter_id: type === 'book' ? null : targetId,
       paragraph_id: paraId || null
@@ -63,10 +72,44 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
         setComments(prev => [insertedData, ...prev]); 
         setNewComment(''); 
         toast.success("Yorum eklendi");
+        
+        // Paragraf yorumuysa üst bileşene bildir
+        if (type === 'paragraph' && onCommentAdded) {
+          onCommentAdded(paraId);
+        }
+
+        // BİLDİRİM OLUŞTUR
+        await createNotification(insertedData, username);
     } else {
         toast.error("Hata: " + (error?.message || "Gönderilemedi"));
     }
     setIsSending(false);
+  }
+
+  // BİLDİRİM OLUŞTURMA FONKSİYONU
+  async function createNotification(comment, username) {
+    try {
+      // Kitap sahibini bul
+      const { data: book } = await supabase
+        .from('books')
+        .select('user_email, title, username')
+        .eq('id', bookId)
+        .single();
+
+      // Kendine yorum yapmışsa bildirim gönderme
+      if (book && book.user_email !== user.email) {
+        await supabase.from('notifications').insert({
+          recipient_email: book.user_email,
+          actor_username: username,
+          type: 'comment',
+          book_title: book.title,
+          is_read: false,
+          created_at: new Date()
+        });
+      }
+    } catch (error) {
+      console.error('Bildirim oluşturulamadı:', error);
+    }
   }
 
   const handleKeyDown = (e) => {
@@ -80,12 +123,18 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
     <div className="w-full">
       <div className="mb-10 relative bg-white dark:bg-white/5 rounded-[2rem] p-2 border dark:border-white/10 ring-1 ring-black/5">
         <input 
-          value={newComment} onChange={e => setNewComment(e.target.value)} onKeyDown={handleKeyDown}
+          value={newComment} 
+          onChange={e => setNewComment(e.target.value)} 
+          onKeyDown={handleKeyDown}
           placeholder={user ? "Bir şeyler karala..." : "Giriş yapmalısın."}
           disabled={isSending || !user}
           className="w-full bg-transparent px-6 py-3 text-xs outline-none dark:text-white"
         />
-        <button onClick={handleSend} disabled={isSending || !user} className="absolute right-2 top-2 bottom-2 px-6 bg-black dark:bg-white text-white dark:text-black rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-red-600 transition-all">
+        <button 
+          onClick={handleSend} 
+          disabled={isSending || !user} 
+          className="absolute right-2 top-2 bottom-2 px-6 bg-black dark:bg-white text-white dark:text-black rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-red-600 transition-all disabled:opacity-50"
+        >
           {isSending ? '...' : 'Gönder'}
         </button>
       </div>
@@ -94,18 +143,17 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null }) {
         {comments.map(c => (
           <div key={c.id} className="flex gap-4 animate-in fade-in duration-500">
             <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden shrink-0 border dark:border-white/5 flex items-center justify-center">
-              {/* 406 FIX: avatar_url'in geçerli bir link olduğunu (http) kontrol ediyoruz */}
               {c.profiles?.avatar_url && c.profiles.avatar_url.includes('http') ? (
-                <img src={c.profiles.avatar_url} className="w-full h-full object-cover" />
+                <img src={c.profiles.avatar_url} className="w-full h-full object-cover" alt="" />
               ) : (
                 <div className="text-[9px] font-black opacity-30 italic">
-                  {(c.profiles?.username || "U")[0].toUpperCase()}
+                  {(c.profiles?.username || c.username || "U")[0].toUpperCase()}
                 </div>
               )}
             </div>
             <div className="flex-1">
               <p className="text-[10px] font-black dark:text-white mb-1 tracking-tighter uppercase italic opacity-60">
-                @{c.profiles?.username}
+                @{c.profiles?.username || c.username || "Anonim"}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
                 {c.content}

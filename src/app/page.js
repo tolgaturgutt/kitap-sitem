@@ -33,7 +33,7 @@ function CategoryRow({ title, books, isFeatured = false }) {
         {books.map(kitap => (
           <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-36 md:w-44 snap-start group/card">
             <div className={`relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover/card:shadow-2xl group-hover/card:-translate-y-2 ${isFeatured ? 'border-orange-500/30' : ''}`}>
-              {kitap.cover_url ? <img src={kitap.cover_url} className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700" /> : <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />}
+              {kitap.cover_url ? <img src={kitap.cover_url} className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700" alt={kitap.title} /> : <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />}
               {isFeatured && <div className="absolute top-2 right-2 bg-orange-600 text-[8px] font-black text-white px-2 py-1 rounded-full uppercase">Trend</div>}
             </div>
             <h3 className="font-bold text-[13px] dark:text-white line-clamp-1 mb-0.5 group-hover/card:text-red-600 transition-colors">{kitap.title}</h3>
@@ -49,13 +49,12 @@ export default function Home() {
   const [featuredBooks, setFeaturedBooks] = useState([]);
   const [booksByCategory, setBooksByCategory] = useState({});
   const [loading, setLoading] = useState(true);
-  const [continueReading, setContinueReading] = useState(null); // EKLENDİ
+  const [continueReading, setContinueReading] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // OKUMA GEÇMİŞİNİ ÇEK (BURAYA EKLENDİ)
       if (user) {
         const { data: history } = await supabase.from('reading_history')
           .select('*, books(*), chapters(*)')
@@ -96,16 +95,14 @@ export default function Home() {
     <div className="min-h-screen py-16 px-6 md:px-16 bg-[#fafafa] dark:bg-black">
       <div className="max-w-7xl mx-auto">
         
-
-        {/* OKUMAYA DEVAM ET KARTI (BURAYA EKLENDİ) */}
         {continueReading && continueReading.books && (
           <div className="mb-14 animate-in slide-in-from-top duration-700">
-            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 mb-6 italic">Okumaya Devam Et</h2>
+            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 mb-6 italic">Okumaya Devam Et 📖</h2>
             <Link href={`/kitap/${continueReading.book_id}/bolum/${continueReading.chapter_id}`} 
                   className="group block bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-6 md:p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5">
               <div className="flex items-center gap-6">
                 <div className="w-16 h-24 md:w-20 md:h-28 rounded-2xl overflow-hidden shrink-0 border dark:border-white/5 shadow-lg">
-                  <img src={continueReading.books.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <img src={continueReading.books.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" />
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl md:text-2xl font-black dark:text-white mb-1 group-hover:text-red-600 transition-colors uppercase">{continueReading.books.title}</h3>
