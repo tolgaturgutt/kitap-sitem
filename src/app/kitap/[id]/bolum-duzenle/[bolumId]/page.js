@@ -6,72 +6,99 @@ import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function BolumDuzenle({ params }) {
-  const unwrappedParams = use(params);
-  const id = unwrappedParams.id; // Kitap ID
-  const bolumId = unwrappedParams.bolumId; // Bölüm ID
-  
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '' });
+  const [ids, setIds] = useState({ kitapId: null, bolumId: null });
 
   useEffect(() => {
+    // Params'ı unwrap et
+    async function unwrapParams() {
+      const unwrapped = await params;
+      setIds({ kitapId: unwrapped.id, bolumId: unwrapped.bolumId });
+    }
+    unwrapParams();
+  }, [params]);
+
+  useEffect(() => {
+    if (!ids.kitapId || !ids.bolumId) return;
+
     async function getChapterData() {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        toast.error("Giriş yapmalısın.");
-        return router.push('/giris');
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          toast.error("Giriş yapmalısın.");
+          return router.push('/giris');
+        }
+
+        const { data: chapter, error } = await supabase
+          .from('chapters')
+          .select('*, books(user_email)')
+          .eq('id', ids.bolumId)
+          .single();
+
+        if (error || !chapter) {
+          toast.error("Bölüm bulunamadı.");
+          return router.push(`/kitap/${ids.kitapId}`);
+        }
+
+        // Güvenlik: Sadece yazar düzenleyebilir
+        if (chapter.books.user_email !== user?.email) {
+          toast.error("Bu yetkiye sahip değilsin.");
+          return router.push(`/kitap/${ids.kitapId}`);
+        }
+
+        setFormData({ title: chapter.title, content: chapter.content });
+        setLoading(false);
+      } catch (error) {
+        console.error('Hata:', error);
+        toast.error("Bir hata oluştu.");
+        router.push(`/kitap/${ids.kitapId}`);
       }
-
-      const { data: chapter, error } = await supabase
-        .from('chapters')
-        .select('*, books(user_email)')
-        .eq('id', bolumId)
-        .single();
-
-      if (error || !chapter) {
-        toast.error("Bölüm bulunamadı.");
-        return router.push(`/kitap/${id}`);
-      }
-
-      // Güvenlik: Sadece yazar düzenleyebilir
-      if (chapter.books.user_email !== user?.email) {
-        toast.error("Bu yetkiye sahip değilsin.");
-        return router.push(`/kitap/${id}`);
-      }
-
-      setFormData({ title: chapter.title, content: chapter.content });
-      setLoading(false);
     }
     getChapterData();
-  }, [id, bolumId, router]);
+  }, [ids, router]);
 
   async function handleUpdate(e) {
     e.preventDefault();
+    
+    if (!formData.title.trim() || !formData.content.trim()) {
+      toast.error("Başlık ve içerik boş olamaz.");
+      return;
+    }
+
     setUpdating(true);
 
-    const { error } = await supabase
-      .from('chapters')
-      .update({ 
-        title: formData.title, 
-        content: formData.content,
-        updated_at: new Date() 
-      })
-      .eq('id', bolumId);
+    try {
+      const { error } = await supabase
+        .from('chapters')
+        .update({ 
+          title: formData.title, 
+          content: formData.content,
+          updated_at: new Date() 
+        })
+        .eq('id', ids.bolumId);
 
-    if (!error) {
-      toast.success("Bölüm güncellendi!");
-      setTimeout(() => router.push(`/kitap/${id}/bolum/${bolumId}`), 1000);
-    } else {
-      toast.error("Hata oluştu.");
+      if (error) throw error;
+
+      toast.success("Bölüm güncellendi! ✅");
+      setTimeout(() => {
+        router.push(`/kitap/${ids.kitapId}/bolum/${ids.bolumId}`);
+        router.refresh();
+      }, 1000);
+    } catch (error) {
+      console.error('Güncelleme hatası:', error);
+      toast.error("Güncelleme sırasında hata oluştu: " + (error.message || "Bilinmeyen hata"));
+    } finally {
+      setUpdating(false);
     }
-    setUpdating(false);
   }
 
-  if (loading) {
+  if (loading || !ids.kitapId) {
     return (
-      <div className="min-h-screen flex items-center justify-center font-black opacity-10 text-5xl italic">
+      <div className="min-h-screen flex items-center justify-center font-black opacity-10 text-5xl italic animate-pulse">
         YUKLENIYOR
       </div>
     );
@@ -119,7 +146,7 @@ export default function BolumDuzenle({ params }) {
           <div className="flex gap-4">
             <button 
               type="button" 
-              onClick={() => router.back()}
+              onClick={() => router.push(`/kitap/${ids.kitapId}`)}
               className="flex-1 h-14 rounded-full bg-gray-100 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-all"
             >
               Vazgeç
@@ -129,11 +156,12 @@ export default function BolumDuzenle({ params }) {
               disabled={updating}
               className="flex-[2] h-14 rounded-full bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-600/10 hover:bg-red-600 transition-all disabled:opacity-50"
             >
-              {updating ? 'GÜNCELLENİYOR...' : 'DEĞİŞİKLİKLERİ KAYDET'}
+              {updating ? 'GÜNCELLENİYOR...' : 'DEĞİŞİKLİKLERİ KAYDET ✅'}
             </button>
           </div>
         </form>
       </div>
     </div>
   );
-}
+} 
+// düzenleme
