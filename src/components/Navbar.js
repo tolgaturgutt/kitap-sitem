@@ -109,6 +109,13 @@ export default function Navbar() {
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     }
   }
+  // --- YENİ: ARAMA İŞLEMİ TETİKLEYİCİ ---
+  function handleSearchTrigger() {
+    if (!query.trim()) return;
+    setShowSearch(false); // Dropdown'ı kapat
+    // Kullanıcıyı arama sayfasına gönder (Örn: /arama?q=ahmet)
+    router.push(`/arama?q=${encodeURIComponent(query)}`);
+  }
 
   if (!mounted) return null;
 
@@ -126,14 +133,22 @@ export default function Navbar() {
         {/* ARAMA BARI */}
         <div className="flex-1 max-w-md relative" ref={searchRef}>
           <div className="relative">
-            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
             <input 
               type="text" 
               value={query} 
               onChange={(e) => setQuery(e.target.value)} 
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchTrigger()} // Enter tuşu eklendi
               placeholder="Eser veya yazar ara..." 
-              className="w-full h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full pl-12 pr-4 text-sm outline-none transition-all focus:ring-2 focus:ring-red-600/20" 
+              className="w-full h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full pl-6 pr-12 text-sm outline-none transition-all focus:ring-2 focus:ring-red-600/20" 
             />
+
+            {/* Büyüteç SAĞ TARAFA (right-4) ALINDI */}
+            <button 
+              onClick={handleSearchTrigger}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600 transition-colors z-10"
+            >
+              🔍
+            </button>
           </div>
           
           {showSearch && (
