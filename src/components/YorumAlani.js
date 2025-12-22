@@ -9,54 +9,49 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const [newComment, setNewComment] = useState('');
   const [user, setUser] = useState(null);
   const [isSending, setIsSending] = useState(false);
+  const [reportingId, setReportingId] = useState(null); // Hangi yorum şikayet ediliyor?
 
   useEffect(() => {
     async function load() {
       const { data: { user: u } } = await supabase.auth.getUser();
       setUser(u);
-      
-      let query = supabase
-        .from('comments')
-        .select('*, profiles!comments_user_id_fkey(username, avatar_url)')
-        .order('created_at', { ascending: false });
-
-      if (type === 'book') {
-        query = query.eq('book_id', targetId).is('chapter_id', null);
-      } else if (type === 'chapter') {
-        query = query.eq('chapter_id', targetId).is('paragraph_id', null);
-      } else if (type === 'paragraph') {
-        query = query.eq('chapter_id', targetId);
-        if (paraId === null) {
-          query = query.is('paragraph_id', null);
-        } else {
-          query = query.eq('paragraph_id', paraId);
-        }
-      }
-
-      const { data } = await query;
-      setComments(data || []);
+      fetchComments();
     }
     load();
   }, [type, targetId, paraId]);
+
+  async function fetchComments() {
+    let query = supabase
+      .from('comments')
+      .select('*, profiles!comments_user_id_fkey(username, avatar_url)')
+      .order('created_at', { ascending: false });
+
+    if (type === 'book') {
+      query = query.eq('book_id', targetId).is('chapter_id', null);
+    } else if (type === 'chapter') {
+      query = query.eq('chapter_id', targetId).is('paragraph_id', null);
+    } else if (type === 'paragraph') {
+      query = query.eq('chapter_id', targetId);
+      if (paraId === null) query = query.is('paragraph_id', null);
+      else query = query.eq('paragraph_id', paraId);
+    }
+
+    const { data } = await query;
+    setComments(data || []);
+  }
 
   async function handleSend() {
     if (!newComment.trim() || !user || isSending) return;
     setIsSending(true);
 
-    // Kullanıcı bilgilerini profile'dan al
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', user.id)
-      .single();
-
-    const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
+    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+    const username = profile?.username || user.email.split('@')[0];
 
     const payload = { 
       content: newComment, 
       user_id: user.id,
-      user_email: user.email, // Eski sistemle uyumluluk için
-      username: username,     // Eski sistemle uyumluluk için
+      user_email: user.email,
+      username: username,
       book_id: bookId, 
       chapter_id: type === 'book' ? null : targetId,
       paragraph_id: paraId || null
@@ -72,31 +67,17 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         setComments(prev => [insertedData, ...prev]); 
         setNewComment(''); 
         toast.success("Yorum eklendi");
-        
-        // Paragraf yorumuysa üst bileşene bildir
-        if (type === 'paragraph' && onCommentAdded) {
-          onCommentAdded(paraId);
-        }
-
-        // BİLDİRİM OLUŞTUR
-        await createNotification(insertedData, username);
+        if (type === 'paragraph' && onCommentAdded) onCommentAdded(paraId);
+        createNotification(insertedData, username);
     } else {
-        toast.error("Hata: " + (error?.message || "Gönderilemedi"));
+        toast.error("Hata oluştu.");
     }
     setIsSending(false);
   }
 
-  // BİLDİRİM OLUŞTURMA FONKSİYONU
   async function createNotification(comment, username) {
     try {
-      // Kitap sahibini bul
-      const { data: book } = await supabase
-        .from('books')
-        .select('user_email, title, username')
-        .eq('id', bookId)
-        .single();
-
-      // Kendine yorum yapmışsa bildirim gönderme
+      const { data: book } = await supabase.from('books').select('user_email, title').eq('id', bookId).single();
       if (book && book.user_email !== user.email) {
         await supabase.from('notifications').insert({
           recipient_email: book.user_email,
@@ -105,59 +86,95 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
           book_title: book.title,
           book_id: parseInt(bookId),
           chapter_id: type === 'book' ? null : parseInt(targetId),
-          is_read: false,
-          created_at: new Date()
+          is_read: false
         });
       }
-    } catch (error) {
-      console.error('Bildirim oluşturulamadı:', error);
+    } catch (e) { console.error(e); }
+  }
+
+  // --- ŞİKAYET FONKSİYONU ---
+  async function handleReport(commentId, content) {
+    const reason = prompt("Şikayet sebebiniz nedir? (Örn: Küfür, Spoiler, Spam)");
+    if (!reason) return;
+
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: user.id,
+      target_type: 'comment',
+      target_id: commentId,
+      reason: reason,
+      content_snapshot: content
+    });
+
+    if (error) toast.error("Şikayet edilemedi.");
+    else toast.success("Şikayetiniz yönetime iletildi. Teşekkürler.");
+    setReportingId(null);
+  }
+
+  // --- YORUM SİLME FONKSİYONU ---
+  async function handleDelete(commentId) {
+    if(!confirm("Yorumu silmek istiyor musun?")) return;
+    const { error } = await supabase.from('comments').delete().eq('id', commentId);
+    if (!error) {
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      toast.success("Yorum silindi.");
     }
   }
 
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
-
   return (
     <div className="w-full">
-      <div className="mb-10 relative bg-white dark:bg-white/5 rounded-[2rem] p-2 border dark:border-white/10 ring-1 ring-black/5">
-        <input 
+      {/* YAZMA ALANI */}
+      <div className="mb-8 relative bg-gray-50 dark:bg-white/5 rounded-2xl p-2 border dark:border-white/10">
+        <textarea 
           value={newComment} 
           onChange={e => setNewComment(e.target.value)} 
-          onKeyDown={handleKeyDown}
-          placeholder={user ? "Bir şeyler karala..." : "Giriş yapmalısın."}
+          placeholder={user ? "Düşüncelerin..." : "Giriş yapmalısın."}
           disabled={isSending || !user}
-          className="w-full bg-transparent px-6 py-3 text-xs outline-none dark:text-white"
+          rows={2}
+          className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white resize-none"
         />
-        <button 
-          onClick={handleSend} 
-          disabled={isSending || !user} 
-          className="absolute right-2 top-2 bottom-2 px-6 bg-black dark:bg-white text-white dark:text-black rounded-full text-[9px] font-black uppercase tracking-widest hover:bg-red-600 transition-all disabled:opacity-50"
-        >
-          {isSending ? '...' : 'Gönder'}
-        </button>
+        <div className="flex justify-end px-2 pb-2">
+           <button 
+            onClick={handleSend} 
+            disabled={isSending || !user} 
+            className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl text-xs font-black uppercase tracking-widest hover:opacity-80 transition-all disabled:opacity-50"
+          >
+            {isSending ? '...' : 'Gönder'}
+          </button>
+        </div>
       </div>
 
+      {/* YORUM LİSTESİ */}
       <div className="space-y-6">
         {comments.map(c => (
-          <div key={c.id} className="flex gap-4 animate-in fade-in duration-500">
-            <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden shrink-0 border dark:border-white/5 flex items-center justify-center">
-              {c.profiles?.avatar_url && c.profiles.avatar_url.includes('http') ? (
-                <img src={c.profiles.avatar_url} className="w-full h-full object-cover" alt="" />
-              ) : (
-                <div className="text-[9px] font-black opacity-30 italic">
-                  {(c.profiles?.username || c.username || "U")[0].toUpperCase()}
-                </div>
-              )}
+          <div key={c.id} className="group relative flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {/* AVATAR */}
+            <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 flex items-center justify-center text-sm font-black text-gray-400">
+              {c.profiles?.avatar_url ? <img src={c.profiles.avatar_url} className="w-full h-full object-cover" /> : (c.profiles?.username || "?")[0].toUpperCase()}
             </div>
+            
+            {/* İÇERİK */}
             <div className="flex-1">
-              <p className="text-[10px] font-black dark:text-white mb-1 tracking-tighter uppercase italic opacity-60">
-                @{c.profiles?.username || c.username || "Anonim"}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed font-medium">
+              <div className="flex justify-between items-start">
+                <p className="text-[11px] font-black dark:text-gray-300 mb-1 tracking-wide uppercase">
+                  @{c.profiles?.username || c.username || "Anonim"}
+                </p>
+                
+                {/* İŞLEM MENÜSÜ (Sadece giriş yapmışsa görünür) */}
+                {user && (
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                    {/* Kendi Yorumuysa SİL */}
+                    {user.id === c.user_id && (
+                       <button onClick={() => handleDelete(c.id)} className="text-[10px] text-red-500 hover:underline font-bold uppercase">Sil</button>
+                    )}
+                    {/* Başkasının Yorumuysa ŞİKAYET ET */}
+                    {user.id !== c.user_id && (
+                       <button onClick={() => handleReport(c.id, c.content)} className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase">Raporla</button>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed">
                 {c.content}
               </p>
             </div>

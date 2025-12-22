@@ -1,4 +1,4 @@
-'use client';
+'use client'; // <-- BU SATIR ÇOK ÖNEMLİ, EKSİK OLURSA HATA VERİR
 
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -9,7 +9,7 @@ export default function GirisSayfasi() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState(''); 
-  const [fullName, setFullName] = useState(''); // YENİ: Ad Soyad State
+  const [fullName, setFullName] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -20,7 +20,6 @@ export default function GirisSayfasi() {
       return;
     }
 
-    // Kayıt olurken boş alan kontrolü
     if (isSignUp && (!username || !fullName)) {
       toast.error('Ad Soyad ve Kullanıcı Adı seçmelisin.');
       return;
@@ -30,24 +29,45 @@ export default function GirisSayfasi() {
     let error = null;
 
     if (isSignUp) {
-      // KAYIT OLMA: Ad Soyad ve Username metadata olarak ekleniyor
+      // --- KAYIT OLMA (Aynı kaldı) ---
       const { error: signUpError } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
             username: username,
-            full_name: fullName, // Metadata'ya full_name eklendi
+            full_name: fullName,
           },
         },
       });
       error = signUpError;
+
     } else {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
+      // --- GİRİŞ YAPMA (GÜNCELLENDİ - BAN KONTROLÜ EKLENDİ) ---
+      
+      // 1. Önce giriş yapmayı dene
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       error = signInError;
+
+      // 2. Giriş başarılıysa hemen profili kontrol et: BANLI MI?
+      if (!error && data?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('is_banned')
+          .eq('id', data.user.id)
+          .single();
+
+        // Eğer kullanıcı banlıysa...
+        if (profile && profile.is_banned) {
+          await supabase.auth.signOut(); // Hemen çıkış yaptır
+          toast.error('BU HESAP YASAKLANMIŞTIR! 🚫 Yöneticiyle görüş.');
+          setLoading(false);
+          return; // Fonksiyonu burada durdur, yönlendirme yapma!
+        }
+      }
     }
 
     if (error) {
@@ -76,7 +96,6 @@ export default function GirisSayfasi() {
 
         <div className="space-y-4">
           
-          {/* KAYIT OLURKEN GÖZÜKECEK ALANLAR */}
           {isSignUp && (
             <>
               <div>

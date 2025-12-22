@@ -7,6 +7,10 @@ import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "next-themes";
 
+// --- YENİ EKLENEN IMPORTLAR ---
+import BanKontrol from '@/components/BanKontrol'; // Ajanı çağırdık
+import { Toaster } from 'react-hot-toast'; // Bildirim kutusu
+
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({ children }) {
@@ -29,6 +33,11 @@ export default function RootLayout({ children }) {
         {/* Sadece içeriği ThemeProvider ile sarıyoruz */}
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           
+          {/* --- YENİ EKLENEN KISIMLAR (Mevcut yapıyı bozmadan araya ekledim) --- */}
+          <Toaster position="top-center" /> 
+          <BanKontrol /> 
+          {/* ------------------------------------------------------------------- */}
+
           {/* Navbar ve İçerik sadece mounted olduktan sonra veya doğrudan render edilebilir */}
           {mounted ? (
             <>

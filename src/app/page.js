@@ -3,8 +3,169 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import toast, { Toaster } from 'react-hot-toast';
 
 const KATEGORILER = ["Macera", "Bilim Kurgu", "Korku", "Romantik", "Dram", "Fantastik", "Polisiye"];
+
+// DUYURU CAROUSEL BİLEŞENİ (SADECE BAŞLIK RENGİ ÖZEL)
+function DuyuruPaneli() {
+  const [duyurular, setDuyurular] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  // 1. Hook: Veri Çekme
+  useEffect(() => {
+    async function getDuyurular() {
+      const { data } = await supabase
+        .from('announcements')
+        .select('*')
+        .eq('is_active', true)
+        .order('priority', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      setDuyurular(data || []);
+      setLoading(false);
+    }
+    getDuyurular();
+  }, []);
+
+  const nextSlide = () => {
+    setCurrentIndex((prev) => (prev + 1) % duyurular.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentIndex((prev) => (prev - 1 + duyurular.length) % duyurular.length);
+  };
+
+  // 2. Hook: Otomatik Kaydırma
+  useEffect(() => {
+    if (duyurular.length <= 1) return;
+    const interval = setInterval(nextSlide, 6000);
+    return () => clearInterval(interval);
+  }, [duyurular.length]);
+
+  if (loading) return (
+    <div className="mb-12 h-[400px] w-full rounded-[2.5rem] bg-gray-100 dark:bg-white/5 animate-pulse flex items-center justify-center">
+      <span className="font-black opacity-10 text-xl tracking-widest uppercase">Yükleniyor...</span>
+    </div>
+  );
+
+  if (duyurular.length === 0) return null;
+
+  const currentDuyuru = duyurular[currentIndex];
+
+  return (
+    <div className="mb-16 relative group select-none">
+      
+      {/* KART YAPISI (Arka plan TEMA UYUMLU: Beyaz/Siyah) */}
+      <div className="relative overflow-hidden rounded-[2.5rem] shadow-2xl transition-all duration-500 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10">
+        
+        {/* Dekoratif Arka Plan (Hafif) */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gray-50 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+
+        <div className="flex flex-col md:flex-row items-center p-8 md:p-12 gap-8 md:gap-12 min-h-[400px]">
+          
+          {/* SOL TARAFTA: GÖRSEL (Varsa) */}
+          {currentDuyuru.image_url && (
+            <div className="shrink-0 relative group-hover:scale-[1.02] transition-transform duration-700 z-10">
+              <div className="relative w-[180px] md:w-[240px] aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-gray-800">
+                <img 
+                  src={currentDuyuru.image_url} 
+                  alt={currentDuyuru.title}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* SAĞ TARAFTA: İÇERİK */}
+          <div className={`flex-1 z-10 text-center md:text-left ${!currentDuyuru.image_url ? 'md:px-12' : ''}`}>
+            
+            {/* ETİKETLER */}
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-6">
+              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
+                currentDuyuru.type === 'warning' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                currentDuyuru.type === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                currentDuyuru.type === 'feature' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
+                'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+              }`}>
+                {currentDuyuru.type === 'warning' ? '⚠️ DİKKAT' :
+                 currentDuyuru.type === 'success' ? '🎉 YENİLİK' :
+                 currentDuyuru.type === 'feature' ? '✨ ÖZELLİK' :
+                 '📢 DUYURU'}
+              </span>
+              
+              {currentDuyuru.priority === 3 && (
+                <span className="px-3 py-1.5 bg-red-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse shadow-lg shadow-red-600/30">
+                  🔥 ACİL
+                </span>
+              )}
+            </div>
+
+            {/* --- BAŞLIK (ÖZEL RENK) --- */}
+            {/* Burada Admin Panelinden seçtiğin 'title_color' kullanılır. */}
+            <h2 
+              className="text-3xl md:text-5xl font-black mb-6 tracking-tight leading-[1.1] transition-colors drop-shadow-sm"
+              style={{ color: currentDuyuru.title_color || 'inherit' }} 
+            >
+              {currentDuyuru.title}
+            </h2>
+
+            {/* --- İÇERİK (TEMA RENGİ) --- */}
+            {/* Burası her zaman okunabilir Gri/Beyaz olur */}
+            <p className="text-lg md:text-xl leading-relaxed font-medium max-w-2xl text-gray-600 dark:text-gray-300 transition-colors">
+              {currentDuyuru.content}
+            </p>
+
+            <div className="mt-8 flex items-center justify-center md:justify-start gap-2 opacity-40">
+              <span className="w-8 h-[2px] bg-black dark:bg-white rounded-full" />
+              <p className="text-xs font-bold uppercase tracking-widest text-gray-900 dark:text-white">
+                {new Date(currentDuyuru.created_at).toLocaleDateString('tr-TR', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* NAVİGASYON OKLARI */}
+      {duyurular.length > 1 && (
+        <>
+          <button
+            onClick={prevSlide}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 dark:bg-black/80 hover:bg-white dark:hover:bg-black border border-gray-200 dark:border-white/10 rounded-full flex items-center justify-center shadow-xl text-black dark:text-white transition-all hover:scale-110 active:scale-95 group-hover:opacity-100 opacity-0"
+          >
+            ←
+          </button>
+          <button
+            onClick={nextSlide}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 dark:bg-black/80 hover:bg-white dark:hover:bg-black border border-gray-200 dark:border-white/10 rounded-full flex items-center justify-center shadow-xl text-black dark:text-white transition-all hover:scale-110 active:scale-95 group-hover:opacity-100 opacity-0"
+          >
+            →
+          </button>
+          
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
+            {duyurular.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentIndex(idx)}
+                className={`h-1.5 rounded-full transition-all duration-300 shadow-lg ${
+                  idx === currentIndex 
+                    ? 'w-8 bg-red-600 opacity-100' 
+                    : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 
 // OKUMAYA DEVAM ET KOMPONENTİ (KAYDIRMALI)
 function ContinueReadingCarousel({ books }) {
@@ -240,8 +401,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen py-16 px-6 md:px-16 bg-[#fafafa] dark:bg-black">
+      <Toaster />
       <div className="max-w-7xl mx-auto">
         
+        {/* DUYURU PANELİ */}
+        <DuyuruPaneli />
+
         {/* OKUMAYA DEVAM ET CAROUSEL */}
         <ContinueReadingCarousel books={continueReading} />
 

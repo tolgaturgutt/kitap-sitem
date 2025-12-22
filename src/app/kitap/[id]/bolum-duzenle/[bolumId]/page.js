@@ -90,7 +90,7 @@ export default function BolumDuzenle({ params }) {
         return;
       }
 
-      toast.success("Bölüm gerçekten güncellendi! ✅");
+      toast.success("Bölüm güncellendi! ✅");
       setTimeout(() => {
         router.push(`/kitap/${ids.kitapId}/bolum/${ids.bolumId}`);
         router.refresh();

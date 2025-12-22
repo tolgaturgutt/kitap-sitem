@@ -17,6 +17,7 @@ export default function ProfilSayfasi() {
   const [modalType, setModalType] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '' });
+  const [isAdmin, setIsAdmin] = useState(false); // Yeni: Admin state'i eklendi
 
   useEffect(() => {
     async function getData() {
@@ -34,6 +35,17 @@ export default function ProfilSayfasi() {
         avatar_url: profile?.avatar_url || ''
       });
 
+      // ADMIN KONTROLÜ EKLENDİ
+      const { data: adminData } = await supabase
+        .from('announcement_admins')
+        .select('*')
+        .eq('user_email', activeUser.email)
+        .single();
+      
+      if (adminData) {
+        setIsAdmin(true);
+      }
+
       // 1. Eserlerimi getir
       const { data: written } = await supabase.from('books').select('*').eq('user_email', activeUser.email).order('created_at', { ascending: false });
       setMyBooks(written || []);
@@ -46,16 +58,14 @@ export default function ProfilSayfasi() {
         setTotalViews(total);
       }
 
-      // 3. TAKİP EDİLEN KİTAPLARI GETİR (DÜZELTİLDİ)
+      // 3. TAKİP EDİLEN KİTAPLARI GETİR
       const { data: followsList } = await supabase
         .from('follows')
         .select('book_id')
         .eq('user_email', activeUser.email);
 
-      // Kitap ID'lerini topla
       const bookIds = followsList?.map(f => f.book_id).filter(Boolean) || [];
 
-      // Eğer takip edilen kitap varsa, kitap bilgilerini çek
       if (bookIds.length > 0) {
         const { data: followedBooksData } = await supabase
           .from('books')
@@ -105,7 +115,27 @@ export default function ProfilSayfasi() {
               <>
                 <h1 className="text-3xl font-black uppercase dark:text-white">{profileData.full_name || "İsim Soyisim"}</h1>
                 <p className="text-xs text-gray-400 mb-4 uppercase">@{profileData.username}</p>
-                <button onClick={() => setIsEditing(true)} className="px-6 py-2 bg-gray-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase text-gray-500 hover:text-red-600 transition-all">Profili Düzenle</button>
+                <div className="flex flex-wrap gap-2">
+                  <button 
+                    onClick={() => setIsEditing(true)} 
+                    className="px-6 py-2 bg-gray-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase text-gray-500 hover:text-red-600 transition-all"
+                  >
+                    Profili Düzenle
+                  </button>
+                  
+                  {/* ADMIN PANELİ BUTONU - SADECE ADMİNLER İÇİN */}
+                  {isAdmin && (
+                    <Link 
+                      href="/admin" 
+                      className="px-6 py-2 bg-gradient-to-r from-red-600 to-orange-600 text-white rounded-full text-[10px] font-black uppercase hover:from-red-700 hover:to-orange-700 transition-all flex items-center gap-2"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                      </svg>
+                      Admin Paneli
+                    </Link>
+                  )}
+                </div>
               </>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
