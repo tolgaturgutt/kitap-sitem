@@ -24,7 +24,8 @@ export default function KitapDetay({ params }) {
     }, 
     isFollowing: false, 
     hasVoted: false, 
-    user: null 
+    user: null,
+    isAdmin: false // YENİ: Admin durumu eklendi
   });
   const [loading, setLoading] = useState(true);
 
@@ -43,6 +44,18 @@ export default function KitapDetay({ params }) {
         const { data: profile } = await supabase.from('profiles').select('*').eq('username', book.username).single();
         authorProfile = profile;
       }
+
+      // --- YENİ: ADMIN KONTROLÜ ---
+      let adminStatus = false;
+      if (user) {
+        const { data: admin } = await supabase
+          .from('announcement_admins')
+          .select('*')
+          .eq('user_email', user.email)
+          .single();
+        if (admin) adminStatus = true;
+      }
+      // ----------------------------
       
       // OKUNMA SAYISI
       const totalViews = chapters?.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
@@ -53,7 +66,7 @@ export default function KitapDetay({ params }) {
       // KÜTÜPHANE SAYISI
       const { count: follows } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('book_id', id);
       
-      // YORUM SAYISI (TÜM BÖLÜMLER + KİTAP YORUMLARI)
+      // YORUM SAYISI
       const { count: comments } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('book_id', id);
       
       let following = false, voted = false;
@@ -77,7 +90,8 @@ export default function KitapDetay({ params }) {
         }, 
         isFollowing: following, 
         hasVoted: voted, 
-        user 
+        user,
+        isAdmin: adminStatus // State'e kaydettik
       });
       setLoading(false);
     }
@@ -96,7 +110,6 @@ export default function KitapDetay({ params }) {
        setData(prev => ({ ...prev, hasVoted: true, stats: { ...prev.stats, votes: prev.stats.votes + 1 } }));
        toast.success("Oy verildi");
        
-       // BİLDİRİM OLUŞTUR (kendine oy vermemişse)
        if (data.book.user_email !== data.user.email) {
          const { data: profile } = await supabase.from('profiles').select('username').eq('id', data.user.id).single();
          const username = profile?.username || data.user.user_metadata?.username || data.user.email.split('@')[0];
@@ -114,7 +127,33 @@ export default function KitapDetay({ params }) {
        }
      }
   }
+// --- YENİ: EDİTÖRÜN SEÇİMİ BUTONU FONKSİYONU ---
+  async function handleToggleEditorsChoice() {
+    if (!data.isAdmin) return;
 
+    const newStatus = !data.book.is_editors_choice;
+    
+    const { error } = await supabase
+      .from('books')
+      .update({ is_editors_choice: newStatus })
+      .eq('id', id);
+
+    if (error) {
+      toast.error("İşlem başarısız: " + error.message);
+    } else {
+      // Local state'i güncelle ki sayfa yenilenmeden buton değişsin
+      setData(prev => ({
+        ...prev,
+        book: { ...prev.book, is_editors_choice: newStatus }
+      }));
+      
+      if (newStatus) {
+        toast.success("👑 Kitap 'Editörün Seçimi' listesine eklendi!");
+      } else {
+        toast.success("Kitap listeden çıkarıldı.");
+      }
+    }
+  }
   async function handleLibrary() {
      if (!data.user) return toast.error("Giriş yapmalısın.");
      
@@ -130,42 +169,85 @@ export default function KitapDetay({ params }) {
   }
 
   // KİTABI SİL
+// KİTABI SİL (DEBUG MODU - DETAYLI HATA GÖSTERİMİ)
   async function handleDeleteBook() {
-    if (!window.confirm('Bu kitabı silmek istediğinizden emin misiniz? Tüm bölümler ve yorumlar silinecek!')) return;
+    if (!window.confirm('ADMIN DİKKATİ: Bu kitabı ve bağlı her şeyi silmek üzeresin. Emin misin?')) return;
     
+    // Yükleniyor efekti verelim ki basıp basmadığını anla
+    const toastId = toast.loading('Silme işlemi başlatıldı...');
+    console.log("🚀 Silme işlemi başladı. Kullanıcı:", data.user?.email);
+
     try {
-      // Önce bölümleri sil
-      await supabase.from('chapters').delete().eq('book_id', id);
-      // Yorumları sil
-      await supabase.from('comments').delete().eq('book_id', id);
-      // Oyları sil
-      await supabase.from('book_votes').delete().eq('book_id', id);
-      // Takipleri sil
-      await supabase.from('follows').delete().eq('book_id', id);
-      // Bildirimleri sil
-      await supabase.from('notifications').delete().eq('book_id', id);
-      // Kitabı sil
-      await supabase.from('books').delete().eq('id', id);
-      
-      toast.success('Kitap silindi');
-      router.push('/profil');
+      // 1. ADIM: BÖLÜMLERİ SİL
+      console.log("1. Bölümler siliniyor...");
+      const { error: chapterError } = await supabase.from('chapters').delete().eq('book_id', id);
+      if (chapterError) {
+        console.error("❌ Bölüm Hatası:", chapterError);
+        throw new Error(`Bölümler silinemedi! Kod: ${chapterError.code} - Mesaj: ${chapterError.message}`);
+      }
+
+      // 2. ADIM: YORUMLARI SİL
+      console.log("2. Yorumlar siliniyor...");
+      const { error: commentError } = await supabase.from('comments').delete().eq('book_id', id);
+      if (commentError) {
+        console.error("❌ Yorum Hatası:", commentError);
+        throw new Error(`Yorumlar silinemedi! Kod: ${commentError.code} - Mesaj: ${commentError.message}`);
+      }
+
+      // 3. ADIM: OYLARI SİL
+      console.log("3. Oylar siliniyor...");
+      const { error: voteError } = await supabase.from('book_votes').delete().eq('book_id', id);
+      if (voteError) {
+        console.error("❌ Oy Hatası:", voteError);
+        throw new Error(`Oylar silinemedi! Kod: ${voteError.code} - Mesaj: ${voteError.message}`);
+      }
+
+      // 4. ADIM: TAKİPLERİ SİL
+      console.log("4. Takipler siliniyor...");
+      const { error: followError } = await supabase.from('follows').delete().eq('book_id', id);
+      if (followError) {
+        console.error("❌ Takip Hatası:", followError);
+        throw new Error(`Takipler silinemedi! Kod: ${followError.code} - Mesaj: ${followError.message}`);
+      }
+
+      // 5. ADIM: BİLDİRİMLERİ SİL
+      console.log("5. Bildirimler siliniyor...");
+      const { error: notifError } = await supabase.from('notifications').delete().eq('book_id', id);
+      if (notifError) {
+        console.error("❌ Bildirim Hatası:", notifError);
+        throw new Error(`Bildirimler silinemedi! Kod: ${notifError.code} - Mesaj: ${notifError.message}`);
+      }
+
+      // 6. ADIM: KİTABI SİL (EN SON)
+      console.log("6. Kitap siliniyor...");
+      const { error: bookError } = await supabase.from('books').delete().eq('id', id);
+      if (bookError) {
+        console.error("❌ Kitap Hatası:", bookError);
+        throw new Error(`Kitap silinemedi! Kod: ${bookError.code} - Mesaj: ${bookError.message}`);
+      }
+
+      // BAŞARILI
+      toast.dismiss(toastId);
+      toast.success('KİTAP VE TÜM VERİLER SİLİNDİ ✅');
+      router.push('/profil'); // Veya admin paneline yönlendir
+
     } catch (error) {
-      toast.error('Silme sırasında hata oluştu');
-      console.error(error);
+      // HATA YAKALAMA
+      toast.dismiss(toastId);
+      console.error("🔥 KRİTİK HATA:", error);
+      // Ekrana hatayı yapıştırıyoruz ki ne olduğunu görelim
+      toast.error(error.message, { duration: 6000 });
     }
   }
 
   // BÖLÜMÜ SİL
   async function handleDeleteChapter(chapterId) {
-    if (!window.confirm('Bu bölümü silmek istediğinizden emin misiniz?')) return;
+    if (!window.confirm('Bu bölümü silmek istediğinden emin misin?')) return;
     
     try {
-      // Bölüm yorumlarını sil
       await supabase.from('comments').delete().eq('chapter_id', chapterId);
-      // Bölümü sil
       await supabase.from('chapters').delete().eq('id', chapterId);
       
-      // State'i güncelle
       setData(prev => ({
         ...prev,
         chapters: prev.chapters.filter(c => c.id !== chapterId),
@@ -174,15 +256,17 @@ export default function KitapDetay({ params }) {
       
       toast.success('Bölüm silindi');
     } catch (error) {
-      toast.error('Silme sırasında hata oluştu');
-      console.error(error);
+      toast.error('Hata: ' + error.message);
     }
   }
 
   if (loading) return <div className="py-40 text-center font-black opacity-10 italic text-5xl animate-pulse uppercase">YAZIO</div>;
   if (!data.book) return <div className="py-20 text-center font-black">ESER BULUNAMADI</div>;
 
+  // Yazar mı?
   const isAuthor = data.user && data.book.user_email === data.user.email;
+  // YETKİLİ Mİ? (Yazar VEYA Admin)
+  const canEdit = isAuthor || data.isAdmin;
 
   return (
     <div className="min-h-screen py-16 px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
@@ -200,8 +284,18 @@ export default function KitapDetay({ params }) {
               ) : (
                 <div className="w-full h-full flex items-center justify-center font-black text-gray-300 italic text-sm">Kapak Yok</div>
               )}
+              {/* Eğer Editörün Seçimiyse Kapakta Tacı Gösterelim */}
+            {data.book?.is_editors_choice && (
+              <div className="absolute top-0 right-0 m-4 z-20">
+                <span className="bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-xl shadow-yellow-500/40 animate-pulse">
+                  👑 Editörün Seçimi
+                </span>
+              </div>
+            )}
             </div>
+            
           </div>
+          
           
           {/* BİLGİLER */}
           <div className="flex-1">
@@ -294,8 +388,22 @@ export default function KitapDetay({ params }) {
                >
                  {data.isFollowing ? '📚 KÜTÜPHANEDE' : 'KÜTÜPHANEYE EKLE'}
                </button>
+               {/* --- YENİ: EDİTÖRÜN SEÇİMİ BUTONU --- */}
+               {data.isAdmin && (
+                 <button 
+                   onClick={handleToggleEditorsChoice}
+                   className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${
+                     data.book.is_editors_choice 
+                       ? 'bg-yellow-400 text-black hover:bg-yellow-500 shadow-yellow-500/50' 
+                       : 'bg-gray-800 text-yellow-500 border border-yellow-500/30 hover:bg-gray-700 hover:text-yellow-400'
+                   }`}
+                 >
+                   {data.book.is_editors_choice ? '👑 SEÇİLDİ (Kaldır)' : '👑 EDİTÖRÜN SEÇİMİ YAP'}
+                 </button>
+               )}
                
-               {isAuthor && (
+               {/* YAZAR VEYA ADMIN İSE GÖSTER */}
+               {canEdit && (
                  <>
                    <Link 
                      href={`/kitap/${id}/bolum-ekle`} 
@@ -361,7 +469,8 @@ export default function KitapDetay({ params }) {
                     </span>
                   </Link>
                   
-                  {isAuthor && (
+                  {/* YAZAR VEYA ADMIN İSE BÖLÜM İŞLEMLERİNİ GÖSTER */}
+                  {canEdit && (
                     <div className="flex gap-2 mt-2 ml-20 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Link 
                         href={`/kitap/${id}/bolum-duzenle/${c.id}`}
@@ -389,12 +498,10 @@ export default function KitapDetay({ params }) {
              💬 Eser Hakkında Yorumlar
              <span className="text-sm text-gray-400 font-normal">({data.stats.comments})</span>
            </h2>
+           {/* Yorum Alanı zaten kendi içinde admin kontrolü yapıyor */}
            <YorumAlani type="book" targetId={id} bookId={id} />
         </div>
       </div>
     </div>
   );
 }
-
-
-//denemeee

@@ -7,6 +7,7 @@ import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 
 export default function YazarProfili() {
+  
   const { username } = useParams();
   const [currentUser, setCurrentUser] = useState(null);
   const [author, setAuthor] = useState(null);
@@ -17,11 +18,22 @@ export default function YazarProfili() {
   const [activeTab, setActiveTab] = useState('eserler');
   const [modalType, setModalType] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false); // YENİ: Admin yetkisi
 
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
       setCurrentUser(session?.user || null);
+      // --- 1. ADMİN KONTROLÜ (YENİ) ---
+      if (session?.user) {
+        const { data: adminData } = await supabase
+          .from('announcement_admins')
+          .select('*')
+          .eq('user_email', session.user.email)
+          .single();
+        if (adminData) setIsAdmin(true);
+      }
+      // -------------------------------
 
       const { data: p } = await supabase.from('profiles').select('*').eq('username', username).single();
       if (p) {
@@ -88,6 +100,23 @@ export default function YazarProfili() {
       toast.success("Takip bırakıldı");
     }
   }
+  // --- 2. BANLAMA FONKSİYONU (YENİ) ---
+  async function handleBan() {
+    const action = author.is_banned ? "Yasağı KALDIRMAK" : "Kullanıcıyı BANLAMAK";
+    if (!confirm(`Dikkat Admin: ${action} üzeresin. Onaylıyor musun?`)) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_banned: !author.is_banned })
+      .eq('id', author.id);
+
+    if (!error) {
+      setAuthor(prev => ({ ...prev, is_banned: !prev.is_banned }));
+      toast.success(author.is_banned ? "Yasak kaldırıldı 😇" : "Kullanıcı BANLANDI 🚫");
+    } else {
+      toast.error("Hata oluştu.");
+    }
+  }
 
   if (loading) return <div className="py-40 text-center font-black opacity-10 text-4xl italic animate-pulse">YAZIO</div>;
   if (!author) return <div className="py-40 text-center font-black">Yazar bulunamadı.</div>;
@@ -117,6 +146,19 @@ export default function YazarProfili() {
                   }`}
                 >
                   {isFollowing ? 'Takibi Bırak' : 'Takip Et ➕'}
+                </button>
+              )}
+              {/* --- 3. ADMIN BAN BUTONU (YENİ) --- */}
+              {isAdmin && (
+                <button 
+                  onClick={handleBan}
+                  className={`ml-4 px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
+                    author.is_banned 
+                    ? 'bg-green-600 text-white hover:bg-green-700' 
+                    : 'bg-black dark:bg-white text-white dark:text-black hover:bg-red-600 hover:text-white'
+                  }`}
+                >
+                  {author.is_banned ? 'Yasağı Kaldır' : 'Kullanıcıyı Banla 🔨'}
                 </button>
               )}
             </div>

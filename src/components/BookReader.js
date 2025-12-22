@@ -4,23 +4,56 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
+// İkonlar (Aynı)
+const Icons = {
+  Comment: () => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.562 2.632 6.19l-.368 1.454a3.75 3.75 0 0 0 2.287 4.65c.343.088.7.13 1.053.13Z" clipRule="evenodd" /></svg>),
+  Close: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>),
+  Trash: () => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 0 0 6 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 1 0 .23 1.482l.149-.022.841 10.518A2.75 2.75 0 0 0 7.596 19h4.807a2.75 2.75 0 0 0 2.742-2.53l.841-10.52.149.023a.75.75 0 0 0 .23-1.482A41.03 41.03 0 0 0 14 4.193V3.75A2.75 2.75 0 0 0 11.25 1h-2.5ZM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C8.327 4.025 9.16 4 10 4ZM8.58 7.72a.75.75 0 0 0-1.5.06l.3 7.5a.75.75 0 1 0 1.5-.06l-.3-7.5Zm4.34.06a.75.75 0 1 0-1.5-.06l-.3 7.5a.75.75 0 0 0 1.5.06l.3-7.5Z" clipRule="evenodd" /></svg>),
+  Flag: () => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3"><path d="M3.5 2.75a.75.75 0 0 0-1.5 0v14.5a.75.75 0 0 0 1.5 0v-4.392l1.657-.348a6.449 6.449 0 0 1 4.271.572 7.948 7.948 0 0 0 5.965.524l2.078-.64A.75.75 0 0 0 18 12.25v-8.5a.75.75 0 0 0-.904-.734l-2.38.501a7.25 7.25 0 0 1-4.186-.363l-.502-.2a8.75 8.75 0 0 0-5.053-.439l-1.475.31V2.75Z" /></svg>)
+};
+
 export default function BookReader({ content, bookId, chapterId }) {
   const [comments, setComments] = useState([]);
   const [activeParagraph, setActiveParagraph] = useState(null);
   const [newComment, setNewComment] = useState('');
   const [user, setUser] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false); // YENİ: Admin durumu
 
   const paragraflar = content ? content.split('\n').filter(p => p.trim() !== '') : [];
 
   useEffect(() => {
-    // OKUNMA SAYISI FIX: Bileşen yüklendiğinde sayıyı artır
     if (chapterId) {
       supabase.rpc('increment_views', { target_chapter_id: chapterId });
+      loadComments();
     }
-
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
-    supabase.from('comments').select('*').eq('chapter_id', chapterId).then(({ data }) => setComments(data || []));
+    checkUserAndAdmin(); // Kullanıcı ve admin kontrolü
   }, [chapterId]);
+
+  // YENİ: Hem kullanıcıyı hem admin durumunu çeken fonksiyon
+  async function checkUserAndAdmin() {
+    const { data: { user } } = await supabase.auth.getUser();
+    setUser(user);
+    
+    if (user) {
+      // Admin mi kontrol et
+      const { data } = await supabase
+        .from('announcement_admins')
+        .select('*')
+        .eq('user_email', user.email)
+        .single();
+      if (data) setIsAdmin(true);
+    }
+  }
+
+  async function loadComments() {
+    const { data } = await supabase
+      .from('comments')
+      .select('*, profiles(username, avatar_url)')
+      .eq('chapter_id', chapterId)
+      .order('created_at', { ascending: true });
+    
+    setComments(data || []);
+  }
 
   async function handleSend() {
     if (!newComment.trim() || !user) return;
@@ -30,13 +63,38 @@ export default function BookReader({ content, bookId, chapterId }) {
       chapter_id: chapterId, 
       paragraph_id: activeParagraph, 
       user_email: user.email, 
-      username: user.user_metadata?.username || user.email.split('@')[0] 
-    }]).select().single();
+      user_id: user.id 
+    }]).select('*, profiles(username, avatar_url)').single();
     
     if (!error) { 
       setComments([...comments, data]); 
       setNewComment(''); 
       toast.success('Yorum eklendi.'); 
+    } else {
+      toast.error('Yorum gönderilemedi.');
+    }
+  }
+
+  async function handleReport(commentId, content) {
+    const reason = prompt("Şikayet sebebi?");
+    if (!reason) return;
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: user.id,
+      target_type: 'comment',
+      target_id: commentId,
+      reason: reason,
+      content_snapshot: content
+    });
+    if (error) toast.error("Hata oluştu.");
+    else toast.success("Şikayet iletildi.");
+  }
+
+  async function handleDelete(commentId) {
+    if(!confirm("Bu yorumu silmek istiyor musun?")) return;
+    const { error } = await supabase.from('comments').delete().eq('id', commentId);
+    if (!error) {
+      setComments(prev => prev.filter(c => c.id !== commentId));
+      toast.success("Yorum silindi.");
     }
   }
 
@@ -46,30 +104,17 @@ export default function BookReader({ content, bookId, chapterId }) {
         {paragraflar.map((p, i) => {
           const count = comments.filter(c => c.paragraph_id === i).length;
           return (
-            <div key={i} className="group relative mb-8">
+            <div key={i} className="group relative mb-8 pr-8">
               <p className="text-xl md:text-2xl leading-[1.8] text-gray-800 dark:text-gray-200 font-serif antialiased">{p}</p>
-              
-              {/* YORUM SAYISI FIX: count > 0 ise her zaman görünür yapıldı */}
               <button 
                 onClick={() => setActiveParagraph(i)} 
-                className={`absolute -right-12 top-0 h-full w-10 flex items-start justify-center pt-2 transition-all 
-                  ${count > 0 || activeParagraph === i ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
-              >
-                <div className={`p-2 rounded-full relative shadow-sm border transition-all
+                className={`absolute right-0 top-1 w-6 h-6 flex items-center justify-center rounded-full transition-all duration-300
                   ${count > 0 || activeParagraph === i 
-                    ? 'bg-red-600 border-red-600 text-white' 
-                    : 'bg-gray-50 dark:bg-gray-900 dark:border-gray-800'
+                    ? 'bg-red-600 text-white shadow-md opacity-100 scale-100' 
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-400 opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100'
                   }`}
-                >
-                  <span className="text-sm">💬</span>
-                  {count > 0 && (
-                    <span className={`absolute -top-1 -right-1 text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center
-                      ${activeParagraph === i ? 'bg-white text-red-600' : 'bg-red-600 text-white shadow-lg'}`}
-                    >
-                      {count}
-                    </span>
-                  )}
-                </div>
+              >
+                {count > 0 ? <span className="text-[9px] font-bold">{count}</span> : <Icons.Comment />}
               </button>
             </div>
           );
@@ -77,38 +122,60 @@ export default function BookReader({ content, bookId, chapterId }) {
       </div>
 
       {activeParagraph !== null && (
-        <div className="fixed inset-y-0 right-0 w-full md:w-96 bg-white dark:bg-[#0a0a0a] shadow-2xl z-[100] flex flex-col p-6 animate-slide-in border-l dark:border-white/5">
-          <div className="flex justify-between items-center mb-10">
-            <h3 className="font-black text-xs uppercase tracking-widest dark:text-white italic">Paragraf Yorumları</h3>
-            <button onClick={() => setActiveParagraph(null)} className="text-gray-400 hover:text-red-600 transition-colors text-2xl">✕</button>
+        <>
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[90]" onClick={() => setActiveParagraph(null)} />
+          <div className="fixed inset-y-0 right-0 w-full md:w-96 bg-white dark:bg-[#0a0a0a] shadow-2xl z-[100] flex flex-col animate-slide-in border-l dark:border-white/5">
+            <div className="p-6 border-b dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
+              <h3 className="font-black text-xs uppercase tracking-widest dark:text-white flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-red-600"></span>
+                Paragraf Yorumları
+              </h3>
+              <button onClick={() => setActiveParagraph(null)} className="text-gray-400 hover:text-red-600 transition-colors"><Icons.Close /></button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
+              {comments.filter(c => c.paragraph_id === activeParagraph).length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-gray-400 opacity-50"><Icons.Comment /><p className="text-[10px] uppercase tracking-widest mt-4">İlk yorumu sen yaz</p></div>
+              ) : (
+                comments.filter(c => c.paragraph_id === activeParagraph).map(c => (
+                  <div key={c.id} className="group relative flex gap-3 animate-in fade-in duration-300">
+                    <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden">
+                       {c.profiles?.avatar_url ? <img src={c.profiles.avatar_url} className="w-full h-full object-cover"/> : (c.profiles?.username || c.user_email || "?")[0].toUpperCase()}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <span className="font-black text-[10px] uppercase text-gray-900 dark:text-white tracking-tight">@{c.profiles?.username || 'Anonim'}</span>
+                        
+                        {/* --- GOD MODE UYGULAMASI --- */}
+                        {user && (
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {/* Kendi yorumuysa VEYA Adminse -> SİL BUTONU GÖZÜKÜR */}
+                            {(user.id === c.user_id || isAdmin) ? (
+                              <button onClick={() => handleDelete(c.id)} title="Sil" className="text-gray-300 hover:text-red-500 transition-colors"><Icons.Trash /></button>
+                            ) : (
+                              // Değilse Raporla butonu gözükür
+                              <button onClick={() => handleReport(c.id, c.content)} title="Raporla" className="text-gray-300 hover:text-yellow-500 transition-colors"><Icons.Flag /></button>
+                            )}
+                          </div>
+                        )}
+                        {/* ------------------------- */}
+
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-snug">{c.content}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            
+            <div className="p-4 bg-gray-50 dark:bg-black border-t dark:border-white/10">
+              <div className="relative">
+                <textarea value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder={user ? "Bu paragraf hakkında ne düşünüyorsun?" : "Giriş yapmalısın."} disabled={!user} className="w-full p-4 pr-12 bg-white dark:bg-white/5 border-none rounded-2xl text-sm outline-none focus:ring-2 focus:ring-red-600/20 transition-all dark:text-white resize-none shadow-sm" rows="2" />
+                <button onClick={handleSend} disabled={!user || !newComment.trim()} className="absolute right-2 bottom-2 p-2 bg-black dark:bg-white text-white dark:text-black rounded-xl hover:bg-red-600 dark:hover:bg-red-600 dark:hover:text-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3.105 2.289a.75.75 0 0 0-.826.95l1.414 4.925A1.5 1.5 0 0 0 5.135 9.25h6.115a.75.75 0 0 1 0 1.5H5.135a1.5 1.5 0 0 0-1.442 1.086l-1.414 4.926a.75.75 0 0 0 .826.95 28.896 28.896 0 0 0 15.293-7.154.75.75 0 0 0 0-1.115A28.897 28.897 0 0 0 3.105 2.289Z" /></svg></button>
+              </div>
+            </div>
           </div>
-          
-          <div className="flex-1 overflow-y-auto space-y-6 mb-6 no-scrollbar">
-            {comments.filter(c => c.paragraph_id === activeParagraph).length === 0 ? (
-              <p className="text-center py-20 text-[10px] text-gray-400 uppercase tracking-widest italic">Henüz yorum yok, ilk sen yaz.</p>
-            ) : (
-              comments.filter(c => c.paragraph_id === activeParagraph).map(c => (
-                <div key={c.id} className="border-b dark:border-white/5 pb-4">
-                  <span className="font-black text-[10px] uppercase text-red-600 tracking-tighter">@{c.username}</span>
-                  <p className="text-sm text-gray-700 dark:text-gray-400 mt-1 leading-relaxed">{c.content}</p>
-                </div>
-              ))
-            )}
-          </div>
-          
-          <div className="mt-auto">
-            <textarea 
-              value={newComment} 
-              onChange={(e) => setNewComment(e.target.value)} 
-              placeholder="Fikrini paylaş..." 
-              className="w-full p-4 bg-gray-50 dark:bg-white/5 border dark:border-white/10 rounded-2xl text-sm mb-4 outline-none focus:ring-1 focus:ring-red-600 transition-all dark:text-white no-scrollbar" 
-              rows="3" 
-            />
-            <button onClick={handleSend} className="w-full bg-black dark:bg-white text-white dark:text-black py-4 rounded-2xl text-xs font-black uppercase tracking-[0.2em] hover:bg-red-600 hover:text-white transition-all shadow-xl">
-              Yorumu Gönder
-            </button>
-          </div>
-        </div>
+        </>
       )}
     </div>
   );

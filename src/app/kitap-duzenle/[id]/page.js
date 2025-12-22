@@ -39,11 +39,22 @@ export default function KitapDuzenle({ params }) {
         return;
       }
 
-      if (book.user_email !== user.email) {
-        toast.error('Bu yetki size ait değil.');
-        router.push('/profil');
-        return;
-      }
+     // YENİSİ (Bunu Yapıştır)
+// 1. Admin mi diye bak
+let isAdmin = false;
+const { data: adminData } = await supabase
+  .from('announcement_admins')
+  .select('*')
+  .eq('user_email', user.email)
+  .single();
+if (adminData) isAdmin = true;
+
+// 2. Yazar değilse VE Admin de değilse engelle
+if (book.user_email !== user.email && !isAdmin) {
+  toast.error('Bu yetki size ait değil.');
+  router.push('/profil');
+  return;
+}
 
       setTitle(book.title);
       setSummary(book.summary);

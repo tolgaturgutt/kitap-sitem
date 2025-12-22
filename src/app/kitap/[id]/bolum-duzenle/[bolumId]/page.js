@@ -44,8 +44,13 @@ export default function BolumDuzenle({ params }) {
           return router.push(`/kitap/${ids.kitapId}`);
         }
 
-        // Güvenlik: Sadece yazar düzenleyebilir
-        if (chapter.books.user_email !== user?.email) {
+        // --- YENİ ADMİN KONTROLÜ ---
+        let isAdmin = false;
+        const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', user.email).single();
+        if (adminData) isAdmin = true;
+
+        // Kural: Yazar değilse VE Admin değilse engelle
+        if (chapter.books.user_email !== user?.email && !isAdmin) {
           toast.error("Bu yetkiye sahip değilsin.");
           return router.push(`/kitap/${ids.kitapId}`);
         }

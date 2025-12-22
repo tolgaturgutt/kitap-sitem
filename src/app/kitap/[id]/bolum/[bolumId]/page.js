@@ -24,7 +24,6 @@ export default function BolumDetay({ params }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
-    // Sayfa değiştiğinde en başa kaydır
     window.scrollTo(0, 0);
 
     const saved = localStorage.getItem('yazio_reader_settings');
@@ -98,8 +97,6 @@ export default function BolumDetay({ params }) {
     <div className={`min-h-screen transition-colors duration-500 ${readerSettings.theme}`}>
       <Toaster />
       
-      {/* BAR KOMPLE SİLİNDİ */}
-
       <nav className="fixed top-20 left-1/2 -translate-x-1/2 z-40 w-[85%] max-w-2xl h-11 bg-white/60 dark:bg-black/60 backdrop-blur-3xl border dark:border-white/5 rounded-full flex items-center justify-between px-6 shadow-sm">
         <Link href={`/kitap/${id}`} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-all">
           ← Geri
@@ -148,7 +145,7 @@ export default function BolumDetay({ params }) {
             })}
           </article>
 
-          {/* JİLET GİBİ MODERN BUTONLAR */}
+          {/* NAVİGASYON BUTONLARI */}
           <div className="mt-40 flex items-center justify-between gap-6 border-t border-current/10 pt-10">
             {prevChapter ? (
               <Link href={`/kitap/${id}/bolum/${prevChapter.id}`} className="flex-1 h-12 flex items-center justify-center rounded-full bg-current/5 text-[9px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 hover:bg-current/10 transition-all">
@@ -166,8 +163,36 @@ export default function BolumDetay({ params }) {
               </div>
             )}
           </div>
+
+          {/* ============================================ */}
+          {/* BÖLÜM YORUMLARI - MUTLAKA GÖRÜNECEK */}
+          {/* ============================================ */}
+          <section className="mt-32 mb-20 p-8 border-4 border-red-600 rounded-3xl bg-white/50 dark:bg-black/30">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-black flex items-center justify-center gap-3">
+                <span className="text-red-600">📖</span> 
+                Bölüm Yorumları
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 uppercase tracking-widest">
+                Bu bölüm hakkında ne düşündünüz?
+              </p>
+            </div>
+            
+            {bolumId && id ? (
+              <YorumAlani 
+                type="chapter" 
+                targetId={bolumId} 
+                bookId={id} 
+                paraId={null}
+                onCommentAdded={handleCommentAdded}
+              />
+            ) : (
+              <p className="text-center text-red-500">ID'ler yüklenemedi</p>
+            )}
+          </section>
         </main>
 
+        {/* PARAGRAF YORUM PANELİ */}
         <aside className={`fixed top-24 right-8 bottom-8 w-[350px] transition-all duration-500 z-50 ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12 pointer-events-none'}`}>
           <div className="h-full bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-[2.8rem] shadow-2xl flex flex-col overflow-hidden">
             <div className="p-6 border-b dark:border-white/5 flex justify-between items-center font-black text-[9px] uppercase opacity-40 tracking-widest">Yorumlar<button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-xl">✕</button></div>

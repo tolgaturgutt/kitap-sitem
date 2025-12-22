@@ -7,13 +7,12 @@ import toast, { Toaster } from 'react-hot-toast';
 
 const KATEGORILER = ["Macera", "Bilim Kurgu", "Korku", "Romantik", "Dram", "Fantastik", "Polisiye"];
 
-// DUYURU CAROUSEL BİLEŞENİ (SADECE BAŞLIK RENGİ ÖZEL)
+// --- 1. DUYURU CAROUSEL BİLEŞENİ (AYNEN KORUNDU) ---
 function DuyuruPaneli() {
   const [duyurular, setDuyurular] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  // 1. Hook: Veri Çekme
   useEffect(() => {
     async function getDuyurular() {
       const { data } = await supabase
@@ -38,7 +37,6 @@ function DuyuruPaneli() {
     setCurrentIndex((prev) => (prev - 1 + duyurular.length) % duyurular.length);
   };
 
-  // 2. Hook: Otomatik Kaydırma
   useEffect(() => {
     if (duyurular.length <= 1) return;
     const interval = setInterval(nextSlide, 6000);
@@ -57,16 +55,10 @@ function DuyuruPaneli() {
 
   return (
     <div className="mb-16 relative group select-none">
-      
-      {/* KART YAPISI (Arka plan TEMA UYUMLU: Beyaz/Siyah) */}
       <div className="relative overflow-hidden rounded-[2.5rem] shadow-2xl transition-all duration-500 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10">
-        
-        {/* Dekoratif Arka Plan (Hafif) */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gray-50 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
         <div className="flex flex-col md:flex-row items-center p-8 md:p-12 gap-8 md:gap-12 min-h-[400px]">
-          
-          {/* SOL TARAFTA: GÖRSEL (Varsa) */}
           {currentDuyuru.image_url && (
             <div className="shrink-0 relative group-hover:scale-[1.02] transition-transform duration-700 z-10">
               <div className="relative w-[180px] md:w-[240px] aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-gray-800">
@@ -79,10 +71,7 @@ function DuyuruPaneli() {
             </div>
           )}
 
-          {/* SAĞ TARAFTA: İÇERİK */}
           <div className={`flex-1 z-10 text-center md:text-left ${!currentDuyuru.image_url ? 'md:px-12' : ''}`}>
-            
-            {/* ETİKETLER */}
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-6">
               <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
                 currentDuyuru.type === 'warning' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
@@ -103,8 +92,6 @@ function DuyuruPaneli() {
               )}
             </div>
 
-            {/* --- BAŞLIK (ÖZEL RENK) --- */}
-            {/* Burada Admin Panelinden seçtiğin 'title_color' kullanılır. */}
             <h2 
               className="text-3xl md:text-5xl font-black mb-6 tracking-tight leading-[1.1] transition-colors drop-shadow-sm"
               style={{ color: currentDuyuru.title_color || 'inherit' }} 
@@ -112,8 +99,6 @@ function DuyuruPaneli() {
               {currentDuyuru.title}
             </h2>
 
-            {/* --- İÇERİK (TEMA RENGİ) --- */}
-            {/* Burası her zaman okunabilir Gri/Beyaz olur */}
             <p className="text-lg md:text-xl leading-relaxed font-medium max-w-2xl text-gray-600 dark:text-gray-300 transition-colors">
               {currentDuyuru.content}
             </p>
@@ -132,33 +117,13 @@ function DuyuruPaneli() {
         </div>
       </div>
 
-      {/* NAVİGASYON OKLARI */}
       {duyurular.length > 1 && (
         <>
-          <button
-            onClick={prevSlide}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 dark:bg-black/80 hover:bg-white dark:hover:bg-black border border-gray-200 dark:border-white/10 rounded-full flex items-center justify-center shadow-xl text-black dark:text-white transition-all hover:scale-110 active:scale-95 group-hover:opacity-100 opacity-0"
-          >
-            ←
-          </button>
-          <button
-            onClick={nextSlide}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 dark:bg-black/80 hover:bg-white dark:hover:bg-black border border-gray-200 dark:border-white/10 rounded-full flex items-center justify-center shadow-xl text-black dark:text-white transition-all hover:scale-110 active:scale-95 group-hover:opacity-100 opacity-0"
-          >
-            →
-          </button>
-          
+          <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 dark:bg-black/80 hover:bg-white dark:hover:bg-black border border-gray-200 dark:border-white/10 rounded-full flex items-center justify-center shadow-xl text-black dark:text-white transition-all hover:scale-110 active:scale-95 group-hover:opacity-100 opacity-0">←</button>
+          <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 dark:bg-black/80 hover:bg-white dark:hover:bg-black border border-gray-200 dark:border-white/10 rounded-full flex items-center justify-center shadow-xl text-black dark:text-white transition-all hover:scale-110 active:scale-95 group-hover:opacity-100 opacity-0">→</button>
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
             {duyurular.map((_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setCurrentIndex(idx)}
-                className={`h-1.5 rounded-full transition-all duration-300 shadow-lg ${
-                  idx === currentIndex 
-                    ? 'w-8 bg-red-600 opacity-100' 
-                    : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'
-                }`}
-              />
+              <button key={idx} onClick={() => setCurrentIndex(idx)} className={`h-1.5 rounded-full transition-all duration-300 shadow-lg ${idx === currentIndex ? 'w-8 bg-red-600 opacity-100' : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`} />
             ))}
           </div>
         </>
@@ -167,7 +132,7 @@ function DuyuruPaneli() {
   );
 }
 
-// OKUMAYA DEVAM ET KOMPONENTİ (KAYDIRMALI)
+// --- 2. OKUMAYA DEVAM ET BİLEŞENİ (AYNEN KORUNDU) ---
 function ContinueReadingCarousel({ books }) {
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -180,7 +145,6 @@ function ContinueReadingCarousel({ books }) {
       </h2>
       
       <div className="relative">
-        {/* KARTLAR */}
         <div className="overflow-hidden">
           <div 
             className="flex transition-transform duration-500 ease-out"
@@ -218,7 +182,6 @@ function ContinueReadingCarousel({ books }) {
           </div>
         </div>
 
-        {/* NOKTALAR */}
         <div className="flex justify-center gap-2 mt-6">
           {books.map((_, idx) => (
             <button
@@ -237,7 +200,69 @@ function ContinueReadingCarousel({ books }) {
   );
 }
 
-// KATEGORİ SATIRI KOMPONENTİ
+// --- YENİ: EDİTÖRÜN SEÇİMİ (SVG İKONLU GÜNCEL VERSİYON) ---
+function EditorsChoiceSection({ books }) {
+  const scrollRef = useRef(null);
+  
+  const scroll = (dir) => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      scrollRef.current.scrollTo({ left: scrollLeft + (dir === 'left' ? -clientWidth : clientWidth), behavior: 'smooth' });
+    }
+  };
+
+  if (!books || books.length === 0) return null;
+
+  return (
+    <div className="mb-12">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-yellow-600 dark:text-yellow-500 flex items-center gap-2">
+          {/* Başlıkta da aynı ikonu kullanalım ki bütünlük olsun */}
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-yellow-500 mb-1">
+             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+          </svg>
+          EDİTÖRÜN SEÇİMİ
+        </h2>
+        
+        <div className="hidden md:flex gap-2">
+          <button onClick={() => scroll('left')} className="w-8 h-8 rounded-full border border-yellow-600/20 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 flex items-center justify-center text-yellow-600 transition-all text-sm">←</button>
+          <button onClick={() => scroll('right')} className="w-8 h-8 rounded-full border border-yellow-600/20 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 flex items-center justify-center text-yellow-600 transition-all text-sm">→</button>
+        </div>
+      </div>
+
+      <div ref={scrollRef} className="flex gap-4 overflow-x-auto scrollbar-hide snap-x py-4 px-2">
+        {books.map(kitap => (
+          <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-36 md:w-48 snap-start group">
+            
+            {/* KAPAK ALANI (Sarı Çerçeveli) */}
+            <div className="relative aspect-[2/3] rounded-xl overflow-hidden transition-all duration-300 border-2 border-yellow-500/40 group-hover:border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)] group-hover:shadow-[0_0_25px_rgba(234,179,8,0.5)]">
+               <img src={kitap.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={kitap.title} />
+            </div>
+            
+            {/* BAŞLIK ALANI (SVG İkonlu) */}
+            <div className="mt-3">
+              <h3 className="text-sm font-black dark:text-white leading-tight mb-1 truncate group-hover:text-yellow-500 transition-colors flex items-center gap-1.5">
+                {/* EMOJİ YERİNE VEKTÖR İKON GELDİ */}
+                <div className="shrink-0" title="Editörün Seçimi">
+                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-500 drop-shadow-sm">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                   </svg>
+                </div>
+                <span className="truncate">{kitap.title}</span>
+              </h3>
+              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest pl-6"> 
+                @{kitap.username}
+              </p>
+            </div>
+
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// --- KATEGORİ SATIRI (GÜNCELLENDİ: EMOJİ YERİNE SAHTESİ YAPILAMAYAN SVG İKON) ---
 function CategoryRow({ title, books, isFeatured = false }) {
   const scrollRef = useRef(null);
   
@@ -270,22 +295,10 @@ function CategoryRow({ title, books, isFeatured = false }) {
         )}
       </div>
 
-      {/* SCROLL BUTONLARI */}
-      <button 
-        onClick={() => scroll('left')} 
-        className="absolute left-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex"
-      >
-        ←
-      </button>
-      <button 
-        onClick={() => scroll('right')} 
-        className="absolute right-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex"
-      >
-        →
-      </button>
+      <button onClick={() => scroll('left')} className="absolute left-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">←</button>
+      <button onClick={() => scroll('right')} className="absolute right-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">→</button>
 
-      {/* KİTAPLAR */}
-      <div ref={scrollRef} className="flex gap-5 overflow-x-auto scrollbar-hide snap-x py-2">
+      <div ref={scrollRef} className="flex gap-5 overflow-x-auto scrollbar-hide snap-x py-2 px-1">
         {books.map(kitap => (
           <Link 
             key={kitap.id} 
@@ -302,21 +315,31 @@ function CategoryRow({ title, books, isFeatured = false }) {
               ) : (
                 <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />
               )}
+              
+              {/* Trend Etiketi */}
               {isFeatured && (
-                <div className="absolute top-2 right-2 bg-orange-600 text-[8px] font-black text-white px-2 py-1 rounded-full uppercase">
+                <div className="absolute top-2 right-2 bg-orange-600 text-[8px] font-black text-white px-2 py-1 rounded-full uppercase shadow-lg">
                   Trend
                 </div>
               )}
-              {/* ETKİLEŞİM SKORU */}
-              {kitap.interactionScore > 0 && (
-                <div className="absolute bottom-2 left-2 bg-black/80 text-white text-[9px] font-black px-2 py-1 rounded-full">
-                  🔥 {kitap.interactionScore}
+            </div>
+            
+            {/* BAŞLIK ALANI: SVG İKON KULLANIYORUZ (Taklit Edilemez) */}
+            <h3 className="flex items-center gap-1.5 font-bold text-[13px] dark:text-white mb-0.5 group-hover/card:text-red-600 transition-colors">
+              
+              {/* SADECE EDİTÖRÜN SEÇİMİ İSE BU SVG GÖRÜNÜR */}
+              {kitap.is_editors_choice && (
+                <div className="shrink-0" title="Editörün Seçimi">
+                   {/* Bu bir SVG çizimidir, kullanıcı klavyeyle bunu yazamaz */}
+                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-yellow-500 drop-shadow-sm">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                   </svg>
                 </div>
               )}
-            </div>
-            <h3 className="font-bold text-[13px] dark:text-white line-clamp-1 mb-0.5 group-hover/card:text-red-600 transition-colors">
-              {kitap.title}
+              
+              <span className="truncate line-clamp-1">{kitap.title}</span>
             </h3>
+            
             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest opacity-80">
               @{kitap.username}
             </p>
@@ -327,9 +350,10 @@ function CategoryRow({ title, books, isFeatured = false }) {
   );
 }
 
-// ANA SAYFA
+// --- 5. ANA SAYFA (HOME) ---
 export default function Home() {
   const [featuredBooks, setFeaturedBooks] = useState([]);
+  const [editorsChoiceBooks, setEditorsChoiceBooks] = useState([]); // YENİ STATE
   const [booksByCategory, setBooksByCategory] = useState({});
   const [loading, setLoading] = useState(true);
   const [continueReading, setContinueReading] = useState([]);
@@ -350,7 +374,15 @@ export default function Home() {
         setContinueReading(history || []);
       }
 
-      // SON 10 GÜN ETKİLEŞİM HESAPLAMA
+      // YENİ: EDİTÖRÜN SEÇİMİ (VERİ ÇEKME)
+      const { data: editorsPicks } = await supabase
+        .from('books')
+        .select('*')
+        .eq('is_editors_choice', true)
+        .limit(10);
+      setEditorsChoiceBooks(editorsPicks || []);
+
+      // SON 10 GÜN ETKİLEŞİM HESAPLAMA (SIRALAMA İÇİN HALA LAZIM)
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
       
@@ -361,7 +393,7 @@ export default function Home() {
       const { data: chapters } = await supabase.from('chapters').select('book_id, views').gte('created_at', tenDaysAgo.toISOString());
 
       if (allBooks) {
-        // HER KİTAP İÇİN SKOR HESAPLA
+        // HER KİTAP İÇİN SKOR HESAPLA (Arka planda çalışıyor)
         const scored = allBooks.map(b => {
           const recentViews = chapters?.filter(c => c.book_id === b.id).reduce((s, c) => s + (c.views || 0), 0) || 0;
           const recentVotes = votes?.filter(v => v.book_id === b.id).length || 0;
@@ -406,6 +438,9 @@ export default function Home() {
         
         {/* DUYURU PANELİ */}
         <DuyuruPaneli />
+
+        {/* YENİ: EDİTÖRÜN SEÇİMİ BÖLÜMÜ */}
+        <EditorsChoiceSection books={editorsChoiceBooks} />
 
         {/* OKUMAYA DEVAM ET CAROUSEL */}
         <ContinueReadingCarousel books={continueReading} />

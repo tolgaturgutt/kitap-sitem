@@ -9,12 +9,26 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const [newComment, setNewComment] = useState('');
   const [user, setUser] = useState(null);
   const [isSending, setIsSending] = useState(false);
-  const [reportingId, setReportingId] = useState(null); // Hangi yorum şikayet ediliyor?
+  
+  // --- YENİ: ADMİN STATE'İ ---
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     async function load() {
       const { data: { user: u } } = await supabase.auth.getUser();
       setUser(u);
+      
+      // --- YENİ: ADMİN KONTROLÜ ---
+      if (u) {
+        const { data: adminData } = await supabase
+          .from('announcement_admins')
+          .select('*')
+          .eq('user_email', u.email)
+          .single();
+        if (adminData) setIsAdmin(true);
+      }
+      // ----------------------------
+
       fetchComments();
     }
     load();
@@ -107,7 +121,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 
     if (error) toast.error("Şikayet edilemedi.");
     else toast.success("Şikayetiniz yönetime iletildi. Teşekkürler.");
-    setReportingId(null);
   }
 
   // --- YORUM SİLME FONKSİYONU ---
@@ -117,6 +130,8 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     if (!error) {
       setComments(prev => prev.filter(c => c.id !== commentId));
       toast.success("Yorum silindi.");
+    } else {
+      toast.error("Silinemedi: " + error.message);
     }
   }
 
@@ -159,16 +174,15 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
                   @{c.profiles?.username || c.username || "Anonim"}
                 </p>
                 
-                {/* İŞLEM MENÜSÜ (Sadece giriş yapmışsa görünür) */}
+                {/* İŞLEM MENÜSÜ (GÜNCELLENDİ: Adminse Herkesinkini Silebilir) */}
                 {user && (
                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                    {/* Kendi Yorumuysa SİL */}
-                    {user.id === c.user_id && (
-                       <button onClick={() => handleDelete(c.id)} className="text-[10px] text-red-500 hover:underline font-bold uppercase">Sil</button>
-                    )}
-                    {/* Başkasının Yorumuysa ŞİKAYET ET */}
-                    {user.id !== c.user_id && (
-                       <button onClick={() => handleReport(c.id, c.content)} className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase">Raporla</button>
+                    {/* Kural: Kendi Yorumuysa VEYA Adminse -> SİL BUTONU */}
+                    {(user.id === c.user_id || isAdmin) ? (
+                       <button onClick={() => handleDelete(c.id)} className="text-[10px] text-red-500 hover:underline font-bold uppercase">Sil 🗑️</button>
+                    ) : (
+                       // Değilse ŞİKAYET ET BUTONU
+                       <button onClick={() => handleReport(c.id, c.content)} className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase">Raporla 🚩</button>
                     )}
                   </div>
                 )}
