@@ -72,18 +72,25 @@ export default function BolumDuzenle({ params }) {
     setUpdating(true);
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('chapters')
         .update({ 
           title: formData.title, 
           content: formData.content,
-          updated_at: new Date() 
+          updated_at: new Date() // Sütunu eklediysen kalsın, yoksa sil
         })
-        .eq('id', ids.bolumId);
+        .eq('id', ids.bolumId)
+        .select(); // <--- BU ÇOK ÖNEMLİ: Güncellenen veriyi geri iste
 
       if (error) throw error;
 
-      toast.success("Bölüm güncellendi! ✅");
+      // Eğer data boşsa, veritabanı işlemi yaptı ama hiçbir satıra dokunmadı demektir
+      if (!data || data.length === 0) {
+        toast.error("İşlem başarısız! Yetkiniz yok veya bölüm silinmiş.");
+        return;
+      }
+
+      toast.success("Bölüm gerçekten güncellendi! ✅");
       setTimeout(() => {
         router.push(`/kitap/${ids.kitapId}/bolum/${ids.bolumId}`);
         router.refresh();
