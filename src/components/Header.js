@@ -37,9 +37,32 @@ export default function Header() {
       <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
         
         {/* LOGO */}
-        <Link href="/" className="text-2xl font-black tracking-tighter">
-          <span className="text-black dark:text-white">Yazio</span>
-          <span className="text-red-600">.</span>
+       <Link href="/" className="flex items-center gap-3 shrink-0 group">
+          {/* LOGO KUTUSU */}
+          <div className="relative w-16 h-16 flex items-center justify-center">
+              
+              {/* GÜNDÜZ LOGOSU: mt-4 ile aşağıya, tam hizaya indirdik */}
+              <img 
+                src="/logo-gunduz.png" 
+                alt="Logo" 
+                className="w-full h-full object-contain dark:hidden mt-3" 
+              />
+              
+              {/* GECE LOGOSU: Bu zaten ortada duruyordu, ellemeyelim */}
+              <img 
+                src="/logo-gece.png" 
+                alt="Logo" 
+                className="w-full h-full object-contain hidden dark:block" 
+              />
+          </div>
+          
+          {/* YAZI KISMI */}
+          <div className="text-3xl font-black tracking-tight leading-none flex flex-col justify-center">
+            <div className="flex items-center">
+              <span className="text-black dark:text-white">Kitap</span>
+              <span className="text-red-600">Lab</span>
+            </div>
+          </div>
         </Link>
 
         {/* SAĞ TARAF (MENÜ) */}

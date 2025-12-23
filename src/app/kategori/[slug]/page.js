@@ -89,13 +89,16 @@ export default function KategoriSayfasi() {
   const endIndex = startIndex + BOOKS_PER_PAGE;
   const currentBooks = filteredBooks.slice(startIndex, endIndex);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p className="text-5xl font-black opacity-10 animate-pulse italic">YAZIO</p>
+if (loading) return (
+    <div className="py-40 flex justify-center items-center animate-pulse">
+      <div className="text-5xl font-black tracking-tighter">
+        {/* Solukluk bitti: Simsiyah ve Tam Beyaz */}
+        <span className="text-black dark:text-white">Kitap</span>
+        {/* Şeffaflık bitti: Tam Kırmızı */}
+        <span className="text-red-600">Lab</span>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div className="min-h-screen py-16 px-6 md:px-16 bg-[#fafafa] dark:bg-black">

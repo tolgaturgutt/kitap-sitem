@@ -117,7 +117,16 @@ export default function ProfilSayfasi() {
     if (!error) { setFollowedAuthors(followedAuthors.filter(a => a.followed_username !== target)); toast.success("Bırakıldı"); }
   }
 
-  if (loading) return <div className="py-40 text-center font-black opacity-10 text-4xl italic animate-pulse">YAZIO</div>;
+  if (loading) return (
+    <div className="py-40 flex justify-center items-center animate-pulse">
+      <div className="text-5xl font-black tracking-tighter">
+        {/* Solukluk bitti: Simsiyah ve Tam Beyaz */}
+        <span className="text-black dark:text-white">Kitap</span>
+        {/* Şeffaflık bitti: Tam Kırmızı */}
+        <span className="text-red-600">Lab</span>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen py-10 md:py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black transition-colors">

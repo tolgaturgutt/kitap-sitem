@@ -287,11 +287,11 @@ function CategoryRow({ title, books, isFeatured = false }) {
         </h2>
         {!isFeatured && (
           <Link 
-            href={`/kategori/${title.toLowerCase()}`} 
-            className="text-[10px] font-black uppercase text-gray-400 hover:text-red-600 tracking-widest transition-all"
-          >
-            Tümünü Gör
-          </Link>
+  href={`/kategori/${title.toLowerCase().replace(/\s+/g, '-')}`} 
+  className="text-[10px] font-black uppercase text-gray-400 hover:text-red-600 tracking-widest transition-all"
+>
+  Tümünü Gör
+</Link>
         )}
       </div>
 
@@ -423,13 +423,16 @@ export default function Home() {
     fetchData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="py-20 text-center font-black tracking-widest opacity-20 animate-pulse text-5xl italic">
-        YAZIO
+  if (loading) return (
+    <div className="py-40 flex justify-center items-center animate-pulse">
+      <div className="text-5xl font-black tracking-tighter">
+        {/* Solukluk bitti: Simsiyah ve Tam Beyaz */}
+        <span className="text-black dark:text-white">Kitap</span>
+        {/* Şeffaflık bitti: Tam Kırmızı */}
+        <span className="text-red-600">Lab</span>
       </div>
-    );
-  }
+    </div>
+  );
 
   return (
     <div className="min-h-screen py-16 px-6 md:px-16 bg-[#fafafa] dark:bg-black">

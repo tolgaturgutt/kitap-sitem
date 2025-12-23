@@ -118,7 +118,16 @@ export default function YazarProfili() {
     }
   }
 
-  if (loading) return <div className="py-40 text-center font-black opacity-10 text-4xl italic animate-pulse">YAZIO</div>;
+  if (loading) return (
+    <div className="py-40 flex justify-center items-center animate-pulse">
+      <div className="text-5xl font-black tracking-tighter">
+        {/* Solukluk bitti: Simsiyah ve Tam Beyaz */}
+        <span className="text-black dark:text-white">Kitap</span>
+        {/* Şeffaflık bitti: Tam Kırmızı */}
+        <span className="text-red-600">Lab</span>
+      </div>
+    </div>
+  );
   if (!author) return <div className="py-40 text-center font-black">Yazar bulunamadı.</div>;
 
   return (
