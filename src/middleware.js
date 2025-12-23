@@ -4,13 +4,13 @@ export function middleware(request) {
   const { pathname } = request.nextUrl;
   const isMaintenanceMode = true;
 
-  // ŞİFREYİ BURADAN DEĞİŞTİR (Dokunulmadı)
+  // ŞİFREYİ BURADAN DEĞİŞTİR (Kimsenin tahmin edemeyeceği bir şey yap)
   const GIZLI_ANAHTAR = "kitaplab_x99_erisim"; 
   
   const hasAccessQuery = request.nextUrl.searchParams.get('access') === GIZLI_ANAHTAR;
   const hasAccessCookie = request.cookies.get('admin_access')?.value === GIZLI_ANAHTAR;
 
-  // Eğer şifreli linkle girmişse veya çerezi varsa geçiş ver (Dokunulmadı)
+  // Eğer şifreli linkle girmişse veya çerezi varsa geçiş ver
   if (hasAccessQuery || hasAccessCookie) {
     const response = NextResponse.next();
     
@@ -28,8 +28,7 @@ export function middleware(request) {
       pathname.startsWith('/_next') || 
       pathname.includes('/api/') ||
       pathname.includes('.') || 
-      pathname === '/yakinda' ||
-      pathname === '/icon.png'; // İkonu burada da sağlama aldık
+      pathname === '/yakinda';
 
     if (isAsset) return NextResponse.next();
 
@@ -40,6 +39,5 @@ export function middleware(request) {
 }
 
 export const config = {
-  // Buraya icon.png dosyasını da ekledik ki middleware bu dosyayı hiç durdurmasın
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|icon.png).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
 };
