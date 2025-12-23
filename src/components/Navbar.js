@@ -126,8 +126,32 @@ export default function Navbar() {
   return (
     <nav className="w-full border-b sticky top-0 z-[100] backdrop-blur-md bg-white/80 dark:bg-black/90 border-gray-100 dark:border-gray-800 transition-all h-20">
       <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between gap-8">
-        <Link href="/" className="text-3xl font-extrabold tracking-tighter shrink-0 italic">
-          Yazio<span className="text-red-600">.</span>
+        <Link href="/" className="flex items-center gap-3 shrink-0 group">
+          {/* LOGO KUTUSU */}
+          <div className="relative w-16 h-16 flex items-center justify-center">
+              
+              {/* GÜNDÜZ LOGOSU: mt-4 ile aşağıya, tam hizaya indirdik */}
+              <img 
+                src="/logo-gunduz.png" 
+                alt="Logo" 
+                className="w-full h-full object-contain dark:hidden mt-3" 
+              />
+              
+              {/* GECE LOGOSU: Bu zaten ortada duruyordu, ellemeyelim */}
+              <img 
+                src="/logo-gece.png" 
+                alt="Logo" 
+                className="w-full h-full object-contain hidden dark:block" 
+              />
+          </div>
+          
+          {/* YAZI KISMI */}
+          <div className="text-3xl font-black tracking-tight leading-none flex flex-col justify-center">
+            <div className="flex items-center">
+              <span className="text-black dark:text-white">Kitap</span>
+              <span className="text-red-600">Lab</span>
+            </div>
+          </div>
         </Link>
 
         {/* ARAMA BARI */}
