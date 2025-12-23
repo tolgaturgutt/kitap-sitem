@@ -7,11 +7,12 @@ import toast, { Toaster } from 'react-hot-toast';
 
 const KATEGORILER = ["Macera", "Bilim Kurgu", "Korku", "Romantik", "Dram", "Fantastik", "Polisiye"];
 
-// --- 1. DUYURU CAROUSEL BİLEŞENİ (AYNEN KORUNDU) ---
+// --- DUYURU SİSTEMİ (MODAL + CAROUSEL BİRLEŞİK) ---
 function DuyuruPaneli() {
   const [duyurular, setDuyurular] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedDuyuru, setSelectedDuyuru] = useState(null);
 
   useEffect(() => {
     async function getDuyurular() {
@@ -20,7 +21,6 @@ function DuyuruPaneli() {
         .select('*')
         .eq('is_active', true)
         .order('priority', { ascending: false })
-        .order('created_at', { ascending: false })
         .limit(10);
       
       setDuyurular(data || []);
@@ -29,106 +29,176 @@ function DuyuruPaneli() {
     getDuyurular();
   }, []);
 
-  const nextSlide = () => {
-    setCurrentIndex((prev) => (prev + 1) % duyurular.length);
-  };
-
-  const prevSlide = () => {
-    setCurrentIndex((prev) => (prev - 1 + duyurular.length) % duyurular.length);
-  };
-
   useEffect(() => {
     if (duyurular.length <= 1) return;
-    const interval = setInterval(nextSlide, 6000);
+    const interval = setInterval(() => {
+      setActiveIndex((prev) => (prev + 1) % duyurular.length);
+    }, 6000);
     return () => clearInterval(interval);
   }, [duyurular.length]);
 
-  if (loading) return (
-    <div className="mb-12 h-[400px] w-full rounded-[2.5rem] bg-gray-100 dark:bg-white/5 animate-pulse flex items-center justify-center">
-      <span className="font-black opacity-10 text-xl tracking-widest uppercase">Yükleniyor...</span>
-    </div>
-  );
+  const getTypeLabel = (type) => {
+    const map = {
+      'mujdede': '🎉 MÜJDE',
+      'yenilik': '🚀 YENİLİK',
+      'uyari': '⚠️ UYARI',
+      'bilgi': 'ℹ️ BİLGİ'
+    };
+    return map[type] || map.bilgi;
+  };
 
-  if (duyurular.length === 0) return null;
-
-  const currentDuyuru = duyurular[currentIndex];
+  if (loading || duyurular.length === 0) return null;
 
   return (
-    <div className="mb-16 relative group select-none">
-      <div className="relative overflow-hidden rounded-[2.5rem] shadow-2xl transition-all duration-500 bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gray-50 dark:bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+    <>
+      {/* MODAL */}
+      {selectedDuyuru && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={() => setSelectedDuyuru(null)}>
+          <div 
+            className="bg-white dark:bg-[#080808] w-full max-w-5xl h-fit max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col md:flex-row"
+            onClick={(e) => e.stopPropagation()}
+          >
+            
+            {/* Kapatma Butonu */}
+            <button 
+              onClick={() => setSelectedDuyuru(null)} 
+              className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md"
+            >
+              ✕
+            </button>
 
-        <div className="flex flex-col md:flex-row items-center p-8 md:p-12 gap-8 md:gap-12 min-h-[400px]">
-          {currentDuyuru.image_url && (
-            <div className="shrink-0 relative group-hover:scale-[1.02] transition-transform duration-700 z-10">
-              <div className="relative w-[180px] md:w-[240px] aspect-[2/3] rounded-xl overflow-hidden shadow-2xl border border-gray-200 dark:border-white/10 bg-gray-100 dark:bg-gray-800">
+            {/* GÖRSEL BÖLÜMÜ: Orijinal boyutta gösterir */}
+            {selectedDuyuru.image_url && selectedDuyuru.display_type !== 'none' && (
+              <div className="shrink-0 flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2">
                 <img 
-                  src={currentDuyuru.image_url} 
-                  alt={currentDuyuru.title}
-                  className="w-full h-full object-cover"
+                  src={selectedDuyuru.image_url} 
+                  className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-[600px] w-auto" 
+                  alt="" 
                 />
               </div>
-            </div>
-          )}
+            )}
 
-          <div className={`flex-1 z-10 text-center md:text-left ${!currentDuyuru.image_url ? 'md:px-12' : ''}`}>
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mb-6">
-              <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                currentDuyuru.type === 'warning' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                currentDuyuru.type === 'success' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                currentDuyuru.type === 'feature' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' :
-                'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-              }`}>
-                {currentDuyuru.type === 'warning' ? '⚠️ DİKKAT' :
-                 currentDuyuru.type === 'success' ? '🎉 YENİLİK' :
-                 currentDuyuru.type === 'feature' ? '✨ ÖZELLİK' :
-                 '📢 DUYURU'}
+            {/* METİN BÖLÜMÜ */}
+            <div className="p-10 md:p-16 overflow-y-auto flex-1 flex flex-col justify-center">
+              <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
+                {getTypeLabel(selectedDuyuru.type)}
               </span>
-              
-              {currentDuyuru.priority === 3 && (
-                <span className="px-3 py-1.5 bg-red-600 text-white rounded-full text-[10px] font-black uppercase tracking-widest animate-pulse shadow-lg shadow-red-600/30">
-                  🔥 ACİL
-                </span>
-              )}
-            </div>
-
-            <h2 
-              className="text-3xl md:text-5xl font-black mb-6 tracking-tight leading-[1.1] transition-colors drop-shadow-sm"
-              style={{ color: currentDuyuru.title_color || 'inherit' }} 
-            >
-              {currentDuyuru.title}
-            </h2>
-
-            <p className="text-lg md:text-xl leading-relaxed font-medium max-w-2xl text-gray-600 dark:text-gray-300 transition-colors">
-              {currentDuyuru.content}
-            </p>
-
-            <div className="mt-8 flex items-center justify-center md:justify-start gap-2 opacity-40">
-              <span className="w-8 h-[2px] bg-black dark:bg-white rounded-full" />
-              <p className="text-xs font-bold uppercase tracking-widest text-gray-900 dark:text-white">
-                {new Date(currentDuyuru.created_at).toLocaleDateString('tr-TR', {
-                  day: 'numeric',
-                  month: 'long',
-                  year: 'numeric'
-                })}
+              <h2 
+                className="text-4xl md:text-6xl font-black mb-8 leading-tight tracking-tighter dark:text-white" 
+                style={{ color: selectedDuyuru.text_color || '#000000' }}
+              >
+                {selectedDuyuru.title}
+              </h2>
+              <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-wrap mb-8">
+                {selectedDuyuru.content}
               </p>
+              
+              {/* YÖNLENDİRME BUTONU */}
+              {selectedDuyuru.action_link && selectedDuyuru.action_text && (
+                <Link 
+                  href={selectedDuyuru.action_link}
+                  className="inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-lg px-8 py-4 rounded-2xl uppercase tracking-wider transition-all shadow-2xl hover:shadow-red-600/50 w-fit"
+                >
+                  {selectedDuyuru.action_text} →
+                </Link>
+              )}
             </div>
           </div>
         </div>
-      </div>
-
-      {duyurular.length > 1 && (
-        <>
-          <button onClick={prevSlide} className="absolute left-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 dark:bg-black/80 hover:bg-white dark:hover:bg-black border border-gray-200 dark:border-white/10 rounded-full flex items-center justify-center shadow-xl text-black dark:text-white transition-all hover:scale-110 active:scale-95 group-hover:opacity-100 opacity-0">←</button>
-          <button onClick={nextSlide} className="absolute right-4 top-1/2 -translate-y-1/2 z-20 w-12 h-12 bg-white/80 dark:bg-black/80 hover:bg-white dark:hover:bg-black border border-gray-200 dark:border-white/10 rounded-full flex items-center justify-center shadow-xl text-black dark:text-white transition-all hover:scale-110 active:scale-95 group-hover:opacity-100 opacity-0">→</button>
-          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 z-20">
-            {duyurular.map((_, idx) => (
-              <button key={idx} onClick={() => setCurrentIndex(idx)} className={`h-1.5 rounded-full transition-all duration-300 shadow-lg ${idx === currentIndex ? 'w-8 bg-red-600 opacity-100' : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`} />
-            ))}
-          </div>
-        </>
       )}
-    </div>
+
+      {/* CAROUSEL */}
+      <div className="mb-20">
+        <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 mb-6 italic flex items-center gap-2">
+          📢 Duyurular
+        </h2>
+        
+        <div className="relative group">
+          {/* SOL OK */}
+          {duyurular.length > 1 && (
+            <button 
+              onClick={() => setActiveIndex((prev) => (prev - 1 + duyurular.length) % duyurular.length)}
+              className="absolute left-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full flex items-center justify-center shadow-2xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+            >
+              ←
+            </button>
+          )}
+
+          {/* SAĞ OK */}
+          {duyurular.length > 1 && (
+            <button 
+              onClick={() => setActiveIndex((prev) => (prev + 1) % duyurular.length)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-12 h-12 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full flex items-center justify-center shadow-2xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+            >
+              →
+            </button>
+          )}
+
+          <div className="overflow-hidden">
+            <div 
+              className="flex transition-transform duration-500 ease-out"
+              style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+            >
+              {duyurular.map((duyuru, idx) => (
+                <div key={idx} className="w-full flex-shrink-0">
+                  <button 
+                    onClick={() => setSelectedDuyuru(duyuru)}
+                    className="w-full group/card block bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-6 md:p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5 cursor-pointer text-left"
+                  >
+                    <div className="flex items-center gap-6">
+                      
+                      {duyuru.image_url && duyuru.display_type !== 'none' && (
+                        <div className="shrink-0 rounded-2xl overflow-hidden border dark:border-white/5 shadow-lg h-28 md:h-36 w-auto">
+                          <img 
+                            src={duyuru.image_url} 
+                            className="h-full w-auto object-cover group-hover/card:scale-110 transition-transform duration-500" 
+                            alt="" 
+                          />
+                        </div>
+                      )}
+
+                      <div className="flex-1">
+                        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">
+                          {getTypeLabel(duyuru.type)}
+                        </p>
+                        <h3 
+                          className="text-2xl md:text-3xl font-black dark:text-white mb-2 group-hover/card:text-red-600 transition-colors uppercase tracking-tight line-clamp-2"
+                          style={{ color: duyuru.text_color || '#000000' }}
+                        >
+                          {duyuru.title}
+                        </h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                          {duyuru.content}
+                        </p>
+                        <div className="inline-flex items-center gap-2 text-[9px] font-black uppercase bg-black dark:bg-white text-white dark:text-black px-6 py-3 rounded-full tracking-tighter mt-4">
+                          Detayları Gör →
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {duyurular.length > 1 && (
+            <div className="flex justify-center gap-2 mt-6">
+              {duyurular.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveIndex(idx)}
+                  className={`h-2 rounded-full transition-all ${
+                    idx === activeIndex 
+                      ? 'w-8 bg-red-600' 
+                      : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 

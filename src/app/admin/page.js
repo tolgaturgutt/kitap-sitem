@@ -51,10 +51,19 @@ export default function AdminPanel() {
   const [duyurular, setDuyurular] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [duyuruForm, setDuyuruForm] = useState({
-    title: '', content: '', type: 'info', priority: 1, is_active: true, 
-    image_url: null, text_color: '#000000'
-  });
+  // ✅ YENİLENEN DUYURU STATE
+const [duyuruForm, setDuyuruForm] = useState({
+  title: '', 
+  content: '', 
+  type: 'bilgi', // İngilizce 'info' yerine Türkçe
+  priority: 1, 
+  is_active: true, 
+  image_url: null, 
+  text_color: '#000000',
+  display_type: 'wide', // Geniş veya kitap formatı seçimi
+  action_link: '',     // ✅ YENİ
+  action_text: ''      // ✅ YENİ
+});
 
   // KULLANICI STATE
   const [users, setUsers] = useState([]);
@@ -293,11 +302,14 @@ export default function AdminPanel() {
       setDuyuruForm({ 
         title: '', 
         content: '', 
-        type: 'info', 
+        type: 'bilgi', 
         priority: 1, 
         is_active: true, 
         image_url: null, 
-        text_color: '#000000' 
+        text_color: '#000000', 
+        action_link: '',     // ✅ BURAYI DA EKLE
+  action_text: ''      // ✅ BURAYI DA EKLE
+
       });
       loadData();
     }
@@ -377,11 +389,14 @@ export default function AdminPanel() {
                         setDuyuruForm({ 
                           title: '', 
                           content: '', 
-                          type: 'info', 
+                          type: 'bilgi', 
                           priority: 1, 
                           is_active: true, 
                           image_url: null, 
-                          text_color: '#000000' 
+                          text_color: '#000000' ,
+                          action_link: '',     // ✅ BURAYI DA EKLE
+  action_text: ''      // ✅ BURAYI DA EKLE
+
                         });
                       }} 
                       className="text-xs text-red-500 font-bold uppercase"
@@ -390,101 +405,123 @@ export default function AdminPanel() {
                     </button>
                   )}
                 </div>
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  <div className="relative group">
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      onChange={handleImageUpload} 
-                      ref={fileInputRef} 
-                      className="hidden" 
-                      id="duyuru-gorsel" 
-                      disabled={uploadingImage} 
-                    />
-                    <label 
-                      htmlFor="duyuru-gorsel" 
-                      className={`aspect-video w-full rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer overflow-hidden ${
-                        duyuruForm.image_url 
-                          ? 'border-red-500' 
-                          : 'border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-black/20'
-                      }`}
-                    >
-                      {duyuruForm.image_url ? (
-                        <img src={duyuruForm.image_url} className="w-full h-full object-cover" alt="" />
-                      ) : (
-                        <div className="text-gray-400 flex flex-col items-center">
-                          <Icons.Photo />
-                          <span className="text-[10px] font-black mt-2 uppercase">Görsel</span>
-                        </div>
-                      )}
-                    </label>
-                  </div>
-                  
-                  <input 
-                    type="text" 
-                    placeholder="Başlık" 
-                    required 
-                    value={duyuruForm.title} 
-                    onChange={e => setDuyuruForm({...duyuruForm, title: e.target.value})} 
-                    style={{ color: duyuruForm.text_color }}
-                    className="w-full p-4 bg-gray-50 dark:bg-black/20 border-2 border-transparent focus:border-red-500 rounded-xl font-bold outline-none" 
-                  />
-                  
-                  <textarea 
-                    placeholder="İçerik..." 
-                    required 
-                    rows={3} 
-                    value={duyuruForm.content} 
-                    onChange={e => setDuyuruForm({...duyuruForm, content: e.target.value})} 
-                    className="w-full p-4 bg-gray-50 dark:bg-black/20 border-2 border-transparent focus:border-red-500 rounded-xl dark:text-white outline-none" 
-                  />
-                  
-                  <div>
-                    <label className="block text-[10px] font-black uppercase mb-2 text-gray-400">
-                      Başlık Rengi
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input 
-                        type="color" 
-                        value={duyuruForm.text_color} 
-                        onChange={e => setDuyuruForm({...duyuruForm, text_color: e.target.value})} 
-                        className="w-12 h-12 rounded-xl cursor-pointer border-2 border-gray-200 dark:border-white/10 p-1 bg-transparent" 
-                      />
-                      <span className="text-xs font-bold dark:text-gray-400 uppercase">
-                        {duyuruForm.text_color}
-                      </span>
-                    </div>
-                  </div>
+                
+<form onSubmit={handleSubmit} className="space-y-6">
+  <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-2">
+      <label className="text-[10px] font-black uppercase text-gray-400">Görünüm Formatı</label>
+     <select 
+  value={duyuruForm.display_type} 
+  onChange={e => setDuyuruForm({...duyuruForm, display_type: e.target.value})} 
+  className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none"
+>
+  <option value="none">🚫 Görsel Yok</option>
+  <option value="book">📚 Kitap Boyutu (Dikey)</option>
+  <option value="wide">🖼️ Geniş Boyut (Yatay)</option>
+</select>
+    </div>
+    <div className="space-y-2">
+      <label className="text-[10px] font-black uppercase text-gray-400">Kategori</label>
+      <select 
+        value={duyuruForm.type} 
+        onChange={e => setDuyuruForm({...duyuruForm, type: e.target.value})} 
+        className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold border-none outline-none"
+      >
+        <option value="bilgi">ℹ️ Bilgi</option>
+        <option value="mujdede">🎉 Müjde</option>
+        <option value="uyari">⚠️ Uyarı</option>
+        <option value="yenilik">🚀 Yenilik</option>
+      </select>
+    </div>
+  </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <select 
-                      value={duyuruForm.type} 
-                      onChange={e => setDuyuruForm({...duyuruForm, type: e.target.value})} 
-                      className="p-3 bg-gray-50 dark:bg-black/20 rounded-xl dark:text-white font-bold"
-                    >
-                      <option value="info">Bilgi</option>
-                      <option value="warning">Uyarı</option>
-                      <option value="success">Başarı</option>
-                      <option value="feature">Özellik</option>
-                    </select>
-                    <select 
-                      value={duyuruForm.priority} 
-                      onChange={e => setDuyuruForm({...duyuruForm, priority: parseInt(e.target.value)})} 
-                      className="p-3 bg-gray-50 dark:bg-black/20 rounded-xl dark:text-white font-bold"
-                    >
-                      <option value="1">Normal</option>
-                      <option value="2">Yüksek</option>
-                      <option value="3">ACİL</option>
-                    </select>
-                  </div>
-                  <button 
-                    type="submit" 
-                    disabled={uploadingImage} 
-                    className="w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg transition-all disabled:opacity-50"
-                  >
-                    {editingId ? 'Güncelle' : 'Yayınla'}
-                  </button>
-                </form>
+ <div className="relative group">
+  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="duyuru-gorsel" />
+  <label 
+    htmlFor="duyuru-gorsel" 
+    className="w-full max-w-md mx-auto rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all duration-500 overflow-hidden min-h-[200px] border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-black/20"
+  >
+    {duyuruForm.image_url ? (
+      <img src={duyuruForm.image_url} className="max-h-[400px] w-auto object-contain" alt="" />
+    ) : (
+      <div className="text-center p-6 text-gray-400">
+         <Icons.Photo />
+         <span className="text-[10px] font-black mt-2 uppercase block">Görsel Seç</span>
+      </div>
+    )}
+  </label>
+  {duyuruForm.image_url && (
+    <button 
+      type="button"
+      onClick={() => setDuyuruForm({...duyuruForm, image_url: null})}
+      className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-all"
+    >
+      ✕
+    </button>
+  )}
+</div>
+  
+  <input 
+    type="text" 
+    placeholder="Duyuru Başlığı" 
+    required 
+    value={duyuruForm.title} 
+    onChange={e => setDuyuruForm({...duyuruForm, title: e.target.value})} 
+    className="w-full p-5 bg-gray-50 dark:bg-black/20 rounded-2xl font-black text-xl dark:text-white outline-none" 
+  />
+  <div className="space-y-2">
+  <label className="text-[10px] font-black uppercase text-gray-400">Başlık Rengi</label>
+  <div className="flex gap-3 items-center">
+    <input 
+      type="color" 
+      value={duyuruForm.text_color} 
+      onChange={e => setDuyuruForm({...duyuruForm, text_color: e.target.value})} 
+      className="w-16 h-12 rounded-xl cursor-pointer border-2 border-gray-300 dark:border-gray-700" 
+    />
+    <input 
+      type="text" 
+      value={duyuruForm.text_color} 
+      onChange={e => setDuyuruForm({...duyuruForm, text_color: e.target.value})} 
+      className="flex-1 p-3 bg-gray-50 dark:bg-black/20 rounded-xl dark:text-white font-mono text-sm outline-none" 
+      placeholder="#000000"
+    />
+  </div>
+</div>
+  
+  <textarea 
+    placeholder="Tüm detayları buraya yaz..." 
+    required 
+    rows={4} 
+    value={duyuruForm.content} 
+    onChange={e => setDuyuruForm({...duyuruForm, content: e.target.value})} 
+    className="w-full p-5 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-medium outline-none" 
+  />
+  <div className="space-y-2">
+  <label className="text-[10px] font-black uppercase text-gray-400">Buton Yazısı (Opsiyonel)</label>
+  <input 
+    type="text" 
+    placeholder="Örn: Kitabı İncele, Hemen Katıl, Detayları Gör" 
+    value={duyuruForm.action_text} 
+    onChange={e => setDuyuruForm({...duyuruForm, action_text: e.target.value})} 
+    className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none" 
+  />
+</div>
+
+<div className="space-y-2">
+  <label className="text-[10px] font-black uppercase text-gray-400">Buton Linki (Opsiyonel)</label>
+  <input 
+    type="text" 
+    placeholder="Örn: /kitap/123 veya https://..." 
+    value={duyuruForm.action_link} 
+    onChange={e => setDuyuruForm({...duyuruForm, action_link: e.target.value})} 
+    className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-mono text-sm outline-none" 
+  />
+</div>
+
+  <button type="submit" className="w-full py-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-2xl transition-all">
+    {editingId ? 'GÜNCELLE' : 'YAYINLA'}
+  </button>
+</form>
               </div>
 
               <div className="lg:col-span-3 space-y-4 max-h-[600px] overflow-y-auto pr-2 border-l dark:border-white/5 lg:pl-8">
