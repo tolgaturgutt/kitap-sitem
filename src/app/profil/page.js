@@ -10,7 +10,7 @@ export default function ProfilSayfasi() {
   const [myBooks, setMyBooks] = useState([]);
   const [followedBooks, setFollowedBooks] = useState([]);
   const [followedAuthors, setFollowedAuthors] = useState([]);
-  const [myFollowers, setMyFollowers] = useState([]); 
+  const [myFollowers, setMyFollowers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [totalViews, setTotalViews] = useState(0);
   const [activeTab, setActiveTab] = useState('eserler');
@@ -27,7 +27,7 @@ export default function ProfilSayfasi() {
 
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', activeUser.id).single();
       const currentUsername = activeUser.user_metadata?.username || activeUser.email.split('@')[0];
-      
+
       setProfileData({
         full_name: profile?.full_name || activeUser.user_metadata?.full_name || '',
         username: profile?.username || currentUsername,
@@ -42,7 +42,7 @@ export default function ProfilSayfasi() {
         .select('*')
         .eq('user_email', activeUser.email)
         .single();
-      
+
       if (adminData) {
         setIsAdmin(true);
       }
@@ -72,7 +72,7 @@ export default function ProfilSayfasi() {
           .from('books')
           .select('*')
           .in('id', bookIds);
-        
+
         setFollowedBooks(followedBooksData || []);
       } else {
         setFollowedBooks([]);
@@ -88,8 +88,28 @@ export default function ProfilSayfasi() {
   }, []);
 
   async function handleSaveProfile() {
-    const { error } = await supabase.from('profiles').upsert({ id: user.id, full_name: profileData.full_name, username: profileData.username, bio: profileData.bio, updated_at: new Date() });
+    const { error } = await supabase.from('profiles').upsert({
+      id: user.id, full_name: profileData.full_name, username: profileData.username,
+      instagram: profileData.instagram,
+      avatar_url: profileData.avatar_url,
+      bio: profileData.bio, updated_at: new Date()
+    });
     if (!error) { toast.success("Güncellendi"); setIsEditing(false); }
+  }
+  async function handleRemovePhoto() {
+    if (!confirm("Profil fotoğrafını kaldırmak istediğine emin misin?")) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ avatar_url: null })
+      .eq('id', user.id);
+
+    if (!error) {
+      setProfileData(prev => ({ ...prev, avatar_url: '' }));
+      toast.success("Profil fotoğrafı kaldırıldı");
+    } else {
+      toast.error("Hata oluştu");
+    }
   }
 
   async function handleUnfollow(target) {
@@ -118,23 +138,23 @@ export default function ProfilSayfasi() {
                   <h1 className="text-3xl font-black uppercase dark:text-white leading-none">
                     {profileData.full_name || "İsim Soyisim"}
                   </h1>
-                  
-                 
+
+
                 </div>
 
                 <p className="text-xs text-gray-400 mb-4 uppercase font-bold tracking-wide">@{profileData.username}</p>
-                
+
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                  <button 
-                    onClick={() => setIsEditing(true)} 
+                  <button
+                    onClick={() => setIsEditing(true)}
                     className="px-6 py-2 bg-gray-100 dark:bg-white/5 rounded-full text-[10px] font-black uppercase text-gray-500 hover:text-red-600 transition-all"
                   >
                     Profili Düzenle
                   </button>
-                  
+
                   {isAdmin && (
-                    <Link 
-                      href="/admin" 
+                    <Link
+                      href="/admin"
                       className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase hover:opacity-80 transition-all flex items-center gap-2"
                     >
                       🛡️ Admin Paneli
@@ -145,22 +165,22 @@ export default function ProfilSayfasi() {
             ) : (
               // --- DÜZENLEME MODU (RESİM YÜKLEME EKLENDİ) ---
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 animate-in fade-in zoom-in-95 duration-200">
-                
+
                 {/* 1. RESİM YÜKLEME ALANI */}
                 <div className="md:col-span-2 mb-2 p-4 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 text-center relative group cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                  <input 
-                    type="file" 
+                  <input
+                    type="file"
                     accept="image/*"
                     onChange={async (e) => {
                       const file = e.target.files[0];
                       if (!file) return;
-                      
+
                       const toastId = toast.loading('Fotoğraf yükleniyor...');
-                      
+
                       const fileExt = file.name.split('.').pop();
                       const fileName = `${user.id}-${Math.random()}.${fileExt}`;
                       const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
-                      
+
                       if (!uploadError) {
                         const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
                         setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
@@ -174,39 +194,51 @@ export default function ProfilSayfasi() {
                   <span className="text-2xl mb-1 block">📸</span>
                   <p className="text-[10px] font-black uppercase text-gray-400 group-hover:text-red-600">Profil Fotoğrafını Değiştir</p>
                 </div>
+                {/* Mevcut resim yükleme alanı (div) bittikten hemen sonra, inputlardan önce şuraya yapıştır: */}
 
-                <input 
-                  value={profileData.full_name} 
-                  onChange={e => setProfileData({...profileData, full_name: e.target.value})} 
-                  className="p-4 bg-white dark:bg-black border dark:border-white/10 rounded-2xl text-xs outline-none focus:border-red-600" 
-                  placeholder="Ad Soyad" 
+                {profileData.avatar_url && (
+                  <div className="md:col-span-2 flex justify-center -mt-2 mb-2">
+                    <button
+                      onClick={handleRemovePhoto}
+                      className="text-[10px] text-red-600 font-black uppercase hover:underline"
+                    >
+                      Mevcut Fotoğrafı Kaldır
+                    </button>
+                  </div>
+                )}
+
+                <input
+                  value={profileData.full_name}
+                  onChange={e => setProfileData({ ...profileData, full_name: e.target.value })}
+                  className="p-4 bg-white dark:bg-black border dark:border-white/10 rounded-2xl text-xs outline-none focus:border-red-600"
+                  placeholder="Ad Soyad"
                 />
-                
-                <input 
-                  value={profileData.username} 
-                  onChange={e => setProfileData({...profileData, username: e.target.value})} 
-                  className="p-4 bg-white dark:bg-black border dark:border-white/10 rounded-2xl text-xs outline-none focus:border-red-600" 
-                  placeholder="Kullanıcı Adı" 
+
+                <input
+                  value={profileData.username}
+                  onChange={e => setProfileData({ ...profileData, username: e.target.value })}
+                  className="p-4 bg-white dark:bg-black border dark:border-white/10 rounded-2xl text-xs outline-none focus:border-red-600"
+                  placeholder="Kullanıcı Adı"
                 />
-                
+
                 {/* 2. INSTAGRAM INPUTU */}
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">@</span>
-                  <input 
-                    value={profileData.instagram} 
-                    onChange={e => setProfileData({...profileData, instagram: e.target.value})} 
-                    className="w-full p-4 pl-8 bg-white dark:bg-black border dark:border-white/10 rounded-2xl text-xs outline-none focus:border-red-600" 
-                    placeholder="Instagram Kullanıcı Adı" 
+                  <input
+                    value={profileData.instagram}
+                    onChange={e => setProfileData({ ...profileData, instagram: e.target.value })}
+                    className="w-full p-4 pl-8 bg-white dark:bg-black border dark:border-white/10 rounded-2xl text-xs outline-none focus:border-red-600"
+                    placeholder="Instagram Kullanıcı Adı"
                   />
                 </div>
 
-                <textarea 
-                  value={profileData.bio} 
-                  onChange={e => setProfileData({...profileData, bio: e.target.value})} 
-                  className="md:col-span-2 p-4 bg-white dark:bg-black border dark:border-white/10 rounded-2xl text-xs outline-none focus:border-red-600 min-h-[80px]" 
-                  placeholder="Biyografi (Kendini tanıt...)" 
+                <textarea
+                  value={profileData.bio}
+                  onChange={e => setProfileData({ ...profileData, bio: e.target.value })}
+                  className="md:col-span-2 p-4 bg-white dark:bg-black border dark:border-white/10 rounded-2xl text-xs outline-none focus:border-red-600 min-h-[80px]"
+                  placeholder="Biyografi (Kendini tanıt...)"
                 />
-                
+
                 <div className="md:col-span-2 flex gap-2">
                   <button onClick={() => setIsEditing(false)} className="flex-1 py-3 bg-gray-100 dark:bg-white/5 text-gray-500 rounded-xl text-[10px] font-black uppercase hover:bg-gray-200">İptal</button>
                   <button onClick={handleSaveProfile} className="flex-[2] py-3 bg-red-600 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-red-600/30 hover:bg-red-700">Değişiklikleri Kaydet</button>
@@ -239,13 +271,13 @@ export default function ProfilSayfasi() {
 
               {/* INSTAGRAM BUTONU BURAYA EKLENDİ */}
               {profileData.instagram && (
-                <a 
-                  href={`https://instagram.com/${profileData.instagram}`} 
-                  target="_blank" 
+                <a
+                  href={`https://instagram.com/${profileData.instagram}`}
+                  target="_blank"
                   className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-105 hover:shadow-red-500/40 transition-all"
                 >
                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
                   </svg>
                   <span>@{profileData.instagram}</span>
                 </a>
@@ -267,7 +299,7 @@ export default function ProfilSayfasi() {
       </div>
 
       {/* FLOATING ACTION BUTTON - KİTAP EKLE */}
-      <Link 
+      <Link
         href="/kitap-ekle"
         className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-br from-red-600 to-orange-600 text-white rounded-full shadow-2xl shadow-red-600/50 flex items-center justify-center font-black text-2xl hover:scale-110 active:scale-95 transition-all z-50 group"
       >
