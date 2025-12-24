@@ -4,11 +4,12 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
-import Username from '@/components/Username'; // Yolunu kendi klasör yapına göre ayarla
+import Username from '@/components/Username';
 
 export default function ProfilSayfasi() {
   const [user, setUser] = useState(null);
   const [myBooks, setMyBooks] = useState([]);
+  const [myDrafts, setMyDrafts] = useState([]);
   const [followedBooks, setFollowedBooks] = useState([]);
   const [followedAuthors, setFollowedAuthors] = useState([]);
   const [myFollowers, setMyFollowers] = useState([]);
@@ -18,7 +19,7 @@ export default function ProfilSayfasi() {
   const [modalType, setModalType] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '' });
-  const [isAdmin, setIsAdmin] = useState(false); // Yeni: Admin state'i eklendi
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     async function getData() {
@@ -37,20 +38,41 @@ export default function ProfilSayfasi() {
         instagram: profile?.instagram || ''
       });
 
-      // ADMIN KONTROLÜ EKLENDİ
+      // ADMIN KONTROLÜ
       const { data: adminData } = await supabase
         .from('announcement_admins')
         .select('*')
         .eq('user_email', activeUser.email)
         .single();
 
-      if (adminData) {
-        setIsAdmin(true);
-      }
+      if (adminData) setIsAdmin(true);
 
-      // 1. Eserlerimi getir
-      const { data: written } = await supabase.from('books').select('*').eq('user_email', activeUser.email).order('created_at', { ascending: false });
-      setMyBooks(written || []);
+      // 🔥 1. ESERLERİMİ GETİR (VE AYIKLA)
+      const { data: written } = await supabase
+        .from('books')
+        .select('*')
+        .eq('user_email', activeUser.email)
+        .order('created_at', { ascending: false });
+
+      if (written) {
+        console.log('📚 ESERLER DEBUG:');
+        console.log('Tüm kitaplar:', written);
+        console.log('is_draft değerleri:', written.map(b => ({ 
+          title: b.title, 
+          is_draft: b.is_draft, 
+          type: typeof b.is_draft 
+        })));
+
+        // ✅ DOĞRU FİLTRELEME
+        const publishedBooks = written.filter(b => !b.is_draft);
+        const draftBooks = written.filter(b => b.is_draft === true);
+        
+        setMyBooks(publishedBooks);
+        setMyDrafts(draftBooks);
+        
+        console.log('✅ Eserler:', publishedBooks);
+        console.log('✅ Taslaklar:', draftBooks);
+      }
 
       // 2. OKUNMA SAYISINI HESAPLA
       if (written && written.length > 0) {
@@ -60,25 +82,29 @@ export default function ProfilSayfasi() {
         setTotalViews(total);
       }
 
-      // 3. TAKİP EDİLEN KİTAPLARI GETİR
+      // 🔥 3. TAKİP EDİLEN KİTAPLARI GETİR (SADECE YAYINLANMIŞ OLANLAR)
       const { data: followsList } = await supabase
         .from('follows')
         .select('book_id')
         .eq('user_email', activeUser.email);
 
-      const bookIds = followsList?.map(f => f.book_id).filter(Boolean) || [];
+      const followBookIds = followsList?.map(f => f.book_id).filter(Boolean) || [];
 
-      if (bookIds.length > 0) {
-        const { data: followedBooksData } = await supabase
+      if (followBookIds.length > 0) {
+        // ✅ Kütüphaneden kitapları çek - SADECE YAYINLANMIŞ OLANLARI
+        const { data: rawLibrary } = await supabase
           .from('books')
           .select('*')
-          .in('id', bookIds);
+          .in('id', followBookIds)
+          .eq('is_draft', false); // 🔥 BURASI ÖNEMLİ: Sadece yayınlanmış kitapları çek
 
-        setFollowedBooks(followedBooksData || []);
+        console.log('📚 Kütüphane kitapları:', rawLibrary);
+        setFollowedBooks(rawLibrary || []);
       } else {
         setFollowedBooks([]);
       }
 
+      // Takipçi / Takip verileri
       const { data: following } = await supabase.from('author_follows').select('followed_username').eq('follower_email', activeUser.email);
       const { data: followers } = await supabase.from('author_follows').select('follower_username').eq('followed_username', currentUsername);
       setFollowedAuthors(following || []);
@@ -90,13 +116,20 @@ export default function ProfilSayfasi() {
 
   async function handleSaveProfile() {
     const { error } = await supabase.from('profiles').upsert({
-      id: user.id, full_name: profileData.full_name, username: profileData.username,
+      id: user.id, 
+      full_name: profileData.full_name, 
+      username: profileData.username,
       instagram: profileData.instagram,
       avatar_url: profileData.avatar_url,
-      bio: profileData.bio, updated_at: new Date()
+      bio: profileData.bio, 
+      updated_at: new Date()
     });
-    if (!error) { toast.success("Güncellendi"); setIsEditing(false); }
+    if (!error) { 
+      toast.success("Güncellendi"); 
+      setIsEditing(false); 
+    }
   }
+
   async function handleRemovePhoto() {
     if (!confirm("Profil fotoğrafını kaldırmak istediğine emin misin?")) return;
 
@@ -114,16 +147,22 @@ export default function ProfilSayfasi() {
   }
 
   async function handleUnfollow(target) {
-    const { error } = await supabase.from('author_follows').delete().eq('follower_email', user.email).eq('followed_username', target);
-    if (!error) { setFollowedAuthors(followedAuthors.filter(a => a.followed_username !== target)); toast.success("Bırakıldı"); }
+    const { error } = await supabase
+      .from('author_follows')
+      .delete()
+      .eq('follower_email', user.email)
+      .eq('followed_username', target);
+    
+    if (!error) { 
+      setFollowedAuthors(followedAuthors.filter(a => a.followed_username !== target)); 
+      toast.success("Bırakıldı"); 
+    }
   }
 
   if (loading) return (
     <div className="py-40 flex justify-center items-center animate-pulse">
       <div className="text-5xl font-black tracking-tighter">
-        {/* Solukluk bitti: Simsiyah ve Tam Beyaz */}
         <span className="text-black dark:text-white">Kitap</span>
-        {/* Şeffaflık bitti: Tam Kırmızı */}
         <span className="text-red-600">Lab</span>
       </div>
     </div>
@@ -148,8 +187,6 @@ export default function ProfilSayfasi() {
                   <h1 className="text-3xl font-black uppercase dark:text-white leading-none">
                     {profileData.full_name || "İsim Soyisim"}
                   </h1>
-
-
                 </div>
 
                 <div className="flex justify-center md:justify-start mb-4">
@@ -179,10 +216,7 @@ export default function ProfilSayfasi() {
                 </div>
               </>
             ) : (
-              // --- DÜZENLEME MODU (RESİM YÜKLEME EKLENDİ) ---
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 animate-in fade-in zoom-in-95 duration-200">
-
-                {/* 1. RESİM YÜKLEME ALANI */}
                 <div className="md:col-span-2 mb-2 p-4 bg-gray-50 dark:bg-white/5 rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 text-center relative group cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
                   <input
                     type="file"
@@ -210,7 +244,6 @@ export default function ProfilSayfasi() {
                   <span className="text-2xl mb-1 block">📸</span>
                   <p className="text-[10px] font-black uppercase text-gray-400 group-hover:text-red-600">Profil Fotoğrafını Değiştir</p>
                 </div>
-                {/* Mevcut resim yükleme alanı (div) bittikten hemen sonra, inputlardan önce şuraya yapıştır: */}
 
                 {profileData.avatar_url && (
                   <div className="md:col-span-2 flex justify-center -mt-2 mb-2">
@@ -237,7 +270,6 @@ export default function ProfilSayfasi() {
                   placeholder="Kullanıcı Adı"
                 />
 
-                {/* 2. INSTAGRAM INPUTU */}
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">@</span>
                   <input
@@ -262,7 +294,6 @@ export default function ProfilSayfasi() {
               </div>
             )}
 
-            {/* İSTATİSTİKLER (SİLMEMEN GEREKEN KISIM BURAYA DAHİL EDİLDİ) */}
             <div className="flex justify-center md:justify-start gap-12 border-t dark:border-white/5 pt-8 mt-6">
               <div className="text-center"><p className="text-2xl font-black">{myBooks.length}</p><p className="text-[9px] uppercase opacity-40">Eser</p></div>
               <div className="text-center"><p className="text-2xl font-black text-red-600">{totalViews}</p><p className="text-[9px] uppercase opacity-40">Okunma</p></div>
@@ -273,7 +304,7 @@ export default function ProfilSayfasi() {
         </header>
 
         <div className="flex gap-8 mb-8 border-b dark:border-white/5 pb-4">
-          {['eserler', 'kütüphane', 'hakkında'].map(t => (
+          {['eserler', 'kütüphane', 'taslaklar', 'hakkında'].map(t => (
             <button key={t} onClick={() => setActiveTab(t)} className={`text-[10px] font-black uppercase tracking-widest ${activeTab === t ? 'text-red-600' : 'text-gray-400'}`}>{t}</button>
           ))}
         </div>
@@ -285,7 +316,6 @@ export default function ProfilSayfasi() {
                 {profileData.bio || "Biyografi henüz eklenmemiş."}
               </p>
 
-              {/* INSTAGRAM BUTONU BURAYA EKLENDİ */}
               {profileData.instagram && (
                 <a
                   href={`https://instagram.com/${profileData.instagram}`}
@@ -301,7 +331,10 @@ export default function ProfilSayfasi() {
             </div>
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-              {(activeTab === 'eserler' ? myBooks : followedBooks).map(k => (
+              {(activeTab === 'taslaklar' 
+                ? myDrafts 
+                : (activeTab === 'eserler' ? myBooks : followedBooks)
+              ).map(k => (
                 <Link key={k.id} href={`/kitap/${k.id}`} className="group">
                   <div className="aspect-[2/3] rounded-[2rem] overflow-hidden border dark:border-white/5 mb-3 shadow-md group-hover:-translate-y-1 transition-all">
                     {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200 dark:bg-white/10" />}
@@ -314,7 +347,6 @@ export default function ProfilSayfasi() {
         </div>
       </div>
 
-      {/* FLOATING ACTION BUTTON - KİTAP EKLE */}
       <Link
         href="/kitap-ekle"
         className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-br from-red-600 to-orange-600 text-white rounded-full shadow-2xl shadow-red-600/50 flex items-center justify-center font-black text-2xl hover:scale-110 active:scale-95 transition-all z-50 group"

@@ -553,14 +553,17 @@ export default function Home() {
       }
 
     // TÜM KİTAPLARI VE ADMİN LİSTESİNİ ÇEK
-      // ✅ Not: chapters(id) ile bölüm sayısını kontrol ediyoruz
       let { data: allBooks } = await supabase.from('books').select('*, chapters(id)');
       const { data: adminList } = await supabase.from('announcement_admins').select('user_email');
       const adminEmails = adminList?.map(a => a.user_email) || [];
 
-      // ✅ FİLTRELEME: Sadece içinde bölüm olan kitapları al
+      // ✅ FİLTRELEME: Buraya '!book.is_draft' ekleyince "EN ÇOK OKUNANLAR" listesinden taslaklar silinir.
       if (allBooks) {
-        allBooks = allBooks.filter(book => book.chapters && book.chapters.length > 0);
+        allBooks = allBooks.filter(book => 
+          book.chapters && 
+          book.chapters.length > 0 && 
+          !book.is_draft // <--- İŞTE EN ÇOK OKUNANLARI DÜZELTEN KOD BU
+        );
 
         // Admin Kontrolü
         allBooks.forEach(book => {

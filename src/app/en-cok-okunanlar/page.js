@@ -23,12 +23,21 @@ export default function Top100Page() {
 
   async function fetchBooks(currentOffset) {
     try {
-      // 1. Kitapları Okunma Sayısına (views) göre çoktan aza çek
+      // 1. Kitapları Okunma Sayısına (views) göre çek (Bölüm bilgisiyle beraber)
       let { data: newBooks } = await supabase
         .from('books')
-        .select('*')
-        .order('views', { ascending: false }) // En çok okunan en üstte
+        .select('*, chapters(id)') // ✅ chapters(id) ekledik
+        .order('views', { ascending: false })
         .range(currentOffset, currentOffset + LIMIT_PER_PAGE - 1);
+
+      // ✅ HAYALET FİLTRESİ: Taslakları ve Bölümsüzleri listeden at
+      if (newBooks) {
+        newBooks = newBooks.filter(book => 
+          book.chapters && 
+          book.chapters.length > 0 && 
+          !book.is_draft
+        );
+      }
 
       if (!newBooks || newBooks.length === 0) {
         setHasMore(false);

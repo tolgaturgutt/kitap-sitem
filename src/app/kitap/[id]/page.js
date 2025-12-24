@@ -101,7 +101,24 @@ export default function KitapDetay({ params }) {
     fetchAll();
   }, [id]);
 
-  // KİTAP DURUMU DEĞİŞTİR
+  // --- 1. TASLAK MODU DEĞİŞTİRME ---
+  async function handleToggleDraft() {
+    const isAuthor = data.user && data.book.user_email === data.user.email;
+    if (!isAuthor && !data.isAdmin) return;
+
+    const newStatus = !data.book.is_draft; // Tersi yap
+    const { error } = await supabase.from('books').update({ is_draft: newStatus }).eq('id', id);
+
+    if (error) {
+      toast.error("Hata: " + error.message);
+    } else {
+      setData(prev => ({ ...prev, book: { ...prev.book, is_draft: newStatus } }));
+      if (newStatus) toast.success("Kitap TASLAĞA alındı. Artık sadece sen görebilirsin. 🔒");
+      else toast.success("Kitap YAYINA alındı. Herkes görebilir. 🌍");
+    }
+  }
+
+  // --- 2. TAMAMLANDI / DEVAM EDİYOR ---
   async function handleToggleCompleted() {
     const isAuthor = data.user && data.book.user_email === data.user.email;
     if (!isAuthor && !data.isAdmin) return;
@@ -113,8 +130,8 @@ export default function KitapDetay({ params }) {
       toast.error("Hata: " + error.message);
     } else {
       setData(prev => ({ ...prev, book: { ...prev.book, is_completed: newStatus } }));
-      if (newStatus) toast.success("Tebrikler! Kitap 'TAMAMLANDI' olarak işaretlendi. 🎉");
-      else toast.success("Kitap tekrar 'DEVAM EDİYOR' durumuna alındı.");
+      if (newStatus) toast.success("Kitap 'TAMAMLANDI' olarak işaretlendi. 🎉");
+      else toast.success("Kitap tekrar 'DEVAM EDİYOR' moduna geçti.");
     }
   }
 
@@ -154,8 +171,8 @@ export default function KitapDetay({ params }) {
       toast.error("İşlem başarısız: " + error.message);
     } else {
       setData(prev => ({ ...prev, book: { ...prev.book, is_editors_choice: newStatus } }));
-      if (newStatus) toast.success("👑 Kitap 'Editörün Seçimi' listesine eklendi!");
-      else toast.success("Kitap listeden çıkarıldı.");
+      if (newStatus) toast.success("👑 Editörün Seçimi listesine eklendi!");
+      else toast.success("Listeden çıkarıldı.");
     }
   }
 
@@ -217,22 +234,27 @@ export default function KitapDetay({ params }) {
   );
   if (!data.book) return <div className="py-20 text-center font-black">ESER BULUNAMADI</div>;
 
-  // YETKİ KONTROLLERİ
   const isAuthor = data.user && data.book.user_email === data.user.email;
   const canEdit = isAuthor || data.isAdmin;
 
-  // ✅ 🚧 GÜVENLİK KİLİDİ: BÖLÜM YOKSA VE YETKİLİ DEĞİLSE GÖSTERME
-  // Yazar kendi boş kitabını görebilir (bölüm eklemek için), ama başkası göremez.
-  if (data.chapters.length === 0 && !canEdit) {
+  // ✅ GÜVENLİK KİLİDİ: 
+  // 1. Hiç bölüm yoksa GİZLE.
+  // 2. VEYA kitap 'Taslak' (is_draft) ise GİZLE.
+  // (Tabii ki yazar ve admin hariç)
+  const isHidden = (data.chapters.length === 0 || data.book.is_draft) && !canEdit;
+
+  if (isHidden) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#fafafa] dark:bg-[#080808] px-4">
         <div className="text-center">
           <span className="text-6xl block mb-6 animate-bounce">🚧</span>
           <h1 className="text-3xl font-black dark:text-white uppercase tracking-tighter mb-3">
-            Henüz Yayında Değil
+            {data.book.is_draft ? 'Yazar Düzenlemesinde' : 'Henüz Yayında Değil'}
           </h1>
           <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mb-8">
-            Yazar bu esere henüz bölüm eklemedi.
+            {data.book.is_draft 
+              ? 'Bu eser şu an taslak aşamasında. Yazar yayına aldığında görebilirsin.' 
+              : 'Yazar bu esere henüz bölüm eklemedi.'}
           </p>
           <Link 
             href="/" 
@@ -283,6 +305,13 @@ export default function KitapDetay({ params }) {
                   ✅ TAMAMLANDI
                 </span>
               )}
+
+              {/* TASLAK ROZETİ (Sadece Yazara Özel) */}
+              {data.book.is_draft && (
+                <span className="inline-block text-[10px] font-black uppercase text-gray-600 bg-gray-100 dark:bg-white/10 px-4 py-1.5 rounded-full tracking-[0.2em] border border-gray-400/20">
+                  🔒 TASLAK MODU
+                </span>
+              )}
             </div>
             
             <h1 className="text-5xl md:text-6xl font-black mb-6 tracking-tighter dark:text-white leading-tight uppercase">
@@ -305,6 +334,7 @@ export default function KitapDetay({ params }) {
               </div>
             </Link>
             
+            {/* İSTATİSTİKLER */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-10 bg-white dark:bg-white/5 p-8 rounded-[2rem] border dark:border-white/5">
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{data.stats.views}</p>
@@ -372,6 +402,18 @@ export default function KitapDetay({ params }) {
                
                {canEdit && (
                  <>
+                   {/* ✅ TASLAK / YAYINLA BUTONU */}
+                   <button
+                     onClick={handleToggleDraft}
+                     className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${
+                       data.book.is_draft
+                         ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-600/30 animate-pulse'
+                         : 'bg-gray-800 text-gray-400 border border-white/10 hover:bg-gray-700 hover:text-white'
+                     }`}
+                   >
+                     {data.book.is_draft ? '🌍 YAYINLA (CANLIYA AL)' : '🔒 TASLAĞA ÇEK (GİZLE)'}
+                   </button>
+
                    <button
                      onClick={handleToggleCompleted}
                      className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${
@@ -380,7 +422,7 @@ export default function KitapDetay({ params }) {
                          : 'bg-green-600 text-white hover:bg-green-700 shadow-green-600/30'
                      }`}
                    >
-                     {data.book.is_completed ? '✍️ DEVAM EDİYOR YAP' : '🏁 FİNAL YAP (TAMAMLA)'}
+                     {data.book.is_completed ? '✍️ DEVAM EDİYOR YAP' : '🏁 FİNAL YAP'}
                    </button>
 
                    <Link 
