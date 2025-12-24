@@ -5,10 +5,13 @@ import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
+import Username from '@/components/Username';
+import { useRouter } from 'next/navigation';
 
 export default function YazarProfili() {
-  
+  const router = useRouter(); 
   const { username } = useParams();
+  
   const [currentUser, setCurrentUser] = useState(null);
   const [author, setAuthor] = useState(null);
   const [books, setBooks] = useState([]);
@@ -18,28 +21,49 @@ export default function YazarProfili() {
   const [activeTab, setActiveTab] = useState('eserler');
   const [modalType, setModalType] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false); // YENİ: Admin yetkisi
+  const [isAdmin, setIsAdmin] = useState(false); 
 
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
-      setCurrentUser(session?.user || null);
-      // --- 1. ADMİN KONTROLÜ (YENİ) ---
-      if (session?.user) {
+      const user = session?.user || null;
+      setCurrentUser(user);
+
+      // --- 1. GİREN KİŞİ ADMİN Mİ? ---
+      if (user) {
         const { data: adminData } = await supabase
           .from('announcement_admins')
           .select('*')
-          .eq('user_email', session.user.email)
+          .eq('user_email', user.email)
           .single();
         if (adminData) setIsAdmin(true);
       }
-      // -------------------------------
 
+      // --- 2. PROFİLİ ÇEK ---
       const { data: p } = await supabase.from('profiles').select('*').eq('username', username).single();
+      
       if (p) {
+        // EĞER PROFİL BENİMSE, DİREKT ÖZEL PROFİL SAYFAMA GİT
+        if (user && user.id === p.id) {
+          router.replace('/profil'); 
+          return; 
+        }
+
         setAuthor(p);
         
-        const { data: b } = await supabase.from('books').select('*').eq('user_email', p.email || p.id).order('created_at', { ascending: false });
+        // 3. KİTAPLARI ÇEK (VE BÖLÜMLERİ KONTROL ET)
+        // ✅ chapters(id) ekledik
+        let { data: b } = await supabase
+          .from('books')
+          .select('*, chapters(id)') 
+          .eq('user_email', p.email || p.id)
+          .order('created_at', { ascending: false });
+        
+        // ✅ FİLTRELEME: Sadece bölümü olanları göster
+        if (b) {
+          b = b.filter(book => book.chapters && book.chapters.length > 0);
+        }
+
         const { data: f } = await supabase.from('author_follows').select('*').eq('followed_username', username);
         const { data: fing } = await supabase.from('author_follows').select('*').eq('follower_username', username);
         
@@ -47,20 +71,19 @@ export default function YazarProfili() {
         setFollowers(f || []);
         setFollowing(fing || []);
 
-        if (session?.user) {
-          const isFollowingThisUser = f?.some(item => item.follower_email === session.user.email);
+        if (user) {
+          const isFollowingThisUser = f?.some(item => item.follower_email === user.email);
           setIsFollowing(isFollowingThisUser);
         }
       }
       setLoading(false);
     }
     load();
-  }, [username]);
+  }, [username, router]);
 
   async function handleFollow() {
     if (!currentUser) return toast.error("Önce giriş yapmalısın.");
     
-    // Kullanıcı adını al
     const { data: profile } = await supabase.from('profiles').select('username').eq('id', currentUser.id).single();
     const followerUsername = profile?.username || currentUser.user_metadata?.username || currentUser.email.split('@')[0];
     
@@ -75,7 +98,6 @@ export default function YazarProfili() {
       setFollowers([...followers, { follower_username: followerUsername }]);
       toast.success("Takip edildi 🎉");
       
-      // BİLDİRİM OLUŞTUR
       await supabase.from('notifications').insert({
         recipient_email: author.email,
         actor_username: followerUsername,
@@ -100,7 +122,7 @@ export default function YazarProfili() {
       toast.success("Takip bırakıldı");
     }
   }
-  // --- 2. BANLAMA FONKSİYONU (YENİ) ---
+
   async function handleBan() {
     const action = author.is_banned ? "Yasağı KALDIRMAK" : "Kullanıcıyı BANLAMAK";
     if (!confirm(`Dikkat Admin: ${action} üzeresin. Onaylıyor musun?`)) return;
@@ -121,13 +143,12 @@ export default function YazarProfili() {
   if (loading) return (
     <div className="py-40 flex justify-center items-center animate-pulse">
       <div className="text-5xl font-black tracking-tighter">
-        {/* Solukluk bitti: Simsiyah ve Tam Beyaz */}
         <span className="text-black dark:text-white">Kitap</span>
-        {/* Şeffaflık bitti: Tam Kırmızı */}
         <span className="text-red-600">Lab</span>
       </div>
     </div>
   );
+  
   if (!author) return <div className="py-40 text-center font-black">Yazar bulunamadı.</div>;
 
   return (
@@ -142,10 +163,17 @@ export default function YazarProfili() {
             <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
               <div>
                 <h1 className="text-3xl font-black uppercase dark:text-white tracking-tighter">{author.full_name || author.username}</h1>
-                <p className="text-xs text-gray-400 uppercase italic">@{author.username}</p>
+                
+                <div className="flex justify-center md:justify-start mt-1">
+                  <Username 
+                    username={author.username} 
+                    isAdmin={author.role === 'admin'} 
+                    className="text-xs text-gray-400 uppercase italic" 
+                  />
+                </div>
               </div>
               
-              {currentUser && currentUser.email !== author.email && (
+              {currentUser && currentUser.id !== author.id && (
                 <button 
                   onClick={isFollowing ? handleUnfollow : handleFollow}
                   className={`px-8 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${
@@ -157,7 +185,7 @@ export default function YazarProfili() {
                   {isFollowing ? 'Takibi Bırak' : 'Takip Et ➕'}
                 </button>
               )}
-              {/* --- 3. ADMIN BAN BUTONU (YENİ) --- */}
+
               {isAdmin && (
                 <button 
                   onClick={handleBan}
@@ -196,8 +224,20 @@ export default function YazarProfili() {
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
               {books.map(k => (
                 <Link key={k.id} href={`/kitap/${k.id}`} className="group flex flex-col">
-                  <div className="aspect-[2/3] rounded-[2rem] overflow-hidden border dark:border-white/5 mb-3 shadow-md group-hover:-translate-y-1 transition-all duration-500">
-                    {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center font-black opacity-20 text-[8px]">KAPAK YOK</div>}
+                  {/* KAPAK KISMI - ROZET KALDIRILDI, SADELEŞTİRİLDİ */}
+                  <div className="aspect-[2/3] rounded-[2rem] overflow-hidden border dark:border-white/5 mb-3 shadow-md group-hover:-translate-y-1 transition-all duration-500 relative">
+                    {k.cover_url ? (
+                      <img src={k.cover_url} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center font-black opacity-20 text-[8px]">KAPAK YOK</div>
+                    )}
+                    
+                    {/* Yazar sayfasında da FİNAL rozetini gösterelim mi? İstersen bu bloğu silebilirsin */}
+                    {k.is_completed && (
+                       <div className="absolute top-2 right-2 bg-green-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg z-10 border border-white/20">
+                         FİNAL
+                       </div>
+                    )}
                   </div>
                   <h3 className="text-[10px] font-black text-center uppercase truncate italic">{k.title}</h3>
                 </Link>

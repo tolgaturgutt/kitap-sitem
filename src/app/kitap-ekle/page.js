@@ -5,7 +5,26 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 
-const KATEGORILER = ["Macera", "Bilim Kurgu", "Korku", "Romantik", "Dram", "Fantastik", "Polisiye"];
+const KATEGORILER = [
+  "Aksiyon",
+  "Bilim Kurgu",
+  "Biyografi",
+  "Dram",
+  "Fantastik",
+  "Genç Kurgu",
+  "Gizem/Gerilim",
+  "Hayran Kurgu",
+  "Korku",
+  "Kurgu Olmayan",
+  "Kısa Hikaye",
+  "Macera",
+  "Mizah",
+  "Polisiye",
+  "Romantik",
+  "Senaryo",
+  "Şiir",
+  "Tarihi"
+];
 
 export default function KitapEkle() {
   const router = useRouter();

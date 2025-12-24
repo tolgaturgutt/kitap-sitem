@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
+import Username from '@/components/Username';
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -22,6 +23,9 @@ export default function Navbar() {
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
   const [userProfile, setUserProfile] = useState(null);
+  // Mevcut state'lerin altına ekle
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
@@ -45,6 +49,7 @@ export default function Navbar() {
     const handleClickOutside = (e) => {
       if (searchRef.current && !searchRef.current.contains(e.target)) setShowSearch(false);
       if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false);
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) setShowProfileMenu(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -63,27 +68,46 @@ export default function Navbar() {
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (query.trim().length > 1) {
-        // KİTAPLARI ARA
-        const { data: b } = await supabase
+        // 1. KİTAPLARI ARA (Dolu Olanlar)
+        let { data: b } = await supabase
           .from('books')
-          .select('*')
+          .select('*, chapters(id)') // Bölüm bilgisini de iste
           .ilike('title', `%${query}%`)
-          .limit(5);
+          .limit(10); // Sayıyı arttırdık ki boşları atınca elde kitap kalsın
         
-        // YAZARLARI ARA (username VE full_name'de ara)
+        // SADECE BÖLÜMÜ OLANLARI AL (HAYALET FİLTRESİ)
+        if (b) {
+          b = b.filter(kitap => kitap.chapters && kitap.chapters.length > 0).slice(0, 5);
+        }
+        
+        // 2. YAZARLARI ARA
         const { data: u } = await supabase
           .from('profiles')
           .select('*')
           .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
           .limit(5);
         
+        // 3. (YENİ) KİTAP YAZARLARININ ROLLERİNİ BUL VE EKLE
+        if (b && b.length > 0) {
+            const authorNames = [...new Set(b.map(book => book.username))];
+            const { data: roles } = await supabase
+              .from('profiles')
+              .select('username, role')
+              .in('username', authorNames);
+            
+            // Rol bilgisini kitabın içine gömüyoruz
+            b.forEach(book => {
+                const author = roles?.find(r => r.username === book.username);
+                book.author_role = author?.role; 
+            });
+        }
+
         setSearchResults({ books: b || [], users: u || [] });
         setShowSearch(true);
       } else setShowSearch(false);
     }, 300);
     return () => clearTimeout(timer);
   }, [query]);
-
   async function handleLogout() {
     await supabase.auth.signOut();
     toast.success('Çıkış yapıldı.');
@@ -198,9 +222,16 @@ export default function Navbar() {
                             {b.cover_url && <img src={b.cover_url} className="w-full h-full object-cover" alt="" />}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
-                            <p className="text-[9px] text-gray-400 uppercase">@{b.username}</p>
-                          </div>
+  {/* Kitap Başlığı (Sadece 1 Kere) */}
+  <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
+  
+  {/* Yazar İsmi ve Tik */}
+  <Username
+    username={b.username}
+    isAdmin={b.author_role === 'admin'}
+    className="text-[9px] text-gray-400 uppercase"
+  />
+</div>
                         </Link>
                       ))}
                     </div>
@@ -223,10 +254,17 @@ export default function Navbar() {
                               u.username[0].toUpperCase()
                             )}
                           </div>
-                          <div className="flex-1">
-                            <p className="text-xs font-bold group-hover:text-red-600 transition-colors">@{u.username}</p>
-                            {u.full_name && <p className="text-[9px] text-gray-400">{u.full_name}</p>}
-                          </div>
+                         <div className="flex-1">
+  {/* 1. Satır: Kullanıcı Adı ve Sarı Tik */}
+  <Username
+    username={u.username}
+    isAdmin={u.role === 'admin'}
+    className="text-xs font-bold group-hover:text-red-600 transition-colors"
+  />
+  
+  {/* 2. Satır: Gerçek İsim (Sadece 1 Kere) */}
+  {u.full_name && <p className="text-[9px] text-gray-400">{u.full_name}</p>}
+</div>
                         </Link>
                       ))}
                     </div>
@@ -382,16 +420,84 @@ export default function Navbar() {
                 )}
               </div>
 
-              <Link href="/profil" className="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-xs uppercase hover:scale-110 transition-transform overflow-hidden">
-                {userProfile?.avatar_url && userProfile.avatar_url.includes('http') ? (
-                  <img src={userProfile.avatar_url} className="w-full h-full object-cover" alt="Profil" />
-                ) : (
-                  user.email[0].toUpperCase()
+              {/* --- YENİ PROFİL MENÜSÜ (Dropdown) --- */}
+              <div className="relative" ref={profileMenuRef}>
+                <button 
+                  onClick={() => setShowProfileMenu(!showProfileMenu)}
+                  className="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-xs uppercase hover:scale-110 transition-transform overflow-hidden shadow-lg border-2 border-transparent hover:border-red-400"
+                >
+                  {userProfile?.avatar_url && userProfile.avatar_url.includes('http') ? (
+                    <img src={userProfile.avatar_url} className="w-full h-full object-cover" alt="Profil" />
+                  ) : (
+                    user.email[0].toUpperCase()
+                  )}
+                </button>
+
+                {/* AÇILIR MENÜ KUTUSU */}
+                {showProfileMenu && (
+                  <div className="absolute top-14 right-0 w-60 bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[150] animate-in fade-in slide-in-from-top-2 duration-200">
+                    
+                    {/* Üst Bilgi: İsim Soyisim */}
+                    <div className="px-5 py-4 border-b dark:border-white/5 bg-gray-50 dark:bg-white/5">
+                      <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                        {userProfile?.username || user.email.split('@')[0]}
+                      </p>
+                      <p className="text-[9px] text-gray-500 truncate">{user.email}</p>
+                    </div>
+
+                    <div className="p-2 space-y-1">
+                      {/* 1. SEÇENEK: PROFİL */}
+                      <Link 
+                        href="/profil" 
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
+                      >
+                        <span>👤</span> Profil
+                      </Link>
+
+                      {/* 2. SEÇENEK: AYARLAR */}
+                      <Link 
+                        href="/ayarlar" 
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
+                      >
+                        <span>⚙️</span> Ayarlar
+                      </Link>
+
+                      {/* 3. SEÇENEK: TOPLULUK KURALLARI */}
+                      <Link 
+                        href="/kurallar" 
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
+                      >
+                        <span>📜</span> Topluluk Kuralları
+                      </Link>
+
+                      {/* 4. SEÇENEK: DESTEK VE İLETİŞİM */}
+                      <Link 
+                        href="/iletisim" 
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
+                      >
+                        <span>🛟</span> Destek ve İletişim
+                      </Link>
+
+                      <div className="h-px bg-gray-100 dark:bg-white/5 my-1" />
+
+                      {/* 5. SEÇENEK: ÇIKIŞ YAP */}
+                      <button 
+                        onClick={() => {
+                          setShowProfileMenu(false);
+                          handleLogout();
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-black uppercase text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors text-left"
+                      >
+                        <span>🚪</span> Çıkış Yap
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </Link>
-              <button onClick={handleLogout} className="hidden md:block text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-colors">
-                Çıkış
-              </button>
+              </div>
             </>
           ) : (
             <Link href="/giris" className="bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full text-[10px] font-black uppercase hover:scale-105 transition-transform">

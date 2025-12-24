@@ -40,13 +40,24 @@ export default function BolumDetay({ params }) {
     async function getFullData() {
       if (!bolumId || !id) return;
       try {
-        await supabase.rpc('increment_views', { target_chapter_id: Number(bolumId) });
+        
         const { data: chapter } = await supabase.from('chapters').select('*').eq('id', bolumId).single();
         const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
         const { data: all } = await supabase.from('chapters').select('id, title').eq('book_id', id).order('order_no', { ascending: true });
         
         const { data: { user } } = await supabase.auth.getUser();
+        
+        // EĞER KULLANICI GİRİŞ YAPMIŞSA İÇERİ GİR
         if (user) {
+          
+          // 1. İŞTE YENİ KODUMUZ BURADA:
+          // (Veritabanına soruyoruz: "Bu adam bunu okudu mu?" Okumadıysa 1 arttır.)
+          await supabase.rpc('increment_view_count', {
+            p_chapter_id: Number(bolumId),
+            p_user_id: user.id
+          });
+
+          // 2. Okuma Geçmişini Kaydetme (Bu zaten vardı, elleme)
           await supabase.from('reading_history').upsert({
             user_email: user.email,
             book_id: Number(id),

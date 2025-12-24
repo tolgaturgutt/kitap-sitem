@@ -4,8 +4,29 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
+import Username from '@/components/Username';
 
-const KATEGORILER = ["Macera", "Bilim Kurgu", "Korku", "Romantik", "Dram", "Fantastik", "Polisiye"];
+const KATEGORILER = [
+  "Aksiyon",
+  "Bilim Kurgu",
+  "Biyografi",
+  "Dram",
+  "Fantastik",
+  "Genel",
+  "Genç Kurgu",
+  "Gizem/Gerilim",
+  "Hayran Kurgu",
+  "Korku",
+  "Kurgu Olmayan",
+  "Kısa Hikaye",
+  "Macera",
+  "Mizah",
+  "Polisiye",
+  "Romantik",
+  "Senaryo",
+  "Şiir",
+  "Tarihi"
+];
 
 // --- DUYURU SİSTEMİ (MODAL + CAROUSEL BİRLEŞİK) ---
 function DuyuruPaneli() {
@@ -320,9 +341,9 @@ function EditorsChoiceSection({ books }) {
                 </div>
                 <span className="truncate">{kitap.title}</span>
               </h3>
-              <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest pl-6"> 
-                @{kitap.username}
-              </p>
+              <p className="text-[9px] font-bold uppercase tracking-widest pl-6"> 
+  <Username username={kitap.username} isAdmin={kitap.is_admin} />
+</p>
             </div>
 
           </Link>
@@ -410,8 +431,83 @@ function CategoryRow({ title, books, isFeatured = false }) {
               <span className="truncate line-clamp-1">{kitap.title}</span>
             </h3>
             
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest opacity-80">
-              @{kitap.username}
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">
+  <Username username={kitap.username} isAdmin={kitap.is_admin} />
+</p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+// --- YENİ: EN ÇOK OKUNANLAR SATIRI (SIRALAMA NUMARALI) ---
+function TopReadRow({ books }) {
+  const scrollRef = useRef(null);
+  
+  const scroll = (dir) => {
+    if (scrollRef.current) {
+      const { scrollLeft, clientWidth } = scrollRef.current;
+      scrollRef.current.scrollTo({ 
+        left: scrollLeft + (dir === 'left' ? -(clientWidth * 0.8) : (clientWidth * 0.8)), 
+        behavior: 'smooth' 
+      });
+    }
+  };
+
+  if (!books || books.length === 0) return null;
+
+  return (
+    <div className="mb-14 group relative px-1">
+      <div className="flex items-end justify-between mb-5">
+        <h2 className="text-xl font-black tracking-tighter uppercase dark:text-white flex items-center gap-2">
+          🏆 EN ÇOK OKUNANLAR
+        </h2>
+        <Link 
+          href="/en-cok-okunanlar" 
+          className="text-[10px] font-black uppercase text-gray-400 hover:text-red-600 tracking-widest transition-all"
+        >
+          TOP 100 LİSTESİ →
+        </Link>
+      </div>
+
+      <button onClick={() => scroll('left')} className="absolute left-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">←</button>
+      <button onClick={() => scroll('right')} className="absolute right-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">→</button>
+
+      <div ref={scrollRef} className="flex gap-5 overflow-x-auto scrollbar-hide snap-x py-2 px-1">
+        {books.map((kitap, index) => (
+          <Link 
+            key={kitap.id} 
+            href={`/kitap/${kitap.id}`} 
+            className="flex-none w-36 md:w-44 snap-start group/card relative"
+          >
+            {/* SIRALAMA ROZETİ (#1, #2...) */}
+            <div className="absolute top-0 left-0 z-10 bg-red-600 text-white font-black text-xs px-2.5 py-1.5 rounded-br-xl rounded-tl-xl shadow-lg border-b-2 border-r-2 border-black/20">
+              #{index + 1}
+            </div>
+
+            <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover/card:shadow-2xl group-hover/card:-translate-y-2">
+              {kitap.cover_url ? (
+                <img 
+                  src={kitap.cover_url} 
+                  className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700" 
+                  alt={kitap.title} 
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />
+              )}
+            </div>
+            
+            <h3 className="font-bold text-[13px] dark:text-white mb-0.5 group-hover/card:text-red-600 transition-colors truncate">
+              {kitap.title}
+            </h3>
+            
+            <p className="text-[10px] font-bold uppercase tracking-widest opacity-80">
+              <Username username={kitap.username} isAdmin={kitap.is_admin} />
+            </p>
+            
+            {/* OKUNMA SAYISI */}
+            <p className="text-[9px] text-gray-400 mt-1 font-bold">
+              👁 {kitap.views || 0}
             </p>
           </Link>
         ))}
@@ -419,11 +515,11 @@ function CategoryRow({ title, books, isFeatured = false }) {
     </div>
   );
 }
-
-// --- 5. ANA SAYFA (HOME) ---
+// --- 5. ANA SAYFA (HOME - GÜNCELLENMİŞ HALİ) ---
 export default function Home() {
   const [featuredBooks, setFeaturedBooks] = useState([]);
-  const [editorsChoiceBooks, setEditorsChoiceBooks] = useState([]); // YENİ STATE
+  const [editorsChoiceBooks, setEditorsChoiceBooks] = useState([]); 
+  const [topReadBooks, setTopReadBooks] = useState([]); // ✅ YENİ STATE
   const [booksByCategory, setBooksByCategory] = useState({});
   const [loading, setLoading] = useState(true);
   const [continueReading, setContinueReading] = useState([]);
@@ -432,7 +528,7 @@ export default function Home() {
     async function fetchData() {
       const { data: { user } } = await supabase.auth.getUser();
 
-      // OKUMAYA DEVAM ET (SON 5 KİTAP)
+      // OKUMAYA DEVAM ET
       if (user) {
         const { data: history } = await supabase
           .from('reading_history')
@@ -440,30 +536,55 @@ export default function Home() {
           .eq('user_email', user.email)
           .order('updated_at', { ascending: false })
           .limit(5);
-        
         setContinueReading(history || []);
       }
 
-      // YENİ: EDİTÖRÜN SEÇİMİ (VERİ ÇEKME)
-      const { data: editorsPicks } = await supabase
+      
+     // EDİTÖRÜN SEÇİMİ (Sadece Bölümü Olanlar)
+      let { data: editorsPicks } = await supabase
         .from('books')
-        .select('*')
+        .select('*, chapters(id)') 
         .eq('is_editors_choice', true)
-        .limit(10);
-      setEditorsChoiceBooks(editorsPicks || []);
+        .limit(20); // Filtreye takılan olur diye limiti biraz açtık
+      
+      if (editorsPicks) {
+        // Bölümü olmayanları at ve ilk 10 taneyi al
+        editorsPicks = editorsPicks.filter(b => b.chapters && b.chapters.length > 0).slice(0, 10);
+      }
 
-      // SON 10 GÜN ETKİLEŞİM HESAPLAMA (SIRALAMA İÇİN HALA LAZIM)
+    // TÜM KİTAPLARI VE ADMİN LİSTESİNİ ÇEK
+      // ✅ Not: chapters(id) ile bölüm sayısını kontrol ediyoruz
+      let { data: allBooks } = await supabase.from('books').select('*, chapters(id)');
+      const { data: adminList } = await supabase.from('announcement_admins').select('user_email');
+      const adminEmails = adminList?.map(a => a.user_email) || [];
+
+      // ✅ FİLTRELEME: Sadece içinde bölüm olan kitapları al
+      if (allBooks) {
+        allBooks = allBooks.filter(book => book.chapters && book.chapters.length > 0);
+
+        // Admin Kontrolü
+        allBooks.forEach(book => {
+          book.is_admin = adminEmails.includes(book.user_email);
+        });
+      }
+      if (editorsPicks) {
+        editorsPicks.forEach(book => {
+          book.is_admin = adminEmails.includes(book.user_email);
+        });
+        setEditorsChoiceBooks(editorsPicks);
+      }
+
+      // ETKİLEŞİM VERİLERİ (Son 10 Gün)
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
       
-      const { data: allBooks } = await supabase.from('books').select('*');
       const { data: votes } = await supabase.from('book_votes').select('book_id').gte('created_at', tenDaysAgo.toISOString());
       const { data: comments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString());
       const { data: follows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString());
       const { data: chapters } = await supabase.from('chapters').select('book_id, views').gte('created_at', tenDaysAgo.toISOString());
 
       if (allBooks) {
-        // HER KİTAP İÇİN SKOR HESAPLA (Arka planda çalışıyor)
+        // 1. SKOR HESAPLA
         const scored = allBooks.map(b => {
           const recentViews = chapters?.filter(c => c.book_id === b.id).reduce((s, c) => s + (c.views || 0), 0) || 0;
           const recentVotes = votes?.filter(v => v.book_id === b.id).length || 0;
@@ -474,10 +595,14 @@ export default function Home() {
           return { ...b, interactionScore: score };
         });
 
-        // ÖNE ÇIKANLAR (EN YÜKSEK SKORLAR)
+        // 2. ÖNE ÇIKANLAR (Skora göre)
         setFeaturedBooks(scored.sort((a, b) => b.interactionScore - a.interactionScore).slice(0, 15));
 
-        // KATEGORİLERE GÖRE AYIR (HER KATEGORİDE EN POPÜLER 20)
+        // 3. ✅ YENİ: EN ÇOK OKUNANLAR (Toplam Views'e göre sırala)
+        const mostRead = [...scored].sort((a, b) => (b.views || 0) - (a.views || 0)).slice(0, 20);
+        setTopReadBooks(mostRead);
+
+        // 4. KATEGORİLER
         const grouped = {};
         KATEGORILER.forEach(cat => {
           const categoryBooks = scored.filter(b => b.category === cat);
@@ -496,9 +621,7 @@ export default function Home() {
   if (loading) return (
     <div className="py-40 flex justify-center items-center animate-pulse">
       <div className="text-5xl font-black tracking-tighter">
-        {/* Solukluk bitti: Simsiyah ve Tam Beyaz */}
         <span className="text-black dark:text-white">Kitap</span>
-        {/* Şeffaflık bitti: Tam Kırmızı */}
         <span className="text-red-600">Lab</span>
       </div>
     </div>
@@ -512,11 +635,14 @@ export default function Home() {
         {/* DUYURU PANELİ */}
         <DuyuruPaneli />
 
-        {/* YENİ: EDİTÖRÜN SEÇİMİ BÖLÜMÜ */}
+        {/* EDİTÖRÜN SEÇİMİ */}
         <EditorsChoiceSection books={editorsChoiceBooks} />
 
-        {/* OKUMAYA DEVAM ET CAROUSEL */}
+        {/* OKUMAYA DEVAM ET */}
         <ContinueReadingCarousel books={continueReading} />
+
+        {/* ✅ YENİ EKLENEN KISIM: EN ÇOK OKUNANLAR */}
+        <TopReadRow books={topReadBooks} />
 
         {/* ÖNE ÇIKANLAR */}
         <CategoryRow title="Öne Çıkanlar" books={featuredBooks} isFeatured={true} />

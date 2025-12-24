@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
-
+import Username from '@/components/Username';
 export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -38,7 +38,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   async function fetchComments() {
     let query = supabase
       .from('comments')
-      .select('*, profiles!comments_user_id_fkey(username, avatar_url)')
+      .select('*, profiles!comments_user_id_fkey(username, avatar_url, role)')
       .order('created_at', { ascending: false }); // Ana yorumlar: Yeniden eskiye
 
     if (type === 'book') {
@@ -107,7 +107,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     const { data: insertedData, error } = await supabase
       .from('comments')
       .insert([payload])
-      .select('*, profiles!comments_user_id_fkey(username, avatar_url)')
+      .select('*, profiles!comments_user_id_fkey(username, avatar_url, role)')
       .single();
 
     if (!error && insertedData) { 
@@ -262,6 +262,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 }
 
 // --- KOD TEKRARINI ÖNLEMEK İÇİN KART BİLEŞENİ ---
+// --- KOD TEKRARINI ÖNLEMEK İÇİN KART BİLEŞENİ ---
 function CommentCard({ comment, user, isAdmin, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain }) {
     return (
         <div className={`group relative flex gap-3 ${!isMain ? 'border-l-2 border-gray-100 dark:border-white/5 pl-4' : ''}`}>
@@ -271,9 +272,13 @@ function CommentCard({ comment, user, isAdmin, onReply, isReplying, onDelete, on
             
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
-                    <p className={`${isMain ? 'text-[11px]' : 'text-[10px]'} font-black dark:text-gray-300 mb-1 tracking-wide uppercase`}>
-                        @{comment.profiles?.username || comment.username || "Anonim"}
-                    </p>
+                    
+                    {/* ✅ GÜNCELLENDİ: Username Bileşeni Kullanıldı */}
+                    <Username 
+                        username={comment.profiles?.username || comment.username || "Anonim"}
+                        isAdmin={comment.profiles?.role === 'admin'}
+                        className={`${isMain ? 'text-[11px]' : 'text-[10px]'} font-black dark:text-gray-300 mb-1 tracking-wide uppercase`}
+                    />
                     
                     {/* MENÜ */}
                     {user && (

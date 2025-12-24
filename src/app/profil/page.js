@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
+import Username from '@/components/Username'; // Yolunu kendi klasör yapına göre ayarla
 
 export default function ProfilSayfasi() {
   const [user, setUser] = useState(null);
@@ -151,7 +152,13 @@ export default function ProfilSayfasi() {
 
                 </div>
 
-                <p className="text-xs text-gray-400 mb-4 uppercase font-bold tracking-wide">@{profileData.username}</p>
+                <div className="flex justify-center md:justify-start mb-4">
+                  <Username
+                    username={profileData.username}
+                    isAdmin={isAdmin}
+                    className="text-xs text-gray-400 uppercase font-bold tracking-wide"
+                  />
+                </div>
 
                 <div className="flex flex-wrap gap-2 justify-center md:justify-start">
                   <button

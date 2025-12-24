@@ -6,6 +6,7 @@ import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import YorumAlani from '@/components/YorumAlani';
 import { useRouter } from 'next/navigation';
+import Username from '@/components/Username';
 
 export default function KitapDetay({ params }) {
   const { id } = use(params);
@@ -25,7 +26,8 @@ export default function KitapDetay({ params }) {
     isFollowing: false, 
     hasVoted: false, 
     user: null,
-    isAdmin: false // YENİ: Admin durumu eklendi
+    isAdmin: false,
+    authorIsAdmin: false
   });
   const [loading, setLoading] = useState(true);
 
@@ -39,13 +41,21 @@ export default function KitapDetay({ params }) {
         .eq('book_id', id)
         .order('order_no', { ascending: true });
       
-      let authorProfile = null;
-      if (book) {
-        const { data: profile } = await supabase.from('profiles').select('*').eq('username', book.username).single();
-        authorProfile = profile;
-      }
+     let authorProfile = null;
+     let authorIsAdmin = false;
+     if (book) {
+       const { data: profile } = await supabase.from('profiles').select('*').eq('username', book.username).single();
+       authorProfile = profile;
+       
+       const { data: authorAdminCheck } = await supabase
+         .from('announcement_admins')
+         .select('*')
+         .eq('user_email', book.user_email)
+         .single();
+       
+       authorIsAdmin = !!authorAdminCheck;
+     }
 
-      // --- YENİ: ADMIN KONTROLÜ ---
       let adminStatus = false;
       if (user) {
         const { data: admin } = await supabase
@@ -55,18 +65,10 @@ export default function KitapDetay({ params }) {
           .single();
         if (admin) adminStatus = true;
       }
-      // ----------------------------
       
-      // OKUNMA SAYISI
       const totalViews = chapters?.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
-      
-      // OY SAYISI
       const { count: votes } = await supabase.from('book_votes').select('*', { count: 'exact', head: true }).eq('book_id', id);
-      
-      // KÜTÜPHANE SAYISI
       const { count: follows } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('book_id', id);
-      
-      // YORUM SAYISI
       const { count: comments } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('book_id', id);
       
       let following = false, voted = false;
@@ -91,16 +93,33 @@ export default function KitapDetay({ params }) {
         isFollowing: following, 
         hasVoted: voted, 
         user,
-        isAdmin: adminStatus // State'e kaydettik
+        isAdmin: adminStatus,
+        authorIsAdmin: authorIsAdmin
       });
       setLoading(false);
     }
     fetchAll();
   }, [id]);
 
+  // KİTAP DURUMU DEĞİŞTİR
+  async function handleToggleCompleted() {
+    const isAuthor = data.user && data.book.user_email === data.user.email;
+    if (!isAuthor && !data.isAdmin) return;
+
+    const newStatus = !data.book.is_completed;
+    const { error } = await supabase.from('books').update({ is_completed: newStatus }).eq('id', id);
+
+    if (error) {
+      toast.error("Hata: " + error.message);
+    } else {
+      setData(prev => ({ ...prev, book: { ...prev.book, is_completed: newStatus } }));
+      if (newStatus) toast.success("Tebrikler! Kitap 'TAMAMLANDI' olarak işaretlendi. 🎉");
+      else toast.success("Kitap tekrar 'DEVAM EDİYOR' durumuna alındı.");
+    }
+  }
+
   async function handleBookVote() {
      if (!data.user) return toast.error("Giriş yapmalısın.");
-     
      if (data.hasVoted) {
        await supabase.from('book_votes').delete().eq('book_id', id).eq('user_email', data.user.email);
        setData(prev => ({ ...prev, hasVoted: false, stats: { ...prev.stats, votes: prev.stats.votes - 1 } }));
@@ -113,7 +132,6 @@ export default function KitapDetay({ params }) {
        if (data.book.user_email !== data.user.email) {
          const { data: profile } = await supabase.from('profiles').select('username').eq('id', data.user.id).single();
          const username = profile?.username || data.user.user_metadata?.username || data.user.email.split('@')[0];
-         
          await supabase.from('notifications').insert({
            recipient_email: data.book.user_email,
            actor_username: username,
@@ -127,36 +145,22 @@ export default function KitapDetay({ params }) {
        }
      }
   }
-// --- YENİ: EDİTÖRÜN SEÇİMİ BUTONU FONKSİYONU ---
+
   async function handleToggleEditorsChoice() {
     if (!data.isAdmin) return;
-
     const newStatus = !data.book.is_editors_choice;
-    
-    const { error } = await supabase
-      .from('books')
-      .update({ is_editors_choice: newStatus })
-      .eq('id', id);
-
+    const { error } = await supabase.from('books').update({ is_editors_choice: newStatus }).eq('id', id);
     if (error) {
       toast.error("İşlem başarısız: " + error.message);
     } else {
-      // Local state'i güncelle ki sayfa yenilenmeden buton değişsin
-      setData(prev => ({
-        ...prev,
-        book: { ...prev.book, is_editors_choice: newStatus }
-      }));
-      
-      if (newStatus) {
-        toast.success("👑 Kitap 'Editörün Seçimi' listesine eklendi!");
-      } else {
-        toast.success("Kitap listeden çıkarıldı.");
-      }
+      setData(prev => ({ ...prev, book: { ...prev.book, is_editors_choice: newStatus } }));
+      if (newStatus) toast.success("👑 Kitap 'Editörün Seçimi' listesine eklendi!");
+      else toast.success("Kitap listeden çıkarıldı.");
     }
   }
+
   async function handleLibrary() {
      if (!data.user) return toast.error("Giriş yapmalısın.");
-     
      if (data.isFollowing) {
        await supabase.from('follows').delete().eq('book_id', id).eq('user_email', data.user.email);
        setData(prev => ({ ...prev, isFollowing: false, stats: { ...prev.stats, follows: prev.stats.follows - 1 } }));
@@ -168,114 +172,78 @@ export default function KitapDetay({ params }) {
      }
   }
 
-  // KİTABI SİL
-// KİTABI SİL (DEBUG MODU - DETAYLI HATA GÖSTERİMİ)
   async function handleDeleteBook() {
     if (!window.confirm('ADMIN DİKKATİ: Bu kitabı ve bağlı her şeyi silmek üzeresin. Emin misin?')) return;
-    
-    // Yükleniyor efekti verelim ki basıp basmadığını anla
     const toastId = toast.loading('Silme işlemi başlatıldı...');
-    console.log("🚀 Silme işlemi başladı. Kullanıcı:", data.user?.email);
-
     try {
-      // 1. ADIM: BÖLÜMLERİ SİL
-      console.log("1. Bölümler siliniyor...");
-      const { error: chapterError } = await supabase.from('chapters').delete().eq('book_id', id);
-      if (chapterError) {
-        console.error("❌ Bölüm Hatası:", chapterError);
-        throw new Error(`Bölümler silinemedi! Kod: ${chapterError.code} - Mesaj: ${chapterError.message}`);
-      }
-
-      // 2. ADIM: YORUMLARI SİL
-      console.log("2. Yorumlar siliniyor...");
-      const { error: commentError } = await supabase.from('comments').delete().eq('book_id', id);
-      if (commentError) {
-        console.error("❌ Yorum Hatası:", commentError);
-        throw new Error(`Yorumlar silinemedi! Kod: ${commentError.code} - Mesaj: ${commentError.message}`);
-      }
-
-      // 3. ADIM: OYLARI SİL
-      console.log("3. Oylar siliniyor...");
-      const { error: voteError } = await supabase.from('book_votes').delete().eq('book_id', id);
-      if (voteError) {
-        console.error("❌ Oy Hatası:", voteError);
-        throw new Error(`Oylar silinemedi! Kod: ${voteError.code} - Mesaj: ${voteError.message}`);
-      }
-
-      // 4. ADIM: TAKİPLERİ SİL
-      console.log("4. Takipler siliniyor...");
-      const { error: followError } = await supabase.from('follows').delete().eq('book_id', id);
-      if (followError) {
-        console.error("❌ Takip Hatası:", followError);
-        throw new Error(`Takipler silinemedi! Kod: ${followError.code} - Mesaj: ${followError.message}`);
-      }
-
-      // 5. ADIM: BİLDİRİMLERİ SİL
-      console.log("5. Bildirimler siliniyor...");
-      const { error: notifError } = await supabase.from('notifications').delete().eq('book_id', id);
-      if (notifError) {
-        console.error("❌ Bildirim Hatası:", notifError);
-        throw new Error(`Bildirimler silinemedi! Kod: ${notifError.code} - Mesaj: ${notifError.message}`);
-      }
-
-      // 6. ADIM: KİTABI SİL (EN SON)
-      console.log("6. Kitap siliniyor...");
-      const { error: bookError } = await supabase.from('books').delete().eq('id', id);
-      if (bookError) {
-        console.error("❌ Kitap Hatası:", bookError);
-        throw new Error(`Kitap silinemedi! Kod: ${bookError.code} - Mesaj: ${bookError.message}`);
-      }
-
-      // BAŞARILI
+      await supabase.from('chapters').delete().eq('book_id', id);
+      await supabase.from('comments').delete().eq('book_id', id);
+      await supabase.from('book_votes').delete().eq('book_id', id);
+      await supabase.from('follows').delete().eq('book_id', id);
+      await supabase.from('notifications').delete().eq('book_id', id);
+      await supabase.from('books').delete().eq('id', id);
       toast.dismiss(toastId);
       toast.success('KİTAP VE TÜM VERİLER SİLİNDİ ✅');
-      router.push('/profil'); // Veya admin paneline yönlendir
-
+      router.push('/profil'); 
     } catch (error) {
-      // HATA YAKALAMA
       toast.dismiss(toastId);
-      console.error("🔥 KRİTİK HATA:", error);
-      // Ekrana hatayı yapıştırıyoruz ki ne olduğunu görelim
       toast.error(error.message, { duration: 6000 });
     }
   }
 
-  // BÖLÜMÜ SİL
   async function handleDeleteChapter(chapterId) {
     if (!window.confirm('Bu bölümü silmek istediğinden emin misin?')) return;
-    
     try {
       await supabase.from('comments').delete().eq('chapter_id', chapterId);
       await supabase.from('chapters').delete().eq('id', chapterId);
-      
       setData(prev => ({
         ...prev,
         chapters: prev.chapters.filter(c => c.id !== chapterId),
         stats: { ...prev.stats, chapters: prev.stats.chapters - 1 }
       }));
-      
       toast.success('Bölüm silindi');
     } catch (error) {
       toast.error('Hata: ' + error.message);
     }
   }
 
- if (loading) return (
+  if (loading) return (
     <div className="py-40 flex justify-center items-center animate-pulse">
       <div className="text-5xl font-black tracking-tighter">
-        {/* Solukluk bitti: Simsiyah ve Tam Beyaz */}
         <span className="text-black dark:text-white">Kitap</span>
-        {/* Şeffaflık bitti: Tam Kırmızı */}
         <span className="text-red-600">Lab</span>
       </div>
     </div>
   );
   if (!data.book) return <div className="py-20 text-center font-black">ESER BULUNAMADI</div>;
 
-  // Yazar mı?
+  // YETKİ KONTROLLERİ
   const isAuthor = data.user && data.book.user_email === data.user.email;
-  // YETKİLİ Mİ? (Yazar VEYA Admin)
   const canEdit = isAuthor || data.isAdmin;
+
+  // ✅ 🚧 GÜVENLİK KİLİDİ: BÖLÜM YOKSA VE YETKİLİ DEĞİLSE GÖSTERME
+  // Yazar kendi boş kitabını görebilir (bölüm eklemek için), ama başkası göremez.
+  if (data.chapters.length === 0 && !canEdit) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#fafafa] dark:bg-[#080808] px-4">
+        <div className="text-center">
+          <span className="text-6xl block mb-6 animate-bounce">🚧</span>
+          <h1 className="text-3xl font-black dark:text-white uppercase tracking-tighter mb-3">
+            Henüz Yayında Değil
+          </h1>
+          <p className="text-gray-400 font-bold uppercase tracking-widest text-xs mb-8">
+            Yazar bu esere henüz bölüm eklemedi.
+          </p>
+          <Link 
+            href="/" 
+            className="inline-block px-8 py-4 bg-black dark:bg-white text-white dark:text-black rounded-full font-black text-[10px] uppercase tracking-widest hover:scale-105 transition-transform"
+          >
+            Ana Sayfaya Dön
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-16 px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
@@ -293,30 +261,34 @@ export default function KitapDetay({ params }) {
               ) : (
                 <div className="w-full h-full flex items-center justify-center font-black text-gray-300 italic text-sm">Kapak Yok</div>
               )}
-              {/* Eğer Editörün Seçimiyse Kapakta Tacı Gösterelim */}
-            {data.book?.is_editors_choice && (
-              <div className="absolute top-0 right-0 m-4 z-20">
-                <span className="bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-xl shadow-yellow-500/40 animate-pulse">
-                  👑 Editörün Seçimi
-                </span>
-              </div>
-            )}
+              {data.book?.is_editors_choice && (
+                <div className="absolute top-0 right-0 m-4 z-20">
+                  <span className="bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-xl shadow-yellow-500/40 animate-pulse">
+                    👑 Editörün Seçimi
+                  </span>
+                </div>
+              )}
             </div>
-            
           </div>
-          
           
           {/* BİLGİLER */}
           <div className="flex-1">
-            <span className="inline-block text-[10px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/20 px-4 py-1.5 rounded-full tracking-[0.2em] mb-4">
-              {data.book.category}
-            </span>
+            <div className="flex flex-wrap items-center gap-3 mb-6">
+              <span className="inline-block text-[10px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/20 px-4 py-1.5 rounded-full tracking-[0.2em]">
+                {data.book.category}
+              </span>
+              
+              {data.book.is_completed && (
+                <span className="inline-block text-[10px] font-black uppercase text-green-600 bg-green-50 dark:bg-green-950/20 px-4 py-1.5 rounded-full tracking-[0.2em] border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.3)] animate-pulse">
+                  ✅ TAMAMLANDI
+                </span>
+              )}
+            </div>
             
-            <h1 className="text-5xl md:text-6xl font-black my-6 tracking-tighter dark:text-white leading-tight uppercase">
+            <h1 className="text-5xl md:text-6xl font-black mb-6 tracking-tighter dark:text-white leading-tight uppercase">
               {data.book.title}
             </h1>
             
-            {/* YAZAR BİLGİSİ */}
             <Link href={`/yazar/${data.book.username}`} className="flex items-center gap-4 mb-10 group w-fit">
               <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-sm uppercase">
                 {data.authorProfile?.avatar_url && data.authorProfile.avatar_url.includes('http') ? (
@@ -326,55 +298,42 @@ export default function KitapDetay({ params }) {
                 )}
               </div>
               <div>
-                <p className="text-sm font-black dark:text-white group-hover:text-red-600 transition-colors">
-                  @{data.book.username}
+                <p className="text-sm font-black group-hover:text-red-600 transition-colors">
+                  <Username username={data.book.username} isAdmin={data.authorIsAdmin} />
                 </p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Eser Sahibi</p>
               </div>
             </Link>
             
-            {/* İSTATİSTİKLER */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-10 bg-white dark:bg-white/5 p-8 rounded-[2rem] border dark:border-white/5">
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{data.stats.views}</p>
-                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
-                  👁️ Okunma
-                </p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{data.stats.votes}</p>
-                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
-                  ⭐ Oy
-                </p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">⭐ Oy</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{data.stats.follows}</p>
-                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
-                  📚 Kitaplık
-                </p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📚 Kitaplık</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{data.stats.comments}</p>
-                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
-                  💬 Yorum
-                </p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">💬 Yorum</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{data.stats.chapters}</p>
-                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">
-                  📖 Bölüm
-                </p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📖 Bölüm</p>
               </div>
             </div>
 
-            {/* ÖZET */}
             <div className="mb-10 p-8 bg-white dark:bg-white/5 rounded-[2rem] border dark:border-white/5">
               <p className="text-lg text-gray-600 dark:text-gray-400 font-serif italic leading-relaxed">
                 {data.book.summary}
               </p>
             </div>
             
-            {/* BUTONLAR */}
             <div className="flex flex-wrap gap-4">
                <button 
                  onClick={handleBookVote} 
@@ -397,7 +356,7 @@ export default function KitapDetay({ params }) {
                >
                  {data.isFollowing ? '📚 KÜTÜPHANEDE' : 'KÜTÜPHANEYE EKLE'}
                </button>
-               {/* --- YENİ: EDİTÖRÜN SEÇİMİ BUTONU --- */}
+               
                {data.isAdmin && (
                  <button 
                    onClick={handleToggleEditorsChoice}
@@ -411,9 +370,19 @@ export default function KitapDetay({ params }) {
                  </button>
                )}
                
-               {/* YAZAR VEYA ADMIN İSE GÖSTER */}
                {canEdit && (
                  <>
+                   <button
+                     onClick={handleToggleCompleted}
+                     className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${
+                       data.book.is_completed
+                         ? 'bg-gray-500 text-white hover:bg-gray-600'
+                         : 'bg-green-600 text-white hover:bg-green-700 shadow-green-600/30'
+                     }`}
+                   >
+                     {data.book.is_completed ? '✍️ DEVAM EDİYOR YAP' : '🏁 FİNAL YAP (TAMAMLA)'}
+                   </button>
+
                    <Link 
                      href={`/kitap/${id}/bolum-ekle`} 
                      className="px-10 py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all"
@@ -477,8 +446,6 @@ export default function KitapDetay({ params }) {
                       OKU →
                     </span>
                   </Link>
-                  
-                  {/* YAZAR VEYA ADMIN İSE BÖLÜM İŞLEMLERİNİ GÖSTER */}
                   {canEdit && (
                     <div className="flex gap-2 mt-2 ml-20 opacity-0 group-hover:opacity-100 transition-opacity">
                       <Link 
@@ -507,7 +474,6 @@ export default function KitapDetay({ params }) {
              💬 Eser Hakkında Yorumlar
              <span className="text-sm text-gray-400 font-normal">({data.stats.comments})</span>
            </h2>
-           {/* Yorum Alanı zaten kendi içinde admin kontrolü yapıyor */}
            <YorumAlani type="book" targetId={id} bookId={id} />
         </div>
       </div>

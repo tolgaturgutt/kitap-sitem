@@ -4,35 +4,66 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import Username from '@/components/Username';
 
 function AramaIcerik() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
-  
+
   const [results, setResults] = useState({ books: [], users: [] });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'books', 'users'
 
-  useEffect(() => {
+ useEffect(() => {
     async function performDeepSearch() {
       if (!query) return;
       setLoading(true);
 
-      // PARALEL DERİN ARAMA: Navbar'dan daha detaylı veri çekiyoruz
+     // 1. KİTAPLARI (Bölüm Bilgisiyle) VE KULLANICILARI ÇEK
       const [booksRes, usersRes] = await Promise.all([
         supabase
           .from('books')
-          .select('id, title, summary, cover_url, username, category')
+          // ✅ chapters(id) EKLEDİK Kİ BÖLÜM SAYISINI GÖRELİM
+          .select('id, title, summary, cover_url, username, category, chapters(id)') 
           .ilike('title', `%${query}%`),
         supabase
           .from('profiles')
-          .select('username, avatar_url, bio')
+          .select('username, avatar_url, bio, role') 
           .ilike('username', `%${query}%`)
       ]);
 
+      let booksData = booksRes.data || [];
+
+      // ✅ HAYALET FİLTRESİ: Bölümü olmayan kitapları listeden at
+      if (booksData.length > 0) {
+        booksData = booksData.filter(b => b.chapters && b.chapters.length > 0);
+      }
+      const usersData = usersRes.data || [];
+
+      // 2. KİTAPLAR GELDİYSE, YAZARLARININ ROLLERİNİ ARKADAN ÇEKİP BİRLEŞTİRELİM
+      if (booksData.length > 0) {
+        // Kitapların yazarlarının isim listesini çıkar
+        const authorNames = [...new Set(booksData.map(b => b.username))];
+        
+        // Bu isimlerin rollerini sor
+        const { data: roles } = await supabase
+          .from('profiles')
+          .select('username, role')
+          .in('username', authorNames);
+
+        // Kitap verisine bu rolü yapıştır (Sanki join yapmışız gibi)
+        booksData = booksData.map(book => {
+            const yazarProfili = roles?.find(r => r.username === book.username);
+            return { 
+                ...book, 
+                profiles: { role: yazarProfili?.role } // Username bileşeni bu formatı bekliyor
+            };
+        });
+      }
+
       setResults({ 
-        books: booksRes.data || [], 
-        users: usersRes.data || [] 
+        books: booksData, 
+        users: usersData 
       });
       setLoading(false);
     }
@@ -44,7 +75,7 @@ function AramaIcerik() {
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-[#080808] pt-12 pb-24 px-6">
       <div className="max-w-5xl mx-auto">
-        
+
         {/* BAŞLIK VE İSTATİSTİK */}
         <header className="mb-16">
           <h1 className="text-4xl font-black tracking-tighter dark:text-white mb-2">
@@ -62,8 +93,8 @@ function AramaIcerik() {
               key={tab}
               onClick={() => setActiveTab(tab)}
               className={`px-8 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all
-                ${activeTab === tab 
-                  ? 'bg-black dark:bg-white text-white dark:text-black shadow-xl' 
+                ${activeTab === tab
+                  ? 'bg-black dark:bg-white text-white dark:text-black shadow-xl'
                   : 'bg-white dark:bg-white/5 text-gray-400 hover:text-red-600 border dark:border-white/5'}`}
             >
               {tab === 'all' ? 'Hepsi' : tab === 'books' ? 'Eserler' : 'Yazarlar'}
@@ -75,7 +106,7 @@ function AramaIcerik() {
           <div className="py-20 text-center font-black opacity-10 text-6xl italic animate-pulse">ARANIYOR...</div>
         ) : (
           <div className="space-y-20">
-            
+
             {/* KİTAP SONUÇLARI */}
             {(activeTab === 'all' || activeTab === 'books') && results.books.length > 0 && (
               <section>
@@ -89,7 +120,13 @@ function AramaIcerik() {
                       <div className="flex flex-col justify-center py-2">
                         <span className="text-[9px] font-black uppercase text-red-600 mb-1">{book.category}</span>
                         <h3 className="text-xl font-bold dark:text-white mb-2 group-hover:text-red-600 transition-colors">{book.title}</h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 italic mb-4">@{book.username}</p>
+                        <div className="mb-4">
+                          <Username
+                            username={book.username}
+                            isAdmin={book.profiles?.role === 'admin'}
+                            className="text-xs text-gray-500 dark:text-gray-400 italic"
+                          />
+                        </div>
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 line-clamp-2 leading-relaxed">{book.summary}</p>
                       </div>
                     </Link>
@@ -108,7 +145,13 @@ function AramaIcerik() {
                       <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all mb-4">
                         {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200 dark:bg-black/50 flex items-center justify-center font-black">?</div>}
                       </div>
-                      <p className="font-bold dark:text-white group-hover:text-red-600 transition-colors">@{u.username}</p>
+                      <div className="mb-1">
+                        <Username
+                          username={u.username}
+                          isAdmin={u.role === 'admin'}
+                          className="font-bold dark:text-white group-hover:text-red-600 transition-colors"
+                        />
+                      </div>
                       <p className="text-[10px] text-gray-400 uppercase font-black mt-2 tracking-widest">Yazar</p>
                     </Link>
                   ))}
@@ -122,7 +165,7 @@ function AramaIcerik() {
                 <Link href="/" className="px-10 py-3 bg-black dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all">Anasayfaya Dön</Link>
               </div>
             )}
-            
+
           </div>
         )}
       </div>
