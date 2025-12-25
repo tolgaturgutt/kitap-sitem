@@ -10,19 +10,150 @@ export default function ProfilSayfasi() {
   const [user, setUser] = useState(null);
   const [myBooks, setMyBooks] = useState([]);
   const [myDrafts, setMyDrafts] = useState([]);
+  const [myPanos, setMyPanos] = useState([]);
   const [followedBooks, setFollowedBooks] = useState([]);
   const [followedAuthors, setFollowedAuthors] = useState([]);
   const [myFollowers, setMyFollowers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showFabMenu, setShowFabMenu] = useState(false);
   const [totalViews, setTotalViews] = useState(0);
   const [activeTab, setActiveTab] = useState('eserler');
   const [modalType, setModalType] = useState(null);
+  const [selectedPano, setSelectedPano] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '' });
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminEmails, setAdminEmails] = useState([]);
+  
+  // ✅ PANO MODAL STATE'LERİ
+  const [panoLikes, setPanoLikes] = useState(0);
+  const [hasLiked, setHasLiked] = useState(false);
+  const [panoComments, setPanoComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [replyTo, setReplyTo] = useState(null);
+
+  // ✅ PANO VERİLERİNİ YÜKLE
+  useEffect(() => {
+    if (!selectedPano) return;
+    async function loadPanoData() {
+      const { count } = await supabase.from('pano_votes').select('*', { count: 'exact', head: true }).eq('pano_id', selectedPano.id);
+      setPanoLikes(count || 0);
+      if (user) {
+        const { data } = await supabase.from('pano_votes').select('*').eq('pano_id', selectedPano.id).eq('user_email', user.email).single();
+        setHasLiked(!!data);
+      }
+      
+      // Yorumları çek
+      const { data: comments } = await supabase
+        .from('pano_comments')
+        .select('*')
+        .eq('pano_id', selectedPano.id)
+        .order('created_at', { ascending: true });
+
+      // Her yorum için profil bilgisini çek
+      if (comments) {
+        const commentsWithProfiles = await Promise.all(
+          comments.map(async (comment) => {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('username, avatar_url')
+              .eq('email', comment.user_email)
+              .single();
+            
+            return {
+              ...comment,
+              profiles: profile
+            };
+          })
+        );
+        setPanoComments(commentsWithProfiles);
+      } else {
+        setPanoComments([]);
+      }
+    }
+    loadPanoData();
+  }, [selectedPano, user]);
+
+  // ✅ PANO BEĞENİ
+  async function handleLike() {
+    if (!user) return toast.error('Giriş yapmalısın!');
+    if (hasLiked) {
+      await supabase.from('pano_votes').delete().eq('pano_id', selectedPano.id).eq('user_email', user.email);
+      setHasLiked(false);
+      setPanoLikes(prev => prev - 1);
+    } else {
+      await supabase.from('pano_votes').insert({ pano_id: selectedPano.id, user_email: user.email });
+      setHasLiked(true);
+      setPanoLikes(prev => prev + 1);
+    }
+  }
+
+  // ✅ PANO YORUM
+  async function handleComment() {
+    if (!user) return toast.error('Giriş yapmalısın!');
+    if (!newComment.trim()) return;
+    
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username, avatar_url')
+      .eq('id', user.id)
+      .single();
+    
+    const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
+    
+    const { error } = await supabase.from('pano_comments').insert({
+      pano_id: selectedPano.id,
+      parent_id: replyTo,
+      user_email: user.email,
+      username: username,
+      content: newComment
+    });
+
+    if (error) {
+      console.error('Yorum hatası:', error);
+      toast.error('Yorum eklenemedi!');
+      return;
+    }
+    
+    setNewComment('');
+    setReplyTo(null);
+    
+    // Yorumları tekrar çek
+    const { data: comments } = await supabase
+      .from('pano_comments')
+      .select('*')
+      .eq('pano_id', selectedPano.id)
+      .order('created_at', { ascending: true });
+
+    if (comments) {
+      const commentsWithProfiles = await Promise.all(
+        comments.map(async (comment) => {
+          const { data: commentProfile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url')
+            .eq('email', comment.user_email)
+            .single();
+          
+          return {
+            ...comment,
+            profiles: commentProfile
+          };
+        })
+      );
+      setPanoComments(commentsWithProfiles);
+    }
+    
+    toast.success('Yorum eklendi!');
+  }
 
   useEffect(() => {
     async function getData() {
+      const { data: admins } = await supabase
+        .from('announcement_admins')
+        .select('user_email');
+
+      setAdminEmails(admins?.map(a => a.user_email) || []);
+
       const { data: { user: activeUser } } = await supabase.auth.getUser();
       if (!activeUser) return (window.location.href = '/giris');
       setUser(activeUser);
@@ -38,7 +169,6 @@ export default function ProfilSayfasi() {
         instagram: profile?.instagram || ''
       });
 
-      // ADMIN KONTROLÜ
       const { data: adminData } = await supabase
         .from('announcement_admins')
         .select('*')
@@ -47,7 +177,6 @@ export default function ProfilSayfasi() {
 
       if (adminData) setIsAdmin(true);
 
-      // 🔥 1. ESERLERİMİ GETİR (VE AYIKLA)
       const { data: written } = await supabase
         .from('books')
         .select('*')
@@ -55,26 +184,13 @@ export default function ProfilSayfasi() {
         .order('created_at', { ascending: false });
 
       if (written) {
-        console.log('📚 ESERLER DEBUG:');
-        console.log('Tüm kitaplar:', written);
-        console.log('is_draft değerleri:', written.map(b => ({ 
-          title: b.title, 
-          is_draft: b.is_draft, 
-          type: typeof b.is_draft 
-        })));
-
-        // ✅ DOĞRU FİLTRELEME
         const publishedBooks = written.filter(b => !b.is_draft);
         const draftBooks = written.filter(b => b.is_draft === true);
         
         setMyBooks(publishedBooks);
         setMyDrafts(draftBooks);
-        
-        console.log('✅ Eserler:', publishedBooks);
-        console.log('✅ Taslaklar:', draftBooks);
       }
 
-      // 2. OKUNMA SAYISINI HESAPLA
       if (written && written.length > 0) {
         const bookIds = written.map(b => b.id);
         const { data: chapters } = await supabase.from('chapters').select('views').in('book_id', bookIds);
@@ -82,7 +198,6 @@ export default function ProfilSayfasi() {
         setTotalViews(total);
       }
 
-      // 🔥 3. TAKİP EDİLEN KİTAPLARI GETİR (SADECE YAYINLANMIŞ OLANLAR)
       const { data: followsList } = await supabase
         .from('follows')
         .select('book_id')
@@ -91,24 +206,29 @@ export default function ProfilSayfasi() {
       const followBookIds = followsList?.map(f => f.book_id).filter(Boolean) || [];
 
       if (followBookIds.length > 0) {
-        // ✅ Kütüphaneden kitapları çek - SADECE YAYINLANMIŞ OLANLARI
         const { data: rawLibrary } = await supabase
           .from('books')
           .select('*')
           .in('id', followBookIds)
-          .eq('is_draft', false); // 🔥 BURASI ÖNEMLİ: Sadece yayınlanmış kitapları çek
+          .eq('is_draft', false);
 
-        console.log('📚 Kütüphane kitapları:', rawLibrary);
         setFollowedBooks(rawLibrary || []);
       } else {
         setFollowedBooks([]);
       }
 
-      // Takipçi / Takip verileri
       const { data: following } = await supabase.from('author_follows').select('followed_username').eq('follower_email', activeUser.email);
       const { data: followers } = await supabase.from('author_follows').select('follower_username').eq('followed_username', currentUsername);
       setFollowedAuthors(following || []);
       setMyFollowers(followers || []);
+
+      const { data: panos } = await supabase
+        .from('panolar')
+        .select('*, books(title, cover_url), chapters(id, title)')
+        .eq('user_email', activeUser.email)
+        .order('created_at', { ascending: false });
+
+      setMyPanos(panos || []);
       setLoading(false);
     }
     getData();
@@ -117,6 +237,7 @@ export default function ProfilSayfasi() {
   async function handleSaveProfile() {
     const { error } = await supabase.from('profiles').upsert({
       id: user.id, 
+      email: user.email,
       full_name: profileData.full_name, 
       username: profileData.username,
       instagram: profileData.instagram,
@@ -159,6 +280,21 @@ export default function ProfilSayfasi() {
     }
   }
 
+  async function handleDeletePano(panoId, e) {
+    if (e) e.stopPropagation();
+    if (!window.confirm('Bu panoyu silmek istediğine emin misin?')) return;
+
+    const { error } = await supabase.from('panolar').delete().eq('id', panoId);
+
+    if (error) {
+      toast.error('Silinirken hata oluştu!');
+    } else {
+      toast.success('Pano silindi! 🗑️');
+      setMyPanos(prev => prev.filter(p => p.id !== panoId));
+      if (selectedPano?.id === panoId) setSelectedPano(null);
+    }
+  }
+
   if (loading) return (
     <div className="py-40 flex justify-center items-center animate-pulse">
       <div className="text-5xl font-black tracking-tighter">
@@ -171,6 +307,158 @@ export default function ProfilSayfasi() {
   return (
     <div className="min-h-screen py-10 md:py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black transition-colors">
       <Toaster />
+
+      {/* ✅ PANO MODALI */}
+      {selectedPano && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={() => setSelectedPano(null)}>
+          <div 
+            className="bg-white dark:bg-[#080808] w-full max-w-5xl h-fit max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col md:flex-row"
+            onClick={(e) => e.stopPropagation()}
+          >
+            
+            <button 
+              onClick={() => setSelectedPano(null)} 
+              className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md"
+            >
+              ✕
+            </button>
+
+            {selectedPano.books?.cover_url && (
+              <div className="shrink-0 flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2">
+                <img 
+                  src={selectedPano.books.cover_url} 
+                  className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-[600px] w-auto" 
+                  alt="" 
+                />
+              </div>
+            )}
+
+            <div className="p-10 md:p-16 overflow-y-auto flex-1 flex flex-col justify-center">
+              <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
+                📖 {selectedPano.books?.title} {selectedPano.chapter_id && '• ' + (selectedPano.chapters?.title || 'Bölüm')}
+              </span>
+
+              <h2 className="text-4xl md:text-6xl font-black mb-8 leading-tight tracking-tighter dark:text-white">
+                {selectedPano.title}
+              </h2>
+
+              <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-wrap mb-8">
+                {selectedPano.content}
+              </p>
+
+              <div className="flex items-center gap-4 mb-8 pb-8 border-b dark:border-white/5">
+                <button onClick={handleLike} className={`flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm transition-all ${hasLiked ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
+                  ❤️ {panoLikes}
+                </button>
+                <span className="text-sm text-gray-400">💬 {panoComments.length} yorum</span>
+              </div>
+
+              <div className="space-y-4 max-h-[300px] overflow-y-auto mb-6">
+                {panoComments.filter(c => !c.parent_id).map(comment => (
+                  <div key={comment.id} className="space-y-2">
+                    <div className="flex gap-3">
+                      <img
+                        src={comment.profiles?.avatar_url || '/avatar-placeholder.png'}
+                        className="w-8 h-8 rounded-full object-cover"
+                      />
+                      <div className="flex-1">
+                        <Link 
+                          href={comment.user_email === user?.email ? '/profil' : `/yazar/${comment.profiles?.username || comment.username}`}
+                          className="hover:text-red-600 transition-colors"
+                        >
+                          <Username
+                            username={comment.profiles?.username || comment.username}
+                            isAdmin={adminEmails.includes(comment.user_email)}
+                          />
+                        </Link>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">{comment.content}</p>
+                        <button onClick={() => setReplyTo(comment.id)} className="text-[10px] text-gray-400 hover:text-red-600 font-bold mt-1">Yanıtla</button>
+                      </div>
+                    </div>
+                    {panoComments.filter(r => r.parent_id === comment.id).map(reply => (
+                      <div key={reply.id} className="ml-11 flex gap-3">
+                        <img
+                          src={reply.profiles?.avatar_url || '/avatar-placeholder.png'}
+                          className="w-6 h-6 rounded-full object-cover"
+                        />
+                        <div className="flex-1">
+                          <Link 
+                            href={reply.user_email === user?.email ? '/profil' : `/yazar/${reply.profiles?.username || reply.username}`}
+                            className="text-[10px] font-black hover:text-red-600"
+                          >
+                            @{reply.profiles?.username || reply.username}
+                          </Link>
+                          <p className="text-xs text-gray-500">{reply.content}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              {user && (
+                <div className="mb-8">
+                  {replyTo && <p className="text-xs text-gray-400 mb-2">Yanıt yazıyorsun • <button onClick={() => setReplyTo(null)} className="text-red-600">İptal</button></p>}
+                  <div className="flex gap-2">
+                    <input value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Yorumunu yaz..." className="flex-1 px-4 py-2 bg-gray-100 dark:bg-white/5 rounded-full text-sm outline-none" />
+                    <button onClick={handleComment} className="px-6 py-2 bg-red-600 text-white rounded-full text-sm font-black">Gönder</button>
+                  </div>
+                </div>
+              )}
+              
+              <div className="mt-auto pt-8 border-t dark:border-white/5 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  <img
+                    src={profileData.avatar_url || '/avatar-placeholder.png'}
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest">
+                      <Username username={profileData.username} isAdmin={isAdmin} />
+                    </p>
+                    <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">
+                      {new Date(selectedPano.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  {selectedPano.chapter_id && selectedPano.chapters?.id ? (
+                    <Link 
+                      href={`/kitap/${selectedPano.book_id}/bolum/${selectedPano.chapter_id}`}
+                      className="inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6 py-3 rounded-2xl uppercase tracking-wider transition-all shadow-2xl hover:shadow-red-600/50"
+                    >
+                      {selectedPano.chapters?.title || 'Bölüme Git'} →
+                    </Link>
+                  ) : (
+                    <Link 
+                      href={`/kitap/${selectedPano.book_id}`}
+                      className="inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6 py-3 rounded-2xl uppercase tracking-wider transition-all shadow-2xl hover:shadow-red-600/50"
+                    >
+                      Kitaba Git →
+                    </Link>
+                  )}
+
+                  <Link 
+                    href={`/pano-duzenle/${selectedPano.id}`}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-sm font-black uppercase transition-all shadow-lg"
+                  >
+                    DÜZENLE
+                  </Link>
+
+                  <button 
+                    onClick={(e) => handleDeletePano(selectedPano.id, e)}
+                    className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-2xl text-sm font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-lg"
+                  >
+                    SİL
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-6xl mx-auto">
         <header className="mb-12 flex flex-col md:flex-row items-center gap-10 bg-white dark:bg-white/5 p-10 rounded-[4rem] border dark:border-white/5">
           <div className="w-32 h-32 bg-gray-100 dark:bg-white/10 rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-3xl shrink-0">
@@ -304,7 +592,7 @@ export default function ProfilSayfasi() {
         </header>
 
         <div className="flex gap-8 mb-8 border-b dark:border-white/5 pb-4">
-          {['eserler', 'kütüphane', 'taslaklar', 'hakkında'].map(t => (
+          {['eserler', 'kütüphane', 'taslaklar','panolar', 'hakkında'].map(t => (
             <button key={t} onClick={() => setActiveTab(t)} className={`text-[10px] font-black uppercase tracking-widest ${activeTab === t ? 'text-red-600' : 'text-gray-400'}`}>{t}</button>
           ))}
         </div>
@@ -315,18 +603,33 @@ export default function ProfilSayfasi() {
               <p className="italic text-gray-500 leading-relaxed w-full font-serif text-lg">
                 {profileData.bio || "Biyografi henüz eklenmemiş."}
               </p>
-
-              {profileData.instagram && (
-                <a
-                  href={`https://instagram.com/${profileData.instagram}`}
-                  target="_blank"
-                  className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-500/20 hover:scale-105 hover:shadow-red-500/40 transition-all"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                    <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" />
-                  </svg>
-                  <span>@{profileData.instagram}</span>
-                </a>
+            </div>
+          ) : activeTab === 'panolar' ? (
+            <div className="space-y-6">
+              {myPanos.length === 0 ? (
+                <div className="text-center py-10 text-gray-500">Henüz hiç pano oluşturmamışsın.</div>
+              ) : (
+                myPanos.map(pano => (
+                  <div 
+                    key={pano.id} 
+                    onClick={() => setSelectedPano(pano)}
+                    className="bg-white dark:bg-white/5 p-6 rounded-[2rem] border dark:border-white/10 flex gap-6 relative group hover:border-red-600/30 transition-all cursor-pointer"
+                  >
+                    <div className="w-20 h-28 shrink-0 rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
+                      {pano.books?.cover_url ? <img src={pano.books.cover_url} className="w-full h-full object-cover" alt="" /> : null}
+                    </div>
+                    <div className="flex-1">
+                       <h3 className="text-xl font-black dark:text-white mb-2 line-clamp-1 group-hover:text-red-600 transition-colors">{pano.title}</h3>
+                       <p className="text-[10px] text-red-600 font-bold uppercase mb-2 tracking-widest">
+                         📖 {pano.books?.title} {pano.chapter_id && '• ' + (pano.chapters?.title || 'Bölüm')}
+                       </p>
+                       <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{pano.content}</p>
+                       <div className="inline-flex items-center gap-2 text-[9px] font-black uppercase bg-black dark:bg-white text-white dark:text-black px-6 py-3 rounded-full tracking-tighter mt-4">
+                          Detayları Gör →
+                        </div>
+                    </div>
+                  </div>
+                ))
               )}
             </div>
           ) : (
@@ -347,19 +650,48 @@ export default function ProfilSayfasi() {
         </div>
       </div>
 
-      <Link
-        href="/kitap-ekle"
-        className="fixed bottom-8 right-8 w-16 h-16 bg-gradient-to-br from-red-600 to-orange-600 text-white rounded-full shadow-2xl shadow-red-600/50 flex items-center justify-center font-black text-2xl hover:scale-110 active:scale-95 transition-all z-50 group"
-      >
-        <span className="group-hover:rotate-90 transition-transform duration-300">+</span>
-        <div className="absolute -top-12 right-0 bg-black text-white text-[9px] font-black px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-          YENİ KİTAP YAZ
-        </div>
-      </Link>
+      {/* FLOATING ACTION BUTTON */}
+      <div className="fixed bottom-8 right-8 z-50">
+        {showFabMenu && (
+          <div className="absolute bottom-20 right-0 flex flex-col gap-3 mb-2 animate-in slide-in-from-bottom-4 fade-in duration-200">
+            <Link
+              href="/pano-ekle"
+              onClick={() => setShowFabMenu(false)}
+              className="flex items-center gap-3 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-blue-600/50 transition-all font-black text-sm uppercase group whitespace-nowrap"
+            >
+              <span className="text-xl">📋</span>
+              <span>Pano Yaz</span>
+            </Link>
+            
+            <Link
+              href="/kitap-ekle"
+              onClick={() => setShowFabMenu(false)}
+              className="flex items-center gap-3 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-full shadow-xl hover:shadow-red-600/50 transition-all font-black text-sm uppercase group whitespace-nowrap"
+            >
+              <span className="text-xl">📚</span>
+              <span>Kitap Yaz</span>
+            </Link>
+          </div>
+        )}
 
+        <button
+          onClick={() => setShowFabMenu(!showFabMenu)}
+          className={`w-16 h-16 bg-gradient-to-br from-red-600 to-orange-600 text-white rounded-full shadow-2xl shadow-red-600/50 flex items-center justify-center font-black text-2xl hover:scale-110 active:scale-95 transition-all group ${showFabMenu ? 'rotate-45' : ''}`}
+        >
+          <span className="transition-transform duration-300">+</span>
+          
+          {!showFabMenu && (
+            <div className="absolute -top-12 right-0 bg-black text-white text-[9px] font-black px-4 py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+              YENİ İÇERİK OLUŞTUR
+            </div>
+          )}
+        </button>
+      </div>
+
+      {/* TAKİPÇİ/TAKİP MODALI */}
       {modalType && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0f0f0f] w-full max-w-md rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setModalType(null)}>
+          <div className="bg-white dark:bg-[#0f0f0f] w-full max-w-md rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
               <span className="text-[10px] font-black uppercase opacity-40">{modalType === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}</span>
               <button onClick={() => setModalType(null)} className="text-[10px] font-black text-red-600 uppercase">Kapat</button>
