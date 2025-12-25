@@ -212,133 +212,135 @@ export default function ProfilSayfasi() {
 
       <div className="max-w-6xl mx-auto">
         {/* HEADER BÖLÜMÜ */}
-        <header className="mb-8 md:mb-12 flex flex-col md:flex-row items-center gap-6 md:gap-10 bg-white dark:bg-white/5 p-6 md:p-10 rounded-3xl md:rounded-[4rem] border dark:border-white/5">
-          <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-white/10 rounded-2xl md:rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0">
-            {profileData.avatar_url && profileData.avatar_url.includes('http') ? (
-              <img src={profileData.avatar_url} className="w-full h-full object-cover" alt="" />
-            ) : (
-              user.email[0].toUpperCase()
-            )}
-          </div>
-          <div className="flex-1 text-center md:text-left w-full">
-            {!isEditing ? (
-              <>
-                <div className="flex flex-col md:flex-row md:items-end gap-2 md:gap-4 mb-2 justify-center md:justify-start">
-                  <h1 className="text-2xl md:text-3xl font-black uppercase dark:text-white leading-none">
-                    {profileData.full_name || "İsim Soyisim"}
-                  </h1>
-                </div>
-
-                <div className="flex justify-center md:justify-start mb-3 md:mb-4">
-                  <Username
-                    username={profileData.username}
-                    isAdmin={isAdmin}
-                    className="text-xs text-gray-400 uppercase font-bold tracking-wide"
-                  />
-                </div>
-
-                <div className="flex flex-wrap gap-2 justify-center md:justify-start">
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="px-4 md:px-6 py-2 bg-gray-100 dark:bg-white/5 rounded-full text-[9px] md:text-[10px] font-black uppercase text-gray-500 hover:text-red-600 transition-all"
-                  >
-                    Profili Düzenle
-                  </button>
-
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="px-4 md:px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full text-[9px] md:text-[10px] font-black uppercase hover:opacity-80 transition-all flex items-center gap-2"
-                    >
-                      🛡️ Admin Paneli
-                    </Link>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 animate-in fade-in zoom-in-95 duration-200">
-                <div className="md:col-span-2 mb-2 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl md:rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 text-center relative group cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={async (e) => {
-                      const file = e.target.files[0];
-                      if (!file) return;
-
-                      const toastId = toast.loading('Fotoğraf yükleniyor...');
-
-                      const fileExt = file.name.split('.').pop();
-                      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-                      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
-
-                      if (!uploadError) {
-                        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
-                        setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
-                        toast.success("Fotoğraf yüklendi! Kaydetmeyi unutma.", { id: toastId });
-                      } else {
-                        toast.error("Yükleme hatası!", { id: toastId });
-                      }
-                    }}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                  />
-                  <span className="text-xl md:text-2xl mb-1 block">📸</span>
-                  <p className="text-[9px] md:text-[10px] font-black uppercase text-gray-400 group-hover:text-red-600">Profil Fotoğrafını Değiştir</p>
-                </div>
-
-                {profileData.avatar_url && (
-                  <div className="md:col-span-2 flex justify-center -mt-2 mb-2">
-                    <button
-                      onClick={handleRemovePhoto}
-                      className="text-[9px] md:text-[10px] text-red-600 font-black uppercase hover:underline"
-                    >
-                      Mevcut Fotoğrafı Kaldır
-                    </button>
+        <header className="mb-8 md:mb-12 bg-white dark:bg-white/5 p-6 md:p-10 rounded-3xl md:rounded-[4rem] border dark:border-white/5">
+          <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
+            <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-white/10 rounded-2xl md:rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0">
+              {profileData.avatar_url && profileData.avatar_url.includes('http') ? (
+                <img src={profileData.avatar_url} className="w-full h-full object-cover" alt="" />
+              ) : (
+                user.email[0].toUpperCase()
+              )}
+            </div>
+            <div className="flex-1 w-full">
+              {!isEditing ? (
+                <>
+                  <div className="flex flex-col md:flex-row md:items-end gap-2 md:gap-4 mb-2 justify-center md:justify-start">
+                    <h1 className="text-2xl md:text-3xl font-black uppercase dark:text-white leading-none text-center md:text-left">
+                      {profileData.full_name || "İsim Soyisim"}
+                    </h1>
                   </div>
-                )}
 
-                <input
-                  value={profileData.full_name}
-                  onChange={e => setProfileData({ ...profileData, full_name: e.target.value })}
-                  className="p-3 md:p-4 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600"
-                  placeholder="Ad Soyad"
-                />
+                  <div className="flex justify-center md:justify-start mb-3 md:mb-4">
+                    <Username
+                      username={profileData.username}
+                      isAdmin={isAdmin}
+                      className="text-xs text-gray-400 uppercase font-bold tracking-wide"
+                    />
+                  </div>
 
-                <input
-                  value={profileData.username}
-                  onChange={e => setProfileData({ ...profileData, username: e.target.value })}
-                  className="p-3 md:p-4 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600"
-                  placeholder="Kullanıcı Adı"
-                />
+                  <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="px-4 md:px-6 py-2 bg-gray-100 dark:bg-white/5 rounded-full text-[9px] md:text-[10px] font-black uppercase text-gray-500 hover:text-red-600 transition-all"
+                    >
+                      Profili Düzenle
+                    </button>
 
-                <div className="relative">
-                  <span className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">@</span>
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        className="px-4 md:px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-full text-[9px] md:text-[10px] font-black uppercase hover:opacity-80 transition-all flex items-center gap-2"
+                      >
+                        🛡️ Admin Paneli
+                      </Link>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 animate-in fade-in zoom-in-95 duration-200">
+                  <div className="md:col-span-2 mb-2 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl md:rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 text-center relative group cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        const toastId = toast.loading('Fotoğraf yükleniyor...');
+
+                        const fileExt = file.name.split('.').pop();
+                        const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+                        const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
+
+                        if (!uploadError) {
+                          const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+                          setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
+                          toast.success("Fotoğraf yüklendi! Kaydetmeyi unutma.", { id: toastId });
+                        } else {
+                          toast.error("Yükleme hatası!", { id: toastId });
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
+                    <span className="text-xl md:text-2xl mb-1 block">📸</span>
+                    <p className="text-[9px] md:text-[10px] font-black uppercase text-gray-400 group-hover:text-red-600">Profil Fotoğrafını Değiştir</p>
+                  </div>
+
+                  {profileData.avatar_url && (
+                    <div className="md:col-span-2 flex justify-center -mt-2 mb-2">
+                      <button
+                        onClick={handleRemovePhoto}
+                        className="text-[9px] md:text-[10px] text-red-600 font-black uppercase hover:underline"
+                      >
+                        Mevcut Fotoğrafı Kaldır
+                      </button>
+                    </div>
+                  )}
+
                   <input
-                    value={profileData.instagram}
-                    onChange={e => setProfileData({ ...profileData, instagram: e.target.value })}
-                    className="w-full p-3 md:p-4 pl-7 md:pl-8 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600"
-                    placeholder="Instagram Kullanıcı Adı"
+                    value={profileData.full_name}
+                    onChange={e => setProfileData({ ...profileData, full_name: e.target.value })}
+                    className="p-3 md:p-4 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600"
+                    placeholder="Ad Soyad"
                   />
-                </div>
 
-                <textarea
-                  value={profileData.bio}
-                  onChange={e => setProfileData({ ...profileData, bio: e.target.value })}
-                  className="md:col-span-2 p-3 md:p-4 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600 min-h-[80px]"
-                  placeholder="Biyografi (Kendini tanıt...)"
-                />
+                  <input
+                    value={profileData.username}
+                    onChange={e => setProfileData({ ...profileData, username: e.target.value })}
+                    className="p-3 md:p-4 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600"
+                    placeholder="Kullanıcı Adı"
+                  />
 
-                <div className="md:col-span-2 flex gap-2">
-                  <button onClick={() => setIsEditing(false)} className="flex-1 py-3 bg-gray-100 dark:bg-white/5 text-gray-500 rounded-xl text-[9px] md:text-[10px] font-black uppercase hover:bg-gray-200">İptal</button>
-                  <button onClick={handleSaveProfile} className="flex-[2] py-3 bg-red-600 text-white rounded-xl text-[9px] md:text-[10px] font-black uppercase shadow-lg shadow-red-600/30 hover:bg-red-700">Değişiklikleri Kaydet</button>
+                  <div className="relative">
+                    <span className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">@</span>
+                    <input
+                      value={profileData.instagram}
+                      onChange={e => setProfileData({ ...profileData, instagram: e.target.value })}
+                      className="w-full p-3 md:p-4 pl-7 md:pl-8 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600"
+                      placeholder="Instagram Kullanıcı Adı"
+                    />
+                  </div>
+
+                  <textarea
+                    value={profileData.bio}
+                    onChange={e => setProfileData({ ...profileData, bio: e.target.value })}
+                    className="md:col-span-2 p-3 md:p-4 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600 min-h-[80px]"
+                    placeholder="Biyografi (Kendini tanıt...)"
+                  />
+
+                  <div className="md:col-span-2 flex gap-2">
+                    <button onClick={() => setIsEditing(false)} className="flex-1 py-3 bg-gray-100 dark:bg-white/5 text-gray-500 rounded-xl text-[9px] md:text-[10px] font-black uppercase hover:bg-gray-200">İptal</button>
+                    <button onClick={handleSaveProfile} className="flex-[2] py-3 bg-red-600 text-white rounded-xl text-[9px] md:text-[10px] font-black uppercase shadow-lg shadow-red-600/30 hover:bg-red-700">Değişiklikleri Kaydet</button>
+                  </div>
                 </div>
+              )}
+
+              <div className="flex justify-center md:justify-start gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6 w-full">
+                <div className="text-center"><p className="text-xl md:text-2xl font-black">{myBooks.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40">Eser</p></div>
+                <div className="text-center"><p className="text-xl md:text-2xl font-black text-red-600">{formatNumber(totalViews)}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40">Okunma</p></div>
+                <button onClick={() => setModalType('followers')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{myFollowers.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takipçi</p></button>
+                <button onClick={() => setModalType('following')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{followedAuthors.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takip</p></button>
               </div>
-            )}
-
-            <div className="flex justify-center md:justify-start gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6">
-              <div className="text-center"><p className="text-xl md:text-2xl font-black">{myBooks.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40">Eser</p></div>
-              <div className="text-center"><p className="text-xl md:text-2xl font-black text-red-600">{formatNumber(totalViews)}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40">Okunma</p></div>
-              <button onClick={() => setModalType('followers')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{myFollowers.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takipçi</p></button>
-              <button onClick={() => setModalType('following')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{followedAuthors.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takip</p></button>
             </div>
           </div>
         </header>
@@ -441,8 +443,6 @@ export default function ProfilSayfasi() {
         </div>
       </div>
 
-     
-
       {/* TAKİPÇİ MODALI */}
       {modalType && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setModalType(null)}>
@@ -473,4 +473,3 @@ export default function ProfilSayfasi() {
     </div>
   );
 }
-//.
