@@ -485,8 +485,8 @@ export default function ProfilSayfasi() {
         </div>
       </div>
 
-      {modalType && (
-  <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setModalType(null)}>
+     {modalType && (
+  <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setModalType(null)}>
     <div className="bg-white dark:bg-black w-full max-w-md rounded-2xl md:rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
 
       {/* BAŞLIK VE KAPAT */}
