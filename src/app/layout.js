@@ -11,7 +11,8 @@ import { ThemeProvider } from "next-themes";
 // --- YENİ EKLENEN IMPORTLAR ---
 import BanKontrol from '@/components/BanKontrol'; // Ajanı çağırdık
 import { Toaster } from 'react-hot-toast'; // Bildirim kutusu
-
+// _app.js veya layout'a:
+<meta name="viewport" content="width=device-width, initial-scale=1" />
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({ children }) {

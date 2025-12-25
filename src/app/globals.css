@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
 /* Kaydırma çubuğunu tamamen gizle */
 .scrollbar-hide::-webkit-scrollbar {
     display: none;
@@ -9,11 +10,23 @@
     -ms-overflow-style: none;  /* IE ve Edge */
     scrollbar-width: none;  /* Firefox */
 }
-/* src/app/globals.css */
+
+/* Mobilde yatay kaydırma çubuğunu gizle (Sekmeler için) */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 
 @layer utilities {
-  /* 1. Mobilde devasa yuvarlak köşeleri dizginle */
+  /* ========================================
+     MOBİL RESPONSIVE DÜZELTMELERİ
+     ======================================== */
+  
   @media (max-width: 768px) {
+    /* 1. Mobilde devasa yuvarlak köşeleri dizginle */
     .rounded-\[4rem\] {
       border-radius: 2rem !important;
     }
@@ -23,8 +36,14 @@
     .rounded-\[2\.8rem\] {
       border-radius: 1.2rem !important;
     }
+    .rounded-\[2\.5rem\] {
+      border-radius: 1rem !important;
+    }
 
     /* 2. Mobildeki çok geniş boşlukları (p-10 gibi) otomatik daralt */
+    .p-16 {
+      padding: 1.5rem !important;
+    }
     .p-10 {
       padding: 1.5rem !important;
     }
@@ -32,27 +51,338 @@
       padding: 1.25rem !important;
     }
     
-    /* 3. Mobilde devasa gapleri (gap-10) küçült */
+    /* 3. Mobilde devasa gapleri küçült */
     .gap-10 {
       gap: 1.5rem !important;
     }
+    .gap-8 {
+      gap: 1.25rem !important;
+    }
+    .gap-6 {
+      gap: 1rem !important;
+    }
 
     /* 4. Başlıkların mobilde ekrandan taşmasını engelle */
+    .text-6xl {
+      font-size: 2rem !important; /* 32px */
+      line-height: 2.25rem !important;
+    }
+    .text-5xl {
+      font-size: 1.875rem !important; /* 30px */
+      line-height: 2.125rem !important;
+    }
     .text-4xl {
-      font-size: 1.875rem !important; /* text-3xl seviyesine çek */
+      font-size: 1.875rem !important; /* 30px */
       line-height: 2.25rem !important;
     }
     .text-3xl {
-      font-size: 1.5rem !important; /* text-2xl seviyesine çek */
+      font-size: 1.5rem !important; /* 24px */
+      line-height: 2rem !important;
     }
+    .text-2xl {
+      font-size: 1.25rem !important; /* 20px */
+      line-height: 1.75rem !important;
+    }
+
+    /* 5. Çok küçük text'leri okunabilir yap */
+    .text-\[8px\],
+    .text-\[9px\],
+    .text-\[10px\] {
+      font-size: 0.75rem !important; /* 12px - minimum okunabilir */
+    }
+  }
+
+  /* ========================================
+     MODAL DÜZELTMELERİ
+     ======================================== */
+  
+  @media (max-width: 768px) {
+    /* Tüm modal container'ları mobilde tam ekran yap */
+    .fixed.inset-0 > div[class*="max-w"] {
+      max-width: 100% !important;
+      width: 100% !important;
+      height: 100% !important;
+      max-height: 100vh !important;
+      border-radius: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* Modal içindeki flex layout'ları alt alta getir */
+    .fixed.inset-0 .flex.md\:flex-row {
+      flex-direction: column !important;
+    }
+
+    /* Modal içindeki resimleri küçült */
+    .fixed.inset-0 img {
+      max-height: 40vh !important;
+    }
+  }
+
+  /* ========================================
+     TOUCH-FRIENDLY BUTONLAR
+     ======================================== */
+  
+  @media (max-width: 768px) {
+    /* Tüm butonları minimum 44x44px yap (Apple guideline) */
+    button,
+    a.inline-flex,
+    .btn {
+      min-height: 44px !important;
+      min-width: 44px !important;
+    }
+
+    /* Kapatma butonlarını daha büyük yap */
+    .fixed.inset-0 button[class*="absolute"] {
+      width: 3rem !important;
+      height: 3rem !important;
+      font-size: 1.5rem !important;
+    }
+
+    /* Scroll butonlarını mobilde görünür yap */
+    .group .opacity-0 {
+      opacity: 1 !important;
+    }
+  }
+
+  /* ========================================
+     CAROUSEL & SCROLL İYİLEŞTİRMELERİ
+     ======================================== */
+  
+  @media (max-width: 768px) {
+    /* Smooth scroll ve momentum */
+    .overflow-x-auto {
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x mandatory;
+      scroll-padding: 1rem;
+      overscroll-behavior-x: contain;
+    }
+
+    /* Carousel item'ları mobilde daha büyük */
+    .flex-none.w-32 {
+      width: 9rem !important; /* 144px */
+    }
+    .flex-none.w-36 {
+      width: 10rem !important; /* 160px */
+    }
+    .flex-none.w-40 {
+      width: 11rem !important; /* 176px */
+    }
+    .flex-none.w-44 {
+      width: 12rem !important; /* 192px */
+    }
+    .flex-none.w-48 {
+      width: 13rem !important; /* 208px */
+    }
+  }
+
+  /* ========================================
+     IMAGE & MEDIA DÜZELTMELERİ
+     ======================================== */
+  
+  @media (max-width: 768px) {
+    /* Resimlerin taşmasını engelle */
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    /* Aspect ratio koruması */
+    .aspect-\[2\/3\] {
+      aspect-ratio: 2/3;
+    }
+  }
+
+  /* ========================================
+     GRID & FLEX LAYOUTS
+     ======================================== */
+  
+  @media (max-width: 768px) {
+    /* Yan yana olan şeyleri alt alta getir */
+    .flex.items-center.gap-6,
+    .flex.justify-between.gap-6 {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 1rem !important;
+    }
+  }
+
+  /* ========================================
+     SAFE AREA (iPhone notch için)
+     ======================================== */
+  
+  @supports (padding: env(safe-area-inset-top)) {
+    .fixed.inset-0 {
+      padding-top: max(1rem, env(safe-area-inset-top));
+      padding-bottom: max(1rem, env(safe-area-inset-bottom));
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+  }
+
+  /* ========================================
+     PERFORMANS İYİLEŞTİRMELERİ
+     ======================================== */
+  
+  /* Touch delay'i kaldır */
+  * {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Smooth scroll */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Hover effects'i sadece mouse'lu cihazlarda aktif et */
+  @media (hover: none) and (pointer: coarse) {
+    /* Mobilde hover yerine active kullan */
+    .hover\:scale-110:hover {
+      transform: none;
+    }
+    .hover\:scale-110:active {
+      transform: scale(1.1);
+    }
+
+    .hover\:-translate-y-2:hover {
+      transform: none;
+    }
+    .hover\:-translate-y-2:active {
+      transform: translateY(-0.5rem);
+    }
+
+    /* Scroll ok butonlarını mobilde göster */
+    .group:hover .opacity-0 {
+      opacity: 1 !important;
+    }
+  }
+
+  /* ========================================
+     UTILITY CLASSES (Kendi eklemen için)
+     ======================================== */
+  
+  /* Modal overlay fade-in animasyonu */
+  .animate-in {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  /* Zoom-in animasyonu */
+  .zoom-in-95 {
+    animation: zoomIn 0.2s ease-out;
+  }
+
+  @keyframes zoomIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Touch feedback için active state */
+  .active\:scale-95:active {
+    transform: scale(0.95);
+  }
+
+  /* ========================================
+     DEBUGGING (Geliştirme için)
+     ======================================== */
+  
+  /* Uncomment to see breakpoints */
+  /* 
+  body::before {
+    content: 'XS';
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    background: red;
+    color: white;
+    padding: 0.5rem;
+    z-index: 9999;
+    font-weight: bold;
+  }
+
+  @media (min-width: 640px) {
+    body::before {
+      content: 'SM';
+      background: orange;
+    }
+  }
+
+  @media (min-width: 768px) {
+    body::before {
+      content: 'MD';
+      background: yellow;
+      color: black;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    body::before {
+      content: 'LG';
+      background: green;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    body::before {
+      content: 'XL';
+      background: blue;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    body::before {
+      content: '2XL';
+      background: purple;
+    }
+  }
+  */
+}
+
+/* ========================================
+   DARK MODE OPTİMİZASYONU
+   ======================================== */
+
+@media (prefers-color-scheme: dark) {
+  /* Dark mode'da daha iyi kontrast */
+  .dark\:text-gray-400 {
+    color: rgb(156 163 175);
+  }
+  
+  .dark\:bg-white\/5 {
+    background-color: rgba(255, 255, 255, 0.05);
   }
 }
 
-/* 5. Mobilde yatay kaydırma çubuğunu gizle (Sekmeler için) */
-.no-scrollbar::-webkit-scrollbar {
-  display: none;
-}
-.no-scrollbar {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
+/* ========================================
+   PRİNT OPTİMİZASYONU (Bonus)
+   ======================================== */
+
+@media print {
+  /* Yazdırırken gereksiz şeyleri gizle */
+  button,
+  .fixed,
+  nav,
+  footer {
+    display: none !important;
+  }
+
+  /* Yazdırırken dark mode'u kapat */
+  * {
+    background: white !important;
+    color: black !important;
+  }
 }
