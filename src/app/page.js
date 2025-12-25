@@ -23,7 +23,6 @@ function formatNumber(num) {
   return num;
 }
 
-// --- DUYURU SİSTEMİ ---
 function DuyuruPaneli({ isAdmin }) {
   const [duyurular, setDuyurular] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -73,28 +72,28 @@ function DuyuruPaneli({ isAdmin }) {
   return (
     <>
       {selectedDuyuru && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={() => setSelectedDuyuru(null)}>
-          <div className="bg-white dark:bg-[#080808] w-full max-w-5xl max-h-[90vh] rounded-2xl md:rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setSelectedDuyuru(null)} className="absolute top-3 right-3 md:top-8 md:right-8 z-30 w-10 h-10 md:w-12 md:h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-xl">✕</button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={() => setSelectedDuyuru(null)}>
+          <div className="bg-white dark:bg-[#080808] w-full max-w-5xl max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setSelectedDuyuru(null)} className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-xl">✕</button>
             
             <div className="overflow-y-auto flex-1">
               <div className="flex flex-col md:flex-row">
                 {selectedDuyuru.image_url && selectedDuyuru.display_type !== 'none' && (
-                  <div className="shrink-0 flex items-center justify-center p-4 md:p-8 bg-gray-50 dark:bg-black/40 md:w-1/2">
-                    <img src={selectedDuyuru.image_url} className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl md:rounded-2xl max-h-[250px] md:max-h-[600px] w-full md:w-auto" alt="" />
+                  <div className="shrink-0 flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2">
+                    <img src={selectedDuyuru.image_url} className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-[300px] md:max-h-[600px] w-auto" alt="" />
                   </div>
                 )}
-                <div className="p-6 md:p-16 flex flex-col justify-center flex-1">
-                  <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-3 md:mb-4 block">{getTypeLabel(selectedDuyuru.type)}</span>
-                  <h2 className="text-2xl md:text-6xl font-black mb-4 md:mb-8 leading-tight tracking-tighter dark:text-white" style={{ color: selectedDuyuru.text_color || '#000000' }}>{selectedDuyuru.title}</h2>
-                  <p className="text-sm md:text-xl text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-wrap mb-6 md:mb-8">{selectedDuyuru.content}</p>
+                <div className="p-8 md:p-16 flex flex-col justify-center flex-1">
+                  <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">{getTypeLabel(selectedDuyuru.type)}</span>
+                  <h2 className="text-3xl md:text-6xl font-black mb-6 md:mb-8 leading-tight tracking-tighter dark:text-white" style={{ color: selectedDuyuru.text_color || '#000000' }}>{selectedDuyuru.title}</h2>
+                  <p className="text-base md:text-xl text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-wrap mb-6 md:mb-8">{selectedDuyuru.content}</p>
                   <div className="pt-6 md:pt-8 border-t dark:border-white/5 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
                     <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">{new Date(selectedDuyuru.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                     <div className="flex gap-3 w-full md:w-auto">
                       {selectedDuyuru.action_link && selectedDuyuru.action_text && (
-                        <Link href={selectedDuyuru.action_link} className="inline-flex items-center justify-center gap-2 md:gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-xs md:text-sm px-4 md:px-6 py-2.5 md:py-3 rounded-xl md:rounded-2xl uppercase tracking-wider transition-all shadow-2xl hover:shadow-red-600/50 flex-1 md:flex-none">{selectedDuyuru.action_text} →</Link>
+                        <Link href={selectedDuyuru.action_link} className="inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6 py-3 rounded-2xl uppercase tracking-wider transition-all shadow-2xl hover:shadow-red-600/50 flex-1 md:flex-none">{selectedDuyuru.action_text} →</Link>
                       )}
-                      {isAdmin && <button onClick={(e) => handleDeleteDuyuru(selectedDuyuru.id, e)} className="px-4 md:px-6 py-2.5 md:py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl md:rounded-2xl text-xs md:text-sm font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-lg">SİL (ADMIN)</button>}
+                      {isAdmin && <button onClick={(e) => handleDeleteDuyuru(selectedDuyuru.id, e)} className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-2xl text-sm font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-lg">SİL (ADMIN)</button>}
                     </div>
                   </div>
                 </div>
@@ -117,21 +116,21 @@ function DuyuruPaneli({ isAdmin }) {
             <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${activeIndex * 100}%)` }}>
               {duyurular.map((duyuru, idx) => (
                 <div key={idx} className="w-full flex-shrink-0">
-                  <div onClick={() => setSelectedDuyuru(duyuru)} className="w-full group/card block bg-white dark:bg-white/5 border dark:border-white/10 rounded-2xl md:rounded-[2.5rem] p-4 md:p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5 cursor-pointer text-left relative">
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
+                  <div onClick={() => setSelectedDuyuru(duyuru)} className="w-full group/card block bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5 cursor-pointer text-left relative">
+                    <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                       {duyuru.image_url && duyuru.display_type !== 'none' && (
-                        <div className="shrink-0 rounded-xl md:rounded-2xl overflow-hidden border dark:border-white/5 shadow-lg h-20 md:h-36 w-full md:w-auto">
-                          <img src={duyuru.image_url} className="h-full w-full md:w-auto object-cover group-hover/card:scale-110 transition-transform duration-500" alt="" />
+                        <div className="shrink-0 rounded-2xl overflow-hidden border dark:border-white/5 shadow-lg h-36 w-auto">
+                          <img src={duyuru.image_url} className="h-full w-auto object-contain group-hover/card:scale-110 transition-transform duration-500" alt="" />
                         </div>
                       )}
                       <div className="flex-1">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{getTypeLabel(duyuru.type)}</p>
-                        <h3 className="text-xl md:text-3xl font-black dark:text-white mb-2 group-hover/card:text-red-600 transition-colors uppercase tracking-tight line-clamp-2" style={{ color: duyuru.text_color || '#000000' }}>{duyuru.title}</h3>
-                        <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{duyuru.content}</p>
-                        <div className="inline-flex items-center gap-2 text-[9px] font-black uppercase bg-black dark:bg-white text-white dark:text-black px-4 md:px-6 py-2 md:py-3 rounded-full tracking-tighter mt-3 md:mt-4">Detayları Gör →</div>
+                        <h3 className="text-2xl md:text-3xl font-black dark:text-white mb-2 group-hover/card:text-red-600 transition-colors uppercase tracking-tight line-clamp-2" style={{ color: duyuru.text_color || '#000000' }}>{duyuru.title}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{duyuru.content}</p>
+                        <div className="inline-flex items-center gap-2 text-[9px] font-black uppercase bg-black dark:bg-white text-white dark:text-black px-6 py-3 rounded-full tracking-tighter mt-4">Detayları Gör →</div>
                       </div>
                     </div>
-                    {isAdmin && <button onClick={(e) => handleDeleteDuyuru(duyuru.id, e)} className="absolute top-3 md:top-6 right-3 md:right-6 px-2 md:px-3 py-1 bg-red-600 text-white rounded-full text-[9px] font-black uppercase opacity-0 group-hover/card:opacity-100 transition-opacity z-10">SİL</button>}
+                    {isAdmin && <button onClick={(e) => handleDeleteDuyuru(duyuru.id, e)} className="absolute top-6 right-6 px-3 py-1 bg-red-600 text-white rounded-full text-[9px] font-black uppercase opacity-0 group-hover/card:opacity-100 transition-opacity z-10">SİL</button>}
                   </div>
                 </div>
               ))}
