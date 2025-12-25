@@ -190,7 +190,7 @@ export default function PanoModal({
          sadece içindeki "overflow-y-auto" olan kısım kayacak.
       */}
       <div className="bg-white dark:bg-[#080808] w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col md:flex-row" onClick={(e) => e.stopPropagation()}>
-        <button onClick={onClose} className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md">✕</button>
+        <button onClick={onClose} className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-xl">✕</button>
 
         {/* SOL TARA: GÖRSEL */}
         {selectedPano.books?.cover_url && (
@@ -257,7 +257,7 @@ export default function PanoModal({
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                  <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-                    {selectedPano.profiles?.avatar_url ? <img src={selectedPano.profiles.avatar_url} className="w-full h-full object-cover" /> : null}
+                    {selectedPano.profiles?.avatar_url ? <img src={selectedPano.profiles.avatar_url} className="w-full h-full object-cover" alt="" /> : null}
                  </div>
                  <div>
                     <p className="text-[10px] font-black uppercase"><Username username={selectedPano.profiles?.username || selectedPano.username} isAdmin={adminEmails.includes(selectedPano.user_email)} /></p>
