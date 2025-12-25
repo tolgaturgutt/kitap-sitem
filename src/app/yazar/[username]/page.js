@@ -280,18 +280,19 @@ export default function YazarProfili() {
 
       <div className="max-w-6xl mx-auto">
         {/* HEADER */}
-        <header className="mb-8 md:mb-12 flex flex-col md:flex-row items-center gap-6 md:gap-10 bg-white dark:bg-white/5 p-6 md:p-10 rounded-3xl md:rounded-[4rem] border dark:border-white/5 shadow-sm">
-          <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-white/10 rounded-2xl md:rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0">
-            {author.avatar_url ? <img src={author.avatar_url} className="w-full h-full object-cover" alt="" /> : author.username[0].toUpperCase()}
-          </div>
-          <div className="flex-1 text-center md:text-left w-full">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
-              <div className="text-center md:text-left">
-                <h1 className="text-2xl md:text-3xl font-black uppercase dark:text-white tracking-tighter">{author.full_name || author.username}</h1>
-                <div className="flex justify-center md:justify-start mt-1">
-                  <Username username={author.username} isAdmin={author.role === 'admin'} className="text-xs text-gray-400 uppercase italic" />
+        <header className="mb-8 md:mb-12 bg-white dark:bg-white/5 p-6 md:p-10 rounded-3xl md:rounded-[4rem] border dark:border-white/5 shadow-sm">
+          <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
+            <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-white/10 rounded-2xl md:rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0">
+              {author.avatar_url ? <img src={author.avatar_url} className="w-full h-full object-cover" alt="" /> : author.username[0].toUpperCase()}
+            </div>
+            <div className="flex-1 w-full">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+                <div className="text-center md:text-left">
+                  <h1 className="text-2xl md:text-3xl font-black uppercase dark:text-white tracking-tighter">{author.full_name || author.username}</h1>
+                  <div className="flex justify-center md:justify-start mt-1">
+                    <Username username={author.username} isAdmin={author.role === 'admin'} className="text-xs text-gray-400 uppercase italic" />
+                  </div>
                 </div>
-              </div>
               
               <div className="flex flex-wrap gap-2 justify-center md:justify-end">
                 {currentUser && currentUser.id !== author.id && (
@@ -322,12 +323,13 @@ export default function YazarProfili() {
               </div>
             </div>
 
-            <div className="flex justify-center md:justify-start gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6">
+            <div className="flex justify-center md:justify-start gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6 w-full">
               <div className="text-center"><p className="text-xl md:text-2xl font-black">{books.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest">Eser</p></div>
               <div className="text-center"><p className="text-xl md:text-2xl font-black">{panos.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest">Pano</p></div>
               <button onClick={() => setModalType('followers')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{followers.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest underline decoration-red-600/20">Takipçi</p></button>
               <button onClick={() => setModalType('following')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{following.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest underline decoration-red-600/20">Takip</p></button>
             </div>
+          </div>
           </div>
         </header>
 
