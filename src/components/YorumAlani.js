@@ -4,18 +4,20 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
+
 export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   
   // --- YANIT STATE'LERİ ---
   const [replyComment, setReplyComment] = useState(''); 
-  const [replyingTo, setReplyingTo] = useState(null); // Hangi yoruma (ID) yanıt veriyoruz?
+  const [replyingTo, setReplyingTo] = useState(null); 
   // ------------------------
 
   const [user, setUser] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isOwner, setIsOwner] = useState(false); // ✅ YENİ: Kitap sahibi kontrolü
 
   useEffect(() => {
     async function load() {
@@ -23,23 +25,38 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       setUser(u);
       
       if (u) {
+        // 1. ADMIN KONTROLÜ
         const { data: adminData } = await supabase
           .from('announcement_admins')
           .select('*')
           .eq('user_email', u.email)
           .single();
         if (adminData) setIsAdmin(true);
+
+        // 2. ✅ KİTAP SAHİBİ KONTROLÜ (YENİ)
+        if (bookId) {
+          const { data: book } = await supabase
+            .from('books')
+            .select('user_email')
+            .eq('id', bookId)
+            .single();
+          
+          // Eğer kitabın yazarı şu anki kullanıcıysa yetki ver
+          if (book && book.user_email === u.email) {
+            setIsOwner(true);
+          }
+        }
       }
       fetchComments();
     }
     load();
-  }, [type, targetId, paraId]);
+  }, [type, targetId, paraId, bookId]); // bookId eklendi
 
   async function fetchComments() {
     let query = supabase
       .from('comments')
       .select('*, profiles!comments_user_id_fkey(username, avatar_url, role)')
-      .order('created_at', { ascending: false }); // Ana yorumlar: Yeniden eskiye
+      .order('created_at', { ascending: false }); 
 
     if (type === 'book') {
       query = query.eq('book_id', targetId).is('chapter_id', null);
@@ -55,16 +72,13 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     setComments(data || []);
   }
 
-  // --- YENİ: YANIT PENCERESİNİ AÇMA MANTIĞI ---
+  // --- YANIT PENCERESİNİ AÇMA MANTIĞI ---
   function openReply(targetComment) {
     if (replyingTo === targetComment.id) {
-      // Zaten açıksa kapat
       setReplyingTo(null);
       setReplyComment('');
     } else {
       setReplyingTo(targetComment.id);
-      
-      // Eğer bu bir alt yanıtsa, ismini otomatik ekle: "@ahmet "
       if (targetComment.parent_id) {
         const username = targetComment.profiles?.username || targetComment.username;
         setReplyComment(`@${username} `);
@@ -76,7 +90,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 
   // --- GÖNDERME FONKSİYONU ---
   async function handleSend(targetComment = null) {
-    // İçerik hangisi? (Ana yorum mu, yanıt mı?)
     const contentToSend = targetComment ? replyComment : newComment;
 
     if (!contentToSend.trim() || !user || isSending) return;
@@ -85,9 +98,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
     const username = profile?.username || user.email.split('@')[0];
 
-    // PARENT ID MANTIĞI (Tek Hiza İçin):
-    // 1. Eğer ana yoruma yanıt veriyorsak -> Parent ID = Ana Yorum ID
-    // 2. Eğer yanıta yanıt veriyorsak -> Parent ID = Yine o yanıtın bağlı olduğu Ana Yorum ID (Böylece aynı hizada kalırlar)
     let finalParentId = null;
     if (targetComment) {
         finalParentId = targetComment.parent_id ? targetComment.parent_id : targetComment.id;
@@ -131,7 +141,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   }
 
   async function createNotification(comment, username) {
-    // Bildirim mantığı aynı...
     try {
       const { data: book } = await supabase.from('books').select('user_email, title').eq('id', bookId).single();
       let recipientEmail = book.user_email;
@@ -172,16 +181,18 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     if (!error) toast.success("Raporlandı.");
   }
 
+  // --- SİLME FONKSİYONU ---
   async function handleDelete(commentId) {
     if(!confirm("Silmek istiyor musun?")) return;
     const { error } = await supabase.from('comments').delete().eq('id', commentId);
     if (!error) {
       setComments(prev => prev.filter(c => c.id !== commentId));
       toast.success("Silindi.");
+    } else {
+      toast.error("Silinemedi.");
     }
   }
 
-  // Yorumları Ayır
   const mainComments = comments.filter(c => !c.parent_id);
   const getReplies = (parentId) => {
     return comments
@@ -217,11 +228,12 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         {mainComments.map(c => (
           <div key={c.id} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             
-            {/* --- ANA YORUM KARTI --- */}
+            {/* ANA YORUM KARTI */}
             <CommentCard 
                 comment={c} 
                 user={user} 
-                isAdmin={isAdmin} 
+                isAdmin={isAdmin}
+                isOwner={isOwner} // ✅ Kitap sahibi mi?
                 onReply={() => openReply(c)}
                 isReplying={replyingTo === c.id}
                 onDelete={handleDelete}
@@ -233,21 +245,22 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
                 isMain={true}
             />
 
-            {/* --- ALT YORUMLAR (Hepsi Tek Hizada) --- */}
+            {/* ALT YORUMLAR */}
             <div className="pl-14 mt-3 space-y-4">
                 {getReplies(c.id).map(reply => (
                     <CommentCard 
                         key={reply.id}
                         comment={reply} 
                         user={user} 
-                        isAdmin={isAdmin} 
-                        onReply={() => openReply(reply)} // Buna basınca @isim ekleyecek
+                        isAdmin={isAdmin}
+                        isOwner={isOwner} // ✅ Kitap sahibi mi?
+                        onReply={() => openReply(reply)}
                         isReplying={replyingTo === reply.id}
                         onDelete={handleDelete}
                         onReport={handleReport}
                         replyText={replyComment}
                         setReplyText={setReplyComment}
-                        onSendReply={() => handleSend(reply)} // Yanıta yanıt
+                        onSendReply={() => handleSend(reply)}
                         isSending={isSending}
                         isMain={false}
                     />
@@ -261,9 +274,11 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   );
 }
 
-// --- KOD TEKRARINI ÖNLEMEK İÇİN KART BİLEŞENİ ---
-// --- KOD TEKRARINI ÖNLEMEK İÇİN KART BİLEŞENİ ---
-function CommentCard({ comment, user, isAdmin, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain }) {
+// --- YORUM KARTI BİLEŞENİ ---
+function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain }) {
+    // ✅ SİLME YETKİSİ: Admin VEYA Kitap Sahibi VEYA Yorumu Yazan
+    const canDelete = user && (isAdmin || isOwner || user.id === comment.user_id);
+
     return (
         <div className={`group relative flex gap-3 ${!isMain ? 'border-l-2 border-gray-100 dark:border-white/5 pl-4' : ''}`}>
             <div className={`${isMain ? 'w-10 h-10' : 'w-8 h-8'} rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 flex items-center justify-center font-black text-gray-400 text-xs`}>
@@ -273,7 +288,6 @@ function CommentCard({ comment, user, isAdmin, onReply, isReplying, onDelete, on
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
                     
-                    {/* ✅ GÜNCELLENDİ: Username Bileşeni Kullanıldı */}
                     <Username 
                         username={comment.profiles?.username || comment.username || "Anonim"}
                         isAdmin={comment.profiles?.role === 'admin'}
@@ -290,7 +304,8 @@ function CommentCard({ comment, user, isAdmin, onReply, isReplying, onDelete, on
                                 {isReplying ? 'Kapat' : 'Yanıtla'}
                             </button>
 
-                            {(user.id === comment.user_id || isAdmin) ? (
+                            {/* ✅ YENİ SİLME BUTONU MANTIĞI */}
+                            {canDelete ? (
                                 <button onClick={() => onDelete(comment.id)} className="text-[10px] text-red-500 hover:underline font-bold uppercase">Sil</button>
                             ) : (
                                 <button onClick={() => onReport(comment.id, comment.content)} className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase">Rapor</button>
@@ -300,13 +315,12 @@ function CommentCard({ comment, user, isAdmin, onReply, isReplying, onDelete, on
                 </div>
                 
                 <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
-                    {/* Eğer yanıt içinde @user varsa onu mavi yapalım (Basit highlight) */}
                     {comment.content.split(' ').map((word, i) => 
                         word.startsWith('@') ? <span key={i} className="text-blue-500 font-bold">{word} </span> : word + ' '
                     )}
                 </p>
 
-                {/* YANIT KUTUSU (Aktifse açılır) */}
+                {/* YANIT KUTUSU */}
                 {isReplying && (
                     <div className="mt-3 flex gap-2 animate-in slide-in-from-top-1">
                         <input 

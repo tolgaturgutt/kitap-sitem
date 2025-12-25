@@ -7,10 +7,9 @@ import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
 
 export default function PanoDuzenle({ params }) {
-  const { id } = use(params); // Pano ID'si
+  const { id } = use(params);
   const router = useRouter();
   
-  // --- STATE'LER (PanoEkle ile aynı) ---
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
@@ -19,14 +18,13 @@ export default function PanoDuzenle({ params }) {
   const [selectedBook, setSelectedBook] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
   
-  const [books, setBooks] = useState([]); // Arama için kitap listesi
+  const [books, setBooks] = useState([]);
   const [chapters, setChapters] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showBookDropdown, setShowBookDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
 
-  // --- 1. VERİLERİ ÇEKME VE BAŞLANGIÇ AYARLARI ---
   useEffect(() => {
     async function init() {
       const { data: { user: activeUser } } = await supabase.auth.getUser();
@@ -46,7 +44,7 @@ export default function PanoDuzenle({ params }) {
         return;
       }
 
-      // B) YETKİ KONTROLÜ (Admin listesini çek ve kontrol et)
+      // B) YETKİ KONTROLÜ
       const { data: adminList } = await supabase.from('announcement_admins').select('user_email');
       const emails = adminList?.map(a => a.user_email) || [];
       setAdminEmails(emails);
@@ -64,11 +62,12 @@ export default function PanoDuzenle({ params }) {
       setTitle(pano.title);
       setContent(pano.content);
 
-      // D) KİTAPLARI GETİR (PanoEkle'deki Hayalet Filtresiyle Aynı)
+      // D) KİTAPLARI GETİR - ✅ SADECE KULLANICININ KENDİ KİTAPLARI
       let { data: allBooks } = await supabase
         .from('books')
         .select('id, title, cover_url, user_email, username, chapters(id)') 
-        .eq('is_draft', false) 
+        .eq('is_draft', false)
+        .eq('user_email', activeUser.email) // ✅ Sadece kendi kitapları
         .order('title');
       
       // Hayalet Filtresi: Bölümü olmayanları at
@@ -118,8 +117,6 @@ export default function PanoDuzenle({ params }) {
     init();
   }, [id, router]);
 
-  // --- 2. KİTAP DEĞİŞİNCE BÖLÜMLERİ GÜNCELLE ---
-  // (Kullanıcı düzenlerken başka kitap seçerse burası çalışır)
   useEffect(() => {
     async function getChapters() {
       if (!selectedBook) {
@@ -128,7 +125,6 @@ export default function PanoDuzenle({ params }) {
         return;
       }
 
-      // ✅ LOGSUZ VE DOĞRU SÜTUN (order_no)
       const { data } = await supabase
         .from('chapters')
         .select('id, title, order_no') 
@@ -137,16 +133,13 @@ export default function PanoDuzenle({ params }) {
       
       setChapters(data || []);
     }
-    // Sadece selectedBook değiştiğinde çalışsın (İlk yüklemede init hallediyor)
     if (selectedBook) getChapters();
   }, [selectedBook]);
 
-  // Arama filtresi
   const filteredBooks = books.filter(b => 
     b.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // --- 3. GÜNCELLEME İŞLEMİ (Update) ---
   async function handleUpdate(e) {
     e.preventDefault();
 
@@ -163,7 +156,7 @@ export default function PanoDuzenle({ params }) {
         title: title.trim(),
         content: content.trim(),
         book_id: selectedBook.id,
-        chapter_id: selectedChapter?.id || null, // Bölüm seçildiyse ID'si, yoksa null
+        chapter_id: selectedChapter?.id || null,
         updated_at: new Date()
       })
       .eq('id', id);
@@ -173,7 +166,7 @@ export default function PanoDuzenle({ params }) {
       setSaving(false);
     } else {
       toast.success('Pano başarıyla güncellendi! ✅', { id: toastId });
-      router.push('/profil'); // Profile geri dön
+      router.push('/profil');
     }
   }
 
@@ -232,7 +225,7 @@ export default function PanoDuzenle({ params }) {
             <p className="text-xs text-gray-400 mt-2">{content.length} karakter</p>
           </div>
 
-          {/* KİTAP SEÇİMİ (Aynı Tasarım) */}
+          {/* KİTAP SEÇİMİ */}
           <div className="relative">
             <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
               Kitap Seç * {selectedBook && '✓'}
@@ -244,14 +237,16 @@ export default function PanoDuzenle({ params }) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setShowBookDropdown(true)}
-                placeholder="Kitap ara (değiştirmek istersen)..."
+                placeholder="Kitaplarından ara..."
                 className="w-full p-4 bg-gray-50 dark:bg-black border dark:border-white/10 rounded-2xl text-base outline-none focus:border-blue-600 transition-colors"
               />
               
               {showBookDropdown && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border dark:border-white/10 rounded-2xl shadow-2xl max-h-80 overflow-y-auto z-50">
                   {filteredBooks.length === 0 ? (
-                    <div className="p-4 text-center text-gray-400 text-sm">Kitap bulunamadı</div>
+                    <div className="p-4 text-center text-gray-400 text-sm">
+                      {books.length === 0 ? 'Henüz hiç kitabın yok' : 'Kitap bulunamadı'}
+                    </div>
                   ) : (
                     filteredBooks.map(book => (
                       <button
@@ -261,19 +256,17 @@ export default function PanoDuzenle({ params }) {
                           setSelectedBook(book);
                           setSearchQuery(book.title);
                           setShowBookDropdown(false);
-                          setSelectedChapter(null); // Kitap değişince bölümü sıfırla
+                          setSelectedChapter(null);
                         }}
                         className="w-full flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-white/5 transition-colors text-left border-b dark:border-white/5 last:border-0"
                       >
-                         {/* Profil Resmi */}
-                         <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 dark:bg-white/10 flex items-center justify-center font-black text-sm shrink-0">
+                        <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 dark:bg-white/10 flex items-center justify-center font-black text-sm shrink-0">
                           {book.avatar_url ? (
                             <img src={book.avatar_url} className="w-full h-full object-cover" alt="" />
                           ) : (
                             book.user_email[0].toUpperCase()
                           )}
                         </div>
-                        {/* Kapak */}
                         <div className="w-12 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-white/10 shrink-0">
                           {book.cover_url && <img src={book.cover_url} className="w-full h-full object-cover" />}
                         </div>
@@ -318,7 +311,7 @@ export default function PanoDuzenle({ params }) {
             )}
           </div>
 
-          {/* BÖLÜM SEÇİMİ (Order No Düzeltilmiş) */}
+          {/* BÖLÜM SEÇİMİ */}
           {selectedBook && chapters.length > 0 && (
             <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">

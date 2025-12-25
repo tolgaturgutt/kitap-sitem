@@ -49,25 +49,21 @@ export default function PanoEkle() {
       const emails = adminList?.map(a => a.user_email) || [];
       setAdminEmails(emails);
 
-      // Yayınlanmış kitapları getir (username ve profil bilgileriyle)
-     // Yayınlanmış ve BÖLÜMÜ OLAN kitapları getir
+      // ✅ SADECE KULLANICININ KENDİ KİTAPLARINI GETİR
       let { data: allBooks } = await supabase
         .from('books')
-        // ✅ chapters(id)'yi ekledik ki bölümü var mı görelim
         .select('id, title, cover_url, user_email, username, chapters(id)') 
-        .eq('is_draft', false) // Zaten taslak olmayanları istiyoruz
+        .eq('is_draft', false)
+        .eq('user_email', activeUser.email) // ✅ Sadece kendi kitapları
         .order('title');
       
-      // ✅ HAYALET FİLTRESİ: İçinde hiç bölüm olmayan kitapları listeden at
+      // Hayalet Filtresi: Bölümü olmayanları at
       if (allBooks) {
         allBooks = allBooks.filter(book => book.chapters && book.chapters.length > 0);
-      }
-      
-      if (allBooks) {
-        // Her kitap için profil resmini çek
+        
+        // Profil resimlerini ekle
         const booksWithProfiles = await Promise.all(
           allBooks.map(async (book) => {
-            // Profil resmini email'e göre çek
             const { data: authorProfile } = await supabase
               .from('profiles')
               .select('avatar_url')
@@ -91,7 +87,6 @@ export default function PanoEkle() {
   }, [router]);
 
   // Kitap seçilince bölümleri getir
-  // Kitap seçilince bölümleri getir
   useEffect(() => {
     async function getChapters() {
       if (!selectedBook) {
@@ -100,7 +95,6 @@ export default function PanoEkle() {
         return;
       }
 
-      // ✅ LOGLAR SİLİNDİ, DOĞRU SÜTUN (order_no) YAZILDI
       const { data } = await supabase
         .from('chapters')
         .select('id, title, order_no') 
@@ -173,7 +167,7 @@ export default function PanoEkle() {
             📋 Yeni Pano Oluştur
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-sm">
-            Sevdiğin bir kitap veya bölüm hakkında düşüncelerini paylaş!
+            Kendi kitapların hakkında düşüncelerini paylaş!
           </p>
         </div>
 
@@ -212,7 +206,7 @@ export default function PanoEkle() {
           {/* KİTAP SEÇİMİ */}
           <div className="relative">
             <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
-              Kitap Seç * {selectedBook && '✓'}
+              Kitap Seç * {selectedBook && '✔'}
             </label>
             
             <div className="relative">
@@ -221,7 +215,7 @@ export default function PanoEkle() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onFocus={() => setShowBookDropdown(true)}
-                placeholder="Kitap ara..."
+                placeholder="Kitaplarından ara..."
                 className="w-full p-4 bg-gray-50 dark:bg-black border dark:border-white/10 rounded-2xl text-base outline-none focus:border-blue-600 transition-colors"
               />
               
@@ -229,7 +223,7 @@ export default function PanoEkle() {
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-900 border dark:border-white/10 rounded-2xl shadow-2xl max-h-80 overflow-y-auto z-50">
                   {filteredBooks.length === 0 ? (
                     <div className="p-4 text-center text-gray-400 text-sm">
-                      Kitap bulunamadı
+                      {books.length === 0 ? 'Henüz hiç kitabın yok' : 'Kitap bulunamadı'}
                     </div>
                   ) : (
                     filteredBooks.map(book => (
@@ -306,7 +300,7 @@ export default function PanoEkle() {
                       isAdmin={selectedBook.is_admin}
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-1">Seçildi ✓</p>
+                  <p className="text-xs text-gray-500 mt-1">Seçildi ✔</p>
                 </div>
                 <button
                   type="button"
@@ -341,7 +335,7 @@ export default function PanoEkle() {
                 <option value="">Bölüm seçme (tüm kitap için)</option>
                 {chapters.map(ch => (
                   <option key={ch.id} value={ch.id}>
-                    Bölüm {ch.chapter_number}: {ch.title}
+                    Bölüm {ch.order_no}: {ch.title}
                   </option>
                 ))}
               </select>

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoCarousel from '@/components/PanoCarousel';
-
+import PanoModal from '@/components/PanoModal'; // ✅ YENİ: Modal bileşenini import ettik
 
 const KATEGORILER = [
   "Aksiyon",
@@ -32,7 +32,7 @@ const KATEGORILER = [
   "Tarihi"
 ];
 
-// --- DUYURU SİSTEMİ (MODAL + CAROUSEL BİRLEŞİK) ---
+// --- DUYURU SİSTEMİ (AYNEN KORUNDU) ---
 function DuyuruPaneli({ isAdmin }) {
   const [duyurular, setDuyurular] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -90,15 +90,13 @@ function DuyuruPaneli({ isAdmin }) {
 
   return (
     <>
-      {/* MODAL */}
+      {/* DUYURU MODALI (KORUNDU) */}
       {selectedDuyuru && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={() => setSelectedDuyuru(null)}>
           <div 
             className="bg-white dark:bg-[#080808] w-full max-w-5xl h-fit max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col md:flex-row"
             onClick={(e) => e.stopPropagation()}
           >
-            
-            {/* Kapatma Butonu */}
             <button 
               onClick={() => setSelectedDuyuru(null)} 
               className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md"
@@ -106,7 +104,6 @@ function DuyuruPaneli({ isAdmin }) {
               ✕
             </button>
 
-            {/* GÖRSEL BÖLÜMÜ */}
             {selectedDuyuru.image_url && selectedDuyuru.display_type !== 'none' && (
               <div className="shrink-0 flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2">
                 <img 
@@ -117,7 +114,6 @@ function DuyuruPaneli({ isAdmin }) {
               </div>
             )}
 
-            {/* METİN BÖLÜMÜ */}
             <div className="p-10 md:p-16 overflow-y-auto flex-1 flex flex-col justify-center">
               <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
                 {getTypeLabel(selectedDuyuru.type)}
@@ -132,14 +128,12 @@ function DuyuruPaneli({ isAdmin }) {
                 {selectedDuyuru.content}
               </p>
               
-              {/* ALT KISIM: TARİH VE BUTONLAR */}
               <div className="mt-auto pt-8 border-t dark:border-white/5 flex items-center justify-between">
                 <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
                   {new Date(selectedDuyuru.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
 
                 <div className="flex gap-3">
-                  {/* YÖNLENDİRME BUTONU */}
                   {selectedDuyuru.action_link && selectedDuyuru.action_text && (
                     <Link 
                       href={selectedDuyuru.action_link}
@@ -149,7 +143,6 @@ function DuyuruPaneli({ isAdmin }) {
                     </Link>
                   )}
 
-                  {/* ADMİN SİLME BUTONU */}
                   {isAdmin && (
                     <button 
                       onClick={(e) => handleDeleteDuyuru(selectedDuyuru.id, e)}
@@ -165,14 +158,13 @@ function DuyuruPaneli({ isAdmin }) {
         </div>
       )}
 
-      {/* CAROUSEL */}
+      {/* DUYURU CAROUSEL (KORUNDU) */}
       <div className="mb-20">
         <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 mb-6 italic flex items-center gap-2">
           📢 Duyurular
         </h2>
         
         <div className="relative group">
-          {/* SOL OK */}
           {duyurular.length > 1 && (
             <button 
               onClick={() => setActiveIndex((prev) => (prev - 1 + duyurular.length) % duyurular.length)}
@@ -182,7 +174,6 @@ function DuyuruPaneli({ isAdmin }) {
             </button>
           )}
 
-          {/* SAĞ OK */}
           {duyurular.length > 1 && (
             <button 
               onClick={() => setActiveIndex((prev) => (prev + 1) % duyurular.length)}
@@ -204,7 +195,6 @@ function DuyuruPaneli({ isAdmin }) {
                     className="w-full group/card block bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-6 md:p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5 cursor-pointer text-left relative"
                   >
                     <div className="flex items-center gap-6">
-                      
                       {duyuru.image_url && duyuru.display_type !== 'none' && (
                         <div className="shrink-0 rounded-2xl overflow-hidden border dark:border-white/5 shadow-lg h-28 md:h-36 w-auto">
                           <img 
@@ -234,7 +224,6 @@ function DuyuruPaneli({ isAdmin }) {
                       </div>
                     </div>
 
-                    {/* CAROUSEL'DEKİ SİLME BUTONU */}
                     {isAdmin && (
                       <button 
                         onClick={(e) => handleDeleteDuyuru(duyuru.id, e)}
@@ -270,7 +259,7 @@ function DuyuruPaneli({ isAdmin }) {
   );
 }
 
-// --- 2. OKUMAYA DEVAM ET BİLEŞENİ ---
+// --- OKUMAYA DEVAM ET BİLEŞENİ (AYNEN KORUNDU) ---
 function ContinueReadingCarousel({ books }) {
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -338,7 +327,7 @@ function ContinueReadingCarousel({ books }) {
   );
 }
 
-// --- EDİTÖRÜN SEÇİMİ ---
+// --- EDİTÖRÜN SEÇİMİ (AYNEN KORUNDU) ---
 function EditorsChoiceSection({ books }) {
   const scrollRef = useRef(null);
   
@@ -396,7 +385,7 @@ function EditorsChoiceSection({ books }) {
   );
 }
 
-// --- KATEGORİ SATIRI ---
+// --- KATEGORİ SATIRI (AYNEN KORUNDU) ---
 function CategoryRow({ title, books, isFeatured = false }) {
   const scrollRef = useRef(null);
   
@@ -480,7 +469,7 @@ function CategoryRow({ title, books, isFeatured = false }) {
   );
 }
 
-// --- EN ÇOK OKUNANLAR ---
+// --- EN ÇOK OKUNANLAR (AYNEN KORUNDU) ---
 function TopReadRow({ books }) {
   const scrollRef = useRef(null);
   
@@ -566,128 +555,8 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
   
-  // ✅ PANO MODAL STATE'LERİ
+  // ✅ SADECE BU KALDI: Hangi pano seçili?
   const [selectedPano, setSelectedPano] = useState(null);
-  const [panoLikes, setPanoLikes] = useState(0);
-  const [hasLiked, setHasLiked] = useState(false);
-  const [panoComments, setPanoComments] = useState([]);
-  const [newComment, setNewComment] = useState('');
-  const [replyTo, setReplyTo] = useState(null);
-
-  // ✅ PANO VERİLERİNİ YÜKLE
-  useEffect(() => {
-    if (!selectedPano) return;
-    async function loadPanoData() {
-      const { count } = await supabase.from('pano_votes').select('*', { count: 'exact', head: true }).eq('pano_id', selectedPano.id);
-      setPanoLikes(count || 0);
-      if (user) {
-        const { data } = await supabase.from('pano_votes').select('*').eq('pano_id', selectedPano.id).eq('user_email', user.email).single();
-        setHasLiked(!!data);
-      }
-      
-      // Yorumları çek
-      const { data: comments } = await supabase
-        .from('pano_comments')
-        .select('*')
-        .eq('pano_id', selectedPano.id)
-        .order('created_at', { ascending: true });
-
-      // Her yorum için profil bilgisini çek
-      if (comments) {
-        const commentsWithProfiles = await Promise.all(
-          comments.map(async (comment) => {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('username, avatar_url')
-              .eq('email', comment.user_email)
-              .single();
-            
-            return {
-              ...comment,
-              profiles: profile
-            };
-          })
-        );
-        setPanoComments(commentsWithProfiles);
-      } else {
-        setPanoComments([]);
-      }
-    }
-    loadPanoData();
-  }, [selectedPano, user]);
-
-  // ✅ PANO BEĞENİ
-  async function handleLike() {
-    if (!user) return toast.error('Giriş yapmalısın!');
-    if (hasLiked) {
-      await supabase.from('pano_votes').delete().eq('pano_id', selectedPano.id).eq('user_email', user.email);
-      setHasLiked(false);
-      setPanoLikes(prev => prev - 1);
-    } else {
-      await supabase.from('pano_votes').insert({ pano_id: selectedPano.id, user_email: user.email });
-      setHasLiked(true);
-      setPanoLikes(prev => prev + 1);
-    }
-  }
-
-  // ✅ PANO YORUM
-  async function handleComment() {
-    if (!user) return toast.error('Giriş yapmalısın!');
-    if (!newComment.trim()) return;
-    
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('username, avatar_url')
-      .eq('id', user.id)
-      .single();
-    
-    const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
-    
-    const { error } = await supabase.from('pano_comments').insert({
-      pano_id: selectedPano.id,
-      parent_id: replyTo,
-      user_email: user.email,
-      username: username,
-      content: newComment
-    });
-
-    if (error) {
-      console.error('Yorum hatası:', error);
-      toast.error('Yorum eklenemedi!');
-      return;
-    }
-    
-    setNewComment('');
-    setReplyTo(null);
-    
-    // Yorumları tekrar çek - profiles ile birlikte
-    const { data: comments } = await supabase
-      .from('pano_comments')
-      .select('*')
-      .eq('pano_id', selectedPano.id)
-      .order('created_at', { ascending: true });
-
-    // Her yorum için profil bilgisini çek
-    if (comments) {
-      const commentsWithProfiles = await Promise.all(
-        comments.map(async (comment) => {
-          const { data: commentProfile } = await supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('email', comment.user_email)
-            .single();
-          
-          return {
-            ...comment,
-            profiles: commentProfile
-          };
-        })
-      );
-      setPanoComments(commentsWithProfiles);
-    }
-    
-    toast.success('Yorum eklendi!');
-  }
 
   useEffect(() => {
     async function fetchData() {
@@ -811,155 +680,16 @@ export default function Home() {
     <div className="min-h-screen py-16 px-6 md:px-16 bg-[#fafafa] dark:bg-black">
       <Toaster />
       
-      {/* ✅ PANO MODAL - PROFİL SAYFASIYLABİREBİR AYNI */}
-      {selectedPano && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={() => setSelectedPano(null)}>
-          <div 
-            className="bg-white dark:bg-[#080808] w-full max-w-5xl h-fit max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col md:flex-row"
-            onClick={(e) => e.stopPropagation()}
-          >
-            
-            {/* Kapatma Butonu */}
-            <button 
-              onClick={() => setSelectedPano(null)} 
-              className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md"
-            >
-              ✕
-            </button>
-
-            {/* GÖRSEL BÖLÜMÜ */}
-            {selectedPano.books?.cover_url && (
-              <div className="shrink-0 flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2">
-                <img 
-                  src={selectedPano.books.cover_url} 
-                  className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-[600px] w-auto" 
-                  alt="" 
-                />
-              </div>
-            )}
-
-            {/* METİN BÖLÜMÜ */}
-            <div className="p-10 md:p-16 overflow-y-auto flex-1 flex flex-col justify-center">
-              {/* Kitap Etiketi */}
-              <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
-                📖 {selectedPano.books?.title} {selectedPano.chapter_id && '• ' + (selectedPano.chapters?.title || 'Bölüm')}
-              </span>
-
-              {/* Başlık */}
-              <h2 className="text-4xl md:text-6xl font-black mb-8 leading-tight tracking-tighter dark:text-white">
-                {selectedPano.title}
-              </h2>
-
-              {/* İçerik */}
-              <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-wrap mb-8">
-                {selectedPano.content}
-              </p>
-
-              {/* Beğeni ve Yorum Sayısı */}
-              <div className="flex items-center gap-4 mb-8 pb-8 border-b dark:border-white/5">
-                <button onClick={handleLike} className={`flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm transition-all ${hasLiked ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>
-                  ❤️ {panoLikes}
-                </button>
-                <span className="text-sm text-gray-400">💬 {panoComments.length} yorum</span>
-              </div>
-
-              {/* Yorumlar */}
-              <div className="space-y-4 max-h-[300px] overflow-y-auto mb-6">
-                {panoComments.filter(c => !c.parent_id).map(comment => (
-                  <div key={comment.id} className="space-y-2">
-                    <div className="flex gap-3">
-                      <img
-                        src={comment.profiles?.avatar_url || '/avatar-placeholder.png'}
-                        className="w-8 h-8 rounded-full object-cover"
-                      />
-                      <div className="flex-1">
-                        <Link 
-                          href={comment.user_email === user?.email ? '/profil' : `/yazar/${comment.profiles?.username || comment.username}`}
-                          className="hover:text-red-600 transition-colors"
-                        >
-                          <Username
-                            username={comment.profiles?.username || comment.username}
-                            isAdmin={adminEmails.includes(comment.user_email)}
-                          />
-                        </Link>
-                        <p className="text-sm text-gray-600 dark:text-gray-300">{comment.content}</p>
-                        <button onClick={() => setReplyTo(comment.id)} className="text-[10px] text-gray-400 hover:text-red-600 font-bold mt-1">Yanıtla</button>
-                      </div>
-                    </div>
-                    {panoComments.filter(r => r.parent_id === comment.id).map(reply => (
-                      <div key={reply.id} className="ml-11 flex gap-3">
-                        <img
-                          src={reply.profiles?.avatar_url || '/avatar-placeholder.png'}
-                          className="w-6 h-6 rounded-full object-cover"
-                        />
-                        <div className="flex-1">
-                          <Link 
-                            href={reply.user_email === user?.email ? '/profil' : `/yazar/${reply.profiles?.username || reply.username}`}
-                            className="text-[10px] font-black hover:text-red-600"
-                          >
-                            @{reply.profiles?.username || reply.username}
-                          </Link>
-                          <p className="text-xs text-gray-500">{reply.content}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-
-              {/* Yorum Ekleme */}
-              {user && (
-                <div className="mb-8">
-                  {replyTo && <p className="text-xs text-gray-400 mb-2">Yanıt yazıyorsun • <button onClick={() => setReplyTo(null)} className="text-red-600">İptal</button></p>}
-                  <div className="flex gap-2">
-                    <input value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Yorumunu yaz..." className="flex-1 px-4 py-2 bg-gray-100 dark:bg-white/5 rounded-full text-sm outline-none" />
-                    <button onClick={handleComment} className="px-6 py-2 bg-red-600 text-white rounded-full text-sm font-black">Gönder</button>
-                  </div>
-                </div>
-              )}
-              
-              {/* ALT KISIM */}
-              <div className="mt-auto pt-8 border-t dark:border-white/5 flex flex-col gap-4">
-                {/* Yazar Bilgisi */}
-                <div className="flex items-center gap-3">
-                  <img
-                    src={selectedPano.profiles?.avatar_url || '/avatar-placeholder.png'}
-                    className="w-10 h-10 rounded-full object-cover"
-                  />
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest">
-                      <Username username={selectedPano.profiles?.username || selectedPano.username} isAdmin={adminEmails.includes(selectedPano.user_email)} />
-                    </p>
-                    <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">
-                      {new Date(selectedPano.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Butonlar */}
-                <div className="flex gap-3">
-                  {/* Bölüme/Kitaba Git */}
-                  {selectedPano.chapter_id && selectedPano.chapters?.id ? (
-                    <Link 
-                      href={`/kitap/${selectedPano.book_id}/bolum/${selectedPano.chapter_id}`}
-                      className="inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6 py-3 rounded-2xl uppercase tracking-wider transition-all shadow-2xl hover:shadow-red-600/50"
-                    >
-                      {selectedPano.chapters?.title || 'Bölüme Git'} →
-                    </Link>
-                  ) : (
-                    <Link 
-                      href={`/kitap/${selectedPano.book_id}`}
-                      className="inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6 py-3 rounded-2xl uppercase tracking-wider transition-all shadow-2xl hover:shadow-red-600/50"
-                    >
-                      Kitaba Git →
-                    </Link>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ✅ YENİ: PROFESYONEL PANO MODAL BİLEŞENİ */}
+      <PanoModal 
+        selectedPano={selectedPano} 
+        onClose={() => setSelectedPano(null)} 
+        user={user}
+        adminEmails={adminEmails}
+        isAdmin={isAdmin}
+        // Eğer pano sahibiysen silme/düzenleme butonlarını görebilirsin
+        isOwner={user && selectedPano && (user.email === selectedPano.user_email)}
+      />
       
       <div className="max-w-7xl mx-auto">
         
