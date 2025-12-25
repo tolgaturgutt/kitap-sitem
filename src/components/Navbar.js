@@ -23,9 +23,9 @@ export default function Navbar() {
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
   const [userProfile, setUserProfile] = useState(null);
-  // Mevcut state'lerin altına ekle
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
+  const [showMobileSearch, setShowMobileSearch] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -35,7 +35,6 @@ export default function Navbar() {
         setUser(session.user);
         await loadNotifications(session.user.email);
         
-        // Profil bilgisini çek
         const { data: profile } = await supabase
           .from('profiles')
           .select('avatar_url, username')
@@ -68,26 +67,22 @@ export default function Navbar() {
   useEffect(() => {
     const timer = setTimeout(async () => {
       if (query.trim().length > 1) {
-        // 1. KİTAPLARI ARA (Dolu Olanlar)
         let { data: b } = await supabase
           .from('books')
-          .select('*, chapters(id)') // Bölüm bilgisini de iste
+          .select('*, chapters(id)')
           .ilike('title', `%${query}%`)
-          .limit(10); // Sayıyı arttırdık ki boşları atınca elde kitap kalsın
+          .limit(10);
         
-        // SADECE BÖLÜMÜ OLANLARI AL (HAYALET FİLTRESİ)
         if (b) {
           b = b.filter(kitap => kitap.chapters && kitap.chapters.length > 0).slice(0, 5);
         }
         
-        // 2. YAZARLARI ARA
         const { data: u } = await supabase
           .from('profiles')
           .select('*')
           .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
           .limit(5);
         
-        // 3. (YENİ) KİTAP YAZARLARININ ROLLERİNİ BUL VE EKLE
         if (b && b.length > 0) {
             const authorNames = [...new Set(b.map(book => book.username))];
             const { data: roles } = await supabase
@@ -95,7 +90,6 @@ export default function Navbar() {
               .select('username, role')
               .in('username', authorNames);
             
-            // Rol bilgisini kitabın içine gömüyoruz
             b.forEach(book => {
                 const author = roles?.find(r => r.username === book.username);
                 book.author_role = author?.role; 
@@ -108,6 +102,7 @@ export default function Navbar() {
     }, 300);
     return () => clearTimeout(timer);
   }, [query]);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     toast.success('Çıkış yapıldı.');
@@ -116,12 +111,10 @@ export default function Navbar() {
     router.refresh();
   }
 
-  // BİLDİRİM ZİLİNE BASILINCA TÜMÜNÜ OKUNDU YAP
   async function toggleNotifications() {
     const newState = !showNotifs;
     setShowNotifs(newState);
     
-    // Eğer açılıyorsa ve okunmamış bildirim varsa, hepsini okundu yap
     if (newState && user && notifications.some(n => !n.is_read)) {
       await supabase
         .from('notifications')
@@ -129,15 +122,14 @@ export default function Navbar() {
         .eq('recipient_email', user.email)
         .eq('is_read', false);
       
-      // State'i güncelle
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     }
   }
-  // --- YENİ: ARAMA İŞLEMİ TETİKLEYİCİ ---
+
   function handleSearchTrigger() {
     if (!query.trim()) return;
-    setShowSearch(false); // Dropdown'ı kapat
-    // Kullanıcıyı arama sayfasına gönder (Örn: /arama?q=ahmet)
+    setShowSearch(false);
+    setShowMobileSearch(false);
     router.push(`/arama?q=${encodeURIComponent(query)}`);
   }
 
@@ -148,20 +140,15 @@ export default function Navbar() {
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
-    <nav className="w-full border-b sticky top-0 z-[100] backdrop-blur-md bg-white/80 dark:bg-black/90 border-gray-100 dark:border-gray-800 transition-all h-20">
-      <div className="max-w-7xl mx-auto px-6 h-full flex items-center justify-between gap-8">
-        <Link href="/" className="flex items-center gap-3 shrink-0 group">
-          {/* LOGO KUTUSU */}
-          <div className="relative w-16 h-16 flex items-center justify-center">
-              
-              {/* GÜNDÜZ LOGOSU: mt-4 ile aşağıya, tam hizaya indirdik */}
+    <nav className="w-full border-b sticky top-0 z-[100] backdrop-blur-md bg-white/80 dark:bg-black/90 border-gray-100 dark:border-gray-800 transition-all h-16 md:h-20">
+      <div className="max-w-7xl mx-auto px-3 md:px-6 h-full flex items-center justify-between gap-2 md:gap-8">
+        <Link href="/" className="flex items-center gap-2 md:gap-3 shrink-0 group">
+          <div className="relative w-10 h-10 md:w-16 md:h-16 flex items-center justify-center">
               <img 
                 src="/logo-gunduz.png" 
                 alt="Logo" 
-                className="w-full h-full object-contain dark:hidden mt-3" 
+                className="w-full h-full object-contain dark:hidden md:mt-3" 
               />
-              
-              {/* GECE LOGOSU: Bu zaten ortada duruyordu, ellemeyelim */}
               <img 
                 src="/logo-gece.png" 
                 alt="Logo" 
@@ -169,8 +156,7 @@ export default function Navbar() {
               />
           </div>
           
-          {/* YAZI KISMI */}
-          <div className="text-3xl font-black tracking-tight leading-none flex flex-col justify-center">
+          <div className="text-xl md:text-3xl font-black tracking-tight leading-none flex flex-col justify-center">
             <div className="flex items-center">
               <span className="text-black dark:text-white">Kitap</span>
               <span className="text-red-600">Lab</span>
@@ -178,19 +164,17 @@ export default function Navbar() {
           </div>
         </Link>
 
-        {/* ARAMA BARI */}
-        <div className="flex-1 max-w-md relative" ref={searchRef}>
+        {/* ARAMA BARI - Desktop */}
+        <div className="hidden md:flex flex-1 max-w-md relative" ref={searchRef}>
           <div className="relative">
             <input 
               type="text" 
               value={query} 
               onChange={(e) => setQuery(e.target.value)} 
-              onKeyDown={(e) => e.key === 'Enter' && handleSearchTrigger()} // Enter tuşu eklendi
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchTrigger()}
               placeholder="Eser veya yazar ara..." 
               className="w-full h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full pl-6 pr-12 text-sm outline-none transition-all focus:ring-2 focus:ring-red-600/20" 
             />
-
-            {/* Büyüteç SAĞ TARAFA (right-4) ALINDI */}
             <button 
               onClick={handleSearchTrigger}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600 transition-colors z-10"
@@ -222,16 +206,13 @@ export default function Navbar() {
                             {b.cover_url && <img src={b.cover_url} className="w-full h-full object-cover" alt="" />}
                           </div>
                           <div className="flex-1 min-w-0">
-  {/* Kitap Başlığı (Sadece 1 Kere) */}
-  <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
-  
-  {/* Yazar İsmi ve Tik */}
-  <Username
-    username={b.username}
-    isAdmin={b.author_role === 'admin'}
-    className="text-[9px] text-gray-400 uppercase"
-  />
-</div>
+                            <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
+                            <Username
+                              username={b.username}
+                              isAdmin={b.author_role === 'admin'}
+                              className="text-[9px] text-gray-400 uppercase"
+                            />
+                          </div>
                         </Link>
                       ))}
                     </div>
@@ -255,16 +236,13 @@ export default function Navbar() {
                             )}
                           </div>
                          <div className="flex-1">
-  {/* 1. Satır: Kullanıcı Adı ve Sarı Tik */}
-  <Username
-    username={u.username}
-    isAdmin={u.role === 'admin'}
-    className="text-xs font-bold group-hover:text-red-600 transition-colors"
-  />
-  
-  {/* 2. Satır: Gerçek İsim (Sadece 1 Kere) */}
-  {u.full_name && <p className="text-[9px] text-gray-400">{u.full_name}</p>}
-</div>
+                            <Username
+                              username={u.username}
+                              isAdmin={u.role === 'admin'}
+                              className="text-xs font-bold group-hover:text-red-600 transition-colors"
+                            />
+                            {u.full_name && <p className="text-[9px] text-gray-400">{u.full_name}</p>}
+                          </div>
                         </Link>
                       ))}
                     </div>
@@ -276,18 +254,26 @@ export default function Navbar() {
         </div>
 
         {/* SAĞ MENÜ */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
+          {/* MOBİL ARAMA BUTONU */}
+          <button 
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            className="md:hidden w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 hover:scale-105 transition-transform"
+          >
+            <span className="text-base">🔍</span>
+          </button>
+
           {user ? (
             <>
               {/* BİLDİRİM BUTONU */}
               <div className="relative" ref={notifRef}>
                 <button 
                   onClick={toggleNotifications}
-                  className={`w-11 h-11 flex items-center justify-center rounded-full relative transition-all ${showNotifs ? 'bg-red-600 text-white scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:scale-105'}`}
+                  className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full relative transition-all ${showNotifs ? 'bg-red-600 text-white scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:scale-105'}`}
                 >
-                  <span className="text-xl">🔔</span>
+                  <span className="text-base md:text-xl">🔔</span>
                   {unreadCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
+                    <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-red-600 text-white text-[8px] md:text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
                       {unreadCount}
                     </span>
                   )}
@@ -295,7 +281,6 @@ export default function Navbar() {
                 
                 {showNotifs && (
                   <div className="absolute top-14 right-0 w-[320px] md:w-[500px] bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden z-[120] animate-in fade-in slide-in-from-top-2 duration-200">
-                    {/* BAŞLIK */}
                     <div className="p-5 border-b dark:border-white/5 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 flex justify-between items-center">
                       <div>
                         <p className="text-sm font-black dark:text-white">Bildirimler</p>
@@ -311,9 +296,7 @@ export default function Navbar() {
                       </button>
                     </div>
                     
-                    {/* BİLDİRİMLER */}
                     <div className="flex divide-x dark:divide-white/5 h-[400px]">
-                      {/* ESERLER */}
                       <div className="flex-1 overflow-y-auto no-scrollbar">
                         <div className="p-4 bg-gray-50/50 dark:bg-white/[0.02] sticky top-0 backdrop-blur-sm">
                           <p className="text-[8px] font-black uppercase text-red-600 tracking-[0.2em] flex items-center gap-2">
@@ -327,7 +310,6 @@ export default function Navbar() {
                               <p className="text-[9px] text-gray-400 italic">Henüz hareket yok</p>
                             </div>
                           ) : bookNotifs.map(n => {
-                            // LİNK OLUŞTUR
                             let linkUrl = '#';
                             if (n.type === 'vote' && n.book_id) {
                               linkUrl = `/kitap/${n.book_id}`;
@@ -377,7 +359,6 @@ export default function Navbar() {
                         </div>
                       </div>
 
-                      {/* SOSYAL */}
                       <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50/30 dark:bg-white/[0.01]">
                         <div className="p-4 bg-blue-50/50 dark:bg-blue-950/10 sticky top-0 backdrop-blur-sm">
                           <p className="text-[8px] font-black uppercase text-blue-600 tracking-[0.2em] flex items-center gap-2">
@@ -420,11 +401,11 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* --- YENİ PROFİL MENÜSÜ (Dropdown) --- */}
+              {/* PROFİL MENÜSÜ */}
               <div className="relative" ref={profileMenuRef}>
                 <button 
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
-                  className="w-11 h-11 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-xs uppercase hover:scale-110 transition-transform overflow-hidden shadow-lg border-2 border-transparent hover:border-red-400"
+                  className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-[10px] md:text-xs uppercase hover:scale-110 transition-transform overflow-hidden shadow-lg border-2 border-transparent hover:border-red-400"
                 >
                   {userProfile?.avatar_url && userProfile.avatar_url.includes('http') ? (
                     <img src={userProfile.avatar_url} className="w-full h-full object-cover" alt="Profil" />
@@ -433,11 +414,8 @@ export default function Navbar() {
                   )}
                 </button>
 
-                {/* AÇILIR MENÜ KUTUSU */}
                 {showProfileMenu && (
                   <div className="absolute top-14 right-0 w-60 bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden z-[150] animate-in fade-in slide-in-from-top-2 duration-200">
-                    
-                    {/* Üst Bilgi: İsim Soyisim */}
                     <div className="px-5 py-4 border-b dark:border-white/5 bg-gray-50 dark:bg-white/5">
                       <p className="text-xs font-bold text-gray-900 dark:text-white truncate">
                         {userProfile?.username || user.email.split('@')[0]}
@@ -446,7 +424,6 @@ export default function Navbar() {
                     </div>
 
                     <div className="p-2 space-y-1">
-                      {/* 1. SEÇENEK: PROFİL */}
                       <Link 
                         href="/profil" 
                         onClick={() => setShowProfileMenu(false)}
@@ -455,7 +432,6 @@ export default function Navbar() {
                         <span>👤</span> Profil
                       </Link>
 
-                      {/* 2. SEÇENEK: AYARLAR */}
                       <Link 
                         href="/ayarlar" 
                         onClick={() => setShowProfileMenu(false)}
@@ -464,7 +440,6 @@ export default function Navbar() {
                         <span>⚙️</span> Ayarlar
                       </Link>
 
-                      {/* 3. SEÇENEK: TOPLULUK KURALLARI */}
                       <Link 
                         href="/kurallar" 
                         onClick={() => setShowProfileMenu(false)}
@@ -473,7 +448,6 @@ export default function Navbar() {
                         <span>📜</span> Topluluk Kuralları
                       </Link>
 
-                      {/* 4. SEÇENEK: DESTEK VE İLETİŞİM */}
                       <Link 
                         href="/iletisim" 
                         onClick={() => setShowProfileMenu(false)}
@@ -484,7 +458,6 @@ export default function Navbar() {
 
                       <div className="h-px bg-gray-100 dark:bg-white/5 my-1" />
 
-                      {/* 5. SEÇENEK: ÇIKIŞ YAP */}
                       <button 
                         onClick={() => {
                           setShowProfileMenu(false);
@@ -500,19 +473,113 @@ export default function Navbar() {
               </div>
             </>
           ) : (
-            <Link href="/giris" className="bg-black dark:bg-white text-white dark:text-black px-6 py-2.5 rounded-full text-[10px] font-black uppercase hover:scale-105 transition-transform">
-              Giriş Yap
+            <Link href="/giris" className="bg-black dark:bg-white text-white dark:text-black px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase hover:scale-105 transition-transform">
+              Giriş
             </Link>
           )}
           
           <button 
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-            className="w-11 h-11 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 hover:scale-110 transition-transform"
+            className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 hover:scale-110 transition-transform text-base md:text-xl"
           >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
         </div>
       </div>
+
+      {/* MOBİL ARAMA PANELİ */}
+      {showMobileSearch && (
+        <div className="md:hidden absolute top-full left-0 w-full bg-white dark:bg-black border-b dark:border-white/10 p-3 z-[110] animate-in slide-in-from-top-2 duration-200">
+          <div className="max-w-7xl mx-auto">
+            <div className="relative">
+              <input 
+                type="text" 
+                value={query} 
+                onChange={(e) => setQuery(e.target.value)} 
+                onKeyDown={(e) => e.key === 'Enter' && handleSearchTrigger()}
+                placeholder="Eser veya yazar ara..." 
+                className="w-full h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full pl-6 pr-12 text-sm outline-none transition-all focus:ring-2 focus:ring-red-600/20" 
+                autoFocus
+              />
+              <button 
+                onClick={handleSearchTrigger}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600 transition-colors z-10"
+              >
+                🔍
+              </button>
+            </div>
+            
+            {showSearch && (
+              <div className="mt-3 bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+                {searchResults.books.length === 0 && searchResults.users.length === 0 ? (
+                  <div className="p-6 text-center">
+                    <span className="text-3xl mb-2 block">📚</span>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-widest font-black">Sonuç bulunamadı</p>
+                  </div>
+                ) : (
+                  <div className="max-h-[300px] overflow-y-auto">
+                    {searchResults.books.length > 0 && (
+                      <div className="p-3">
+                        <p className="text-[8px] font-black uppercase text-gray-400 mb-2 px-3 tracking-widest">Eserler</p>
+                        {searchResults.books.map(b => (
+                          <Link 
+                            key={b.id} 
+                            href={`/kitap/${b.id}`} 
+                            onClick={() => { setShowSearch(false); setShowMobileSearch(false); }}
+                            className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
+                          >
+                            <div className="w-10 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0">
+                              {b.cover_url && <img src={b.cover_url} className="w-full h-full object-cover" alt="" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
+                              <Username
+                                username={b.username}
+                                isAdmin={b.author_role === 'admin'}
+                                className="text-[9px] text-gray-400 uppercase"
+                              />
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {searchResults.users.length > 0 && (
+                      <div className="p-3 border-t dark:border-white/5">
+                        <p className="text-[8px] font-black uppercase text-gray-400 mb-2 px-3 tracking-widest">Yazarlar</p>
+                        {searchResults.users.map(u => (
+                          <Link 
+                            key={u.id} 
+                            href={`/yazar/${u.username}`} 
+                            onClick={() => { setShowSearch(false); setShowMobileSearch(false); }}
+                            className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
+                          >
+                            <div className="w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
+                              {u.avatar_url && u.avatar_url.includes('http') ? (
+                                <img src={u.avatar_url} className="w-full h-full object-cover" alt="" />
+                              ) : (
+                                u.username[0].toUpperCase()
+                              )}
+                            </div>
+                            <div className="flex-1">
+                              <Username
+                                username={u.username}
+                                isAdmin={u.role === 'admin'}
+                                className="text-xs font-bold group-hover:text-red-600 transition-colors"
+                              />
+                              {u.full_name && <p className="text-[9px] text-gray-400">{u.full_name}</p>}
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
