@@ -47,12 +47,19 @@ export default function YazarProfili() {
   const [selectedChapterForPano, setSelectedChapterForPano] = useState(null);
   const [panoChapters, setPanoChapters] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [followersWithProfiles, setFollowersWithProfiles] = useState([]);
+  const [followingWithProfiles, setFollowingWithProfiles] = useState([]);
 
   useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user || null;
       setCurrentUser(user);
+
+      // Admin listesini çek
+      const { data: adminList } = await supabase.from('announcement_admins').select('user_email');
+      const emails = adminList?.map(a => a.user_email) || [];
+      setAdminEmails(emails);
 
       if (user) {
         const { data: adminData } = await supabase
@@ -62,10 +69,6 @@ export default function YazarProfili() {
           .single();
         if (adminData) setIsAdmin(true);
       }
-
-      const { data: adminList } = await supabase.from('announcement_admins').select('user_email');
-      const emails = adminList?.map(a => a.user_email) || [];
-      setAdminEmails(emails);
 
       const { data: p } = await supabase.from('profiles').select('*').eq('username', username).single();
 
@@ -128,6 +131,46 @@ export default function YazarProfili() {
         // TAKİPÇİLER
         const { data: f } = await supabase.from('author_follows').select('*').eq('followed_username', username);
         const { data: fing } = await supabase.from('author_follows').select('*').eq('follower_username', username);
+
+        // Profil bilgilerini çek - Takipçiler
+        if (f && f.length > 0) {
+          const followerUsernames = f.map(item => item.follower_username);
+          const { data: followerProfiles } = await supabase
+            .from('profiles')
+            .select('username, full_name, avatar_url, email')
+            .in('username', followerUsernames);
+          
+          const followersWithData = f.map(item => {
+            const profile = followerProfiles?.find(fp => fp.username === item.follower_username);
+            return {
+              ...item,
+              full_name: profile?.full_name,
+              avatar_url: profile?.avatar_url,
+              is_admin: emails.some(e => e === profile?.email)
+            };
+          });
+          setFollowersWithProfiles(followersWithData);
+        }
+
+        // Profil bilgilerini çek - Takip Edilenler
+        if (fing && fing.length > 0) {
+          const followingUsernames = fing.map(item => item.followed_username);
+          const { data: followingProfiles } = await supabase
+            .from('profiles')
+            .select('username, full_name, avatar_url, email')
+            .in('username', followingUsernames);
+          
+          const followingWithData = fing.map(item => {
+            const profile = followingProfiles?.find(fp => fp.username === item.followed_username);
+            return {
+              ...item,
+              full_name: profile?.full_name,
+              avatar_url: profile?.avatar_url,
+              is_admin: emails.some(e => e === profile?.email)
+            };
+          });
+          setFollowingWithProfiles(followingWithData);
+        }
 
         setBooks(b || []);
         setFollowers(f || []);
@@ -464,15 +507,39 @@ export default function YazarProfili() {
               <button onClick={() => setModalType(null)} className="text-[9px] md:text-[10px] font-black text-red-600 uppercase">Kapat</button>
             </div>
             <div className="max-h-[400px] overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 no-scrollbar">
-              {(modalType === 'followers' ? followers : following).length === 0 ? (
+              {(modalType === 'followers' ? followersWithProfiles : followingWithProfiles).length === 0 ? (
                 <p className="text-center py-8 md:py-10 text-[9px] md:text-[10px] text-gray-500 italic uppercase">Henüz kimse yok.</p>
               ) : (
-                (modalType === 'followers' ? followers : following).map((p, i) => {
+                (modalType === 'followers' ? followersWithProfiles : followingWithProfiles).map((p, i) => {
                   const pName = modalType === 'followers' ? p.follower_username : p.followed_username;
                   return (
-                    <Link key={i} href={`/yazar/${pName}`} className="flex items-center gap-2 md:gap-3 p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 transition-all hover:border-red-600/30">
-                      <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-red-600/10 flex items-center justify-center font-black text-red-600 text-[10px] md:text-xs">{pName?.[0]?.toUpperCase()}</div>
-                      <span className="text-[10px] md:text-xs font-bold">@{pName}</span>
+                    <Link 
+                      key={i} 
+                      href={`/yazar/${pName}`}
+                      onClick={() => setModalType(null)}
+                      className="flex items-center justify-between p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 transition-all hover:border-red-600/30"
+                    >
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-red-600/10 overflow-hidden flex items-center justify-center font-black text-red-600 text-[10px] md:text-xs">
+                          {p.avatar_url ? (
+                            <img src={p.avatar_url} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            (pName || 'U')[0].toUpperCase()
+                          )}
+                        </div>
+                        <div>
+                          <Username
+                            username={pName}
+                            isAdmin={p.is_admin}
+                            className="text-[10px] md:text-xs font-bold"
+                          />
+                          {p.full_name && (
+                            <p className="text-[8px] md:text-[9px] text-gray-400">
+                              {p.full_name}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </Link>
                   );
                 })

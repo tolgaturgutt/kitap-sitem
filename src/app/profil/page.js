@@ -32,6 +32,8 @@ export default function ProfilSayfasi() {
   const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '' });
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
+  const [followersWithProfiles, setFollowersWithProfiles] = useState([]);
+  const [followingWithProfiles, setFollowingWithProfiles] = useState([]);
 
   useEffect(() => {
     async function getData() {
@@ -105,6 +107,46 @@ export default function ProfilSayfasi() {
       // TAKİPÇİLER VE TAKİP EDİLENLER
       const { data: following } = await supabase.from('author_follows').select('followed_username').eq('follower_email', activeUser.email);
       const { data: followers } = await supabase.from('author_follows').select('follower_username').eq('followed_username', currentUsername);
+      
+      // Profil bilgilerini çek
+      if (followers && followers.length > 0) {
+        const followerUsernames = followers.map(f => f.follower_username);
+        const { data: followerProfiles } = await supabase
+          .from('profiles')
+          .select('username, full_name, avatar_url','email')
+          .in('username', followerUsernames);
+        
+        const followersWithData = followers.map(f => {
+          const profile = followerProfiles?.find(p => p.username === f.follower_username);
+          return {
+            ...f,
+            full_name: profile?.full_name,
+            avatar_url: profile?.avatar_url,
+            is_admin: admins?.some(a => a.user_email === profile?.email)
+          };
+        });
+        setFollowersWithProfiles(followersWithData);
+      }
+
+      if (following && following.length > 0) {
+        const followingUsernames = following.map(f => f.followed_username);
+        const { data: followingProfiles } = await supabase
+          .from('profiles')
+          .select('username, full_name, avatar_url, email')
+          .in('username', followingUsernames);
+        
+        const followingWithData = following.map(f => {
+          const profile = followingProfiles?.find(p => p.username === f.followed_username);
+          return {
+            ...f,
+            full_name: profile?.full_name,
+            avatar_url: profile?.avatar_url,
+            is_admin: admins?.some(a => a.user_email === profile?.email)
+          };
+        });
+        setFollowingWithProfiles(followingWithData);
+      }
+
       setFollowedAuthors(following || []);
       setMyFollowers(followers || []);
 
@@ -443,33 +485,81 @@ export default function ProfilSayfasi() {
         </div>
       </div>
 
-      {/* TAKİPÇİ MODALI */}
       {modalType && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setModalType(null)}>
-          <div className="bg-white dark:bg-[#0f0f0f] w-full max-w-md rounded-2xl md:rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="p-4 md:p-6 border-b dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
-              <span className="text-[9px] md:text-[10px] font-black uppercase opacity-40">{modalType === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}</span>
-              <button onClick={() => setModalType(null)} className="text-[9px] md:text-[10px] font-black text-red-600 uppercase">Kapat</button>
+  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
+    <div className="bg-white dark:bg-black w-[92%] max-w-md max-h-[80vh] rounded-3xl p-4 md:p-6 overflow-y-auto relative">
+
+      {/* KAPAT */}
+      <button
+        onClick={() => setModalType(null)}
+        className="absolute top-3 right-4 text-2xl font-black text-gray-400 hover:text-red-600"
+      >
+        ×
+      </button>
+
+      {/* BAŞLIK */}
+      <h2 className="text-lg md:text-xl font-black mb-4 text-center">
+        {modalType === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}
+      </h2>
+
+      <div className="space-y-2">
+        {(modalType === 'followers'
+          ? followersWithProfiles
+          : followingWithProfiles
+        ).map((p, i) => {
+          const pName =
+            modalType === 'followers'
+              ? p.follower_username
+              : p.followed_username;
+
+          return (
+            <div
+              key={i}
+              className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 hover:border-red-600/30 transition-all"
+            >
+              <Link
+                href={`/yazar/${pName}`}
+                onClick={() => setModalType(null)}
+                className="flex items-center gap-3"
+              >
+                <div className="w-9 h-9 rounded-full bg-red-600/10 overflow-hidden flex items-center justify-center font-black text-red-600 text-xs">
+                  {p.avatar_url ? (
+                    <img src={p.avatar_url} className="w-full h-full object-cover" />
+                  ) : (
+                    (pName || 'U')[0].toUpperCase()
+                  )}
+                </div>
+
+                <div>
+                  <Username
+                    username={pName}
+                    isAdmin={p.is_admin}
+                    className="text-xs font-bold"
+                  />
+                  {p.full_name && (
+                    <p className="text-[9px] text-gray-400">
+                      {p.full_name}
+                    </p>
+                  )}
+                </div>
+              </Link>
+
+              {modalType === 'following' && (
+                <button
+                  onClick={() => handleUnfollow(pName)}
+                  className="text-[9px] font-black uppercase bg-red-600 text-white px-4 py-1.5 rounded-full"
+                >
+                  Bırak
+                </button>
+              )}
             </div>
-            <div className="max-h-[400px] overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 no-scrollbar">
-              {(modalType === 'followers' ? myFollowers : followedAuthors).map((p, i) => {
-                const pName = modalType === 'followers' ? p.follower_username : p.followed_username;
-                return (
-                  <div key={i} className="flex items-center justify-between p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 transition-all hover:border-red-600/30">
-                    <Link href={`/yazar/${pName}`} onClick={() => setModalType(null)} className="flex items-center gap-2 md:gap-3">
-                      <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-red-600/10 flex items-center justify-center font-black text-red-600 text-[10px] md:text-xs">{(pName || "U")[0].toUpperCase()}</div>
-                      <span className="text-[10px] md:text-xs font-bold">@{pName}</span>
-                    </Link>
-                    {modalType === 'following' && (
-                      <button onClick={() => handleUnfollow(pName)} className="text-[8px] md:text-[9px] font-black uppercase bg-red-600 text-white px-3 md:px-4 py-1 md:py-1.5 rounded-full">Bırak</button>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
+    </div>
+  </div>
+)}
+
     </div>
   );
 }
