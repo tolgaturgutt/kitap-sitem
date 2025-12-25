@@ -27,40 +27,30 @@ export default function MobileNav() {
       {/* ARTIYA BASILINCA AÇILAN MENÜ */}
       {showPlusMenu && (
         <div 
-          className="fixed inset-0 z-[90] bg-black/50 backdrop-blur-sm md:hidden animate-in fade-in duration-200"
+          className="fixed inset-0 z-[90] md:hidden"
           onClick={() => setShowPlusMenu(false)}
         >
           <div 
-            className="absolute bottom-20 left-1/2 -translate-x-1/2 w-[90%] max-w-sm bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-800 overflow-hidden animate-in slide-in-from-bottom-4 duration-300"
+            className="absolute bottom-[72px] left-1/2 -translate-x-1/2 w-[160px] bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl border border-red-600/20 overflow-hidden animate-in slide-in-from-bottom-2 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-4 space-y-2">
+            <div className="p-2 space-y-1.5">
               <Link 
                 href="/pano-ekle" 
                 onClick={() => setShowPlusMenu(false)}
-                className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all group"
+                className="flex items-center gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
               >
-                <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white text-xl">
-                  📌
-                </div>
-                <div>
-                  <p className="font-black text-sm dark:text-white group-hover:text-red-600 transition-colors">Pano Oluştur</p>
-                  <p className="text-xs text-gray-500">Düşüncelerini paylaş</p>
-                </div>
+                <div className="text-lg">📌</div>
+                <p className="font-black text-xs text-red-600">Pano Oluştur</p>
               </Link>
 
               <Link 
                 href="/kitap-ekle" 
                 onClick={() => setShowPlusMenu(false)}
-                className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all group"
+                className="flex items-center gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
               >
-                <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center text-white text-xl">
-                  ✍️
-                </div>
-                <div>
-                  <p className="font-black text-sm dark:text-white group-hover:text-red-600 transition-colors">Kitap Yaz</p>
-                  <p className="text-xs text-gray-500">Yeni hikaye başlat</p>
-                </div>
+                <div className="text-lg">✍️</div>
+                <p className="font-black text-xs text-red-600">Kitap Yaz</p>
               </Link>
             </div>
           </div>
