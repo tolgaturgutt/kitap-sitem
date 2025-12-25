@@ -449,6 +449,14 @@ export default function Navbar() {
                       </Link>
 
                       <Link 
+                        href="/kvkk" 
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
+                      >
+                        <span>🔒</span> KVKK Metni
+                      </Link>
+
+                      <Link 
                         href="/iletisim" 
                         onClick={() => setShowProfileMenu(false)}
                         className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
@@ -525,7 +533,7 @@ export default function Navbar() {
                           <Link 
                             key={b.id} 
                             href={`/kitap/${b.id}`} 
-                            onClick={() => { setShowSearch(false); setShowMobileSearch(false); }}
+                            onClick={() => { setShowSearch(false); setShowMobileSearch(false); setQuery(''); }}
                             className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                           >
                             <div className="w-10 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0">
@@ -548,10 +556,10 @@ export default function Navbar() {
                       <div className="p-3 border-t dark:border-white/5">
                         <p className="text-[8px] font-black uppercase text-gray-400 mb-2 px-3 tracking-widest">Yazarlar</p>
                         {searchResults.users.map(u => (
-                          <Link 
+                         <Link 
                             key={u.id} 
                             href={`/yazar/${u.username}`} 
-                            onClick={() => { setShowSearch(false); setShowMobileSearch(false); }}
+                            onClick={() => { setShowSearch(false); setShowMobileSearch(false); setQuery(''); }}
                             className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                           >
                             <div className="w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
