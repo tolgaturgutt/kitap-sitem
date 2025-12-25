@@ -157,7 +157,7 @@ function ContinueReadingCarousel({ books }) {
                       <h3 className="text-2xl md:text-3xl font-black dark:text-white mb-2 group-hover:text-red-600 transition-colors uppercase tracking-tight">{item.books?.title}</h3>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Kaldığın Bölüm: {item.chapters?.title}</p>
                       
-                      {/* ✅ İSTATİSTİKLER (Güvenli Çekim) */}
+                      {/* İSTATİSTİKLER */}
                       <div className="flex items-center gap-3 mt-2 text-[9px] font-bold text-gray-400 mb-4">
                         <span className="flex items-center gap-1">👁️ {formatNumber(item.books?.totalViews)}</span>
                         <span className="flex items-center gap-1">❤️ {formatNumber(item.books?.totalVotes)}</span>
@@ -177,6 +177,59 @@ function ContinueReadingCarousel({ books }) {
     </div>
   );
 }
+
+// ✅ YENİ EKLENEN BÖLÜMLER COMPONENT'İ
+function RecentlyAddedChapters({ chapters }) {
+  const scrollRef = useRef(null);
+  const scroll = (dir) => { if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' }); };
+
+  if (!chapters || chapters.length === 0) return null;
+
+  return (
+    <div className="mb-20 group relative px-1">
+      <div className="flex items-end justify-between mb-5">
+         <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 italic flex items-center gap-2">
+           🆕 Son Eklenen Bölümler
+         </h2>
+      </div>
+
+      <button onClick={() => scroll('left')} className="absolute left-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">←</button>
+      <button onClick={() => scroll('right')} className="absolute right-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">→</button>
+
+      <div ref={scrollRef} className="flex gap-4 overflow-x-auto scrollbar-hide snap-x py-2 px-1">
+        {chapters.map(chapter => (
+          <Link key={chapter.id} href={`/kitap/${chapter.book_id}/bolum/${chapter.id}`} className="flex-none w-32 md:w-40 snap-start group/card">
+            {/* KAPAK + BÖLÜM ADI OVERLAY */}
+            <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
+              {chapter.books?.cover_url ? (
+                <img src={chapter.books.cover_url} className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500" alt="" />
+              ) : (
+                <div className="w-full h-full bg-gray-200 dark:bg-gray-900" />
+              )}
+              
+              {/* Bölüm Başlığı Kapak Üstünde */}
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 pt-6">
+                <p className="text-[10px] text-white font-black uppercase leading-tight line-clamp-2">
+                  {chapter.title}
+                </p>
+              </div>
+            </div>
+            
+            {/* Kitap ve Yazar Bilgisi */}
+            <h3 className="font-bold text-[11px] dark:text-white leading-tight truncate group-hover/card:text-red-600 transition-colors">
+              {chapter.books?.title}
+            </h3>
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+               {/* ✅ YENİ: isAdmin prop'u eklendi */}
+               <Username username={chapter.books?.username} isAdmin={chapter.is_admin} />
+            </p>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 // --- EDİTÖRÜN SEÇİMİ ---
 function EditorsChoiceSection({ books }) {
@@ -360,6 +413,7 @@ export default function Home() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
   const [selectedPano, setSelectedPano] = useState(null);
+  const [latestChapters, setLatestChapters] = useState([]); // ✅ YENİ STATE
 
   useEffect(() => {
     async function fetchData() {
@@ -385,60 +439,59 @@ export default function Home() {
           .order('updated_at', { ascending: false })
           .limit(5);
 
-        // Tarihçedeki kitapların istatistiklerini hesapla
-        // NOT: Buradaki chapter_votes sorgusu da güvenli hale getirildi (sadece ID çekiliyor)
         const historyWithStats = history?.map(item => {
           if (!item.books) return item;
           const book = item.books;
           const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
           const totalVotes = book.chapters?.reduce((sum, c) => sum + (c.chapter_votes?.length || 0), 0) || 0;
-          // Okumaya devam et kısmında yorum sayısı kritik değil, karmaşa olmasın diye 0 geçiyoruz veya ayrı çekebiliriz. 
-          // Performans için şimdilik 0 kalsın veya basit tutalım.
           return {
             ...item,
             books: { ...book, totalViews, totalVotes, totalComments: 0 } 
           };
         });
-
         setContinueReading(historyWithStats || []);
       }
 
-      // ---------------------------------------------------------
-      // ✅ GÜVENLİ VERİ ÇEKME YÖNTEMİ (400 HATASINI ÖNLER)
-      // ---------------------------------------------------------
+      // ✅ YENİ: SON EKLENEN BÖLÜMLERİ ÇEK (Admin kontrolü için user_email eklendi)
+      const { data: recentChaps } = await supabase
+        .from('chapters')
+        .select('id, title, created_at, book_id, books!inner(title, cover_url, username, is_draft, user_email)')
+        .eq('books.is_draft', false)
+        .order('created_at', { ascending: false })
+        .limit(20);
       
-      // 1. Kitapları ve Bölümleri Çek (Nested count yapmadan)
+      // Admin tikini ekle
+      const recentChapsWithAdmin = recentChaps?.map(c => ({
+          ...c,
+          is_admin: emails.includes(c.books?.user_email)
+      })) || [];
+
+      setLatestChapters(recentChapsWithAdmin);
+
+
+      // 1. Kitapları ve Bölümleri Çek
       let { data: allBooks, error: booksError } = await supabase
         .from('books')
         .select('*, chapters(id, views)');
       
       if (booksError) {
-        console.error('Kitap çekme hatası:', booksError);
         setLoading(false);
         return;
       }
 
-      // 2. Tüm Yorumları Çek (Sadece ID ve BookID - Çok hızlıdır)
+      // 2. Tüm Yorumları Çek
       const { data: allComments } = await supabase.from('comments').select('book_id');
       
-      // 3. Tüm Bölüm Oylarını Çek (Sadece ChapterID)
+      // 3. Tüm Bölüm Oylarını Çek
       const { data: allVotes } = await supabase.from('chapter_votes').select('chapter_id');
 
       if (allBooks) {
         allBooks = allBooks.filter(book => book.chapters && book.chapters.length > 0 && !book.is_draft);
 
-        // VERİLERİ BİRLEŞTİRME VE HESAPLAMA
         allBooks = allBooks.map(book => {
-          // A. Toplam Okunma (Bölümlerden)
           const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
-          
-          // B. Toplam Beğeni (AllVotes dizisinden filtrele)
-          // Bu kitabın bölümlerinin ID listesini çıkar
           const chapterIds = book.chapters.map(c => c.id);
-          // Oylar tablosunda bu ID'lere sahip olanları say
           const totalVotes = allVotes?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
-          
-          // C. Toplam Yorum (AllComments dizisinden filtrele)
           const totalComments = allComments?.filter(c => c.book_id === book.id).length || 0;
 
           return { 
@@ -451,23 +504,18 @@ export default function Home() {
         });
       }
 
-      // EDİTÖRÜN SEÇİMİ (Hesaplanmış veriden çek)
       const editorsPicks = allBooks?.filter(b => b.is_editors_choice).slice(0, 10);
       setEditorsChoiceBooks(editorsPicks || []);
 
-      // ETKİLEŞİM VERİLERİ (Son 10 Günlük Trend için)
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
       
-      // Trend hesabı için son 10 gündeki verileri ayrı çekiyoruz (Eski mantık korundu)
       const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString());
       const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString());
       const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString());
 
       if (allBooks) {
-        // SKOR HESAPLA
         const scored = allBooks.map(b => {
-          // Trend hesaplama
           const rVotesCount = recentVotes?.filter(v => b.chapters.some(c => c.id === v.chapter_id)).length || 0;
           const rCommentsCount = recentComments?.filter(c => c.book_id === b.id).length || 0;
           const rFollowsCount = recentFollows?.filter(f => f.book_id === b.id).length || 0;
@@ -478,11 +526,9 @@ export default function Home() {
 
         setFeaturedBooks(scored.sort((a, b) => b.interactionScore - a.interactionScore).slice(0, 15));
         
-        // EN ÇOK OKUNANLAR (Toplam okunmaya göre)
         const mostRead = [...scored].sort((a, b) => b.totalViews - a.totalViews).slice(0, 20);
         setTopReadBooks(mostRead);
 
-        // KATEGORİLER
         const grouped = {};
         KATEGORILER.forEach(cat => {
           const categoryBooks = scored.filter(b => b.category === cat);
@@ -509,6 +555,10 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         <DuyuruPaneli isAdmin={isAdmin} />
         <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} />
+        
+        {/* ✅ YENİ EKLENEN BÖLÜMLER (Araya eklendi) */}
+        <RecentlyAddedChapters chapters={latestChapters} />
+        
         <EditorsChoiceSection books={editorsChoiceBooks} />
         <ContinueReadingCarousel books={continueReading} />
         <TopReadRow books={topReadBooks} />

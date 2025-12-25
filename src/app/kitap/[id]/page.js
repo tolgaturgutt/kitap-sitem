@@ -8,6 +8,14 @@ import YorumAlani from '@/components/YorumAlani';
 import { useRouter } from 'next/navigation';
 import Username from '@/components/Username';
 
+// --- YARDIMCI: SAYI FORMATLAMA ---
+function formatNumber(num) {
+  if (!num) return 0;
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num;
+}
+
 export default function KitapDetay({ params }) {
   const { id } = use(params);
   const router = useRouter(); 
@@ -21,7 +29,8 @@ export default function KitapDetay({ params }) {
       votes: 0, 
       follows: 0, 
       comments: 0,
-      chapters: 0 
+      chapters: 0,
+      words: 0
     }, 
     isFollowing: false, 
     user: null,
@@ -67,7 +76,11 @@ export default function KitapDetay({ params }) {
       
       const totalViews = chapters?.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
       
-      // Kitap oyları yerine, BÖLÜM OYLARININ TOPLAMINI çekiyoruz
+      const totalWords = chapters?.reduce((acc, curr) => {
+        const words = curr.content ? curr.content.trim().split(/\s+/).length : 0;
+        return acc + words;
+      }, 0) || 0;
+
       let totalChapterVotes = 0;
       const chapterIds = chapters?.map(c => c.id) || [];
       if (chapterIds.length > 0) {
@@ -96,7 +109,8 @@ export default function KitapDetay({ params }) {
           votes: totalChapterVotes, 
           follows: follows || 0,
           comments: comments || 0,
-          chapters: chapters?.length || 0
+          chapters: chapters?.length || 0,
+          words: totalWords
         }, 
         isFollowing: following, 
         user,
@@ -108,7 +122,6 @@ export default function KitapDetay({ params }) {
     fetchAll();
   }, [id]);
 
-  // --- 1. TASLAK MODU DEĞİŞTİRME ---
   async function handleToggleDraft() {
     const isAuthor = data.user && data.book.user_email === data.user.email;
     if (!isAuthor && !data.isAdmin) return;
@@ -125,7 +138,6 @@ export default function KitapDetay({ params }) {
     }
   }
 
-  // --- 2. TAMAMLANDI / DEVAM EDİYOR ---
   async function handleToggleCompleted() {
     const isAuthor = data.user && data.book.user_email === data.user.email;
     if (!isAuthor && !data.isAdmin) return;
@@ -309,34 +321,39 @@ export default function KitapDetay({ params }) {
             </Link>
             
             {/* İSTATİSTİKLER */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-6 mb-10 bg-white dark:bg-white/5 p-8 rounded-[2rem] border dark:border-white/5">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-10 bg-white dark:bg-white/5 p-8 rounded-[2rem] border dark:border-white/5">
               <div className="text-center">
-                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.views}</p>
+                <p className="text-3xl font-black dark:text-white mb-1">{formatNumber(data.stats.views)}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
               </div>
               
-              {/* ✅ GÜNCELLENEN KISIM: BEĞENİ */}
               <div className="text-center">
-                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.votes}</p>
+                <p className="text-3xl font-black dark:text-white mb-1">{formatNumber(data.stats.votes)}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">❤️ Beğeni</p>
               </div>
 
               <div className="text-center">
-                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.follows}</p>
+                <p className="text-3xl font-black dark:text-white mb-1">{formatNumber(data.stats.follows)}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📚 Kitaplık</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.comments}</p>
+                <p className="text-3xl font-black dark:text-white mb-1">{formatNumber(data.stats.comments)}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">💬 Yorum</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-black dark:text-white mb-1">{data.stats.chapters}</p>
+                <p className="text-3xl font-black dark:text-white mb-1">{formatNumber(data.stats.chapters)}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📖 Bölüm</p>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-3xl font-black dark:text-white mb-1">{formatNumber(data.stats.words)}</p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">✍️ Kelime</p>
               </div>
             </div>
 
             <div className="mb-10 p-8 bg-white dark:bg-white/5 rounded-[2rem] border dark:border-white/5">
-              <p className="text-lg text-gray-600 dark:text-gray-400 font-serif italic leading-relaxed">
+              {/* ✅ DÜZELTME: whitespace-pre-wrap EKLENDİ */}
+              <p className="text-lg text-gray-600 dark:text-gray-400 font-serif italic leading-relaxed whitespace-pre-wrap">
                 {data.book.summary}
               </p>
             </div>

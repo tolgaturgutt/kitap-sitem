@@ -25,6 +25,12 @@ export default function PanoModal({
   useEffect(() => {
     if (!selectedPano) return;
 
+    // ✅ KRİTİK DÜZELTME: Pano değiştiği an eski verileri temizle/sıfırla.
+    // Böylece yeni veriler yüklenene kadar eskiler görünüp kafa karıştırmaz.
+    setPanoLikes(0);
+    setHasLiked(false);
+    setPanoComments([]);
+
     async function loadPanoData() {
       // Beğeni sayısı
       const { count } = await supabase

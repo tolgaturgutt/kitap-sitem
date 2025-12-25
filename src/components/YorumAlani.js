@@ -20,6 +20,10 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const [isOwner, setIsOwner] = useState(false); // Kitap sahibi kontrolü
 
   useEffect(() => {
+    // ✅ KRİTİK DÜZELTME: ID değiştiği an eski yorumları temizle.
+    // Böylece yeni yorumlar yüklenirken eskiler ekranda kalıp kafa karıştırmaz.
+    setComments([]);
+
     async function load() {
       const { data: { user: u } } = await supabase.auth.getUser();
       setUser(u);
@@ -62,7 +66,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     } else if (type === 'chapter') {
       query = query.eq('chapter_id', targetId);
       
-      // ✅ KRİTİK GÜNCELLEME: Eğer "includeParagraphs" true ise, filtreleme yapma (hepsini getir).
+      // Eğer "includeParagraphs" true ise, filtreleme yapma (hepsini getir).
       // Eğer false ise (varsayılan), sadece paragraf ID'si boş olanları (ana yorumları) getir.
       if (!includeParagraphs) {
         query = query.is('paragraph_id', null);
@@ -229,6 +233,12 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       </div>
 
       <div className="space-y-6">
+        {mainComments.length === 0 && (
+           <div className="text-center py-4 text-gray-400 text-xs italic">
+             {/* Yükleniyor veya yorum yok mesajı buraya eklenebilir ama boş bırakmak daha temiz */}
+           </div>
+        )}
+        
         {mainComments.map(c => (
           <div key={c.id} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             <CommentCard 

@@ -12,6 +12,10 @@ export default function BolumEkle({ params }) {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
+  // ✅ KELİME SAYISINI HESAPLA
+  // Metni boşluklara göre bölüp, boş olmayanları sayıyoruz
+  const wordCount = content.trim() === '' ? 0 : content.trim().split(/\s+/).length;
+
   async function bolumKaydet() {
     if (!title.trim() || !content.trim()) {
       toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
@@ -36,13 +40,15 @@ export default function BolumEkle({ params }) {
 
       const sirasi = (count || 0) + 1;
 
+      // ✅ NOT: Veritabanına word_count eklediğimizde buraya: word_count: wordCount satırını da ekleyeceğiz.
       const { data: newChapter, error } = await supabase
         .from('chapters')
         .insert([{
           book_id: id,
           title: title,
           content: content,
-          order_no: sirasi
+          order_no: sirasi,
+          // word_count: wordCount // DB güncellemesi yapılınca bu satırı açarız
         }])
         .select()
         .single();
@@ -109,9 +115,16 @@ export default function BolumEkle({ params }) {
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows="15"
-              className="w-full p-4 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-blue-500 leading-relaxed"
+              className="w-full p-4 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-blue-500 leading-relaxed resize-y"
               placeholder="Hikayenizi buraya yazın..."
             ></textarea>
+            
+            {/* ✅ KELİME SAYACI - SAYDAM VE ŞIK */}
+            <div className="flex justify-end mt-2 px-1">
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 select-none">
+                {wordCount} Kelime
+              </span>
+            </div>
           </div>
 
           <div className="flex justify-end gap-4">

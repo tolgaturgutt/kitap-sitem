@@ -12,6 +12,9 @@ export default function BolumDuzenle({ params }) {
   const [formData, setFormData] = useState({ title: '', content: '' });
   const [ids, setIds] = useState({ kitapId: null, bolumId: null });
 
+  // ✅ KELİME SAYISINI HESAPLA
+  const wordCount = formData.content.trim() === '' ? 0 : formData.content.trim().split(/\s+/).length;
+
   useEffect(() => {
     // Params'ı unwrap et
     async function unwrapParams() {
@@ -77,19 +80,19 @@ export default function BolumDuzenle({ params }) {
     setUpdating(true);
 
     try {
+      // NOT: Veritabanına word_count eklenince buraya da eklenebilir.
       const { data, error } = await supabase
         .from('chapters')
         .update({ 
           title: formData.title, 
           content: formData.content,
-          updated_at: new Date() // Sütunu eklediysen kalsın, yoksa sil
+          updated_at: new Date() 
         })
         .eq('id', ids.bolumId)
-        .select(); // <--- BU ÇOK ÖNEMLİ: Güncellenen veriyi geri iste
+        .select(); 
 
       if (error) throw error;
 
-      // Eğer data boşsa, veritabanı işlemi yaptı ama hiçbir satıra dokunmadı demektir
       if (!data || data.length === 0) {
         toast.error("İşlem başarısız! Yetkiniz yok veya bölüm silinmiş.");
         return;
@@ -153,6 +156,13 @@ export default function BolumDuzenle({ params }) {
               className="w-full p-8 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed"
               placeholder="Hikayeni buraya yaz..."
             />
+            
+            {/* ✅ KELİME SAYACI - BURAYA EKLENDİ */}
+            <div className="flex justify-end mt-2 px-4">
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 select-none">
+                {wordCount} Kelime
+              </span>
+            </div>
           </div>
 
           <div className="flex gap-4">
@@ -175,5 +185,4 @@ export default function BolumDuzenle({ params }) {
       </div>
     </div>
   );
-} 
-// düzenleme
+}
