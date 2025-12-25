@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "next-themes";
 import MobileNav from "@/components/MobileNav";
+import DesktopSidebar from "@/components/DesktopSidebar"; // ✅ YENİ EKLENEN
 
 // --- YENİ EKLENEN IMPORTLAR ---
 import BanKontrol from '@/components/BanKontrol';
@@ -25,7 +26,7 @@ export default function RootLayout({ children }) {
 
     let baslik = "KitapLab - Kendi Hikayeni Yaz"; // Ana Sayfa Varsayılanı
 
-    // --- KLASÖRLERİNE GÖRE BAŞLIK AYARLARI ---
+    // --- KLASÖRLERINE GÖRE BAŞLIK AYARLARI ---
     
     // 1. Temel Sayfalar
     if (pathname === '/giris') {
@@ -103,6 +104,9 @@ export default function RootLayout({ children }) {
           {mounted ? (
             <>
               {!hideNavbar && <Navbar />}
+              
+              {/* ✅ YENİ: MASAÜSTÜ SIDEBAR - Otomatik olarak giris/kayit/yakinda'da gizlenir */}
+              <DesktopSidebar />
               
               {/* ANA İÇERİK */}
               <main className={!hideNavbar ? "pt-20 min-h-screen" : "min-h-screen"}>
