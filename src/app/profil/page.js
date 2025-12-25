@@ -113,7 +113,7 @@ export default function ProfilSayfasi() {
         const followerUsernames = followers.map(f => f.follower_username);
         const { data: followerProfiles } = await supabase
           .from('profiles')
-          .select('username, full_name, avatar_url','email')
+          .select('username, full_name, avatar_url,email')
           .in('username', followerUsernames);
         
         const followersWithData = followers.map(f => {
@@ -486,75 +486,71 @@ export default function ProfilSayfasi() {
       </div>
 
       {modalType && (
-  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center">
-    <div className="bg-white dark:bg-black w-[92%] max-w-md max-h-[80vh] rounded-3xl p-4 md:p-6 overflow-y-auto relative">
+  <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setModalType(null)}>
+    <div className="bg-white dark:bg-black w-full max-w-md rounded-2xl md:rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
 
-      {/* KAPAT */}
-      <button
-        onClick={() => setModalType(null)}
-        className="absolute top-3 right-4 text-2xl font-black text-gray-400 hover:text-red-600"
-      >
-        ×
-      </button>
+      {/* BAŞLIK VE KAPAT */}
+      <div className="p-4 md:p-6 border-b dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
+        <span className="text-[9px] md:text-[10px] font-black uppercase opacity-40 tracking-widest">
+          {modalType === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}
+        </span>
+        <button onClick={() => setModalType(null)} className="text-[9px] md:text-[10px] font-black text-red-600 uppercase">
+          Kapat
+        </button>
+      </div>
 
-      {/* BAŞLIK */}
-      <h2 className="text-lg md:text-xl font-black mb-4 text-center">
-        {modalType === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}
-      </h2>
+      {/* İÇERİK */}
+      <div className="max-h-[400px] md:max-h-[500px] overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 scrollbar-thin scrollbar-thumb-red-600/20 scrollbar-track-transparent">
+        {(modalType === 'followers' ? followersWithProfiles : followingWithProfiles).length === 0 ? (
+          <p className="text-center py-8 md:py-10 text-[9px] md:text-[10px] text-gray-500 italic uppercase">Henüz kimse yok.</p>
+        ) : (
+          (modalType === 'followers' ? followersWithProfiles : followingWithProfiles).map((p, i) => {
+            const pName = modalType === 'followers' ? p.follower_username : p.followed_username;
 
-      <div className="space-y-2">
-        {(modalType === 'followers'
-          ? followersWithProfiles
-          : followingWithProfiles
-        ).map((p, i) => {
-          const pName =
-            modalType === 'followers'
-              ? p.follower_username
-              : p.followed_username;
-
-          return (
-            <div
-              key={i}
-              className="flex items-center justify-between p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 hover:border-red-600/30 transition-all"
-            >
-              <Link
-                href={`/yazar/${pName}`}
-                onClick={() => setModalType(null)}
-                className="flex items-center gap-3"
+            return (
+              <div
+                key={i}
+                className="flex items-center justify-between p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 hover:border-red-600/30 transition-all"
               >
-                <div className="w-9 h-9 rounded-full bg-red-600/10 overflow-hidden flex items-center justify-center font-black text-red-600 text-xs">
-                  {p.avatar_url ? (
-                    <img src={p.avatar_url} className="w-full h-full object-cover" />
-                  ) : (
-                    (pName || 'U')[0].toUpperCase()
-                  )}
-                </div>
-
-                <div>
-                  <Username
-                    username={pName}
-                    isAdmin={p.is_admin}
-                    className="text-xs font-bold"
-                  />
-                  {p.full_name && (
-                    <p className="text-[9px] text-gray-400">
-                      {p.full_name}
-                    </p>
-                  )}
-                </div>
-              </Link>
-
-              {modalType === 'following' && (
-                <button
-                  onClick={() => handleUnfollow(pName)}
-                  className="text-[9px] font-black uppercase bg-red-600 text-white px-4 py-1.5 rounded-full"
+                <Link
+                  href={`/yazar/${pName}`}
+                  onClick={() => setModalType(null)}
+                  className="flex items-center gap-2 md:gap-3"
                 >
-                  Bırak
-                </button>
-              )}
-            </div>
-          );
-        })}
+                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-red-600/10 overflow-hidden flex items-center justify-center font-black text-red-600 text-[10px] md:text-xs">
+                    {p.avatar_url ? (
+                      <img src={p.avatar_url} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      (pName || 'U')[0].toUpperCase()
+                    )}
+                  </div>
+
+                  <div>
+                    <Username
+                      username={pName}
+                      isAdmin={p.is_admin}
+                      className="text-[10px] md:text-xs font-bold"
+                    />
+                    {p.full_name && (
+                      <p className="text-[8px] md:text-[9px] text-gray-400">
+                        {p.full_name}
+                      </p>
+                    )}
+                  </div>
+                </Link>
+
+                {modalType === 'following' && (
+                  <button
+                    onClick={() => handleUnfollow(pName)}
+                    className="text-[9px] font-black uppercase bg-red-600 text-white px-4 py-1.5 rounded-full hover:bg-red-700 transition-colors"
+                  >
+                    Bırak
+                  </button>
+                )}
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   </div>
