@@ -281,8 +281,8 @@ export default function YazarProfili() {
       <div className="max-w-6xl mx-auto">
         {/* HEADER */}
         <header className="mb-8 md:mb-12 bg-white dark:bg-white/5 p-6 md:p-10 rounded-3xl md:rounded-[4rem] border dark:border-white/5 shadow-sm">
-          <div className="flex flex-col md:flex-row items-center gap-6 md:gap-10">
-            <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-white/10 rounded-2xl md:rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0">
+          <div className="flex flex-col items-center md:flex-row md:items-center gap-6 md:gap-10">
+            <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-white/10 rounded-2xl md:rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0 mx-auto md:mx-0">
               {author.avatar_url ? <img src={author.avatar_url} className="w-full h-full object-cover" alt="" /> : author.username[0].toUpperCase()}
             </div>
             <div className="flex-1 w-full">
