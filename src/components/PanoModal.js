@@ -202,8 +202,16 @@ export default function PanoModal({
         {/* SAĞ TARAF: Flex yapısı ile bölündü */}
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-[#080808]">
           
-          {/* 1. SCROLL ALANI (BAŞLIK + YAZI + YORUMLAR) */}
+         {/* 1. SCROLL ALANI (BAŞLIK + YAZI + YORUMLAR) */}
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
+            
+            {/* 📱 MOBİL İÇİN KAPAK FOTOĞRAFI */}
+            {selectedPano.books?.cover_url && (
+              <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
+                <img src={selectedPano.books.cover_url} className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl max-h-[250px] w-auto" alt="" />
+              </div>
+            )}
+
             {/* Pano İçeriği */}
             <div className="mb-8">
               <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
