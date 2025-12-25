@@ -121,7 +121,7 @@ export default function YakindaPage() {
             {/* MODERNLEŞTİRİLMİŞ INSTAGRAM BUTONU (Glassmorphism) */}
             <div className="pt-4">
                 <a 
-                  href="https://instagram.com/kitaplab34" 
+                  href="https://instagram.com/kitaplabtr" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-4 px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl text-white font-bold tracking-wider hover:bg-white/20 transform hover:-translate-y-1 transition-all duration-300 group shadow-2xl"

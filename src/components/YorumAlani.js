@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 
-export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded }) {
+export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded, includeParagraphs = false }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   
@@ -17,7 +17,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const [user, setUser] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isOwner, setIsOwner] = useState(false); // ✅ YENİ: Kitap sahibi kontrolü
+  const [isOwner, setIsOwner] = useState(false); // Kitap sahibi kontrolü
 
   useEffect(() => {
     async function load() {
@@ -33,7 +33,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
           .single();
         if (adminData) setIsAdmin(true);
 
-        // 2. ✅ KİTAP SAHİBİ KONTROLÜ (YENİ)
+        // 2. KİTAP SAHİBİ KONTROLÜ
         if (bookId) {
           const { data: book } = await supabase
             .from('books')
@@ -41,7 +41,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
             .eq('id', bookId)
             .single();
           
-          // Eğer kitabın yazarı şu anki kullanıcıysa yetki ver
           if (book && book.user_email === u.email) {
             setIsOwner(true);
           }
@@ -50,7 +49,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       fetchComments();
     }
     load();
-  }, [type, targetId, paraId, bookId]); // bookId eklendi
+  }, [type, targetId, paraId, bookId, includeParagraphs]);
 
   async function fetchComments() {
     let query = supabase
@@ -61,7 +60,14 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     if (type === 'book') {
       query = query.eq('book_id', targetId).is('chapter_id', null);
     } else if (type === 'chapter') {
-      query = query.eq('chapter_id', targetId).is('paragraph_id', null);
+      query = query.eq('chapter_id', targetId);
+      
+      // ✅ KRİTİK GÜNCELLEME: Eğer "includeParagraphs" true ise, filtreleme yapma (hepsini getir).
+      // Eğer false ise (varsayılan), sadece paragraf ID'si boş olanları (ana yorumları) getir.
+      if (!includeParagraphs) {
+        query = query.is('paragraph_id', null);
+      }
+
     } else if (type === 'paragraph') {
       query = query.eq('chapter_id', targetId);
       if (paraId === null) query = query.is('paragraph_id', null);
@@ -202,7 +208,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 
   return (
     <div className="w-full">
-      {/* ANA YORUM YAZMA ALANI */}
       <div className="mb-8 relative bg-gray-50 dark:bg-white/5 rounded-2xl p-2 border dark:border-white/10">
         <textarea 
           value={newComment} 
@@ -223,17 +228,14 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         </div>
       </div>
 
-      {/* YORUM LİSTESİ */}
       <div className="space-y-6">
         {mainComments.map(c => (
           <div key={c.id} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
-            
-            {/* ANA YORUM KARTI */}
             <CommentCard 
                 comment={c} 
                 user={user} 
                 isAdmin={isAdmin}
-                isOwner={isOwner} // ✅ Kitap sahibi mi?
+                isOwner={isOwner}
                 onReply={() => openReply(c)}
                 isReplying={replyingTo === c.id}
                 onDelete={handleDelete}
@@ -244,8 +246,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
                 isSending={isSending}
                 isMain={true}
             />
-
-            {/* ALT YORUMLAR */}
             <div className="pl-14 mt-3 space-y-4">
                 {getReplies(c.id).map(reply => (
                     <CommentCard 
@@ -253,7 +253,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
                         comment={reply} 
                         user={user} 
                         isAdmin={isAdmin}
-                        isOwner={isOwner} // ✅ Kitap sahibi mi?
+                        isOwner={isOwner}
                         onReply={() => openReply(reply)}
                         isReplying={replyingTo === reply.id}
                         onDelete={handleDelete}
@@ -266,7 +266,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
                     />
                 ))}
             </div>
-
           </div>
         ))}
       </div>
@@ -274,9 +273,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   );
 }
 
-// --- YORUM KARTI BİLEŞENİ ---
 function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain }) {
-    // ✅ SİLME YETKİSİ: Admin VEYA Kitap Sahibi VEYA Yorumu Yazan
     const canDelete = user && (isAdmin || isOwner || user.id === comment.user_id);
 
     return (
@@ -287,24 +284,14 @@ function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onD
             
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
-                    
                     <Username 
                         username={comment.profiles?.username || comment.username || "Anonim"}
                         isAdmin={comment.profiles?.role === 'admin'}
                         className={`${isMain ? 'text-[11px]' : 'text-[10px]'} font-black dark:text-gray-300 mb-1 tracking-wide uppercase`}
                     />
-                    
-                    {/* MENÜ */}
                     {user && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                            <button 
-                                onClick={onReply}
-                                className="text-[10px] text-blue-500 hover:underline font-bold uppercase"
-                            >
-                                {isReplying ? 'Kapat' : 'Yanıtla'}
-                            </button>
-
-                            {/* ✅ YENİ SİLME BUTONU MANTIĞI */}
+                            <button onClick={onReply} className="text-[10px] text-blue-500 hover:underline font-bold uppercase">{isReplying ? 'Kapat' : 'Yanıtla'}</button>
                             {canDelete ? (
                                 <button onClick={() => onDelete(comment.id)} className="text-[10px] text-red-500 hover:underline font-bold uppercase">Sil</button>
                             ) : (
@@ -313,31 +300,13 @@ function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onD
                         </div>
                     )}
                 </div>
-                
                 <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
-                    {comment.content.split(' ').map((word, i) => 
-                        word.startsWith('@') ? <span key={i} className="text-blue-500 font-bold">{word} </span> : word + ' '
-                    )}
+                    {comment.content.split(' ').map((word, i) => word.startsWith('@') ? <span key={i} className="text-blue-500 font-bold">{word} </span> : word + ' ')}
                 </p>
-
-                {/* YANIT KUTUSU */}
                 {isReplying && (
                     <div className="mt-3 flex gap-2 animate-in slide-in-from-top-1">
-                        <input 
-                            autoFocus
-                            value={replyText}
-                            onChange={e => setReplyText(e.target.value)}
-                            placeholder={`@${comment.profiles?.username || 'kullanıcı'} yanıtla...`}
-                            className="flex-1 bg-gray-100 dark:bg-white/5 border dark:border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500"
-                            onKeyDown={e => e.key === 'Enter' && onSendReply()}
-                        />
-                        <button 
-                            onClick={onSendReply}
-                            disabled={isSending}
-                            className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-blue-700"
-                        >
-                            Gönder
-                        </button>
+                        <input autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={`@${comment.profiles?.username || 'kullanıcı'} yanıtla...`} className="flex-1 bg-gray-100 dark:bg-white/5 border dark:border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" onKeyDown={e => e.key === 'Enter' && onSendReply()} />
+                        <button onClick={onSendReply} disabled={isSending} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-blue-700">Gönder</button>
                     </div>
                 )}
             </div>

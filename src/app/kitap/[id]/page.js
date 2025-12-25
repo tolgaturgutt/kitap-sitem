@@ -24,7 +24,6 @@ export default function KitapDetay({ params }) {
       chapters: 0 
     }, 
     isFollowing: false, 
-    hasVoted: false, 
     user: null,
     isAdmin: false,
     authorIsAdmin: false
@@ -67,16 +66,25 @@ export default function KitapDetay({ params }) {
       }
       
       const totalViews = chapters?.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
-      const { count: votes } = await supabase.from('book_votes').select('*', { count: 'exact', head: true }).eq('book_id', id);
+      
+      // Kitap oyları yerine, BÖLÜM OYLARININ TOPLAMINI çekiyoruz
+      let totalChapterVotes = 0;
+      const chapterIds = chapters?.map(c => c.id) || [];
+      if (chapterIds.length > 0) {
+        const { count } = await supabase
+          .from('chapter_votes')
+          .select('*', { count: 'exact', head: true })
+          .in('chapter_id', chapterIds);
+        totalChapterVotes = count || 0;
+      }
+
       const { count: follows } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('book_id', id);
       const { count: comments } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('book_id', id);
       
-      let following = false, voted = false;
+      let following = false;
       if (user) {
         const { data: f } = await supabase.from('follows').select('*').eq('book_id', id).eq('user_email', user.email).single();
         following = !!f;
-        const { data: v } = await supabase.from('book_votes').select('*').eq('book_id', id).eq('user_email', user.email).single();
-        voted = !!v;
       }
 
       setData({ 
@@ -85,13 +93,12 @@ export default function KitapDetay({ params }) {
         chapters: chapters || [], 
         stats: { 
           views: totalViews, 
-          votes: votes || 0, 
+          votes: totalChapterVotes, 
           follows: follows || 0,
           comments: comments || 0,
           chapters: chapters?.length || 0
         }, 
         isFollowing: following, 
-        hasVoted: voted, 
         user,
         isAdmin: adminStatus,
         authorIsAdmin: authorIsAdmin
@@ -106,7 +113,7 @@ export default function KitapDetay({ params }) {
     const isAuthor = data.user && data.book.user_email === data.user.email;
     if (!isAuthor && !data.isAdmin) return;
 
-    const newStatus = !data.book.is_draft; // Tersi yap
+    const newStatus = !data.book.is_draft; 
     const { error } = await supabase.from('books').update({ is_draft: newStatus }).eq('id', id);
 
     if (error) {
@@ -133,34 +140,6 @@ export default function KitapDetay({ params }) {
       if (newStatus) toast.success("Kitap 'TAMAMLANDI' olarak işaretlendi. 🎉");
       else toast.success("Kitap tekrar 'DEVAM EDİYOR' moduna geçti.");
     }
-  }
-
-  async function handleBookVote() {
-     if (!data.user) return toast.error("Giriş yapmalısın.");
-     if (data.hasVoted) {
-       await supabase.from('book_votes').delete().eq('book_id', id).eq('user_email', data.user.email);
-       setData(prev => ({ ...prev, hasVoted: false, stats: { ...prev.stats, votes: prev.stats.votes - 1 } }));
-       toast.success("Oy geri alındı");
-     } else {
-       await supabase.from('book_votes').insert([{ book_id: id, user_email: data.user.email }]);
-       setData(prev => ({ ...prev, hasVoted: true, stats: { ...prev.stats, votes: prev.stats.votes + 1 } }));
-       toast.success("Oy verildi");
-       
-       if (data.book.user_email !== data.user.email) {
-         const { data: profile } = await supabase.from('profiles').select('username').eq('id', data.user.id).single();
-         const username = profile?.username || data.user.user_metadata?.username || data.user.email.split('@')[0];
-         await supabase.from('notifications').insert({
-           recipient_email: data.book.user_email,
-           actor_username: username,
-           type: 'vote',
-           book_title: data.book.title,
-           book_id: parseInt(id),
-           chapter_id: null,
-           is_read: false,
-           created_at: new Date()
-         });
-       }
-     }
   }
 
   async function handleToggleEditorsChoice() {
@@ -237,10 +216,6 @@ export default function KitapDetay({ params }) {
   const isAuthor = data.user && data.book.user_email === data.user.email;
   const canEdit = isAuthor || data.isAdmin;
 
-  // ✅ GÜVENLİK KİLİDİ: 
-  // 1. Hiç bölüm yoksa GİZLE.
-  // 2. VEYA kitap 'Taslak' (is_draft) ise GİZLE.
-  // (Tabii ki yazar ve admin hariç)
   const isHidden = (data.chapters.length === 0 || data.book.is_draft) && !canEdit;
 
   if (isHidden) {
@@ -306,7 +281,6 @@ export default function KitapDetay({ params }) {
                 </span>
               )}
 
-              {/* TASLAK ROZETİ (Sadece Yazara Özel) */}
               {data.book.is_draft && (
                 <span className="inline-block text-[10px] font-black uppercase text-gray-600 bg-gray-100 dark:bg-white/10 px-4 py-1.5 rounded-full tracking-[0.2em] border border-gray-400/20">
                   🔒 TASLAK MODU
@@ -340,10 +314,13 @@ export default function KitapDetay({ params }) {
                 <p className="text-3xl font-black dark:text-white mb-1">{data.stats.views}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
               </div>
+              
+              {/* ✅ GÜNCELLENEN KISIM: BEĞENİ */}
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{data.stats.votes}</p>
-                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">⭐ Oy</p>
+                <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">❤️ Beğeni</p>
               </div>
+
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{data.stats.follows}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📚 Kitaplık</p>
@@ -365,16 +342,6 @@ export default function KitapDetay({ params }) {
             </div>
             
             <div className="flex flex-wrap gap-4">
-               <button 
-                 onClick={handleBookVote} 
-                 className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${
-                   data.hasVoted 
-                     ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' 
-                     : 'bg-white dark:bg-black border-2 border-gray-200 dark:border-white/10 dark:text-white hover:border-red-600'
-                 }`}
-               >
-                 {data.hasVoted ? '⭐ OYLANDI' : 'OY VER'}
-               </button>
                
                <button 
                  onClick={handleLibrary} 
@@ -402,7 +369,6 @@ export default function KitapDetay({ params }) {
                
                {canEdit && (
                  <>
-                   {/* ✅ TASLAK / YAYINLA BUTONU */}
                    <button
                      onClick={handleToggleDraft}
                      className={`px-10 py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${

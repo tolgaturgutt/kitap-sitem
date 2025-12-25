@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import YorumAlani from '@/components/YorumAlani';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast'; // Toast eklendi
 
 export default function BolumDetay({ params }) {
   const decodedParams = use(params);
@@ -15,6 +15,11 @@ export default function BolumDetay({ params }) {
   const [loading, setLoading] = useState(true);
   const [activePara, setActivePara] = useState(null);
   const [paraCommentCounts, setParaCommentCounts] = useState({});
+  const [user, setUser] = useState(null); // User state'i eklendi
+
+  // ✅ YENİ: BEĞENİ STATE'LERİ
+  const [likes, setLikes] = useState(0);
+  const [hasLiked, setHasLiked] = useState(false);
 
   const [readerSettings, setReaderSettings] = useState({
     fontSize: 20,
@@ -45,27 +50,44 @@ export default function BolumDetay({ params }) {
         const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
         const { data: all } = await supabase.from('chapters').select('id, title').eq('book_id', id).order('order_no', { ascending: true });
         
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        setUser(currentUser); // User'ı state'e at
         
-        // EĞER KULLANICI GİRİŞ YAPMIŞSA İÇERİ GİR
-        if (user) {
-          
-          // 1. İŞTE YENİ KODUMUZ BURADA:
-          // (Veritabanına soruyoruz: "Bu adam bunu okudu mu?" Okumadıysa 1 arttır.)
+        if (currentUser) {
+          // Okunma sayısını arttır
           await supabase.rpc('increment_view_count', {
             p_chapter_id: Number(bolumId),
-            p_user_id: user.id
+            p_user_id: currentUser.id
           });
 
-          // 2. Okuma Geçmişini Kaydetme (Bu zaten vardı, elleme)
+          // Geçmişe ekle
           await supabase.from('reading_history').upsert({
-            user_email: user.email,
+            user_email: currentUser.email,
             book_id: Number(id),
             chapter_id: Number(bolumId),
             updated_at: new Date()
           }, { onConflict: 'user_email, book_id' });
+
+          // ✅ YENİ: KULLANICI BU BÖLÜMÜ BEĞENMİŞ Mİ KONTROL ET
+          const { data: vote } = await supabase
+            .from('chapter_votes')
+            .select('*')
+            .eq('chapter_id', bolumId)
+            .eq('user_email', currentUser.email)
+            .single();
+          
+          setHasLiked(!!vote);
         }
 
+        // ✅ YENİ: TOPLAM BEĞENİ SAYISINI ÇEK
+        const { count: likeCount } = await supabase
+          .from('chapter_votes')
+          .select('*', { count: 'exact', head: true })
+          .eq('chapter_id', bolumId);
+        
+        setLikes(likeCount || 0);
+
+        // Yorum sayıları (Paragraf)
         const { data: counts } = await supabase.from('comments').select('paragraph_id').eq('chapter_id', bolumId).not('paragraph_id', 'is', null);
         const countMap = {};
         counts?.forEach(c => {
@@ -84,6 +106,39 @@ export default function BolumDetay({ params }) {
     }
     getFullData();
   }, [id, bolumId]);
+
+  // ✅ YENİ: BEĞENİ FONKSİYONU
+  const handleLike = async () => {
+    if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
+
+    if (hasLiked) {
+      // Beğeniyi Kaldır
+      const { error } = await supabase
+        .from('chapter_votes')
+        .delete()
+        .eq('chapter_id', bolumId)
+        .eq('user_email', user.email);
+      
+      if (!error) {
+        setLikes(prev => prev - 1);
+        setHasLiked(false);
+      }
+    } else {
+      // Beğen
+      const { error } = await supabase
+        .from('chapter_votes')
+        .insert({
+          chapter_id: bolumId,
+          user_email: user.email
+        });
+      
+      if (!error) {
+        setLikes(prev => prev + 1);
+        setHasLiked(true);
+        toast.success("Bölüm beğenildi ❤️");
+      }
+    }
+  };
 
   const handleCommentAdded = (pId) => {
     if (pId !== null) {
@@ -176,15 +231,32 @@ export default function BolumDetay({ params }) {
           </div>
 
           {/* ============================================ */}
-          {/* BÖLÜM YORUMLARI - MUTLAKA GÖRÜNECEK */}
+          {/* BÖLÜM YORUMLARI & BEĞENİ ALANI */}
           {/* ============================================ */}
           <section className="mt-32 mb-20 p-8 border-4 border-red-600 rounded-3xl bg-white/50 dark:bg-black/30">
+            
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-black flex items-center justify-center gap-3">
                 <span className="text-red-600">📖</span> 
                 Bölüm Yorumları
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 uppercase tracking-widest">
+              
+              {/* ✅ YENİ: BÖLÜM BEĞENME BUTONU */}
+              <div className="flex justify-center mt-6">
+                <button 
+                  onClick={handleLike}
+                  className={`flex items-center gap-3 px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 ${
+                    hasLiked 
+                      ? 'bg-red-600 text-white shadow-red-600/30' 
+                      : 'bg-white dark:bg-white/10 text-gray-500 hover:text-red-600'
+                  }`}
+                >
+                  <span className="text-xl">{hasLiked ? '❤️' : '🤍'}</span>
+                  <span>{hasLiked ? 'Beğendin' : 'Bölümü Beğen'} • {likes}</span>
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-6 uppercase tracking-widest">
                 Bu bölüm hakkında ne düşündünüz?
               </p>
             </div>
@@ -196,6 +268,7 @@ export default function BolumDetay({ params }) {
                 bookId={id} 
                 paraId={null}
                 onCommentAdded={handleCommentAdded}
+                includeParagraphs={true} // Paragraf yorumları dahil
               />
             ) : (
               <p className="text-center text-red-500">ID'ler yüklenemedi</p>

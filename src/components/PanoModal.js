@@ -119,7 +119,7 @@ export default function PanoModal({
     setNewComment('');
     setReplyTo(null);
 
-    // Listeyi güncelle (manuel ekleme yaparak tekrar fetch etmeden hızlandırabiliriz ama garanti olsun diye çekiyoruz)
+    // Listeyi güncelle
     const { data: comments } = await supabase
       .from('pano_comments')
       .select('*')
@@ -139,7 +139,7 @@ export default function PanoModal({
     toast.success('Yorum eklendi!');
   }
 
-  // --- 4. YORUM SİLME (YENİ ÖZELLİK) ---
+  // --- 4. YORUM SİLME ---
   async function handleDeleteComment(commentId) {
     if (!confirm('Bu yorumu silmek istediğine emin misin?')) return;
 
@@ -149,7 +149,6 @@ export default function PanoModal({
       toast.error('Silinirken hata oluştu');
     } else {
       toast.success('Yorum silindi');
-      // Listeden çıkar
       setPanoComments(prev => prev.filter(c => c.id !== commentId));
     }
   }
@@ -170,14 +169,12 @@ export default function PanoModal({
     }
   }
 
-  // --- YARDIMCI: Yorum Kartı Bileşeni ---
+  // --- YARDIMCI: Yorum Kartı ---
   const CommentItem = ({ comment, isReply = false }) => {
-    // Silme Yetkisi Var mı? (Admin || Pano Sahibi || Yorum Sahibi)
     const canDelete = isAdmin || isOwner || (user && user.email === comment.user_email);
 
     return (
       <div className={`flex gap-3 ${isReply ? 'ml-11' : ''}`}>
-        {/* Profil Resmi */}
         <img
           src={comment.profiles?.avatar_url || '/avatar-placeholder.png'}
           className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'} rounded-full object-cover bg-gray-200`}
@@ -197,12 +194,10 @@ export default function PanoModal({
               />
             </Link>
             
-            {/* Silme Butonu (Sadece yetkiliye görünür) */}
             {canDelete && (
               <button 
                 onClick={() => handleDeleteComment(comment.id)}
                 className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-gray-300 hover:text-red-600 font-bold uppercase"
-                title="Yorumu Sil"
               >
                 SİL
               </button>
@@ -242,6 +237,7 @@ export default function PanoModal({
           ✕
         </button>
 
+        {/* SOL TARAF: GÖRSEL */}
         {selectedPano.books?.cover_url && (
           <div className="shrink-0 flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2">
             <img 
@@ -252,42 +248,45 @@ export default function PanoModal({
           </div>
         )}
 
-        <div className="p-10 md:p-16 overflow-y-auto flex-1 flex flex-col">
-          <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
-            📖 {selectedPano.books?.title} {selectedPano.chapter_id && '• ' + (selectedPano.chapters?.title || 'Bölüm')}
-          </span>
+        {/* SAĞ TARAF: İÇERİK (Tek parça scroll, sıkışma önlendi) */}
+        <div className="p-10 md:p-16 overflow-y-auto flex-1 flex flex-col h-full">
+          
+          {/* Üst Kısım: Başlık & Metin (shrink-0 ile büzüşmeyi engelledik) */}
+          <div className="shrink-0">
+            <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
+              📖 {selectedPano.books?.title} {selectedPano.chapter_id && '• ' + (selectedPano.chapters?.title || 'Bölüm')}
+            </span>
 
-          <h2 className="text-4xl md:text-6xl font-black mb-8 leading-tight tracking-tighter dark:text-white">
-            {selectedPano.title}
-          </h2>
+            <h2 className="text-4xl md:text-5xl font-black mb-6 leading-tight tracking-tighter dark:text-white">
+              {selectedPano.title}
+            </h2>
 
-          <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-wrap mb-8">
-            {selectedPano.content}
-          </p>
+            <p className="text-lg md:text-xl text-gray-500 dark:text-gray-400 leading-relaxed font-medium whitespace-pre-wrap mb-8">
+              {selectedPano.content}
+            </p>
 
-          <div className="flex items-center gap-4 mb-6 pb-6 border-b dark:border-white/5">
-            <button 
-              onClick={handleLike} 
-              className={`flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm transition-all ${hasLiked ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}
-            >
-              ❤️ {panoLikes}
-            </button>
-            <span className="text-sm text-gray-400">💬 {panoComments.length} yorum</span>
+            <div className="flex items-center gap-4 mb-8 pb-8 border-b dark:border-white/5">
+              <button 
+                onClick={handleLike} 
+                className={`flex items-center gap-2 px-6 py-3 rounded-full font-black text-sm transition-all ${hasLiked ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}
+              >
+                ❤️ {panoLikes}
+              </button>
+              <span className="text-sm text-gray-400">💬 {panoComments.length} yorum</span>
+            </div>
           </div>
 
-          <div className="flex-1 flex flex-col min-h-0">
+          {/* Orta Kısım: Yorumlar (Flex zorlamasını kaldırdık, rahatça uzayacak) */}
+          <div className="mb-8">
             <h3 className="text-sm font-black uppercase tracking-wider text-gray-400 mb-4">Yorumlar</h3>
             
-            <div className="flex-1 space-y-4 overflow-y-auto mb-6 pr-2">
+            <div className="space-y-4">
               {panoComments.length === 0 ? (
-                <p className="text-center text-gray-400 text-sm py-8">Henüz yorum yapılmamış. İlk sen yap! 💬</p>
+                <p className="text-gray-500 italic text-sm">Henüz yorum yapılmamış. İlk sen yap! 💬</p>
               ) : (
                 panoComments.filter(c => !c.parent_id).map(comment => (
                   <div key={comment.id} className="space-y-3">
-                    {/* Ana Yorum */}
                     <CommentItem comment={comment} />
-                    
-                    {/* Yanıtlar */}
                     {panoComments.filter(r => r.parent_id === comment.id).map(reply => (
                       <CommentItem key={reply.id} comment={reply} isReply={true} />
                     ))}
@@ -295,88 +294,91 @@ export default function PanoModal({
                 ))
               )}
             </div>
+          </div>
 
+          {/* Alt Kısım: Yorum Yaz & Footer (mt-auto ile en alta itilir, içerik uzunsa akışa uyar) */}
+          <div className="mt-auto">
             {user && (
-              <div className="border-t dark:border-white/5 pt-4">
+              <div className="bg-gray-50 dark:bg-white/5 p-2 rounded-[2rem] border dark:border-white/5 mb-8">
                 {replyTo && (
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-red-600 font-black uppercase">Yanıtlıyorsun...</p>
-                    <button onClick={() => setReplyTo(null)} className="text-xs text-gray-400 hover:text-red-600">İptal</button>
+                  <div className="flex items-center justify-between px-4 py-2 border-b dark:border-white/5 mb-2">
+                    <p className="text-[10px] text-red-600 font-black uppercase">Bir yanıta cevap veriyorsun...</p>
+                    <button onClick={() => setReplyTo(null)} className="text-[10px] font-black text-gray-400 hover:text-red-600">İPTAL</button>
                   </div>
                 )}
                 <div className="flex gap-2">
                   <input 
                     value={newComment} 
                     onChange={e => setNewComment(e.target.value)} 
-                    placeholder="Düşüncelerini yaz..." 
-                    className="flex-1 px-4 py-3 bg-gray-100 dark:bg-white/5 rounded-full text-sm outline-none focus:ring-2 focus:ring-red-600/20" 
+                    placeholder="Düşüncelerini paylaş..." 
+                    className="flex-1 bg-transparent px-4 py-2 text-sm outline-none font-medium dark:text-white" 
                   />
-                  <button onClick={handleComment} className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-full text-sm font-black transition-all">
+                  <button onClick={handleComment} className="px-6 py-2 bg-red-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all">
                     GÖNDER
                   </button>
                 </div>
               </div>
             )}
-          </div>
 
-          <div className="mt-6 pt-6 border-t dark:border-white/5 flex flex-col gap-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
-                {selectedPano.profiles?.avatar_url ? (
-                  <img src={selectedPano.profiles.avatar_url} className="w-full h-full object-cover" />
+            <div className="pt-6 border-t dark:border-white/5 flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden">
+                  {selectedPano.profiles?.avatar_url ? (
+                    <img src={selectedPano.profiles.avatar_url} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center font-black">
+                       {(selectedPano.username || "?")[0]?.toUpperCase()}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-widest">
+                    <Username 
+                      username={selectedPano.profiles?.username || selectedPano.username} 
+                      isAdmin={adminEmails.includes(selectedPano.user_email)} 
+                    />
+                  </p>
+                  <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">
+                    {new Date(selectedPano.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex gap-2 flex-wrap">
+                {selectedPano.chapter_id && selectedPano.chapters?.id ? (
+                  <Link 
+                    href={`/kitap/${selectedPano.book_id}/bolum/${selectedPano.chapter_id}`}
+                    className="flex-1 text-center inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-xs px-6 py-3 rounded-2xl uppercase tracking-wider transition-all shadow-lg"
+                  >
+                    {selectedPano.chapters?.title || 'Bölüme Git'} →
+                  </Link>
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center font-black">
-                     {(selectedPano.username || "?")[0]?.toUpperCase()}
-                  </div>
+                  <Link 
+                    href={`/kitap/${selectedPano.book_id}`}
+                    className="flex-1 text-center inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-xs px-6 py-3 rounded-2xl uppercase tracking-wider transition-all shadow-lg"
+                  >
+                    Kitaba Git →
+                  </Link>
+                )}
+
+                {isOwner && (
+                  <Link 
+                    href={`/pano-duzenle/${selectedPano.id}`}
+                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-xs font-black uppercase transition-all shadow-lg"
+                  >
+                    DÜZENLE
+                  </Link>
+                )}
+
+                {(isAdmin || isOwner) && (
+                  <button 
+                    onClick={handleDeletePano}
+                    className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-2xl text-xs font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-lg"
+                  >
+                    SİL {isAdmin && '(ADMIN)'}
+                  </button>
                 )}
               </div>
-              <div>
-                <p className="text-[10px] font-black uppercase tracking-widest">
-                  <Username 
-                    username={selectedPano.profiles?.username || selectedPano.username} 
-                    isAdmin={adminEmails.includes(selectedPano.user_email)} 
-                  />
-                </p>
-                <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest">
-                  {new Date(selectedPano.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-3 flex-wrap">
-              {selectedPano.chapter_id && selectedPano.chapters?.id ? (
-                <Link 
-                  href={`/kitap/${selectedPano.book_id}/bolum/${selectedPano.chapter_id}`}
-                  className="inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6 py-3 rounded-2xl uppercase tracking-wider transition-all shadow-2xl hover:shadow-red-600/50"
-                >
-                  {selectedPano.chapters?.title || 'Bölüme Git'} →
-                </Link>
-              ) : (
-                <Link 
-                  href={`/kitap/${selectedPano.book_id}`}
-                  className="inline-flex items-center justify-center gap-3 bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6 py-3 rounded-2xl uppercase tracking-wider transition-all shadow-2xl hover:shadow-red-600/50"
-                >
-                  Kitaba Git →
-                </Link>
-              )}
-
-              {isOwner && (
-                <Link 
-                  href={`/pano-duzenle/${selectedPano.id}`}
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl text-sm font-black uppercase transition-all shadow-lg"
-                >
-                  DÜZENLE
-                </Link>
-              )}
-
-              {(isAdmin || isOwner) && (
-                <button 
-                  onClick={handleDeletePano}
-                  className="px-6 py-3 bg-black dark:bg-white text-white dark:text-black rounded-2xl text-sm font-black uppercase hover:bg-red-600 hover:text-white transition-all shadow-lg"
-                >
-                  SİL {isAdmin && '(ADMIN)'}
-                </button>
-              )}
             </div>
           </div>
         </div>
