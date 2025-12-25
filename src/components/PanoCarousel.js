@@ -3,16 +3,23 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import Username from '@/components/Username';
 
 export default function PanoCarousel({ onPanoClick, user }) {
   const [panolar, setPanolar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewedPanos, setViewedPanos] = useState(new Set());
+  const [adminEmails, setAdminEmails] = useState([]);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     async function getPanolar() {
-      // Son 24 saatin panolarını çek
+      // 1. Admin Listesini Çek
+      const { data: admins } = await supabase.from('announcement_admins').select('user_email');
+      const emails = admins?.map(a => a.user_email) || [];
+      setAdminEmails(emails);
+
+      // 2. Panoları Çek (Son 24 saat)
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
@@ -35,7 +42,6 @@ export default function PanoCarousel({ onPanoClick, user }) {
         .limit(30);
       
       if (rawPanolar) {
-        // Her pano için profil bilgisini çek
         const panoWithProfiles = await Promise.all(
           rawPanolar.map(async (pano) => {
             const { data: profile } = await supabase
@@ -58,7 +64,6 @@ export default function PanoCarousel({ onPanoClick, user }) {
     }
     getPanolar();
 
-    // Görüntülenen panoları localStorage'dan al
     if (typeof window !== 'undefined') {
       const viewed = localStorage.getItem('viewedPanos');
       if (viewed) {
@@ -68,7 +73,6 @@ export default function PanoCarousel({ onPanoClick, user }) {
   }, []);
 
   const handlePanoClick = (pano) => {
-    // Panoyu görüntülendi olarak işaretle
     const newViewed = new Set(viewedPanos);
     newViewed.add(pano.id);
     setViewedPanos(newViewed);
@@ -109,7 +113,6 @@ export default function PanoCarousel({ onPanoClick, user }) {
       </div>
       
       <div className="relative group">
-        {/* Sol Ok */}
         <button 
           onClick={() => scroll('left')}
           className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
@@ -117,7 +120,6 @@ export default function PanoCarousel({ onPanoClick, user }) {
           ←
         </button>
 
-        {/* Sağ Ok */}
         <button 
           onClick={() => scroll('right')}
           className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
@@ -125,13 +127,13 @@ export default function PanoCarousel({ onPanoClick, user }) {
           →
         </button>
 
-        {/* Story Çemberleri */}
         <div 
           ref={scrollRef}
           className="flex gap-6 overflow-x-auto scrollbar-hide py-4 px-2 snap-x"
         >
           {panolar.map((pano) => {
             const isViewed = viewedPanos.has(pano.id);
+            const isAdmin = adminEmails.includes(pano.user_email);
             
             return (
               <button
@@ -140,12 +142,17 @@ export default function PanoCarousel({ onPanoClick, user }) {
                 className="flex-none snap-start group/story"
               >
                 <div className="flex flex-col items-center gap-2">
-                  {/* Profil Çemberi - Instagram Story Tarzı */}
+                  
+                  {/* ✅ Story Çerçevesi Ayarı */}
                   <div className={`relative p-1 rounded-full ${
                     isViewed 
-                      ? 'bg-gray-300 dark:bg-gray-700' 
-                      : 'bg-gradient-to-tr from-green-400 via-green-500 to-green-600'
+                      ? 'bg-gray-300 dark:bg-gray-700' // Okunduysa GRİ
+                      : (isAdmin 
+                          ? 'bg-gradient-to-tr from-yellow-300 via-yellow-400 to-yellow-500' // Admin: SARI
+                          : 'bg-gradient-to-tr from-green-400 via-green-500 to-green-600'   // Normal: YEŞİL
+                        )
                   } transition-all group-hover/story:scale-110 duration-300`}>
+                    
                     <div className="w-20 h-20 rounded-full overflow-hidden bg-white dark:bg-gray-900 p-0.5">
                       {pano.profiles?.avatar_url ? (
                         <img 
@@ -154,17 +161,24 @@ export default function PanoCarousel({ onPanoClick, user }) {
                           alt={pano.profiles.username}
                         />
                       ) : (
-                        <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 flex items-center justify-center text-2xl font-black text-blue-600 dark:text-blue-300">
+                        <div className={`w-full h-full rounded-full flex items-center justify-center text-2xl font-black ${
+                          isAdmin 
+                            ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600' 
+                            : 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-600 dark:text-blue-300'
+                        }`}>
                           {pano.user_email[0].toUpperCase()}
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Kullanıcı Adı */}
-                  <span className="text-[10px] font-bold text-center max-w-[90px] truncate dark:text-white">
-                    {pano.profiles?.username || pano.user_email.split('@')[0]}
-                  </span>
+                  <div className="max-w-[100px] flex justify-center">
+                    <Username 
+                      username={pano.profiles?.username || pano.user_email.split('@')[0]}
+                      isAdmin={isAdmin}
+                      className="text-[10px] font-bold text-center truncate dark:text-white"
+                    />
+                  </div>
                 </div>
               </button>
             );
