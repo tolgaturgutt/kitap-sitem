@@ -7,19 +7,19 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "next-themes";
+import MobileNav from "@/components/MobileNav";
 
 // --- YENİ EKLENEN IMPORTLAR ---
-import BanKontrol from '@/components/BanKontrol'; // Ajanı çağırdık
-import { Toaster } from 'react-hot-toast'; // Bildirim kutusu
-// _app.js veya layout'a:
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+import BanKontrol from '@/components/BanKontrol';
+import { Toaster } from 'react-hot-toast';
+
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({ children }) {
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
 
- // useEffect: Sayfa değişimlerini dinler ve başlığı günceller
+  // useEffect: Sayfa değişimlerini dinler ve başlığı günceller
   useEffect(() => {
     setMounted(true);
 
@@ -31,7 +31,7 @@ export default function RootLayout({ children }) {
     if (pathname === '/giris') {
       baslik = "Giriş Yap | KitapLab";
     } 
-    else if (pathname === '/kayit') { // Eğer kayıt sayfan varsa (dosyalarda görmedim ama genelde olur)
+    else if (pathname === '/kayit') {
       baslik = "Kayıt Ol | KitapLab";
     }
     else if (pathname === '/profil') {
@@ -81,20 +81,17 @@ export default function RootLayout({ children }) {
     
   }, [pathname]);
 
-  const hideNavbar = pathname === '/giris' || pathname === '/kayit';
-
-  // DİKKAT: Artık burada 'return null' yapmıyoruz. 
-  // İskelet (html ve body) her zaman render edilmeli.
+  // Navbar ve Footer'ı gizlenecek sayfalar
+  const hideNavbar = pathname === '/giris' || pathname === '/kayit' || pathname === '/yakinda';
 
   return (
     <html lang="tr" suppressHydrationWarning>
       
-      {/* --- BAŞLIK KISMI BURAYA EKLENDİ --- */}
       <head>
         <title>KitapLab - Kendi Hikayeni Yaz</title>
         <meta name="description" content="KitapLab ile kendi hikayeni yaz, okurlarla buluş." />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      {/* ----------------------------------- */}
 
       <body className={`${inter.className} bg-[#fafafa] dark:bg-black text-black dark:text-white transition-colors duration-300`}>
         
@@ -102,7 +99,6 @@ export default function RootLayout({ children }) {
           
           <Toaster position="top-center" /> 
           <BanKontrol /> 
-{/* ... yukarıdaki kodlar aynı ... */}
 
           {mounted ? (
             <>
@@ -113,16 +109,17 @@ export default function RootLayout({ children }) {
                 {children}
               </main>
 
-              {/* FOOTER: Sadece giriş/kayıt sayfasında değilse göster */}
+              {/* FOOTER: Sadece giriş/kayıt/yakında sayfasında değilse göster */}
               {!hideNavbar && <Footer />}
+              
+              {/* MOBİL ALT MENÜ: Sadece giriş/kayıt/yakında sayfasında değilse göster */}
+              {!hideNavbar && <MobileNav />}
             </>
           ) : (
             <main className={!hideNavbar ? "pt-20" : ""}>
               {children}
             </main>
           )}
-
-{/* ... aşağıdaki kodlar aynı ... */}
 
         </ThemeProvider>
 
