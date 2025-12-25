@@ -5,7 +5,15 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
-import PanoModal from '@/components/PanoModal'; // ✅ MODAL EKLENDİ
+import PanoModal from '@/components/PanoModal';
+
+// --- YARDIMCI: SAYI FORMATLAMA ---
+function formatNumber(num) {
+  if (!num) return 0;
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num;
+}
 
 export default function ProfilSayfasi() {
   const [user, setUser] = useState(null);
@@ -24,13 +32,11 @@ export default function ProfilSayfasi() {
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '' });
   const [isAdmin, setIsAdmin] = useState(false);
-  const [adminEmails, setAdminEmails] = useState([]); // ✅ Modal için admin listesi
-
-  // NOT: Pano beğeni/yorum state'lerini sildik, artık PanoModal hallediyor.
+  const [adminEmails, setAdminEmails] = useState([]);
 
   useEffect(() => {
     async function getData() {
-      // Admin listesini çek (Modal için gerekli)
+      // Admin listesini çek
       const { data: admins } = await supabase
         .from('announcement_admins')
         .select('user_email');
@@ -60,65 +66,93 @@ export default function ProfilSayfasi() {
 
       if (adminData) setIsAdmin(true);
 
-      // KİTAPLARI ÇEK
+      // --- 1. KİTAPLARI VE İSTATİSTİK VERİLERİNİ ÇEK ---
+      // (Burada chapters(id, views) diyerek okunma sayılarını da alıyoruz)
       const { data: written } = await supabase
         .from('books')
-        .select('*')
+        .select('*, chapters(id, views)')
         .eq('user_email', activeUser.email)
         .order('created_at', { ascending: false });
 
-      if (written) {
-        const publishedBooks = written.filter(b => !b.is_draft);
-        const draftBooks = written.filter(b => b.is_draft === true);
-        
-        setMyBooks(publishedBooks);
-        setMyDrafts(draftBooks);
-      }
-
-      if (written && written.length > 0) {
-        const bookIds = written.map(b => b.id);
-        const { data: chapters } = await supabase.from('chapters').select('views').in('book_id', bookIds);
-        const total = chapters?.reduce((acc, curr) => acc + (curr.views || 0), 0) || 0;
-        setTotalViews(total);
-      }
-
-      // TAKİP EDİLEN KİTAPLAR
+      // --- 2. TAKİP EDİLEN KİTAPLARI ÇEK ---
       const { data: followsList } = await supabase
         .from('follows')
         .select('book_id')
         .eq('user_email', activeUser.email);
 
       const followBookIds = followsList?.map(f => f.book_id).filter(Boolean) || [];
-
+      
+      let rawLibrary = [];
       if (followBookIds.length > 0) {
-        const { data: rawLibrary } = await supabase
+        const { data: libraryData } = await supabase
           .from('books')
-          .select('*')
+          .select('*, chapters(id, views)')
           .in('id', followBookIds)
           .eq('is_draft', false);
+        rawLibrary = libraryData || [];
+      }
 
-        setFollowedBooks(rawLibrary || []);
+      // --- 3. EKSTRA İSTATİSTİKLER (Yorumlar ve Beğeniler) ---
+      // Elimdeki tüm kitapların (yazdıklarım + takip ettiklerim) ID'lerini topluyorum
+      const allBooksList = [...(written || []), ...rawLibrary];
+      const allBookIds = allBooksList.map(b => b.id);
+      const allChapterIds = allBooksList.flatMap(b => b.chapters.map(c => c.id));
+
+      // Tek seferde tüm yorum sayılarını ve oyları çekiyoruz (Performans için)
+      const { data: commentsData } = await supabase.from('comments').select('book_id').in('book_id', allBookIds);
+      const { data: votesData } = await supabase.from('chapter_votes').select('chapter_id').in('chapter_id', allChapterIds);
+
+      // Verileri birleştirme fonksiyonu
+      const mergeStats = (list) => {
+        return list.map(book => {
+          // Toplam Okunma
+          const totalBookViews = book.chapters?.reduce((acc, c) => acc + (c.views || 0), 0) || 0;
+          
+          // Toplam Yorum
+          const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
+          
+          // Toplam Beğeni
+          const chIds = book.chapters?.map(c => c.id) || [];
+          const totalVotes = votesData?.filter(v => chIds.includes(v.chapter_id)).length || 0;
+
+          return { ...book, totalViews: totalBookViews, totalComments, totalVotes };
+        });
+      };
+
+      // YAZDIĞIM KİTAPLARI AYARLA
+      if (written) {
+        const enrichedWritten = mergeStats(written);
+        setMyBooks(enrichedWritten.filter(b => !b.is_draft));
+        setMyDrafts(enrichedWritten.filter(b => b.is_draft === true));
+
+        // Profil başlığındaki toplam okunma sayısını buradan hesapla
+        const grandTotal = enrichedWritten.reduce((acc, curr) => acc + curr.totalViews, 0);
+        setTotalViews(grandTotal);
+      }
+
+      // TAKİP ETTİĞİM KİTAPLARI AYARLA
+      if (rawLibrary.length > 0) {
+        setFollowedBooks(mergeStats(rawLibrary));
       } else {
         setFollowedBooks([]);
       }
 
-      // TAKİPÇİLER
+      // TAKİPÇİLER VE TAKİP EDİLENLER
       const { data: following } = await supabase.from('author_follows').select('followed_username').eq('follower_email', activeUser.email);
       const { data: followers } = await supabase.from('author_follows').select('follower_username').eq('followed_username', currentUsername);
       setFollowedAuthors(following || []);
       setMyFollowers(followers || []);
 
-      // PANOLAR (Kitap ve Bölüm bilgisiyle)
+      // PANOLAR
       const { data: panos } = await supabase
         .from('panolar')
         .select('*, books(title, cover_url), chapters(id, title)')
         .eq('user_email', activeUser.email)
         .order('created_at', { ascending: false });
 
-      // Panolara kendi profil bilgisini ekle (Modalda resim görünsün diye)
       const panosWithProfile = panos?.map(p => ({
         ...p,
-        profiles: profile // Kendi profilin
+        profiles: profile
       })) || [];
 
       setMyPanos(panosWithProfile);
@@ -173,7 +207,6 @@ export default function ProfilSayfasi() {
     }
   }
 
-  // Listeden Pano Silme Fonksiyonu
   async function handleDeletePano(panoId, e) {
     if (e) e.stopPropagation();
     if (!window.confirm('Bu panoyu silmek istediğine emin misin?')) return;
@@ -202,16 +235,13 @@ export default function ProfilSayfasi() {
     <div className="min-h-screen py-10 md:py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black transition-colors">
       <Toaster />
 
-      {/* ✅ PANO MODAL BİLEŞENİ */}
       <PanoModal 
         selectedPano={selectedPano} 
         onClose={() => setSelectedPano(null)} 
         user={user}
         adminEmails={adminEmails}
         isAdmin={isAdmin}
-        // Kendi profilin olduğu için her zaman sahibisin
         isOwner={true}
-        // Modal içinden silince listeden de düş
         onDelete={(deletedId) => setMyPanos(prev => prev.filter(p => p.id !== deletedId))}
       />
 
@@ -341,7 +371,7 @@ export default function ProfilSayfasi() {
 
             <div className="flex justify-center md:justify-start gap-12 border-t dark:border-white/5 pt-8 mt-6">
               <div className="text-center"><p className="text-2xl font-black">{myBooks.length}</p><p className="text-[9px] uppercase opacity-40">Eser</p></div>
-              <div className="text-center"><p className="text-2xl font-black text-red-600">{totalViews}</p><p className="text-[9px] uppercase opacity-40">Okunma</p></div>
+              <div className="text-center"><p className="text-2xl font-black text-red-600">{formatNumber(totalViews)}</p><p className="text-[9px] uppercase opacity-40">Okunma</p></div>
               <button onClick={() => setModalType('followers')} className="text-center outline-none"><p className="text-2xl font-black">{myFollowers.length}</p><p className="text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takipçi</p></button>
               <button onClick={() => setModalType('following')} className="text-center outline-none"><p className="text-2xl font-black">{followedAuthors.length}</p><p className="text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takip</p></button>
             </div>
@@ -372,7 +402,6 @@ export default function ProfilSayfasi() {
                     onClick={() => setSelectedPano(pano)}
                     className="bg-white dark:bg-white/5 p-6 rounded-[2rem] border dark:border-white/10 flex gap-6 relative group hover:border-red-600/30 transition-all cursor-pointer"
                   >
-                    {/* Kart Görseli */}
                     <div className="w-20 h-28 shrink-0 rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
                       {pano.books?.cover_url ? <img src={pano.books.cover_url} className="w-full h-full object-cover" alt="" /> : null}
                     </div>
@@ -389,7 +418,6 @@ export default function ProfilSayfasi() {
                        </div>
                     </div>
 
-                    {/* DÜZENLE / SİL Butonları (Kart üzerinde) */}
                     <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity absolute top-6 right-6">
                       <Link 
                         href={`/pano-duzenle/${pano.id}`}
@@ -415,11 +443,35 @@ export default function ProfilSayfasi() {
                 ? myDrafts 
                 : (activeTab === 'eserler' ? myBooks : followedBooks)
               ).map(k => (
-                <Link key={k.id} href={`/kitap/${k.id}`} className="group">
-                  <div className="aspect-[2/3] rounded-[2rem] overflow-hidden border dark:border-white/5 mb-3 shadow-md group-hover:-translate-y-1 transition-all">
-                    {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200 dark:bg-white/10" />}
+                <Link key={k.id} href={`/kitap/${k.id}`} className="group relative">
+                  <div className="aspect-[2/3] rounded-[2rem] overflow-hidden border dark:border-white/5 mb-3 shadow-md group-hover:-translate-y-1 transition-all relative">
+                    {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full bg-gray-200 dark:bg-white/10" />}
+                    
+                    {/* Taslak Rozeti */}
+                    {k.is_draft && (
+                      <div className="absolute top-2 right-2 bg-gray-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg z-10 uppercase tracking-wider">
+                        TASLAK
+                      </div>
+                    )}
                   </div>
-                  <h3 className="text-[10px] font-black text-center uppercase truncate italic">{k.title}</h3>
+                  
+                  <h3 className="text-[10px] font-black text-center uppercase truncate italic dark:text-white group-hover:text-red-600 transition-colors">{k.title}</h3>
+                  
+                  {/* ✅ TAMAMLANDI ROZETİ (Başlığın altına alındı) */}
+                  {k.is_completed && (
+                    <div className="flex justify-center mt-1">
+                      <span className="text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-md uppercase tracking-wide">
+                        ✅ TAMAMLANDI
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* ✅ İSTATİSTİK ŞERİDİ */}
+                  <div className="flex items-center justify-center gap-2 mt-1.5 text-[8px] font-black text-gray-400">
+                    <span className="flex items-center gap-0.5">👁️ {formatNumber(k.totalViews)}</span>
+                    <span className="flex items-center gap-0.5">❤️ {formatNumber(k.totalVotes)}</span>
+                    <span className="flex items-center gap-0.5">💬 {formatNumber(k.totalComments)}</span>
+                  </div>
                 </Link>
               ))}
             </div>
@@ -427,7 +479,6 @@ export default function ProfilSayfasi() {
         </div>
       </div>
 
-      {/* FLOATING ACTION BUTTON */}
       <div className="fixed bottom-8 right-8 z-50">
         {showFabMenu && (
           <div className="absolute bottom-20 right-0 flex flex-col gap-3 mb-2 animate-in slide-in-from-bottom-4 fade-in duration-200">
@@ -465,7 +516,6 @@ export default function ProfilSayfasi() {
         </button>
       </div>
 
-      {/* TAKİPÇİ/TAKİP MODALI */}
       {modalType && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setModalType(null)}>
           <div className="bg-white dark:bg-[#0f0f0f] w-full max-w-md rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>

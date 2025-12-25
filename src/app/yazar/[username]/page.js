@@ -9,6 +9,14 @@ import Username from '@/components/Username';
 import { useRouter } from 'next/navigation';
 import PanoModal from '@/components/PanoModal'; 
 
+// --- YARDIMCI: SAYI FORMATLAMA ---
+function formatNumber(num) {
+  if (!num) return 0;
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num;
+}
+
 export default function YazarProfili() {
   const router = useRouter();
   const { username } = useParams();
@@ -70,10 +78,10 @@ export default function YazarProfili() {
         setIsOwner(user && (user.id === p.id || user.email === p.email));
         setAuthor(p);
 
-        // KİTAPLARI ÇEK
+        // KİTAPLARI ÇEK (Chapters içinden views bilgisini de alıyoruz)
         let { data: b } = await supabase
           .from('books')
-          .select('*, chapters(id)')
+          .select('*, chapters(id, views)')
           .eq('user_email', p.email || p.id)
           .order('created_at', { ascending: false });
 
@@ -83,6 +91,23 @@ export default function YazarProfili() {
             book.chapters.length > 0 &&
             !book.is_draft
           );
+
+          // --- İSTATİSTİKLERİ HESAPLA ---
+          const bookIds = b.map(book => book.id);
+          const allChapterIds = b.flatMap(book => book.chapters.map(c => c.id));
+          
+          // Yorum ve Oy sayılarını çek
+          const { data: commentsData } = await supabase.from('comments').select('book_id').in('book_id', bookIds);
+          const { data: votesData } = await supabase.from('chapter_votes').select('chapter_id').in('chapter_id', allChapterIds);
+
+          b = b.map(book => {
+            const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
+            const chapterIds = book.chapters.map(c => c.id);
+            const totalVotes = votesData?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
+            const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
+            
+            return { ...book, totalComments, totalVotes, totalViews };
+          });
         }
 
         // PANOLARI ÇEK
@@ -92,11 +117,10 @@ export default function YazarProfili() {
           .eq('user_email', p.email || p.id)
           .order('created_at', { ascending: false });
 
-        // ✅ KRİTİK DÜZELTME: Panolara yazarın profil bilgisini ekliyoruz.
-        // Böylece Modal açıldığında "profiles" verisi dolu oluyor ve resim görünüyor.
+        // Panolara profil bilgisini ekle
         const panosWithProfile = authorPanos?.map(pano => ({
           ...pano,
-          profiles: p // Yazarın profil verisini panoya yapıştırıyoruz
+          profiles: p
         })) || [];
 
         setPanos(panosWithProfile);
@@ -145,7 +169,6 @@ export default function YazarProfili() {
     }).select('*, books(title, cover_url), chapters(id, title)').single();
 
     if (!error) {
-      // ✅ YENİ EKLENEN PANOYA DA PROFİLİ EKLE
       const newPanoWithProfile = { ...data, profiles: author };
       setPanos([newPanoWithProfile, ...panos]);
       
@@ -398,9 +421,27 @@ export default function YazarProfili() {
                 <Link key={k.id} href={`/kitap/${k.id}`} className="group flex flex-col">
                   <div className="aspect-[2/3] rounded-[2rem] overflow-hidden border dark:border-white/5 mb-3 shadow-md group-hover:-translate-y-1 transition-all duration-500 relative">
                     {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center font-black opacity-20 text-[8px]">KAPAK YOK</div>}
-                    {k.is_completed && <div className="absolute top-2 right-2 bg-green-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg z-10">FİNAL</div>}
+                    
+                    {/* ✅ FİNAL YERİNE AŞAĞIYA TAMAMLANDI GELDİ */}
                   </div>
+                  
                   <h3 className="text-[10px] font-black text-center uppercase truncate italic">{k.title}</h3>
+                  
+                  {/* ✅ YENİ: TAMAMLANDI ROZETİ */}
+                  {k.is_completed && (
+                    <div className="flex justify-center mt-1">
+                      <span className="text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-md uppercase tracking-wide">
+                        ✅ TAMAMLANDI
+                      </span>
+                    </div>
+                  )}
+
+                  {/* ✅ YENİ: İSTATİSTİK ŞERİDİ */}
+                  <div className="flex items-center justify-center gap-2 mt-1.5 text-[8px] font-black text-gray-400">
+                    <span className="flex items-center gap-0.5">👁️ {formatNumber(k.totalViews)}</span>
+                    <span className="flex items-center gap-0.5">❤️ {formatNumber(k.totalVotes)}</span>
+                    <span className="flex items-center gap-0.5">💬 {formatNumber(k.totalComments)}</span>
+                  </div>
                 </Link>
               ))}
             </div>

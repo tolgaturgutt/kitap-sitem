@@ -3,7 +3,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import Username from '@/components/Username'; // Sarı tik için bunu unutma
+import Username from '@/components/Username';
+
+// --- YARDIMCI: SAYI FORMATLAMA (1200 -> 1.2K) ---
+function formatNumber(num) {
+  if (!num) return 0;
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num;
+}
 
 export default function Top100Page() {
   const [books, setBooks] = useState([]);
@@ -23,10 +31,11 @@ export default function Top100Page() {
 
   async function fetchBooks(currentOffset) {
     try {
-      // 1. Kitapları Okunma Sayısına (views) göre çek (Bölüm bilgisiyle beraber)
+      // 1. Kitapları Okunma Sayısına (views) göre çek
+      // NOT: chapters(id, views) ile bölümlerin okunma sayılarını da alıyoruz ki toplayabilelim.
       let { data: newBooks } = await supabase
         .from('books')
-        .select('*, chapters(id)') // ✅ chapters(id) ekledik
+        .select('*, chapters(id, views)') 
         .order('views', { ascending: false })
         .range(currentOffset, currentOffset + LIMIT_PER_PAGE - 1);
 
@@ -46,32 +55,66 @@ export default function Top100Page() {
         return;
       }
 
-      // 2. Bu kitapların yazarlarının rollerini bul (Sarı tik için)
+      // --- EKSTRA İSTATİSTİKLERİ ÇEK (Canlı Hesaplama) ---
+      
+      // A. Bu sayfadaki kitapların ID'lerini ve Bölüm ID'lerini topla
+      const bookIds = newBooks.map(b => b.id);
+      const allChapterIds = newBooks.flatMap(b => b.chapters.map(c => c.id));
+
+      // B. Toplu Yorum Sayılarını Çek (Sadece bu kitaplar için)
+      const { data: commentsData } = await supabase
+        .from('comments')
+        .select('book_id')
+        .in('book_id', bookIds);
+
+      // C. Toplu Beğeni (Oy) Sayılarını Çek (Sadece bu bölümler için)
+      const { data: votesData } = await supabase
+        .from('chapter_votes')
+        .select('chapter_id')
+        .in('chapter_id', allChapterIds);
+
+      // D. Yazarların rollerini çek (Sarı tik için)
       const authorNames = [...new Set(newBooks.map(b => b.username))];
       const { data: roles } = await supabase
         .from('profiles')
         .select('username, role')
         .in('username', authorNames);
 
-      // Rolleri kitapların içine göm
+      // --- VERİLERİ BİRLEŞTİR ---
       newBooks = newBooks.map(book => {
         const author = roles?.find(r => r.username === book.username);
-        return { ...book, author_role: author?.role };
+        
+        // 1. Toplam Yorum
+        const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
+
+        // 2. Toplam Beğeni
+        // Kitabın bölümlerinin ID listesi
+        const chapterIds = book.chapters.map(c => c.id);
+        const totalVotes = votesData?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
+
+        // 3. Toplam Okunma (Bölümlerin toplamı)
+        // Eğer book.views güvenilirse onu kullan, değilse alttakini aç:
+        const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
+        // const displayViews = totalViews > book.views ? totalViews : book.views; // Hangisi büyükse onu göster (Garanti olsun)
+
+        return { 
+          ...book, 
+          author_role: author?.role,
+          totalComments,
+          totalVotes,
+          totalViews // displayViews olarak da kullanabilirsin
+        };
       });
 
-      // 3. Listeyi Güncelle
-     // 3. Listeyi Güncelle (Çift Kayıt Korumalı)
+      // 3. Listeyi Güncelle (Çift Kayıt Korumalı)
       setBooks(prev => {
-        // Eğer bu ilk yüklemeyse (offset 0), direkt yenisini koy (Ekleme yapma)
         if (currentOffset === 0) return newBooks;
 
-        // "Load More" yapıyorsak: Zaten listede olanları ID'sine göre ele
         const existingIds = new Set(prev.map(b => b.id));
         const uniqueNewBooks = newBooks.filter(b => !existingIds.has(b.id));
         
         const combined = [...prev, ...uniqueNewBooks];
 
-        // 100 Limit kontrolü
         if (combined.length >= MAX_BOOKS) {
           setHasMore(false);
           return combined.slice(0, MAX_BOOKS);
@@ -79,7 +122,6 @@ export default function Top100Page() {
         return combined;
       });
 
-      // Eğer gelen veri limiti doldurmadıysa demek ki kitap bitti
       if (newBooks.length < LIMIT_PER_PAGE) {
         setHasMore(false);
       }
@@ -145,6 +187,14 @@ export default function Top100Page() {
                         <span className="text-4xl">📕</span>
                       </div>
                    )}
+                   
+                   {/* ✅ TAMAMLANDI ROZETİ */}
+                   {book.is_completed && (
+                      <div className="absolute top-2 right-2 bg-green-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg z-10 uppercase tracking-wider">
+                        FİNAL
+                      </div>
+                   )}
+
                    {/* Overlay */}
                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-4">
                       <p className="text-white text-[10px] font-bold uppercase tracking-widest">Hemen Oku</p>
@@ -163,8 +213,12 @@ export default function Top100Page() {
                       className="text-[10px] text-gray-500 font-bold uppercase tracking-wider" 
                     />
                   </div>
-                  <div className="mt-2 flex items-center gap-1 text-[9px] text-gray-400 font-bold uppercase tracking-widest">
-                    <span>👁 {book.views || 0} OKUNMA</span>
+                  
+                  {/* ✅ İSTATİSTİKLER (Okunma, Beğeni, Yorum) */}
+                  <div className="flex items-center gap-3 mt-2 text-[9px] font-bold text-gray-400">
+                    <span className="flex items-center gap-1">👁️ {formatNumber(book.totalViews)}</span>
+                    <span className="flex items-center gap-1">❤️ {formatNumber(book.totalVotes)}</span>
+                    <span className="flex items-center gap-1">💬 {formatNumber(book.totalComments)}</span>
                   </div>
                 </div>
               </Link>

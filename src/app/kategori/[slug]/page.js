@@ -8,6 +8,14 @@ import Username from '@/components/Username';
 
 const BOOKS_PER_PAGE = 24; 
 
+// --- YARDIMCI: SAYI FORMATLAMA (1200 -> 1.2K) ---
+function formatNumber(num) {
+  if (!num) return 0;
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+  return num;
+}
+
 export default function KategoriSayfasi() {
   const { slug } = useParams();
   const [books, setBooks] = useState([]);
@@ -23,56 +31,70 @@ export default function KategoriSayfasi() {
     async function fetchBooks() {
       setLoading(true);
 
-      // 1. Kullanıcıyı Bul (Sahibi kendi boş kitabını görebilsin diye)
       const { data: { user } } = await supabase.auth.getUser();
 
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
-      // 2. KİTAPLARI VE BÖLÜMLERİNİ ÇEK
-      // chapters(id) sayesinde bölüm sayısını kontrol edeceğiz
+      // 1. KİTAPLARI VE BÖLÜMLERİNİ ÇEK (Okunma sayısı için views eklendi)
       let { data: categoryBooks } = await supabase
         .from('books')
-        .select('*, chapters(id)')
+        .select('*, chapters(id, views)')
         .ilike('category', category);
+
+      // 2. TÜM YORUMLARI VE OYLARI ÇEK (Güvenli Hesaplama İçin)
+      const { data: allComments } = await supabase.from('comments').select('book_id');
+      const { data: allVotes } = await supabase.from('chapter_votes').select('chapter_id');
+
+      // 3. TREND SKORLAMASI İÇİN SON 10 GÜNLÜK VERİLER
+      const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString());
+      const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString());
+      const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString());
 
       if (categoryBooks && categoryBooks.length > 0) {
         
-        // 3. ✅ GÜVENLİK FİLTRESİ: Boş kitapları gizle
+        // FİLTRELEME: Boş veya taslak kitapları gizle
         categoryBooks = categoryBooks.filter(book => {
           const hasChapters = book.chapters && book.chapters.length > 0;
-          // Kitabın sahibi ise boş olsa da görsün (user_email üzerinden kontrol)
           const isOwner = user && user.email === book.user_email; 
-          
-          return hasChapters || isOwner;
+          return (hasChapters && !book.is_draft) || isOwner;
         });
 
-        // 4. YAZAR ROLLERİNİ ÇEK
+        // YAZAR ROLLERİNİ ÇEK
         const authorNames = [...new Set(categoryBooks.map(b => b.username))];
         const { data: roles } = await supabase
           .from('profiles')
           .select('username, role')
           .in('username', authorNames);
 
-        categoryBooks = categoryBooks.map(book => {
+        // VERİLERİ BİRLEŞTİR VE HESAPLA
+        const scored = categoryBooks.map(book => {
           const author = roles?.find(r => r.username === book.username);
-          return { ...book, author_role: author?.role };
-        });
-
-        // 5. SKORLAMA
-        const { data: votes } = await supabase.from('book_votes').select('book_id').gte('created_at', tenDaysAgo.toISOString());
-        const { data: comments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString());
-        const { data: follows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString());
-        const { data: chapters } = await supabase.from('chapters').select('book_id, views').gte('created_at', tenDaysAgo.toISOString());
-
-        const scored = categoryBooks.map(b => {
-          const recentViews = chapters?.filter(c => c.book_id === b.id).reduce((s, c) => s + (c.views || 0), 0) || 0;
-          const recentVotes = votes?.filter(v => v.book_id === b.id).length || 0;
-          const recentComments = comments?.filter(c => c.book_id === b.id).length || 0;
-          const recentFollows = follows?.filter(f => f.book_id === b.id).length || 0;
           
-          const score = (recentViews * 1) + (recentVotes * 5) + (recentComments * 10) + (recentFollows * 20);
-          return { ...b, interactionScore: score };
+          // A. GENEL TOPLAMLAR (Kartın altında görünecek)
+          const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
+          
+          const chapterIds = book.chapters.map(c => c.id);
+          const totalVotes = allVotes?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
+          
+          const totalComments = allComments?.filter(c => c.book_id === book.id).length || 0;
+
+          // B. TREND SKORU (Sıralama için)
+          const rVotes = recentVotes?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
+          const rComments = recentComments?.filter(c => c.book_id === book.id).length || 0;
+          const rFollows = recentFollows?.filter(f => f.book_id === book.id).length || 0;
+          
+          // Okunma da skora etki etsin (Hafif ağırlıklı)
+          const score = (totalViews * 0.1) + (rVotes * 5) + (rComments * 10) + (rFollows * 20);
+
+          return { 
+            ...book, 
+            author_role: author?.role,
+            interactionScore: score,
+            totalViews,
+            totalVotes,
+            totalComments
+          };
         });
 
         setBooks(scored);
@@ -165,7 +187,7 @@ export default function KategoriSayfasi() {
               {currentBooks.map(kitap => (
                 <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="group">
                   
-                  {/* KAPAK (Rozetsiz, Temiz) */}
+                  {/* KAPAK */}
                   <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
                     {kitap.cover_url ? (
                       <img 
@@ -177,7 +199,6 @@ export default function KategoriSayfasi() {
                       <div className="w-full h-full bg-gray-100 dark:bg-gray-900" />
                     )}
                     
-                    {/* Eğer kitap tamamlandıysa FİNAL rozetini burada da gösterebiliriz (İsteğe bağlı) */}
                     {kitap.is_completed && (
                       <div className="absolute top-2 right-2 bg-green-500 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-lg z-10">
                         FİNAL
@@ -185,7 +206,7 @@ export default function KategoriSayfasi() {
                     )}
                   </div>
 
-                  {/* BAŞLIK: Tek satır + Üç Nokta */}
+                  {/* BAŞLIK */}
                   <h3 className="text-[13px] font-bold dark:text-white truncate mb-1 group-hover:text-red-600 transition-colors">
                     {kitap.title}
                   </h3>
@@ -197,6 +218,13 @@ export default function KategoriSayfasi() {
                       isAdmin={kitap.author_role === 'admin'} 
                       className="text-[10px] text-gray-400 font-bold uppercase tracking-widest" 
                     />
+                  </div>
+
+                  {/* ✅ İSTATİSTİKLER (Ana Sayfa ile aynı) */}
+                  <div className="flex items-center gap-3 mt-2 text-[9px] font-bold text-gray-400">
+                    <span className="flex items-center gap-1">👁️ {formatNumber(kitap.totalViews)}</span>
+                    <span className="flex items-center gap-1">❤️ {formatNumber(kitap.totalVotes)}</span>
+                    <span className="flex items-center gap-1">💬 {formatNumber(kitap.totalComments)}</span>
                   </div>
 
                 </Link>
