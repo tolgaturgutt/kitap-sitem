@@ -23,7 +23,7 @@ export default function ProfilSayfasi() {
   const [followedAuthors, setFollowedAuthors] = useState([]);
   const [myFollowers, setMyFollowers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showFabMenu, setShowFabMenu] = useState(false);
+  
   const [totalViews, setTotalViews] = useState(0);
   const [activeTab, setActiveTab] = useState('eserler');
   const [modalType, setModalType] = useState(null);
@@ -441,43 +441,7 @@ export default function ProfilSayfasi() {
         </div>
       </div>
 
-      {/* FAB MENU - YENİ İÇERİK EKLE */}
-      <div className="fixed bottom-6 right-6 md:bottom-8 md:right-8 z-50">
-        {showFabMenu && (
-          <div className="absolute bottom-16 md:bottom-20 right-0 flex flex-col gap-2 md:gap-3 mb-2 animate-in slide-in-from-bottom-4 fade-in duration-200">
-            <Link
-              href="/pano-ekle"
-              onClick={() => setShowFabMenu(false)}
-              className="flex items-center gap-2 md:gap-3 bg-blue-600 hover:bg-blue-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-full shadow-xl hover:shadow-blue-600/50 transition-all font-black text-xs md:text-sm uppercase group whitespace-nowrap"
-            >
-              <span className="text-lg md:text-xl">📋</span>
-              <span>Pano Yaz</span>
-            </Link>
-            
-            <Link
-              href="/kitap-ekle"
-              onClick={() => setShowFabMenu(false)}
-              className="flex items-center gap-2 md:gap-3 bg-red-600 hover:bg-red-700 text-white px-4 md:px-6 py-2.5 md:py-3 rounded-full shadow-xl hover:shadow-red-600/50 transition-all font-black text-xs md:text-sm uppercase group whitespace-nowrap"
-            >
-              <span className="text-lg md:text-xl">📚</span>
-              <span>Kitap Yaz</span>
-            </Link>
-          </div>
-        )}
-
-        <button
-          onClick={() => setShowFabMenu(!showFabMenu)}
-          className={`w-14 h-14 md:w-16 md:h-16 bg-gradient-to-br from-red-600 to-orange-600 text-white rounded-full shadow-2xl shadow-red-600/50 flex items-center justify-center font-black text-xl md:text-2xl hover:scale-110 active:scale-95 transition-all group ${showFabMenu ? 'rotate-45' : ''}`}
-        >
-          <span className="transition-transform duration-300">+</span>
-          
-          {!showFabMenu && (
-            <div className="absolute -top-10 md:-top-12 right-0 bg-black text-white text-[8px] md:text-[9px] font-black px-3 md:px-4 py-1.5 md:py-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-              YENİ İÇERİK OLUŞTUR
-            </div>
-          )}
-        </button>
-      </div>
+     
 
       {/* TAKİPÇİ MODALI */}
       {modalType && (
