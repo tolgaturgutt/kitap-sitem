@@ -206,7 +206,7 @@ function ContinueReadingCarousel({ books }) {
           <div className="flex justify-center gap-1.5 md:gap-2 mt-4 md:mt-6">
             {books.map((_, idx) => (
               <button key={idx} onClick={() => setActiveIndex(idx)} className={`h-1.5 md:h-2 rounded-full transition-all ${idx === activeIndex ? 'w-6 md:w-8 bg-red-600' : 'w-1.5 md:w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`} />
-            ))}
+              ))}
           </div>
         )}
       </div>
@@ -254,15 +254,16 @@ function CategoryRow({ title, books, isFeatured = false }) {
               </div>
             )}
             
-            <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest opacity-80">
+            {/* 🔴 MOBİLDE DAHA KÜÇÜK - text-[7px] md:text-[9px] */}
+            <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
               <Username username={kitap.username} isAdmin={kitap.is_admin} />
             </p>
 
-            {/* ✅ İSTATİSTİKLER */}
-            <div className="flex items-center gap-2 md:gap-3 mt-2 text-[9px] font-bold text-gray-400">
-               <span className="flex items-center gap-1">👁️ {formatNumber(kitap.totalViews)}</span>
-               <span className="flex items-center gap-1">❤️ {formatNumber(kitap.totalVotes)}</span>
-               <span className="flex items-center gap-1">💬 {formatNumber(kitap.totalComments)}</span>
+            {/* ✅ İSTATİSTİKLER - Mobilde daha küçük */}
+            <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
+               <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
+               <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
+               <span className="flex items-center gap-0.5">💬 {formatNumber(kitap.totalComments)}</span>
             </div>
           </Link>
         ))}
@@ -271,7 +272,7 @@ function CategoryRow({ title, books, isFeatured = false }) {
   );
 }
 
-// --- EN ÇOĞK OKUNANLAR ---
+// --- EN ÇOK OKUNANLAR ---
 function TopReadRow({ books }) {
   const scrollRef = useRef(null);
   const scroll = (dir) => { if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' }); };
@@ -306,15 +307,16 @@ function TopReadRow({ books }) {
               </div>
             )}
 
-            <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest opacity-80">
+            {/* 🔴 MOBİLDE DAHA KÜÇÜK */}
+            <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
               <Username username={kitap.username} isAdmin={kitap.is_admin} />
             </p>
             
             {/* ✅ İSTATİSTİKLER */}
-            <div className="flex items-center gap-2 md:gap-3 mt-2 text-[9px] font-bold text-gray-400">
-               <span className="flex items-center gap-1">👁️ {formatNumber(kitap.totalViews)}</span>
-               <span className="flex items-center gap-1">❤️ {formatNumber(kitap.totalVotes)}</span>
-               <span className="flex items-center gap-1">💬 {formatNumber(kitap.totalComments)}</span>
+            <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
+               <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
+               <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
+               <span className="flex items-center gap-0.5">💬 {formatNumber(kitap.totalComments)}</span>
             </div>
           </Link>
         ))}
@@ -342,7 +344,6 @@ export default function Home() {
       const { data: { user: activeUser } } = await supabase.auth.getUser();
       setUser(activeUser);
 
-      // Admin kontrolü
       if (activeUser) {
         const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', activeUser.email).single();
         if (adminData) setIsAdmin(true);
@@ -352,7 +353,6 @@ export default function Home() {
       const emails = adminList?.map(a => a.user_email) || [];
       setAdminEmails(emails);
 
-      // OKUMAYA DEVAM ET - GÜNCEL PROFİL VERİSİ İLE ÇEK
       if (activeUser) {
         const { data: history } = await supabase
           .from('reading_history')
@@ -371,7 +371,6 @@ export default function Home() {
             ...item,
             books: { 
               ...book,
-              // GÜNCEL VERİLERİ KULLAN
               username: book.profiles?.username || book.username,
               totalViews, 
               totalVotes, 
@@ -382,7 +381,6 @@ export default function Home() {
         setContinueReading(historyWithStats || []);
       }
 
-      // ✅ SON EKLENEN BÖLÜMLER - GÜNCEL PROFİL VERİSİ İLE ÇEK
       const { data: recentChaps } = await supabase
         .from('chapters')
         .select('id, title, created_at, book_id, books!inner(title, cover_url, username, is_draft, user_email, user_id, profiles:user_id(username, avatar_url, email))')
@@ -396,7 +394,6 @@ export default function Home() {
             ...c,
             books: {
                 ...c.books,
-                // GÜNCEL VERİLERİ KULLAN
                 username: c.books.profiles?.username || c.books.username
             },
             is_admin: emails.includes(bookOwnerEmail)
@@ -405,7 +402,6 @@ export default function Home() {
 
       setLatestChapters(recentChapsWithAdmin);
 
-      // 1. Kitapları ve Bölümleri Çek - GÜNCEL PROFİL VERİSİ İLE
       let { data: allBooks, error: booksError } = await supabase
         .from('books')
         .select('*, profiles:user_id(username, avatar_url, email), chapters(id, views)');
@@ -415,10 +411,7 @@ export default function Home() {
         return;
       }
 
-      // 2. Tüm Yorumları Çek
       const { data: allComments } = await supabase.from('comments').select('book_id');
-      
-      // 3. Tüm Bölüm Oylarını Çek
       const { data: allVotes } = await supabase.from('chapter_votes').select('chapter_id');
 
       if (allBooks) {
@@ -434,7 +427,6 @@ export default function Home() {
 
           return { 
             ...book, 
-            // GÜNCEL VERİLERİ KULLAN
             username: book.profiles?.username || book.username,
             is_admin: emails.includes(bookOwnerEmail),
             totalViews,
@@ -460,8 +452,7 @@ export default function Home() {
           const rCommentsCount = recentComments?.filter(c => c.book_id === b.id).length || 0;
           const rFollowsCount = recentFollows?.filter(f => f.book_id === b.id).length || 0;
           
-          // ✅ YENİ SKOR SİSTEMİ: Kütüphane > Yorum > Beğeni > Okunma
-          const score = (rFollowsCount * 5) + (rCommentsCount * 3) + (rVotesCount *2 ) + (b.totalViews * 1);
+          const score = (rFollowsCount * 10) + (rCommentsCount * 2) + (rVotesCount *5 ) + (b.totalViews * 1);
           return { ...b, interactionScore: score };
         });
 
@@ -473,7 +464,6 @@ export default function Home() {
         const grouped = {};
         KATEGORILER.forEach(cat => {
           const categoryBooks = scored.filter(b => b.category === cat);
-          // ✅ HER KATEGORİ İÇİN RASTGELE 10 KİTAP SEÇ
           const shuffled = shuffleArray(categoryBooks);
           grouped[cat] = shuffled.slice(0, 10);
         });
@@ -498,10 +488,7 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         <DuyuruPaneli isAdmin={isAdmin} />
         <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} />
-        
-        {/* ✅ YENİ EKLENEN BÖLÜMLER (Araya eklendi) */}
         <RecentlyAddedChapters chapters={latestChapters} currentUser={user} />
-        
         <EditorsChoiceSection books={editorsChoiceBooks} />
         <ContinueReadingCarousel books={continueReading} />
         <TopReadRow books={topReadBooks} />
@@ -512,7 +499,6 @@ export default function Home() {
   );
 }
 
-// ✅ GÜNCELLENMİŞ COMPONENT: ÇARPI TUŞU + AKILLI PROFİL LİNKİ
 function RecentlyAddedChapters({ chapters, currentUser }) {
   const [selectedChapter, setSelectedChapter] = useState(null);
   const scrollRef = useRef(null);
@@ -523,24 +509,19 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
 
   if (!chapters || chapters.length === 0) return null;
 
-  // Profil linkini belirleyen yardımcı mantık
   const getProfileLink = (chapterBook) => {
-    // Eğer giriş yapan kullanıcının emaili ile kitabın yazarının emaili aynıysa
     if (currentUser && currentUser.email === chapterBook.user_email) {
-      return '/profil'; // Kendi profiline git
+      return '/profil';
     }
-    // Değilse yazarın sayfasına git
     return `/yazar/${chapterBook.username}`;
   };
 
   return (
     <>
-      {/* --- MİNİK SEÇİM MODALİ --- */}
       {selectedChapter && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setSelectedChapter(null)}>
           <div className="bg-white dark:bg-[#1a1a1a] w-full max-w-[320px] rounded-2xl p-6 pt-10 text-center shadow-2xl border border-gray-100 dark:border-gray-800 relative flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
             
-            {/* 🔴 YENİ: SAĞ ÜST KÖŞE KAPATMA (X) TUŞU */}
             <button 
               onClick={() => setSelectedChapter(null)} 
               className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/10 text-gray-500 hover:text-red-600 dark:text-gray-300 rounded-full transition-colors font-bold"
@@ -548,7 +529,6 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
               ✕
             </button>
 
-            {/* Modal Başlık Kısmı */}
             <div>
               <h3 className="text-lg font-black dark:text-white leading-tight mb-1 line-clamp-2">
                 {selectedChapter.title}
@@ -558,14 +538,11 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
               </p>
             </div>
 
-            {/* Seçenek Butonları */}
             <div className="flex flex-col gap-2.5 w-full">
-              {/* 1. Seçenek: Bölüme Git */}
               <Link href={`/kitap/${selectedChapter.book_id}/bolum/${selectedChapter.id}`} className="flex items-center justify-center gap-2 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-red-600/20">
                 📖 Bölüme Git
               </Link>
               
-              {/* 2. Seçenek: Akıllı Profil Linki */}
               <Link href={getProfileLink(selectedChapter.books)} className="flex items-center justify-center gap-2 w-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-black dark:text-white font-bold py-3 rounded-xl text-sm transition-all">
                 👤 Yazarın Profili
               </Link>
@@ -575,7 +552,6 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
         </div>
       )}
 
-      {/* --- LİSTE --- */}
       <div className="mb-20 group relative px-1">
         <div className="flex items-end justify-between mb-5">
            <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 italic flex items-center gap-2">
@@ -589,7 +565,6 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
         <div ref={scrollRef} className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide snap-x py-2 px-1">
           {chapters.map(chapter => (
             <div key={chapter.id} onClick={() => setSelectedChapter(chapter)} className="flex-none w-[38%] md:w-32 lg:w-40 snap-start group/card cursor-pointer">
-              {/* KAPAK + BÖLÜM ADI OVERLAY */}
               <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
                 {chapter.books?.cover_url ? (
                   <img src={chapter.books.cover_url} className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500" alt="" />
@@ -607,7 +582,8 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
               <h3 className="font-bold text-[11px] dark:text-white leading-tight truncate group-hover/card:text-red-600 transition-colors">
                 {chapter.books?.title}
               </h3>
-              <p className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+              {/* 🔴 MOBİLDE DAHA KÜÇÜK */}
+              <p className="text-[7px] md:text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">
                  <Username username={chapter.books?.username} isAdmin={chapter.is_admin} />
               </p>
             </div>
@@ -618,8 +594,6 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
   );
 }
 
-
-// --- EDİTÖRÜN SEÇİMİ ---
 function EditorsChoiceSection({ books }) {
   const scrollRef = useRef(null);
   const scroll = (dir) => { if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' }); };
@@ -662,16 +636,15 @@ function EditorsChoiceSection({ books }) {
                 </div>
               )}
 
-              <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest pl-6"> 
+              {/* 🔴 MOBİLDE DAHA KÜÇÜK */}
+              <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest pl-6 truncate"> 
                 <Username username={kitap.username} isAdmin={kitap.is_admin} />
               </p>
 
-              {/* ✅ İSTATİSTİKLER */}
-              <div className="flex items-center gap-2 md:gap-3
-              mt-2 pl-1 text-[9px] font-bold text-gray-400">
-                <span className="flex items-center gap-1">👁️ {formatNumber(kitap.totalViews)}</span>
-                <span className="flex items-center gap-1">❤️ {formatNumber(kitap.totalVotes)}</span>
-                <span className="flex items-center gap-1">💬 {formatNumber(kitap.totalComments)}</span>
+              <div className="flex items-center gap-1.5 md:gap-3 mt-2 pl-1 text-[8px] md:text-[9px] font-bold text-gray-400">
+                <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
+                <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
+                <span className="flex items-center gap-0.5">💬 {formatNumber(kitap.totalComments)}</span>
               </div>
             </div>
           </Link>
