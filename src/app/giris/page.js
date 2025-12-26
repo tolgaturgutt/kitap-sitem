@@ -87,121 +87,126 @@ export default function GirisSayfasi() {
     setLoading(false);
   }
 
-async function handleSignUp() {
-  if (!username || !fullName || !inviteCode) {
-    return toast.error('Tüm alanlar ve Davetiye Kodu zorunludur.');
-  }
-  if (!agreed) {
-    return toast.error('Lütfen kuralları okuyup onaylayınız.');
-  }
-  if (!isEmail(loginInput)) {
-    return toast.error('Geçerli bir e-posta giriniz.');
-  }
-
-  setLoading(true);
-
-  try {
-    const cleanUsername = username.trim().toLowerCase();
-    const cleanEmail = loginInput.trim().toLowerCase();
-
-    // 1. KULLANICI ADI KONTROL
-    const { data: existingUsername } = await supabase
-      .from('profiles')
-      .select('username')
-      .ilike('username', cleanUsername)
-      .maybeSingle();
-
-    if (existingUsername) {
-      setLoading(false);
-      return toast.error('Bu kullanıcı adı zaten alınmış.');
+// KAYIT İŞLEMİ - TRİGGER'SIZ ÇÖZÜM
+  async function handleSignUp() {
+    if (!username || !fullName || !inviteCode) {
+      return toast.error('Tüm alanlar ve Davetiye Kodu zorunludur.');
+    }
+    if (!agreed) {
+      return toast.error('Lütfen kuralları okuyup onaylayınız.');
+    }
+    if (!isEmail(loginInput)) {
+      return toast.error('Geçerli bir e-posta giriniz.');
     }
 
-    // 2. DAVETİYE KODU KONTROL
-    const { data: bilet, error: biletError } = await supabase
-      .from('davetiyeler')
-      .select('*')
-      .eq('kod', inviteCode.trim())
-      .eq('kullanildi', false)
-      .maybeSingle();
+    setLoading(true);
 
-    if (biletError || !bilet) {
-      setLoading(false);
-      return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
-    }
-
-    // 3. AUTH KAYIT (Trigger otomatik profil oluşturacak)
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: cleanEmail,
-      password,
-      options: {
-        data: {
-          username: cleanUsername,
-          full_name: fullName.trim(),
-        },
-      },
-    });
-
-    if (signUpError || !authData.user) {
-      setLoading(false);
-      return toast.error('Kayıt hatası: ' + (signUpError?.message || 'Kullanıcı oluşturulamadı'));
-    }
-
-    // 4. TRIGGER'IN ÇALIŞMASINI BEKLE
-    await new Promise(resolve => setTimeout(resolve, 1500));
-
-    // 5. PROFİL OLUŞTU MU KONTROL ET (güvenlik için)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', authData.user.id)
-      .maybeSingle();
-
-    if (!profile) {
-      console.error('Trigger profil oluşturamadı!');
-      setLoading(false);
-      return toast.error('Profil oluşturulamadı. Lütfen destek ile iletişime geçin.');
-    }
-
-    // 6. KİTAPLAB'I TAKİP ET
     try {
-      const { data: kitaplab } = await supabase
+      const cleanUsername = username.trim().toLowerCase();
+      const cleanEmail = loginInput.trim().toLowerCase();
+
+      // 1. KULLANICI ADI KONTROLÜ
+      const { data: existingUsername } = await supabase
         .from('profiles')
-        .select('id')
-        .ilike('username', 'kitaplab')
+        .select('username')
+        .ilike('username', cleanUsername)
         .maybeSingle();
 
-      if (kitaplab) {
-        await supabase.from('followers').insert({
-          follower_id: authData.user.id,
-          following_id: kitaplab.id,
-        });
+      if (existingUsername) {
+        setLoading(false);
+        return toast.error('Bu kullanıcı adı zaten alınmış.');
       }
+
+      // 2. DAVETİYE KODU KONTROLÜ
+      const { data: bilet, error: biletError } = await supabase
+        .from('davetiyeler')
+        .select('*')
+        .eq('kod', inviteCode.trim())
+        .eq('kullanildi', false)
+        .maybeSingle();
+
+      if (biletError || !bilet) {
+        setLoading(false);
+        return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
+      }
+
+      // 3. AUTH KAYIT (Önce bu!)
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: cleanEmail,
+        password,
+        options: {
+          data: {
+            username: cleanUsername,
+            full_name: fullName.trim(),
+          },
+        },
+      });
+
+      if (signUpError || !authData.user) {
+        setLoading(false);
+        return toast.error('Kayıt hatası: ' + (signUpError?.message || 'Kullanıcı oluşturulamadı'));
+      }
+
+      // 4. KISA BEKLEME (Supabase'in işlemesi için)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // 5. PROFİL OLUŞTUR (Artık gerçek user ID var)
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          username: cleanUsername,
+          full_name: fullName.trim(),
+          email: cleanEmail,
+          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`,
+        });
+
+      if (profileError) {
+        console.error('Profil oluşturma hatası:', profileError);
+        setLoading(false);
+        return toast.error('Profil oluşturulamadı: ' + profileError.message);
+      }
+
+      // 6. KİTAPLAB'I TAKİP ET
+      try {
+        const { data: kitaplab } = await supabase
+          .from('profiles')
+          .select('id')
+          .ilike('username', 'kitaplab')
+          .maybeSingle();
+
+        if (kitaplab) {
+          await supabase.from('followers').insert({
+            follower_id: authData.user.id,
+            following_id: kitaplab.id,
+          });
+        }
+      } catch (err) {
+        console.log('KitapLab takip hatası (göz ardı edildi):', err);
+      }
+
+      // 7. DAVETİYEYİ GEÇERSİZ KIL
+      await supabase
+        .from('davetiyeler')
+        .update({ kullanildi: true })
+        .eq('id', bilet.id);
+
+      // 8. ERİŞİM COOKIE
+      document.cookie = "site_erisim=acik; path=/; max-age=604800";
+
+      toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
+      
+      setTimeout(() => {
+        router.push('/');
+        router.refresh();
+      }, 1500);
+
     } catch (err) {
-      console.log('KitapLab takip hatası (göz ardı edildi):', err);
+      console.error('Beklenmedik hata:', err);
+      setLoading(false);
+      toast.error('Bir hata oluştu: ' + err.message);
     }
-
-    // 7. DAVETİYEYİ GEÇERSİZ KIL
-    await supabase
-      .from('davetiyeler')
-      .update({ kullanildi: true })
-      .eq('id', bilet.id);
-
-    // 8. ERİŞİM COOKIE
-    document.cookie = "site_erisim=acik; path=/; max-age=604800";
-
-    toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
-    
-    setTimeout(() => {
-      router.push('/');
-      router.refresh();
-    }, 1500);
-
-  } catch (err) {
-    console.error('Beklenmedik hata:', err);
-    setLoading(false);
-    toast.error('Bir hata oluştu: ' + err.message);
   }
-}
 
   // GİRİŞ İŞLEMİ
   async function handleSignIn() {
