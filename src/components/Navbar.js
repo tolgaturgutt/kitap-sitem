@@ -375,7 +375,7 @@ export default function Navbar() {
                 </button>
                 
                 {showNotifs && (
-                <div className="absolute top-14 right-0 w-[85vw] max-w-[280px] md:w-[500px] md:max-w-none bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-2xl md:rounded-[2.5rem] shadow-2xl overflow-hidden z-[120] animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="fixed md:absolute top-[72px] md:top-14 right-2 md:right-0 w-[calc(100vw-16px)] max-w-[340px] md:w-[500px] md:max-w-none bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-2xl md:rounded-[2.5rem] shadow-2xl overflow-hidden z-[120] animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="p-4 md:p-5 border-b dark:border-white/5 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 flex justify-between items-center">
                       <div>
                         <p className="text-xs md:text-sm font-black dark:text-white">Bildirimler</p>
@@ -393,7 +393,7 @@ export default function Navbar() {
                     
                     <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 max-h-[60vh] md:h-[400px]">
                       {/* AKTİVİTELER */}
-                      <div className="flex-1 overflow-y-auto no-scrollbar">
+                      <div className="flex-1 overflow-y-auto no-scrollbar h-[30vh] md:h-auto">
                         <div className="p-3 md:p-4 bg-gray-50/50 dark:bg-white/[0.02] sticky top-0 backdrop-blur-sm z-10">
                           <p className="text-[8px] font-black uppercase text-red-600 tracking-[0.2em] flex items-center gap-2">
                             🔔 Aktiviteler
@@ -436,7 +436,7 @@ export default function Navbar() {
                       </div>
 
                       {/* SOSYAL */}
-                      <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50/30 dark:bg-white/[0.01] border-t md:border-t-0 dark:border-white/5">
+                      <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50/30 dark:bg-white/[0.01] border-t md:border-t-0 dark:border-white/5 h-[30vh] md:h-auto">
                         <div className="p-3 md:p-4 bg-blue-50/50 dark:bg-blue-950/10 sticky top-0 backdrop-blur-sm z-10">
                           <p className="text-[8px] font-black uppercase text-blue-600 tracking-[0.2em] flex items-center gap-2">
                             👥 Sosyal
@@ -566,7 +566,8 @@ export default function Navbar() {
           
           <button 
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-            className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 hover:scale-110 transition-transform text-base md:text-xl"
+            className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-gray
+            -100 dark:bg-white/5 hover:scale-110 transition-transform text-base md:text-xl"
           >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
@@ -575,7 +576,7 @@ export default function Navbar() {
 
       {/* MOBİL ARAMA PANELİ */}
       {showMobileSearch && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-white dark:bg-black border-b dark:border-white/10 p-3 z-[110] animate-in slide-in-from-top-2 duration-200">
+        <div className="md:hidden fixed top-16 left-0 w-full bg-white dark:bg-black border-b dark:border-white/10 p-3 z-[150] animate-in slide-in-from-top-2 duration-200">
           <div className="max-w-7xl mx-auto">
             <div className="relative">
               <input 
@@ -596,7 +597,7 @@ export default function Navbar() {
             </div>
             
             {showSearch && (
-              <div className="mt-3 bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden">
+              <div className="mt-3 bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden relative z-[160]">
                 {searchResults.books.length === 0 && searchResults.users.length === 0 ? (
                   <div className="p-6 text-center">
                     <span className="text-3xl mb-2 block">📚</span>
