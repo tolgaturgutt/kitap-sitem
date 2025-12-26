@@ -25,8 +25,10 @@ export default function YazarProfili() {
   const [author, setAuthor] = useState(null);
   const [books, setBooks] = useState([]);
   const [panos, setPanos] = useState([]);
-  const [followers, setFollowers] = useState([]);
-  const [following, setFollowing] = useState([]);
+  
+  // Listeler
+  const [followersWithProfiles, setFollowersWithProfiles] = useState([]);
+  const [followingWithProfiles, setFollowingWithProfiles] = useState([]);
   const [isFollowing, setIsFollowing] = useState(false);
 
   const [activeTab, setActiveTab] = useState('eserler');
@@ -47,8 +49,6 @@ export default function YazarProfili() {
   const [selectedChapterForPano, setSelectedChapterForPano] = useState(null);
   const [panoChapters, setPanoChapters] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [followersWithProfiles, setFollowersWithProfiles] = useState([]);
-  const [followingWithProfiles, setFollowingWithProfiles] = useState([]);
 
   useEffect(() => {
     async function load() {
@@ -70,9 +70,11 @@ export default function YazarProfili() {
         if (adminData) setIsAdmin(true);
       }
 
+      // 1. Profil Sahibini Bul (URL'deki username ile)
       const { data: p } = await supabase.from('profiles').select('*').eq('username', username).single();
 
       if (p) {
+        // Eğer kendi profilimse yönlendir
         if (user && user.id === p.id) {
           router.replace('/profil');
           return;
@@ -81,11 +83,11 @@ export default function YazarProfili() {
         setIsOwner(user && (user.id === p.id || user.email === p.email));
         setAuthor(p);
 
-        // KİTAPLARI ÇEK (Chapters içinden views bilgisini de alıyoruz)
+        // --- KİTAPLARI ÇEK ---
         let { data: b } = await supabase
           .from('books')
           .select('*, chapters(id, views)')
-          .eq('user_email', p.email || p.id)
+          .eq('user_email', p.email || p.id) // Eski veriler için email fallback
           .order('created_at', { ascending: false });
 
         if (b) {
@@ -95,11 +97,10 @@ export default function YazarProfili() {
             !book.is_draft
           );
 
-          // --- İSTATİSTİKLERİ HESAPLA ---
+          // İSTATİSTİKLERİ HESAPLA
           const bookIds = b.map(book => book.id);
           const allChapterIds = b.flatMap(book => book.chapters.map(c => c.id));
           
-          // Yorum ve Oy sayılarını çek
           const { data: commentsData } = await supabase.from('comments').select('book_id').in('book_id', bookIds);
           const { data: votesData } = await supabase.from('chapter_votes').select('chapter_id').in('chapter_id', allChapterIds);
 
@@ -112,73 +113,66 @@ export default function YazarProfili() {
             return { ...book, totalComments, totalVotes, totalViews };
           });
         }
+        setBooks(b || []);
 
-        // PANOLARI ÇEK
+        // --- PANOLARI ÇEK ---
         const { data: authorPanos } = await supabase
           .from('panolar')
           .select('*, books(title, cover_url), chapters(id, title)')
-          .eq('user_email', p.email || p.id)
+          .eq('user_email', p.email) // Panolar hala email ile çalışıyorsa burası kalabilir
           .order('created_at', { ascending: false });
 
-        // Panolara profil bilgisini ekle
         const panosWithProfile = authorPanos?.map(pano => ({
           ...pano,
           profiles: p
         })) || [];
-
         setPanos(panosWithProfile);
 
-        // TAKİPÇİLER
-        const { data: f } = await supabase.from('author_follows').select('*').eq('followed_username', username);
-        const { data: fing } = await supabase.from('author_follows').select('*').eq('follower_username', username);
+        // --- YENİ TAKİP SİSTEMİ (ID ile) ---
+        
+        // 1. Bu yazarı kimler takip ediyor? (Followers)
+        const { data: followersData } = await supabase
+          .from('author_follows')
+          .select(`
+            follower_id,
+            profiles:follower_id ( username, full_name, avatar_url, email )
+          `)
+          .eq('followed_id', p.id); // Yazarın ID'sine göre
 
-        // Profil bilgilerini çek - Takipçiler
-        if (f && f.length > 0) {
-          const followerUsernames = f.map(item => item.follower_username);
-          const { data: followerProfiles } = await supabase
-            .from('profiles')
-            .select('username, full_name, avatar_url, email')
-            .in('username', followerUsernames);
-          
-          const followersWithData = f.map(item => {
-            const profile = followerProfiles?.find(fp => fp.username === item.follower_username);
-            return {
-              ...item,
-              full_name: profile?.full_name,
-              avatar_url: profile?.avatar_url,
-              is_admin: emails.some(e => e === profile?.email)
-            };
-          });
-          setFollowersWithProfiles(followersWithData);
-        }
+        // 2. Bu yazar kimleri takip ediyor? (Following)
+        const { data: followingData } = await supabase
+          .from('author_follows')
+          .select(`
+            followed_id,
+            profiles:followed_id ( username, full_name, avatar_url, email )
+          `)
+          .eq('follower_id', p.id); // Yazarın ID'sine göre
 
-        // Profil bilgilerini çek - Takip Edilenler
-        if (fing && fing.length > 0) {
-          const followingUsernames = fing.map(item => item.followed_username);
-          const { data: followingProfiles } = await supabase
-            .from('profiles')
-            .select('username, full_name, avatar_url, email')
-            .in('username', followingUsernames);
-          
-          const followingWithData = fing.map(item => {
-            const profile = followingProfiles?.find(fp => fp.username === item.followed_username);
-            return {
-              ...item,
-              full_name: profile?.full_name,
-              avatar_url: profile?.avatar_url,
-              is_admin: emails.some(e => e === profile?.email)
-            };
-          });
-          setFollowingWithProfiles(followingWithData);
-        }
+        // Veriyi işle ve state'e at
+        const cleanFollowers = followersData?.map(item => ({
+            ...item,
+            username: item.profiles?.username || 'Gizli Kullanıcı',
+            full_name: item.profiles?.full_name,
+            avatar_url: item.profiles?.avatar_url,
+            is_admin: emails.includes(item.profiles?.email)
+        })) || [];
 
-        setBooks(b || []);
-        setFollowers(f || []);
-        setFollowing(fing || []);
+        const cleanFollowing = followingData?.map(item => ({
+            ...item,
+            username: item.profiles?.username || 'Gizli Kullanıcı',
+            full_name: item.profiles?.full_name,
+            avatar_url: item.profiles?.avatar_url,
+            is_admin: emails.includes(item.profiles?.email)
+        })) || [];
 
+        setFollowersWithProfiles(cleanFollowers);
+        setFollowingWithProfiles(cleanFollowing);
+
+        // Ben takip ediyor muyum?
         if (user) {
-          const isFollowingThisUser = f?.some(item => item.follower_email === user.email);
-          setIsFollowing(isFollowingThisUser);
+          // Listede benim ID'm var mı?
+          const amIFollowing = followersData?.some(f => f.follower_id === user.id);
+          setIsFollowing(amIFollowing);
         }
       }
       setLoading(false);
@@ -224,44 +218,61 @@ export default function YazarProfili() {
     setIsSubmitting(false);
   }
 
-  // Takip İşlemleri
+  // --- YENİ TAKİP ET FONKSİYONU (ID İLE) ---
   async function handleFollow() {
     if (!currentUser) return toast.error("Önce giriş yapmalısın.");
-    const { data: profile } = await supabase.from('profiles').select('username').eq('id', currentUser.id).single();
-    const followerUsername = profile?.username || currentUser.user_metadata?.username || currentUser.email.split('@')[0];
+    
+    // Bildirim için kendi adımızı alalım
+    const { data: myProfile } = await supabase.from('profiles').select('username').eq('id', currentUser.id).single();
+    const myUsername = myProfile?.username || 'Biri';
 
+    // ID ile takip kaydı oluştur
     const { error } = await supabase.from('author_follows').insert({
-      follower_email: currentUser.email,
-      follower_username: followerUsername,
-      followed_username: author.username
+      follower_id: currentUser.id, // Benim ID
+      followed_id: author.id       // Yazarın ID
     });
 
     if (!error) {
       setIsFollowing(true);
-      setFollowers([...followers, { follower_username: followerUsername }]);
+      
+      // State'i güncelle (Listeye beni ekle)
+      setFollowersWithProfiles(prev => [...prev, {
+          follower_id: currentUser.id,
+          username: myUsername,
+          full_name: myProfile?.full_name,
+          avatar_url: myProfile?.avatar_url,
+          is_admin: adminEmails.includes(currentUser.email)
+      }]);
+
       toast.success("Takip edildi 🎉");
+      
+      // Bildirim gönder
       await supabase.from('notifications').insert({
         recipient_email: author.email,
-        actor_username: followerUsername,
+        actor_username: myUsername,
         type: 'follow',
         book_title: null,
         is_read: false,
         created_at: new Date()
       });
+    } else {
+        toast.error("Hata oluştu");
     }
   }
 
+  // --- YENİ TAKİBİ BIRAK FONKSİYONU (ID İLE) ---
   async function handleUnfollow() {
     const { error } = await supabase.from('author_follows').delete()
-      .eq('follower_email', currentUser.email)
-      .eq('followed_username', author.username);
+      .eq('follower_id', currentUser.id) // Benim ID
+      .eq('followed_id', author.id);     // Yazarın ID
 
     if (!error) {
       setIsFollowing(false);
-      const { data: profile } = await supabase.from('profiles').select('username').eq('id', currentUser.id).single();
-      const followerUsername = profile?.username || currentUser.user_metadata?.username || currentUser.email.split('@')[0];
-      setFollowers(followers.filter(f => f.follower_username !== followerUsername));
+      // Listeden kendimi çıkar
+      setFollowersWithProfiles(prev => prev.filter(f => f.follower_id !== currentUser.id));
       toast.success("Takip bırakıldı");
+    } else {
+        toast.error("Hata oluştu");
     }
   }
 
@@ -369,8 +380,8 @@ export default function YazarProfili() {
             <div className="flex justify-center md:justify-start gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6 w-full">
               <div className="text-center"><p className="text-xl md:text-2xl font-black">{books.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest">Eser</p></div>
               <div className="text-center"><p className="text-xl md:text-2xl font-black">{panos.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest">Pano</p></div>
-              <button onClick={() => setModalType('followers')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{followers.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest underline decoration-red-600/20">Takipçi</p></button>
-              <button onClick={() => setModalType('following')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{following.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest underline decoration-red-600/20">Takip</p></button>
+              <button onClick={() => setModalType('followers')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{followersWithProfiles.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest underline decoration-red-600/20">Takipçi</p></button>
+              <button onClick={() => setModalType('following')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{followingWithProfiles.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest underline decoration-red-600/20">Takip</p></button>
             </div>
           </div>
           </div>
@@ -511,11 +522,10 @@ export default function YazarProfili() {
                 <p className="text-center py-8 md:py-10 text-[9px] md:text-[10px] text-gray-500 italic uppercase">Henüz kimse yok.</p>
               ) : (
                 (modalType === 'followers' ? followersWithProfiles : followingWithProfiles).map((p, i) => {
-                  const pName = modalType === 'followers' ? p.follower_username : p.followed_username;
                   return (
                     <Link 
                       key={i} 
-                      href={`/yazar/${pName}`}
+                      href={`/yazar/${p.username}`}
                       onClick={() => setModalType(null)}
                       className="flex items-center justify-between p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 transition-all hover:border-red-600/30"
                     >
@@ -524,12 +534,12 @@ export default function YazarProfili() {
                           {p.avatar_url ? (
                             <img src={p.avatar_url} className="w-full h-full object-cover" alt="" />
                           ) : (
-                            (pName || 'U')[0].toUpperCase()
+                            (p.username || 'U')[0].toUpperCase()
                           )}
                         </div>
                         <div>
                           <Username
-                            username={pName}
+                            username={p.username}
                             isAdmin={p.is_admin}
                             className="text-[10px] md:text-xs font-bold"
                           />
