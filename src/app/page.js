@@ -461,7 +461,7 @@ export default function Home() {
           const rFollowsCount = recentFollows?.filter(f => f.book_id === b.id).length || 0;
           
           // ✅ YENİ SKOR SİSTEMİ: Kütüphane > Yorum > Beğeni > Okunma
-          const score = (rFollowsCount * 100) + (rCommentsCount * 50) + (rVotesCount * 10) + (b.totalViews * 0.1);
+          const score = (rFollowsCount * 5) + (rCommentsCount * 3) + (rVotesCount *2 ) + (b.totalViews * 1);
           return { ...b, interactionScore: score };
         });
 

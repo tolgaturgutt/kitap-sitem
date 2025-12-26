@@ -113,16 +113,17 @@ export default function PanoCarousel({ onPanoClick, user }) {
       </div>
       
       <div className="relative group">
+        {/* 🔴 BUTONLAR SADECE DESKTOP'TA GÖRÜNSÜN */}
         <button 
           onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+          className="hidden md:flex absolute left-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
         >
           ←
         </button>
 
         <button 
           onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full flex items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+          className="hidden md:flex absolute right-0 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full items-center justify-center shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
         >
           →
         </button>
