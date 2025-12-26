@@ -87,7 +87,6 @@ export default function GirisSayfasi() {
     setLoading(false);
   }
 
-// MEVCUT HATALI YAPIYI DEĞİŞTİRİN
 async function handleSignUp() {
   if (!username || !fullName || !inviteCode) {
     return toast.error('Tüm alanlar ve Davetiye Kodu zorunludur.');
@@ -130,7 +129,7 @@ async function handleSignUp() {
       return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
     }
 
-    // 3. ÖNCE AUTH KAYIT YAP (Bu gerçek user ID'yi oluşturur)
+    // 3. AUTH KAYIT (Trigger otomatik profil oluşturacak)
     const { data: authData, error: signUpError } = await supabase.auth.signUp({
       email: cleanEmail,
       password,
@@ -147,30 +146,23 @@ async function handleSignUp() {
       return toast.error('Kayıt hatası: ' + (signUpError?.message || 'Kullanıcı oluşturulamadı'));
     }
 
-    // 4. EĞER TRIGGER YOKSA MANUEL PROFİL OLUŞTUR
-    // (Çoğu Supabase projesinde auth.users'a insert olunca trigger otomatik profil oluşturur)
-    // Ama sizde trigger yoksa ya da çalışmıyorsa:
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: authData.user.id, // Artık gerçek user ID'si var
-        username: cleanUsername,
-        full_name: fullName.trim(),
-        email: cleanEmail,
-        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`,
-      }, {
-        onConflict: 'id'
-      });
+    // 4. TRIGGER'IN ÇALIŞMASINI BEKLE
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
-    if (profileError) {
-      console.error('Profil oluşturma hatası:', profileError);
-      // Gerekirse auth user'ı sil
-      await supabase.auth.admin.deleteUser(authData.user.id);
+    // 5. PROFİL OLUŞTU MU KONTROL ET (güvenlik için)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', authData.user.id)
+      .maybeSingle();
+
+    if (!profile) {
+      console.error('Trigger profil oluşturamadı!');
       setLoading(false);
-      return toast.error('Profil oluşturulamadı.');
+      return toast.error('Profil oluşturulamadı. Lütfen destek ile iletişime geçin.');
     }
 
-    // 5. KİTAPLAB'I TAKİP ET
+    // 6. KİTAPLAB'I TAKİP ET
     try {
       const { data: kitaplab } = await supabase
         .from('profiles')
@@ -185,16 +177,16 @@ async function handleSignUp() {
         });
       }
     } catch (err) {
-      console.log('KitapLab takip hatası (önemsiz):', err);
+      console.log('KitapLab takip hatası (göz ardı edildi):', err);
     }
 
-    // 6. DAVETİYEYİ GEÇERSİZ KIL
+    // 7. DAVETİYEYİ GEÇERSİZ KIL
     await supabase
       .from('davetiyeler')
       .update({ kullanildi: true })
       .eq('id', bilet.id);
 
-    // 7. ERİŞİM COOKIE
+    // 8. ERİŞİM COOKIE
     document.cookie = "site_erisim=acik; path=/; max-age=604800";
 
     toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
