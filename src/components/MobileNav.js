@@ -49,7 +49,7 @@ export default function MobileNav() {
                 onClick={() => setShowPlusMenu(false)}
                 className="flex items-center gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
               >
-                <div className="text-lg">✍️</div>
+                <div className="text-lg">✏️</div>
                 <p className="font-black text-xs text-red-600">Kitap Yaz</p>
               </Link>
             </div>
@@ -61,63 +61,63 @@ export default function MobileNav() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
         <div className="flex items-center justify-around h-16 px-2">
           
-          {/* 1. KÜTÜPHANE */}
+          {/* ✅ KÜTÜPHANE - EŞİT BOYUT */}
           <Link 
             href="/kutuphane" 
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all ${
               isActive('/kutuphane') 
                 ? 'text-red-600' 
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
-            <div className="text-2xl">📚</div>
+            <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">📚</div>
             <span className="text-[9px] font-black uppercase tracking-tight">Kütüphane</span>
           </Link>
 
-          {/* 2. KİTAPLARIM */}
+          {/* ✅ KİTAPLARIM - EŞİT BOYUT */}
           <Link 
             href="/kitaplarim" 
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all ${
               isActive('/kitaplarim') 
                 ? 'text-red-600' 
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
-            <div className="text-2xl">📖</div>
+            <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">📖</div>
             <span className="text-[9px] font-black uppercase tracking-tight">Kitaplarım</span>
           </Link>
 
-          {/* 3. ARTIYA TIKLA (ORTADA) */}
+          {/* ✅ ARTIYA TIKLA (ORTADA) - EŞİT BOYUT */}
           <button 
             onClick={() => setShowPlusMenu(!showPlusMenu)}
-            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all ${
               showPlusMenu 
                 ? 'text-red-600 scale-110' 
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
-            <div className={`text-3xl transition-transform ${showPlusMenu ? 'rotate-45' : ''}`}>➕</div>
+            <div className={`text-3xl leading-none flex items-center justify-center w-8 h-8 transition-transform ${showPlusMenu ? 'rotate-45' : ''}`}>➕</div>
             <span className="text-[9px] font-black uppercase tracking-tight">Oluştur</span>
           </button>
 
-          {/* 4. ETKİNLİKLER (YAKINDA) */}
+          {/* ✅ ETKİNLİKLER (YAKINDA) - EŞİT BOYUT */}
           <button 
             onClick={handleComingSoon}
-            className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
+            className="flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
           >
-            <div className="text-2xl">🎉</div>
+            <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">🎉</div>
             <span className="text-[9px] font-black uppercase tracking-tight">Etkinlik</span>
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+            <div className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
           </button>
 
-          {/* 5. SIRALAMA (YAKINDA) */}
+          {/* ✅ SIRALAMA (YAKINDA) - EŞİT BOYUT */}
           <button 
             onClick={handleComingSoon}
-            className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
+            className="flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
           >
-            <div className="text-2xl">🏆</div>
+            <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">🏆</div>
             <span className="text-[9px] font-black uppercase tracking-tight">Sıralama</span>
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+            <div className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
           </button>
 
         </div>
