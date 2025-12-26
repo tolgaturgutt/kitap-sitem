@@ -151,8 +151,29 @@ export default function GirisSayfasi() {
         return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
       }
 
-      // 4. AUTH KAYIT
-      console.log('Kullanıcı kaydı yapılıyor...');
+      // 4. ÖNCELİKLE PROFİL OLUŞTUR (Trigger sorununu bypass et)
+      console.log('Geçici kullanıcı ID oluşturuluyor...');
+      const tempUserId = crypto.randomUUID();
+      
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: tempUserId,
+          username: cleanUsername,
+          full_name: fullName.trim(),
+          email: cleanEmail,
+          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`,
+        });
+
+      if (profileError) {
+        console.error('Profil oluşturma hatası:', profileError);
+        setLoading(false);
+        return toast.error('Profil oluşturulamadı: ' + profileError.message);
+      }
+
+      console.log('Profil oluşturuldu, şimdi auth kaydı yapılıyor...');
+
+      // 5. AUTH KAYIT (email_confirm_disabled ile)
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
@@ -161,52 +182,44 @@ export default function GirisSayfasi() {
             username: cleanUsername,
             full_name: fullName.trim(),
           },
+          emailRedirectTo: undefined, // Email onayı kapalı
         },
       });
 
       if (signUpError) {
         console.error('Kayıt hatası:', signUpError);
+        // Profili geri sil
+        await supabase.from('profiles').delete().eq('id', tempUserId);
         setLoading(false);
         return toast.error("Kayıt hatası: " + signUpError.message);
       }
 
       if (!authData.user) {
+        await supabase.from('profiles').delete().eq('id', tempUserId);
         setLoading(false);
         return toast.error('Kullanıcı oluşturulamadı.');
       }
 
-      console.log('Kullanıcı oluşturuldu:', authData.user.id);
+      console.log('Auth kullanıcı oluşturuldu:', authData.user.id);
 
-      // 5. PROFİL KONTROLÜ VE OLUŞTURMA (Trigger çalışmadıysa manuel)
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Trigger için bekleme
-      
-      const { data: profileCheck } = await supabase
+      // 6. PROFİL ID'Sİ GÜNCELLE
+      const { error: updateError } = await supabase
         .from('profiles')
-        .select('id')
-        .eq('id', authData.user.id)
-        .maybeSingle();
+        .update({ id: authData.user.id })
+        .eq('id', tempUserId);
 
-      if (!profileCheck) {
-        console.log('Profil trigger çalışmadı, manuel oluşturuluyor...');
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            username: cleanUsername,
-            full_name: fullName.trim(),
-            email: cleanEmail,
-            avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`,
-          });
-
-        if (profileError) {
-          console.error('Profil oluşturma hatası:', profileError);
-          await supabase.auth.signOut();
-          setLoading(false);
-          return toast.error('Profil oluşturulamadı: ' + profileError.message);
-        }
+      if (updateError) {
+        console.error('Profil ID güncelleme hatası:', updateError);
+        // Temizlik yap
+        await supabase.auth.admin.deleteUser(authData.user.id);
+        await supabase.from('profiles').delete().eq('id', tempUserId);
+        setLoading(false);
+        return toast.error('Profil güncellenemedi.');
       }
 
-      // 6. KİTAPLAB'I TAKİP ET (varsa)
+      console.log('Profil ID güncellendi');
+
+      // 7. KİTAPLAB'I TAKİP ET (varsa)
       try {
         console.log('KitapLab takip ediliyor...');
         const { data: kitaplab } = await supabase
@@ -216,7 +229,7 @@ export default function GirisSayfasi() {
           .maybeSingle();
 
         if (kitaplab) {
-          const { error: followError } = await supabase
+          await supabase
             .from('followers')
             .insert({
               follower_id: authData.user.id,
@@ -224,24 +237,19 @@ export default function GirisSayfasi() {
             })
             .select()
             .maybeSingle();
-
-          if (followError && !followError.message.includes('duplicate')) {
-            console.error('Takip hatası:', followError);
-          }
         }
       } catch (followErr) {
-        console.error('KitapLab takip hatası:', followErr);
-        // Takip hatası kayıt işlemini engellemez
+        console.error('KitapLab takip hatası (göz ardı edildi):', followErr);
       }
 
-      // 7. DAVETİYEYİ GEÇERSİZ KIL
+      // 8. DAVETİYEYİ GEÇERSİZ KIL
       console.log('Davetiye geçersiz kılınıyor...');
       await supabase
         .from('davetiyeler')
         .update({ kullanildi: true })
         .eq('id', bilet.id);
 
-      // 8. ERİŞİM DAMGASI
+      // 9. ERİŞİM DAMGASI
       document.cookie = "site_erisim=acik; path=/; max-age=604800";
 
       toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
