@@ -17,7 +17,10 @@ export default function Navbar() {
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState({ books: [], users: [] });
   const [showSearch, setShowSearch] = useState(false);
-  const searchRef = useRef(null);
+  
+  // ✅ DÜZELTME 1: Mobil ve Masaüstü için ayrı referanslar
+  const searchRef = useRef(null);       // Masaüstü Arama Kutusu
+  const mobileSearchRef = useRef(null); // Mobil Arama Kutusu
 
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -45,11 +48,22 @@ export default function Navbar() {
     };
     loadSession();
 
+    // ✅ DÜZELTME 2: Tıklama Kontrolü (Hem masaüstü hem mobil kutuyu koruyoruz)
     const handleClickOutside = (e) => {
-      if (searchRef.current && !searchRef.current.contains(e.target)) setShowSearch(false);
+      // Masaüstü kutusunun dışında mı tıklandı?
+      const isOutsideDesktop = searchRef.current && !searchRef.current.contains(e.target);
+      // Mobil kutusunun dışında mı tıklandı?
+      const isOutsideMobile = mobileSearchRef.current && !mobileSearchRef.current.contains(e.target);
+
+      // EĞER İKİSİNİN DE DIŞINA TIKLANDIYSA KAPAT
+      if (isOutsideDesktop && isOutsideMobile) {
+        setShowSearch(false);
+      }
+
       if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false);
       if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) setShowProfileMenu(false);
     };
+
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
@@ -152,10 +166,8 @@ export default function Navbar() {
     switch(n.type) {
       case 'vote':
         return n.book_id ? `/kitap/${n.book_id}` : '#';
-      
       case 'chapter_vote':
         return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
-      
       case 'comment':
         if (n.chapter_id && n.book_id) {
           return `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
@@ -163,14 +175,11 @@ export default function Navbar() {
           return `/kitap/${n.book_id}`;
         }
         return '#';
-      
       case 'new_chapter':
         return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
-      
       case 'pano_vote':
       case 'pano_comment':
         return n.pano_id ? `/pano/${n.pano_id}` : '#';
-      
       case 'reply':
         if (n.chapter_id && n.book_id) {
           return `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
@@ -180,57 +189,35 @@ export default function Navbar() {
           return `/pano/${n.pano_id}`;
         }
         return '#';
-      
       case 'follow':
         return n.actor_username ? `/yazar/${n.actor_username}` : '#';
-      
       default:
         return '#';
     }
   }
 
-  // BİLDİRİM METNİ OLUŞTURUCU
   function getNotificationText(n) {
     switch(n.type) {
-      case 'vote':
-        return 'eserini beğendi';
-      case 'chapter_vote':
-        return 'bölümünü beğendi';
-      case 'comment':
-        return n.chapter_id ? 'bölümüne yorum yaptı' : 'eserine yorum yaptı';
-      case 'new_chapter':
-        return 'yeni bölüm yayınladı';
-      case 'pano_vote':
-        return 'panonuzu beğendi';
-      case 'pano_comment':
-        return 'panonuza yorum yaptı';
-      case 'reply':
-        return 'yorumunuza yanıt verdi';
-      case 'follow':
-        return 'seni takip etti';
-      default:
-        return 'bir aktivite gerçekleştirdi';
+      case 'vote': return 'eserini beğendi';
+      case 'chapter_vote': return 'bölümünü beğendi';
+      case 'comment': return n.chapter_id ? 'bölümüne yorum yaptı' : 'eserine yorum yaptı';
+      case 'new_chapter': return 'yeni bölüm yayınladı';
+      case 'pano_vote': return 'panonuzu beğendi';
+      case 'pano_comment': return 'panonuza yorum yaptı';
+      case 'reply': return 'yorumunuza yanıt verdi';
+      case 'follow': return 'seni takip etti';
+      default: return 'bir aktivite gerçekleştirdi';
     }
   }
 
-  // BİLDİRİM İKONU
   function getNotificationIcon(n) {
     switch(n.type) {
-      case 'vote':
-      case 'chapter_vote':
-      case 'pano_vote':
-        return '⭐';
-      case 'comment':
-      case 'pano_comment':
-        return '💬';
-      case 'new_chapter':
-        return '🆕';
-      case 'reply':
-        return '↩️';
-      case 'follow':
-        return '👤';
-      default:
-        return '🔔';
+      case 'vote': case 'chapter_vote': case 'pano_vote': return '⭐';
+      case 'comment': case 'pano_comment': return '💬';
+      case 'new_chapter': return '🆕';
+      case 'reply': return '↩️';
+      case 'follow': return '👤';
+      default: return '🔔';
     }
   }
 
@@ -350,7 +337,6 @@ export default function Navbar() {
 
         {/* SAĞ MENÜ */}
         <div className="flex items-center gap-2 md:gap-4">
-          {/* MOBİL ARAMA BUTONU */}
           <button 
             onClick={() => setShowMobileSearch(!showMobileSearch)}
             className="md:hidden w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 hover:scale-105 transition-transform"
@@ -392,7 +378,6 @@ export default function Navbar() {
                     </div>
                     
                    <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 h-[65vh] md:h-[400px]">
-                      {/* AKTİVİTELER */}
                      <div className="flex-1 overflow-y-auto no-scrollbar h-1/2 md:h-auto">
                         <div className="p-3 md:p-4 bg-gray-50/50 dark:bg-white/[0.02] sticky top-0 backdrop-blur-sm z-10">
                           <p className="text-[8px] font-black uppercase text-red-600 tracking-[0.2em] flex items-center gap-2">
@@ -435,7 +420,6 @@ export default function Navbar() {
                         </div>
                       </div>
 
-                      {/* SOSYAL */}
                       <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50/30 dark:bg-white/[0.01] border-t md:border-t-0 dark:border-white/5 h-1/2 md:h-auto">
                         <div className="p-3 md:p-4 bg-blue-50/50 dark:bg-blue-950/10 sticky top-0 backdrop-blur-sm z-10">
                           <p className="text-[8px] font-black uppercase text-blue-600 tracking-[0.2em] flex items-center gap-2">
@@ -566,17 +550,16 @@ export default function Navbar() {
           
           <button 
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-            className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-gray
-            -100 dark:bg-white/5 hover:scale-110 transition-transform text-base md:text-xl"
+            className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 hover:scale-110 transition-transform text-base md:text-xl"
           >
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
         </div>
       </div>
 
-      {/* MOBİL ARAMA PANELİ */}
+      {/* ✅ DÜZELTME 3: Mobil arama kutusuna referans (mobileSearchRef) ekledik */}
       {showMobileSearch && (
-       <div className="md:hidden fixed top-16 left-0 w-full bg-white dark:bg-black border-b dark:border-white/10 p-3 z-[200] animate-in slide-in-from-top-2 duration-200">
+       <div ref={mobileSearchRef} className="md:hidden fixed top-16 left-0 w-full bg-white dark:bg-black border-b dark:border-white/10 p-3 z-[200] animate-in slide-in-from-top-2 duration-200">
           <div className="max-w-7xl mx-auto">
             <div className="relative">
               <input 
@@ -597,7 +580,7 @@ export default function Navbar() {
             </div>
             
             {showSearch && (
-<div className="mt-3 bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden relative z-[210]">
+              <div className="mt-3 bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden relative z-[210]">
                 {searchResults.books.length === 0 && searchResults.users.length === 0 ? (
                   <div className="p-6 text-center">
                     <span className="text-3xl mb-2 block">📚</span>
