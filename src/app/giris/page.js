@@ -155,31 +155,37 @@ export default function GirisSayfasi() {
         .update({ kullanildi: true })
         .eq('id', bilet.id);
 
-      // D) OTOMATİK TAKİP (KitapLab)
+      // -----------------------------------------------------------
+      // 🔥 DÜZELTİLEN KISIM: OTOMATİK TAKİP (Catch hatası giderildi)
+      // -----------------------------------------------------------
       const KITAPLAB_RESMI_ID = "4990d668-2cdf-4c9d-b409-21ecf14f43ac"; 
+
       if (authData?.user?.id) {
-        await supabase.from('author_follows').insert({
+        // .catch() yerine direkt error değişkenine bakıyoruz. Bu asla patlamaz.
+        const { error: followError } = await supabase.from('author_follows').insert({
           follower_id: authData.user.id,
           followed_id: KITAPLAB_RESMI_ID
-        }).catch(err => console.error("Oto-takip hatası:", err));
+        });
+        
+        if (followError) {
+          console.log("Oto-takip yapılamadı (Önemli değil):", followError.message);
+        }
       }
+      // -----------------------------------------------------------
 
-      // 🔥 EKLENEN KISIM 1: KAYIT OLAN KULLANICIYA GİRİŞ İZNİ (COOKIE) VER
-      document.cookie = "site_erisim=acik; path=/; max-age=604800"; // 7 Günlük İzin
+      // D) GİRİŞ İZNİ (COOKIE)
+      document.cookie = "site_erisim=acik; path=/; max-age=604800"; 
 
       toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
       
-      // Kayıttan sonra direkt içeri alıyoruz
       setTimeout(() => {
         router.push('/');
         router.refresh();
       }, 1500);
-      
-      // setLoading(false); // Yönlendirme yapacağımız için loading'i kapatmaya gerek yok
 
     } else {
       // ------------------------------------------------------------------
-      // GİRİŞ YAPMA KISMI
+      // GİRİŞ YAPMA KISMI (BURASI AYNI)
       // ------------------------------------------------------------------
       setLoading(true);
       let finalEmail = loginInput;
@@ -210,8 +216,7 @@ export default function GirisSayfasi() {
         return toast.error('Hesabınız askıya alınmıştır.');
       }
 
-      // 🔥 EKLENEN KISIM 2: GİRİŞ YAPAN KULLANICIYA DA İZİN VER
-      // (Böylece hesabı olanlar tekrar giriş yapınca kapıda kalmaz)
+      // Giriş yapana da cookie ver
       document.cookie = "site_erisim=acik; path=/; max-age=604800"; 
 
       toast.success('Giriş başarılı.');
