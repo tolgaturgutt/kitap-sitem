@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import YorumAlani from '@/components/YorumAlani';
 import { Toaster, toast } from 'react-hot-toast'; // Toast eklendi
+import { createChapterVoteNotification } from '@/lib/notifications'; 
 
 export default function BolumDetay({ params }) {
   const decodedParams = use(params);
@@ -107,38 +108,49 @@ export default function BolumDetay({ params }) {
     getFullData();
   }, [id, bolumId]);
 
-  // ✅ YENİ: BEĞENİ FONKSİYONU
-  const handleLike = async () => {
-    if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
+const handleLike = async () => {
+  if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
 
-    if (hasLiked) {
-      // Beğeniyi Kaldır
-      const { error } = await supabase
-        .from('chapter_votes')
-        .delete()
-        .eq('chapter_id', bolumId)
-        .eq('user_email', user.email);
-      
-      if (!error) {
-        setLikes(prev => prev - 1);
-        setHasLiked(false);
-      }
-    } else {
-      // Beğen
-      const { error } = await supabase
-        .from('chapter_votes')
-        .insert({
-          chapter_id: bolumId,
-          user_email: user.email
-        });
-      
-      if (!error) {
-        setLikes(prev => prev + 1);
-        setHasLiked(true);
-        toast.success("Bölüm beğenildi ❤️");
-      }
+  // Kullanıcı adını al
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .single();
+  
+  const username = profile?.username || user.email.split('@')[0];
+
+  if (hasLiked) {
+    // Beğeniyi Kaldır
+    const { error } = await supabase
+      .from('chapter_votes')
+      .delete()
+      .eq('chapter_id', bolumId)
+      .eq('user_email', user.email);
+    
+    if (!error) {
+      setLikes(prev => prev - 1);
+      setHasLiked(false);
     }
-  };
+  } else {
+    // Beğen
+    const { error } = await supabase
+      .from('chapter_votes')
+      .insert({
+        chapter_id: bolumId,
+        user_email: user.email
+      });
+    
+    if (!error) {
+      setLikes(prev => prev + 1);
+      setHasLiked(true);
+      toast.success("Bölüm beğenildi ❤️");
+      
+      // ✅ BİLDİRİM GÖNDER
+      await createChapterVoteNotification(username, user.email, id, bolumId);
+    }
+  }
+};
 
   const handleCommentAdded = (pId) => {
     if (pId !== null) {

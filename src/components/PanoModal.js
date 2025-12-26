@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
+import { createPanoVoteNotification, createPanoCommentNotification, createReplyNotification } from '@/lib/notifications';
 
 export default function PanoModal({ 
   selectedPano, 
@@ -82,53 +83,83 @@ export default function PanoModal({
   }, [selectedPano, user]);
 
   // --- 2. FONKSİYONLAR ---
-  async function handleLike() {
-    if (!user) return toast.error('Giriş yapmalısın!');
-    if (hasLiked) {
-      await supabase.from('pano_votes').delete().eq('pano_id', selectedPano.id).eq('user_email', user.email);
-      setHasLiked(false);
-      setPanoLikes(prev => prev - 1);
-    } else {
-      await supabase.from('pano_votes').insert({ pano_id: selectedPano.id, user_email: user.email });
-      setHasLiked(true);
-      setPanoLikes(prev => prev + 1);
-    }
-  }
-
-  async function handleComment() {
-    if (!user) return toast.error('Giriş yapmalısın!');
-    if (!newComment.trim()) return;
-
-    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
-    const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
+async function handleLike() {
+  if (!user) return toast.error('Giriş yapmalısın!');
+  
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .single();
+  const username = profile?.username || user.email.split('@')[0];
+  
+  if (hasLiked) {
+    await supabase.from('pano_votes').delete().eq('pano_id', selectedPano.id).eq('user_email', user.email);
+    setHasLiked(false);
+    setPanoLikes(prev => prev - 1);
+  } else {
+    await supabase.from('pano_votes').insert({ pano_id: selectedPano.id, user_email: user.email });
+    setHasLiked(true);
+    setPanoLikes(prev => prev + 1);
     
-    const { error } = await supabase.from('pano_comments').insert({
-      pano_id: selectedPano.id,
-      parent_id: replyTo,
-      user_email: user.email,
-      username: username,
-      content: newComment
-    });
-
-    if (error) { toast.error('Hata oluştu!'); return; }
-
-    setNewComment('');
-    setReplyTo(null);
-
-    // Listeyi güncelle
-    const { data: comments } = await supabase.from('pano_comments').select('*').eq('pano_id', selectedPano.id).order('created_at', { ascending: true });
-    if (comments) {
-      const commentsWithProfiles = await Promise.all(
-        comments.map(async (comment) => {
-          if (!comment.username) return comment;
-          const { data: p } = await supabase.from('profiles').select('username, avatar_url').eq('username', comment.username).single();
-          return { ...comment, profiles: p };
-        })
-      );
-      setPanoComments(commentsWithProfiles);
-    }
-    toast.success('Yorum eklendi!');
+    // ✅ BİLDİRİM GÖNDER
+    await createPanoVoteNotification(username, user.email, selectedPano.id, selectedPano.user_email);
   }
+}
+
+ async function handleComment() {
+  if (!user) return toast.error('Giriş yapmalısın!');
+  if (!newComment.trim()) return;
+
+  const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+  const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
+  
+  const { error } = await supabase.from('pano_comments').insert({
+    pano_id: selectedPano.id,
+    parent_id: replyTo,
+    user_email: user.email,
+    username: username,
+    content: newComment
+  });
+
+  if (error) { toast.error('Hata oluştu!'); return; }
+
+  // ✅ BİLDİRİM GÖNDER
+  if (replyTo) {
+    // Yanıt ise
+    const parentComment = panoComments.find(c => c.id === replyTo);
+    if (parentComment) {
+      await createReplyNotification(
+        username,
+        user.email,
+        parentComment.user_email,
+        null, // bookId yok
+        null, // chapterId yok
+        selectedPano.id // panoId
+      );
+    }
+  } else {
+    // Normal yorum ise
+    await createPanoCommentNotification(username, user.email, selectedPano.id, selectedPano.user_email);
+  }
+
+  setNewComment('');
+  setReplyTo(null);
+
+  // Listeyi güncelle
+  const { data: comments } = await supabase.from('pano_comments').select('*').eq('pano_id', selectedPano.id).order('created_at', { ascending: true });
+  if (comments) {
+    const commentsWithProfiles = await Promise.all(
+      comments.map(async (comment) => {
+        if (!comment.username) return comment;
+        const { data: p } = await supabase.from('profiles').select('username, avatar_url').eq('username', comment.username).single();
+        return { ...comment, profiles: p };
+      })
+    );
+    setPanoComments(commentsWithProfiles);
+  }
+  toast.success('Yorum eklendi!');
+}
 
   async function handleDeleteComment(commentId) {
     if (!confirm('Silmek istiyor musun?')) return;

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
+import { createCommentNotification, createReplyNotification } from '@/lib/notifications';
 
 export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded, includeParagraphs = false }) {
   const [comments, setComments] = useState([]);
@@ -151,33 +152,33 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   }
 
   async function createNotification(comment, username) {
-    try {
-      const { data: book } = await supabase.from('books').select('user_email, title').eq('id', bookId).single();
-      let recipientEmail = book.user_email;
-      let notifType = 'comment';
-      
-      if (comment.parent_id) {
-          const parentComment = comments.find(c => c.id === comment.parent_id);
-          if (parentComment) {
-              recipientEmail = parentComment.user_email;
-              notifType = 'reply';
-          }
+  try {
+    // Eğer yanıt ise
+    if (comment.parent_id) {
+      const parentComment = comments.find(c => c.id === comment.parent_id);
+      if (parentComment) {
+        await createReplyNotification(
+          username,
+          user.email,
+          parentComment.user_email,
+          bookId ? parseInt(bookId) : null,
+          type === 'book' ? null : parseInt(targetId),
+          null // panoId yok
+        );
       }
-
-      if (recipientEmail && recipientEmail !== user.email) {
-        await supabase.from('notifications').insert({
-          recipient_email: recipientEmail,
-          actor_username: username,
-          type: notifType,
-          book_title: book.title,
-          book_id: parseInt(bookId),
-          chapter_id: type === 'book' ? null : parseInt(targetId),
-          is_read: false
-        });
-      }
-    } catch (e) { console.error(e); }
+    } else {
+      // Normal yorum ise
+      await createCommentNotification(
+        username,
+        user.email,
+        parseInt(bookId),
+        type === 'book' ? null : parseInt(targetId)
+      );
+    }
+  } catch (e) { 
+    console.error('Notification error:', e); 
   }
-
+}
   async function handleReport(commentId, content) {
     const reason = prompt("Şikayet sebebiniz nedir?");
     if (!reason) return;

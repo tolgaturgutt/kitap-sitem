@@ -1,27 +1,20 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 
-// İKONLAR
+// --- İKONLAR ---
 const Icons = {
   Search: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>),
   Photo: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H3.75A2.25 2.25 0 0 0 1.5 6v12a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>),
-  Delete: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>),
   Edit: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>),
+  Delete: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>),
 };
 
 const getTargetEmoji = (type) => {
-  const map = {
-    'user': '👤',
-    'comment': '💬',
-    'book': '📖',
-    'review': '⭐',
-    'chapter': '📄',
-    'default': '🎯'
-  };
+  const map = { 'user': '👤', 'comment': '💬', 'book': '📖', 'review': '⭐', 'chapter': '📄', 'default': '🎯' };
   return map[type] || map.default;
 };
 
@@ -30,50 +23,53 @@ export default function AdminPanel() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [activeTab, setActiveTab] = useState('duyurular');
   const [loading, setLoading] = useState(true);
-  const fileInputRef = useRef(null);
 
-  // KULLANICI SAYFALAMA
-  const [page, setPage] = useState(1);
+  // --- SAYFALAMA AYARLARI ---
   const USERS_PER_PAGE = 10;
+  const REPORTS_PER_PAGE = 15;
+  const SUPPORT_PER_PAGE = 15;
+
+  // --- STATE TANIMLARI ---
+  
+  // 1. DUYURULAR
+  const [duyurular, setDuyurular] = useState([]);
+  const [editingId, setEditingId] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [duyuruForm, setDuyuruForm] = useState({
+    title: '', content: '', type: 'bilgi', priority: 1, is_active: true, 
+    image_url: null, text_color: '#000000', display_type: 'wide', action_link: '', action_text: ''
+  });
+
+  // 2. KULLANICILAR
+  const [users, setUsers] = useState([]);
+  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(0);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(false);
 
-  // ŞİKAYET STATE
+  // 3. ŞİKAYETLER
   const [reports, setReports] = useState([]);
   const [reportPage, setReportPage] = useState(1);
   const [totalReportPages, setTotalReportPages] = useState(0);
   const [totalReports, setTotalReports] = useState(0);
   const [reportFilter, setReportFilter] = useState('pending');
-  const REPORTS_PER_PAGE = 15;
   const [loadingReports, setLoadingReports] = useState(false);
 
-  // DUYURU STATE
-  const [duyurular, setDuyurular] = useState([]);
-  const [editingId, setEditingId] = useState(null);
-  const [uploadingImage, setUploadingImage] = useState(false);
-  // ✅ YENİLENEN DUYURU STATE
-const [duyuruForm, setDuyuruForm] = useState({
-  title: '', 
-  content: '', 
-  type: 'bilgi', // İngilizce 'info' yerine Türkçe
-  priority: 1, 
-  is_active: true, 
-  image_url: null, 
-  text_color: '#000000',
-  display_type: 'wide', // Geniş veya kitap formatı seçimi
-  action_link: '',     // ✅ YENİ
-  action_text: ''      // ✅ YENİ
-});
+  // 4. DESTEK
+  const [supportMessages, setSupportMessages] = useState([]);
+  const [supportPage, setSupportPage] = useState(1);
+  const [totalSupportPages, setTotalSupportPages] = useState(0);
+  const [totalSupport, setTotalSupport] = useState(0);
+  const [supportFilter, setSupportFilter] = useState('all');
+  const [loadingSupport, setLoadingSupport] = useState(false);
+  const [supportModal, setSupportModal] = useState(null);
 
-  // KULLANICI STATE
-  const [users, setUsers] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  // --- VERİ ÇEKME FONKSİYONLARI ---
 
-  // ✅ useCallback ile fonksiyonları stabilize et
+  // KULLANICI ÇEK
   const fetchUsers = useCallback(async (query = '', pageNum = 1) => {
     setLoadingUsers(true);
-    
     const from = (pageNum - 1) * USERS_PER_PAGE;
     const to = from + USERS_PER_PAGE - 1;
 
@@ -83,16 +79,10 @@ const [duyuruForm, setDuyuruForm] = useState({
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (query) {
-      supabaseQuery = supabaseQuery.ilike('username', `%${query}%`);
-    }
+    if (query) supabaseQuery = supabaseQuery.ilike('username', `%${query}%`);
 
     const { data, error, count } = await supabaseQuery;
-    
-    if (error) {
-      console.error('Kullanıcı çekme hatası:', error.message);
-      toast.error('Kullanıcılar yüklenemedi: ' + error.message);
-    } else {
+    if (!error) {
       setUsers(data || []);
       setTotalUsers(count || 0);
       setTotalPages(Math.ceil((count || 0) / USERS_PER_PAGE));
@@ -100,9 +90,9 @@ const [duyuruForm, setDuyuruForm] = useState({
     setLoadingUsers(false);
   }, [USERS_PER_PAGE]);
 
+  // ŞİKAYET ÇEK
   const fetchReports = useCallback(async (pageNum = 1) => {
     setLoadingReports(true);
-    
     const from = (pageNum - 1) * REPORTS_PER_PAGE;
     const to = from + REPORTS_PER_PAGE - 1;
 
@@ -112,16 +102,10 @@ const [duyuruForm, setDuyuruForm] = useState({
       .order('created_at', { ascending: false })
       .range(from, to);
 
-    if (reportFilter !== 'all') {
-      query = query.eq('status', reportFilter);
-    }
+    if (reportFilter !== 'all') query = query.eq('status', reportFilter);
 
     const { data, error, count } = await query;
-    
-    if (error) {
-      console.error('Şikayet hatası:', error);
-      toast.error('Şikayetler yüklenemedi: ' + error.message);
-    } else {
+    if (!error) {
       setReports(data || []);
       setTotalReports(count || 0);
       setTotalReportPages(Math.ceil((count || 0) / REPORTS_PER_PAGE));
@@ -129,188 +113,165 @@ const [duyuruForm, setDuyuruForm] = useState({
     setLoadingReports(false);
   }, [reportFilter, REPORTS_PER_PAGE]);
 
+  // DESTEK ÇEK
+  const fetchSupport = useCallback(async (pageNum = 1) => {
+    setLoadingSupport(true);
+    const from = (pageNum - 1) * SUPPORT_PER_PAGE;
+    const to = from + SUPPORT_PER_PAGE - 1;
+
+    let query = supabase
+      .from('support_messages')
+      .select('*', { count: 'exact' })
+      .range(from, to)
+      .order('created_at', { ascending: false });
+
+    if (supportFilter !== 'all') query = query.eq('status', supportFilter);
+
+    const { data, error, count } = await query;
+    if (!error) {
+      setSupportMessages(data || []);
+      setTotalSupport(count || 0);
+      setTotalSupportPages(Math.ceil((count || 0) / SUPPORT_PER_PAGE));
+    } else {
+      toast.error('Destek mesajları alınamadı');
+    }
+    setLoadingSupport(false);
+  }, [supportFilter, SUPPORT_PER_PAGE]);
+
+  // GENEL YÜKLEME
   const loadData = useCallback(async () => {
     if (activeTab === 'duyurular') {
       const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
       setDuyurular(data || []);
-    } 
-    else if (activeTab === 'kullanicilar') {
+    } else if (activeTab === 'kullanicilar') {
       fetchUsers(searchQuery, 1);
-    }
-    else if (activeTab === 'sikayetler') {
+    } else if (activeTab === 'sikayetler') {
       fetchReports(1);
+    } else if (activeTab === 'destek') {
+      fetchSupport(1);
     }
-  }, [activeTab, searchQuery, fetchUsers, fetchReports]);
+  }, [activeTab, searchQuery, fetchUsers, fetchReports, fetchSupport]);
 
-  // ✅ İlk yükleme
-  useEffect(() => { 
-    checkAdmin(); 
-  }, []);
-
-  // ✅ Tab değiştiğinde veri yükle
-  useEffect(() => {
-    if (isAdmin) {
-      loadData();
-    }
-  }, [activeTab, isAdmin, loadData]);
-
-  // ✅ Kullanıcı araması için debounce
+  // --- EFFECTLER ---
+  useEffect(() => { checkAdmin(); }, []);
+  useEffect(() => { if (isAdmin) loadData(); }, [activeTab, isAdmin, loadData]);
+  
   useEffect(() => {
     if (activeTab === 'kullanicilar') {
-      const delayDebounceFn = setTimeout(() => {
-        fetchUsers(searchQuery, page);
-      }, 500); 
-      return () => clearTimeout(delayDebounceFn);
+      const delay = setTimeout(() => fetchUsers(searchQuery, page), 500); 
+      return () => clearTimeout(delay);
     }
   }, [searchQuery, page, activeTab, fetchUsers]);
 
-  // ✅ Şikayet filtreleme
   useEffect(() => {
-    if (activeTab === 'sikayetler') {
-      fetchReports(reportPage);
-    }
+    if (activeTab === 'sikayetler') fetchReports(reportPage);
   }, [reportFilter, reportPage, activeTab, fetchReports]);
 
+  useEffect(() => {
+    if (activeTab === 'destek') fetchSupport(supportPage);
+  }, [supportFilter, supportPage, activeTab, fetchSupport]);
+
+
+  // --- AKSİYONLAR ---
   async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { 
-      router.push('/giris'); 
-      return; 
-    }
-
-    const { data: adminData } = await supabase
-      .from('announcement_admins')
-      .select('*')
-      .eq('user_email', user.email)
-      .single();
-      
-    if (!adminData) { 
-      toast.error('Admin değilsin!'); 
-      router.push('/'); 
-      return; 
-    }
-
-    setIsAdmin(true);
-    setLoading(false);
+    if (!user) return router.push('/giris');
+    const { data: admin } = await supabase.from('announcement_admins').select().eq('user_email', user.email).single();
+    if (!admin) { toast.error('Yetkisiz!'); return router.push('/'); }
+    setIsAdmin(true); setLoading(false);
   }
 
-  function handleSearchChange(val) {
-    setSearchQuery(val);
-    setPage(1);
+  // --- 🔗 YÖNLENDİRME FONKSİYONU (YENİ) ---
+  const navigateToTarget = (type, id) => {
+    let url = null;
+    
+    // NOT: Bu rotaları kendi projendeki sayfa yapısına göre güncellemelisin!
+    switch(type) {
+        case 'user': 
+            url = `/profil/${id}`; // veya /kullanici/${id}
+            break;
+        case 'book': 
+            url = `/kitap/${id}`;
+            break;
+        case 'chapter': 
+            url = `/bolum/${id}`; // veya /okuma/${id}
+            break;
+        case 'comment':
+            // Yorumlar genellikle kitap detayındadır, direkt yorum ID ile gitmek için özel rota yoksa 
+            // şimdilik yorum ID'sine link veriyoruz, belki backend'den 'book_id' de çekmek gerekir.
+            url = `/yorum/${id}`; 
+            break;
+        case 'review':
+             url = `/degerlendirme/${id}`;
+             break;
+        default:
+            url = `/${type}/${id}`;
+    }
+
+    if (url) {
+        window.open(url, '_blank'); // Admin paneli kapanmasın diye yeni sekmede açar
+    } else {
+        toast.error('Bu içerik türü için link oluşturulamadı.');
+    }
   }
 
+  // Diğer Aksiyonlar
   async function toggleBan(userId, currentStatus) {
-    const confirmMsg = currentStatus 
-      ? "Yasağı kaldırmak istiyor musun?" 
-      : "Kullanıcıyı BANLAMAK istiyor musun?";
-    
-    if (!confirm(confirmMsg)) return;
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_banned: !currentStatus })
-      .eq('id', userId);
-
-    if (error) {
-      toast.error('Hata: ' + error.message);
-    } else {
-      toast.success(currentStatus ? 'Yasak kalktı.' : 'Kullanıcı yasaklandı.');
-      fetchUsers(searchQuery, page);
-    }
+    if (!confirm(currentStatus ? "Yasak kalksın mı?" : "Banlansın mı?")) return;
+    const { error } = await supabase.from('profiles').update({ is_banned: !currentStatus }).eq('id', userId);
+    if (!error) { toast.success('İşlem tamam'); fetchUsers(searchQuery, page); }
   }
 
-  async function updateReportStatus(reportId, newStatus) {
-    const { error } = await supabase
-      .from('reports')
-      .update({ status: newStatus })
-      .eq('id', reportId);
-
-    if (error) {
-      toast.error('Hata: ' + error.message);
-    } else {
-      toast.success('Durum güncellendi!');
-      fetchReports(reportPage);
-    }
+  async function updateReportStatus(id, status) {
+    await supabase.from('reports').update({ status }).eq('id', id);
+    toast.success('Güncellendi'); fetchReports(reportPage);
+  }
+  async function deleteReport(id) {
+    if (!confirm('Silmek istediğine emin misin?')) return;
+    await supabase.from('reports').delete().eq('id', id);
+    toast.success('Silindi'); fetchReports(reportPage);
   }
 
-  async function deleteReport(reportId) {
-    if (!confirm('Bu şikayeti silmek istediğine emin misin?')) return;
-    
-    const { error } = await supabase.from('reports').delete().eq('id', reportId);
-    
-    if (error) {
-      toast.error('Hata: ' + error.message);
-    } else {
-      toast.success('Şikayet silindi.');
-      fetchReports(reportPage);
-    }
+  async function updateSupportStatus(id, status) {
+    await supabase.from('support_messages').update({ status }).eq('id', id);
+    toast.success('Durum güncellendi'); 
+    fetchSupport(supportPage);
+    if (supportModal && supportModal.id === id) setSupportModal(null);
+  }
+  async function deleteSupport(id) {
+    if (!confirm('Bu mesajı silmek istediğine emin misin?')) return;
+    await supabase.from('support_messages').delete().eq('id', id);
+    toast.success('Mesaj silindi'); 
+    fetchSupport(supportPage);
+    if (supportModal && supportModal.id === id) setSupportModal(null);
   }
 
   async function handleImageUpload(e) {
     const file = e.target.files[0];
     if (!file) return;
     setUploadingImage(true);
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
+    const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
     try {
       const { error } = await supabase.storage.from('images').upload(`announcements/${fileName}`, file);
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(`announcements/${fileName}`);
       setDuyuruForm({ ...duyuruForm, image_url: publicUrl });
-      toast.success('Görsel yüklendi!');
-    } catch (err) { 
-      toast.error('Hata: ' + err.message); 
-    } finally { 
-      setUploadingImage(false); 
-    }
-  }
-
-  function startEdit(duyuru) {
-    setEditingId(duyuru.id);
-    setDuyuruForm({
-      title: duyuru.title, 
-      content: duyuru.content, 
-      type: duyuru.type,
-      priority: duyuru.priority, 
-      is_active: duyuru.is_active,
-      image_url: duyuru.image_url, 
-      text_color: duyuru.text_color || '#000000'
-    });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+      toast.success('Görsel yüklendi');
+    } catch (err) { toast.error('Hata: ' + err.message); } 
+    finally { setUploadingImage(false); }
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     if (uploadingImage) return;
-
     const payload = { ...duyuruForm };
-    let error;
-
-    if (editingId) {
-      const { error: err } = await supabase.from('announcements').update(payload).eq('id', editingId);
-      error = err;
-    } else {
-      const { error: err } = await supabase.from('announcements').insert([payload]);
-      error = err;
-    }
-
-    if (error) {
-      toast.error('Hata: ' + error.message);
-    } else {
-      toast.success(editingId ? 'Güncellendi!' : 'Yayınlandı!');
+    const q = editingId ? supabase.from('announcements').update(payload).eq('id', editingId) : supabase.from('announcements').insert([payload]);
+    const { error } = await q;
+    if (error) toast.error('Hata: ' + error.message);
+    else {
+      toast.success(editingId ? 'Güncellendi' : 'Eklendi');
       setEditingId(null);
-      setDuyuruForm({ 
-        title: '', 
-        content: '', 
-        type: 'bilgi', 
-        priority: 1, 
-        is_active: true, 
-        image_url: null, 
-        text_color: '#000000', 
-        action_link: '',     // ✅ BURAYI DA EKLE
-  action_text: ''      // ✅ BURAYI DA EKLE
-
-      });
+      setDuyuruForm({ title: '', content: '', type: 'bilgi', priority: 1, is_active: true, image_url: null, text_color: '#000000', display_type: 'wide', action_link: '', action_text: '' });
       loadData();
     }
   }
@@ -321,12 +282,7 @@ const [duyuruForm, setDuyuruForm] = useState({
     loadData();
   }
 
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center font-black">
-      YUKLENIYOR...
-    </div>
-  );
-  
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-black">YÜKLENİYOR...</div>;
   if (!isAdmin) return null;
 
   return (
@@ -334,235 +290,86 @@ const [duyuruForm, setDuyuruForm] = useState({
       <Toaster position="top-center" />
       <div className="max-w-7xl mx-auto">
         
-        <div className="mb-12 text-center">
-          <h1 className="text-4xl font-black dark:text-white uppercase tracking-tight mb-2">
-            Yönetim Paneli
-          </h1>
-        </div>
+        <h1 className="text-4xl font-black text-center dark:text-white uppercase mb-12">YÖNETİM PANELİ</h1>
 
-        <div className="flex justify-center mb-10 border-b dark:border-white/10">
-          <button 
-            onClick={() => setActiveTab('duyurular')} 
-            className={`px-8 py-4 font-black uppercase tracking-widest border-b-4 ${
-              activeTab === 'duyurular' 
-                ? 'border-red-600 text-red-600' 
-                : 'border-transparent text-gray-400'
-            }`}
-          >
-            📣 Duyurular
-          </button>
-          <button 
-            onClick={() => setActiveTab('kullanicilar')} 
-            className={`px-8 py-4 font-black uppercase tracking-widest border-b-4 ${
-              activeTab === 'kullanicilar' 
-                ? 'border-red-600 text-red-600' 
-                : 'border-transparent text-gray-400'
-            }`}
-          >
-            👥 Kullanıcılar
-          </button>
-          <button 
-            onClick={() => setActiveTab('sikayetler')} 
-            className={`px-8 py-4 font-black uppercase tracking-widest border-b-4 ${
-              activeTab === 'sikayetler' 
-                ? 'border-red-600 text-red-600' 
-                : 'border-transparent text-gray-400'
-            }`}
-          >
-            ⚠️ Şikayetler
-          </button>
+        {/* --- SEKMELER --- */}
+        <div className="flex justify-center mb-10 border-b dark:border-white/10 overflow-x-auto">
+          {['duyurular', 'kullanicilar', 'sikayetler', 'destek'].map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-8 py-4 font-black uppercase tracking-widest border-b-4 whitespace-nowrap ${activeTab === tab ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400'}`}>
+              {tab === 'duyurular' ? '📣 Duyurular' : tab === 'kullanicilar' ? '👥 Kullanıcılar' : tab === 'sikayetler' ? '⚠️ Şikayetler' : '📧 Destek'}
+            </button>
+          ))}
         </div>
 
         <div className="bg-white dark:bg-[#111] rounded-[2.5rem] shadow-2xl p-8 md:p-12 border dark:border-white/5">
           
+          {/* --- 1. DUYURULAR --- */}
           {activeTab === 'duyurular' && (
             <div className="grid lg:grid-cols-5 gap-12">
               <div className="lg:col-span-2 space-y-6">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-black dark:text-white uppercase">
-                    {editingId ? 'Düzenle' : 'Yeni Duyuru'}
-                  </h2>
-                  {editingId && (
-                    <button 
-                      onClick={() => {
-                        setEditingId(null); 
-                        setDuyuruForm({ 
-                          title: '', 
-                          content: '', 
-                          type: 'bilgi', 
-                          priority: 1, 
-                          is_active: true, 
-                          image_url: null, 
-                          text_color: '#000000' ,
-                          action_link: '',     // ✅ BURAYI DA EKLE
-  action_text: ''      // ✅ BURAYI DA EKLE
-
-                        });
-                      }} 
-                      className="text-xs text-red-500 font-bold uppercase"
-                    >
-                      İptal
-                    </button>
-                  )}
+                  <h2 className="text-2xl font-black dark:text-white uppercase">{editingId ? 'DÜZENLE' : 'YENİ DUYURU'}</h2>
+                  {editingId && <button onClick={() => { setEditingId(null); setDuyuruForm({ title: '', content: '', type: 'bilgi', priority: 1, is_active: true, image_url: null, text_color: '#000000', display_type: 'wide', action_link: '', action_text: '' }); }} className="text-xs text-red-500 font-bold uppercase">İPTAL</button>}
                 </div>
                 
-<form onSubmit={handleSubmit} className="space-y-6">
-  <div className="grid grid-cols-2 gap-4">
-    <div className="space-y-2">
-      <label className="text-[10px] font-black uppercase text-gray-400">Görünüm Formatı</label>
-     <select 
-  value={duyuruForm.display_type} 
-  onChange={e => setDuyuruForm({...duyuruForm, display_type: e.target.value})} 
-  className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none"
->
-  <option value="none">🚫 Görsel Yok</option>
-  <option value="book">📚 Kitap Boyutu (Dikey)</option>
-  <option value="wide">🖼️ Geniş Boyut (Yatay)</option>
-</select>
-    </div>
-    <div className="space-y-2">
-      <label className="text-[10px] font-black uppercase text-gray-400">Kategori</label>
-      <select 
-        value={duyuruForm.type} 
-        onChange={e => setDuyuruForm({...duyuruForm, type: e.target.value})} 
-        className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold border-none outline-none"
-      >
-        <option value="bilgi">ℹ️ Bilgi</option>
-        <option value="mujdede">🎉 Müjde</option>
-        <option value="uyari">⚠️ Uyarı</option>
-        <option value="yenilik">🚀 Yenilik</option>
-      </select>
-    </div>
-  </div>
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400">FORMAT</label>
+                      <select value={duyuruForm.display_type} onChange={e => setDuyuruForm({...duyuruForm, display_type: e.target.value})} className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none">
+                        <option value="none">🚫 Görsel Yok</option>
+                        <option value="book">📚 Kitap (Dikey)</option>
+                        <option value="wide">🖼️ Geniş (Yatay)</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-gray-400">TÜR</label>
+                      <select value={duyuruForm.type} onChange={e => setDuyuruForm({...duyuruForm, type: e.target.value})} className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none">
+                        <option value="bilgi">ℹ️ Bilgi</option>
+                        <option value="mujdede">🎉 Müjde</option>
+                        <option value="uyari">⚠️ Uyarı</option>
+                        <option value="yenilik">🚀 Yenilik</option>
+                      </select>
+                    </div>
+                  </div>
 
- <div className="relative group">
-  <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="duyuru-gorsel" />
-  <label 
-    htmlFor="duyuru-gorsel" 
-    className="w-full max-w-md mx-auto rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all duration-500 overflow-hidden min-h-[200px] border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-black/20"
-  >
-    {duyuruForm.image_url ? (
-      <img src={duyuruForm.image_url} className="max-h-[400px] w-auto object-contain" alt="" />
-    ) : (
-      <div className="text-center p-6 text-gray-400">
-         <Icons.Photo />
-         <span className="text-[10px] font-black mt-2 uppercase block">Görsel Seç</span>
-      </div>
-    )}
-  </label>
-  {duyuruForm.image_url && (
-    <button 
-      type="button"
-      onClick={() => setDuyuruForm({...duyuruForm, image_url: null})}
-      className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-all"
-    >
-      ✕
-    </button>
-  )}
-</div>
-  
-  <input 
-    type="text" 
-    placeholder="Duyuru Başlığı" 
-    required 
-    value={duyuruForm.title} 
-    onChange={e => setDuyuruForm({...duyuruForm, title: e.target.value})} 
-    className="w-full p-5 bg-gray-50 dark:bg-black/20 rounded-2xl font-black text-xl dark:text-white outline-none" 
-  />
-  <div className="space-y-2">
-  <label className="text-[10px] font-black uppercase text-gray-400">Başlık Rengi</label>
-  <div className="flex gap-3 items-center">
-    <input 
-      type="color" 
-      value={duyuruForm.text_color} 
-      onChange={e => setDuyuruForm({...duyuruForm, text_color: e.target.value})} 
-      className="w-16 h-12 rounded-xl cursor-pointer border-2 border-gray-300 dark:border-gray-700" 
-    />
-    <input 
-      type="text" 
-      value={duyuruForm.text_color} 
-      onChange={e => setDuyuruForm({...duyuruForm, text_color: e.target.value})} 
-      className="flex-1 p-3 bg-gray-50 dark:bg-black/20 rounded-xl dark:text-white font-mono text-sm outline-none" 
-      placeholder="#000000"
-    />
-  </div>
-</div>
-  
-  <textarea 
-    placeholder="Tüm detayları buraya yaz..." 
-    required 
-    rows={4} 
-    value={duyuruForm.content} 
-    onChange={e => setDuyuruForm({...duyuruForm, content: e.target.value})} 
-    className="w-full p-5 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-medium outline-none" 
-  />
-  <div className="space-y-2">
-  <label className="text-[10px] font-black uppercase text-gray-400">Buton Yazısı (Opsiyonel)</label>
-  <input 
-    type="text" 
-    placeholder="Örn: Kitabı İncele, Hemen Katıl, Detayları Gör" 
-    value={duyuruForm.action_text} 
-    onChange={e => setDuyuruForm({...duyuruForm, action_text: e.target.value})} 
-    className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none" 
-  />
-</div>
+                  <div className="relative group">
+                    <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="duyuru-gorsel" />
+                    <label htmlFor="duyuru-gorsel" className="w-full max-w-md mx-auto rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer min-h-[200px] border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
+                      {duyuruForm.image_url ? <img src={duyuruForm.image_url} className="max-h-[400px] object-contain" /> : <div className="text-center p-6 text-gray-400"><Icons.Photo /><span className="text-[10px] font-black mt-2 uppercase block">Görsel Seç</span></div>}
+                    </label>
+                    {duyuruForm.image_url && <button type="button" onClick={() => setDuyuruForm({...duyuruForm, image_url: null})} className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full">✕</button>}
+                  </div>
+                  
+                  <input type="text" placeholder="Başlık" required value={duyuruForm.title} onChange={e => setDuyuruForm({...duyuruForm, title: e.target.value})} className="w-full p-5 bg-gray-50 dark:bg-black/20 rounded-2xl font-black text-xl dark:text-white outline-none" />
+                  
+                  <div className="flex gap-3 items-center">
+                    <input type="color" value={duyuruForm.text_color} onChange={e => setDuyuruForm({...duyuruForm, text_color: e.target.value})} className="w-12 h-12 rounded-xl border-2" />
+                    <input type="text" value={duyuruForm.text_color} onChange={e => setDuyuruForm({...duyuruForm, text_color: e.target.value})} className="flex-1 p-3 bg-gray-50 dark:bg-black/20 rounded-xl dark:text-white font-mono text-sm outline-none" placeholder="#000000" />
+                  </div>
+                  
+                  <textarea placeholder="İçerik..." required rows={4} value={duyuruForm.content} onChange={e => setDuyuruForm({...duyuruForm, content: e.target.value})} className="w-full p-5 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-medium outline-none" />
+                  
+                  <input type="text" placeholder="Buton Yazısı (Opsiyonel)" value={duyuruForm.action_text} onChange={e => setDuyuruForm({...duyuruForm, action_text: e.target.value})} className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none" />
+                  <input type="text" placeholder="Buton Linki (Opsiyonel)" value={duyuruForm.action_link} onChange={e => setDuyuruForm({...duyuruForm, action_link: e.target.value})} className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-mono text-sm outline-none" />
 
-<div className="space-y-2">
-  <label className="text-[10px] font-black uppercase text-gray-400">Buton Linki (Opsiyonel)</label>
-  <input 
-    type="text" 
-    placeholder="Örn: /kitap/123 veya https://..." 
-    value={duyuruForm.action_link} 
-    onChange={e => setDuyuruForm({...duyuruForm, action_link: e.target.value})} 
-    className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-mono text-sm outline-none" 
-  />
-</div>
-
-  <button type="submit" className="w-full py-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-2xl transition-all">
-    {editingId ? 'GÜNCELLE' : 'YAYINLA'}
-  </button>
-</form>
+                  <button type="submit" className="w-full py-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-2xl transition-all">{editingId ? 'GÜNCELLE' : 'YAYINLA'}</button>
+                </form>
               </div>
 
-              <div className="lg:col-span-3 space-y-4 max-h-[600px] overflow-y-auto pr-2 border-l dark:border-white/5 lg:pl-8">
-                {duyurular.map(duyuru => (
-                  <div 
-                    key={duyuru.id} 
-                    className="group relative p-4 rounded-2xl border dark:border-white/5 bg-gray-50 dark:bg-white/5 flex gap-4 hover:border-red-500 transition-all"
-                  >
-                    {duyuru.image_url && (
-                      <img 
-                        src={duyuru.image_url} 
-                        className="w-16 h-20 object-cover rounded-lg bg-gray-800" 
-                        alt="" 
-                      />
-                    )}
+              <div className="lg:col-span-3 space-y-4 max-h-[800px] overflow-y-auto pr-2 border-l dark:border-white/5 lg:pl-8">
+                {duyurular.map(d => (
+                  <div key={d.id} className="group p-4 rounded-2xl border dark:border-white/5 bg-gray-50 dark:bg-white/5 flex gap-4 hover:border-red-500 transition-all">
+                    {d.image_url && <img src={d.image_url} className="w-16 h-20 object-cover rounded-lg bg-gray-800" />}
                     <div className="flex-1">
                       <div className="flex justify-between mb-1">
-                        <h3 
-                          className="font-bold line-clamp-1" 
-                          style={{ color: duyuru.text_color }}
-                        >
-                          {duyuru.title}
-                        </h3>
+                        <h3 className="font-bold line-clamp-1" style={{ color: d.text_color }}>{d.title}</h3>
                         <div className="flex gap-2">
-                          <button 
-                            onClick={() => startEdit(duyuru)} 
-                            className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg hover:bg-blue-500 hover:text-white transition-all"
-                          >
-                            <Icons.Edit />
-                          </button>
-                          <button 
-                            onClick={() => deleteDuyuru(duyuru.id)} 
-                            className="p-1.5 bg-red-500/10 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition-all"
-                          >
-                            <Icons.Delete />
-                          </button>
+                          <button onClick={() => { setEditingId(d.id); setDuyuruForm(d); window.scrollTo({top:0, behavior:'smooth'}); }} className="p-1.5 bg-blue-100 text-blue-500 rounded-lg"><Icons.Edit /></button>
+                          <button onClick={() => deleteDuyuru(d.id)} className="p-1.5 bg-red-100 text-red-500 rounded-lg"><Icons.Delete /></button>
                         </div>
                       </div>
-                      <p className="text-sm text-gray-500 line-clamp-2">
-                        {duyuru.content}
-                      </p>
+                      <p className="text-sm text-gray-500 line-clamp-2">{d.content}</p>
                     </div>
                   </div>
                 ))}
@@ -570,292 +377,182 @@ const [duyuruForm, setDuyuruForm] = useState({
             </div>
           )}
 
+          {/* --- 2. KULLANICILAR --- */}
           {activeTab === 'kullanicilar' && (
             <div className="space-y-8">
               <div className="relative">
-                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400">
-                  <Icons.Search />
-                </div>
-                <input 
-                  type="text" 
-                  placeholder="Kullanıcı adı ile ara..." 
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="w-full pl-12 pr-6 py-5 bg-gray-50 dark:bg-black/20 border-2 border-transparent focus:border-red-600 rounded-2xl dark:text-white font-bold text-lg outline-none transition-all placeholder:text-gray-400 uppercase tracking-wide"
-                />
+                <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-gray-400"><Icons.Search /></div>
+                <input type="text" placeholder="KULLANICI ARA..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }} className="w-full pl-12 pr-6 py-5 bg-gray-50 dark:bg-black/20 border-2 border-transparent focus:border-red-600 rounded-2xl dark:text-white font-bold text-lg outline-none transition-all uppercase" />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {loadingUsers ? (
-                  <div className="col-span-full text-center py-20 opacity-50 font-black uppercase">
-                    Aranıyor...
-                  </div>
-                ) : users.length === 0 ? (
-                  <div className="col-span-full text-center py-20 opacity-30 font-black uppercase">
-                    Kullanıcı bulunamadı
-                  </div>
-                ) : (
-                  users.map(u => (
-                    <div 
-                      key={u.id} 
-                      className={`relative overflow-hidden rounded-3xl p-6 border transition-all hover:shadow-xl ${
-                        u.is_banned 
-                          ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-900/30' 
-                          : 'bg-white dark:bg-white/5 border-gray-100 dark:border-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div 
-                          className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-black text-white shadow-lg ${
-                            u.is_banned 
-                              ? 'bg-red-600' 
-                              : 'bg-gray-800 dark:bg-white dark:text-black'
-                          }`}
-                        >
-                          {u.username?.[0]?.toUpperCase() || '?'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-black text-lg dark:text-white truncate">
-                            @{u.username}
-                          </h3>
-                          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest truncate">
-                            {u.full_name || 'İsimsiz'}
-                          </p>
-                          <p className="text-[10px] text-gray-400 mt-1">
-                            Kayıt: {u.created_at ? new Date(u.created_at).toLocaleDateString('tr-TR') : '-'}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="mt-6 flex items-center justify-between border-t border-gray-100 dark:border-white/5 pt-4">
-                        <span 
-                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                            u.is_banned 
-                              ? 'bg-red-100 text-red-600 dark:bg-red-900/40 dark:text-red-300' 
-                              : 'bg-green-100 text-green-600 dark:bg-green-900/40 dark:text-green-300'
-                          }`}
-                        >
-                          {u.is_banned ? 'YASAKLI 🚫' : 'AKTİF ✅'}
-                        </span>
-                        <button 
-                          onClick={() => toggleBan(u.id, u.is_banned)}
-                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
-                            u.is_banned 
-                              ? 'bg-green-600 text-white hover:bg-green-700' 
-                              : 'bg-red-600 text-white hover:bg-red-700'
-                          }`}
-                        >
-                          {u.is_banned ? 'Yasağı Kaldır' : 'BANLA'}
-                        </button>
+                {users.map(u => (
+                  <div key={u.id} className={`rounded-3xl p-6 border transition-all hover:shadow-xl ${u.is_banned ? 'bg-red-50 dark:bg-red-900/10 border-red-200' : 'bg-white dark:bg-white/5 border-gray-100 dark:border-white/5'}`}>
+                    <div className="flex items-center gap-4">
+                      <div className={`w-14 h-14 rounded-full flex items-center justify-center text-xl font-black text-white ${u.is_banned ? 'bg-red-600' : 'bg-gray-800'}`}>{u.username?.[0]?.toUpperCase()}</div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-black text-lg dark:text-white truncate">@{u.username}</h3>
+                        <p className="text-xs font-bold text-gray-400 uppercase truncate">{u.full_name || 'İsimsiz'}</p>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
-
-              <div className="mt-8 flex items-center justify-between border-t dark:border-white/10 pt-6">
-                <span className="text-sm font-bold text-gray-400">
-                  Toplam {totalUsers} kullanıcı, Sayfa {page} / {totalPages}
-                </span>
-                <div className="flex gap-2">
-                  <button 
-                    onClick={() => setPage(p => Math.max(1, p - 1))} 
-                    disabled={page === 1} 
-                    className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/5 disabled:opacity-30 font-black hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
-                  >
-                    ÖNCEKİ
-                  </button>
-                  <button 
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
-                    disabled={page >= totalPages} 
-                    className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/5 disabled:opacity-30 font-black hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
-                  >
-                    SONRAKİ
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'sikayetler' && (
-            <div className="space-y-6">
-              <div className="flex flex-wrap gap-3 items-center justify-between">
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    { value: 'all', label: 'Tümü', emoji: '📋' },
-                    { value: 'pending', label: 'Bekleyen', emoji: '⏳' },
-                    { value: 'resolved', label: 'Çözüldü', emoji: '✅' },
-                    { value: 'rejected', label: 'Reddedildi', emoji: '❌' }
-                  ].map(filter => (
-                    <button
-                      key={filter.value}
-                      onClick={() => { setReportFilter(filter.value); setReportPage(1); }}
-                      className={`px-6 py-3 rounded-xl font-black uppercase text-xs tracking-widest transition-all ${
-                        reportFilter === filter.value
-                          ? 'bg-red-600 text-white shadow-lg'
-                          : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:bg-gray-200 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      {filter.emoji} {filter.label}
-                    </button>
-                  ))}
-                </div>
-                <span className="text-sm font-bold text-gray-400">
-                  {totalReports} şikayet
-                </span>
-              </div>
-
-              <div className="space-y-4">
-                {loadingReports ? (
-                  <div className="text-center py-20 opacity-50 font-black uppercase dark:text-white">
-                    Yükleniyor...
-                  </div>
-                ) : reports.length === 0 ? (
-                  <div className="text-center py-20 opacity-30 font-black uppercase dark:text-white">
-                    Şikayet bulunamadı
-                  </div>
-                ) : (
-                  reports.map(report => (
-                    <div 
-                      key={report.id} 
-                      className="relative p-6 rounded-2xl border dark:border-white/5 bg-white dark:bg-white/5 hover:shadow-xl transition-all"
-                    >
-                      <div className="flex items-start justify-between mb-4 gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-3 flex-wrap">
-                            <span className="px-3 py-1 rounded-full text-xs font-black uppercase bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-gray-300">
-                              {getTargetEmoji(report.target_type)} {report.target_type}
-                            </span>
-                            <span className="text-xs text-gray-400 font-mono">
-                              ID: {report.target_id}
-                            </span>
-                          </div>
-                          
-                          <div className="flex items-center gap-3 mb-2">
-                            {report.reporter?.avatar_url ? (
-                              <img 
-                                src={report.reporter.avatar_url} 
-                                className="w-8 h-8 rounded-full object-cover" 
-                                alt="" 
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-gray-800 dark:bg-white/20 flex items-center justify-center text-xs font-black text-white dark:text-black">
-                                {report.reporter?.username?.[0]?.toUpperCase() || '?'}
-                              </div>
-                            )}
-                            <div>
-                              <p className="text-sm font-bold dark:text-white">
-                                @{report.reporter?.username || 'Bilinmiyor'}
-                              </p>
-                              <p className="text-[10px] text-gray-400">
-                                {new Date(report.created_at).toLocaleString('tr-TR', { 
-                                  year: 'numeric', 
-                                  month: 'short', 
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <span 
-                          className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${
-                            report.status === 'pending' 
-                              ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300' 
-                              : report.status === 'resolved' 
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' 
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300'
-                          }`}
-                        >
-                          {report.status === 'pending' ? '⏳ BEKLEYEN' : report.status === 'resolved' ? '✅ ÇÖZÜLDÜ' : '❌ RED'}
-                        </span>
-                      </div>
-
-                      <div className="mb-4 p-4 rounded-xl bg-gray-50 dark:bg-black/20 border-l-4 border-red-500">
-                        <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">
-                          Şikayet Sebebi:
-                        </p>
-                        <p className="text-sm dark:text-white font-medium">
-                          {report.reason || 'Belirtilmemiş'}
-                        </p>
-                      </div>
-
-                      {report.content_snapshot && (
-                        <div className="mb-4 p-4 rounded-xl bg-gray-50 dark:bg-black/20 border-l-4 border-orange-500">
-                          <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">
-                            İçerik Örneği:
-                          </p>
-                          <p className="text-sm dark:text-white line-clamp-3 italic">
-                            "{report.content_snapshot}"
-                          </p>
-                        </div>
-                      )}
-
-                      <div className="flex flex-wrap gap-2 pt-4 border-t dark:border-white/5">
-                        {report.status !== 'resolved' && (
-                          <button
-                            onClick={() => updateReportStatus(report.id, 'resolved')}
-                            className="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white text-xs font-black uppercase transition-all shadow-lg"
-                          >
-                            ✅ Çöz
-                          </button>
-                        )}
-                        {report.status !== 'rejected' && (
-                          <button
-                            onClick={() => updateReportStatus(report.id, 'rejected')}
-                            className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-black uppercase transition-all shadow-lg"
-                          >
-                            ❌ Reddet
-                          </button>
-                        )}
-                        {report.status !== 'pending' && (
-                          <button
-                            onClick={() => updateReportStatus(report.id, 'pending')}
-                            className="px-4 py-2 rounded-xl bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-black uppercase transition-all shadow-lg"
-                          >
-                            ⏳ Bekletmeye Al
-                          </button>
-                        )}
-                        <button
-                          onClick={() => deleteReport(report.id)}
-                          className="ml-auto px-4 py-2 rounded-xl bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-700 dark:text-white text-xs font-black uppercase transition-all"
-                        >
-                          🗑️ Sil
-                        </button>
-                      </div>
+                    <div className="mt-6 flex items-center justify-between border-t border-gray-100 dark:border-white/5 pt-4">
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${u.is_banned ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>{u.is_banned ? '🚫 YASAKLI' : '✅ AKTİF'}</span>
+                      <button onClick={() => toggleBan(u.id, u.is_banned)} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase ${u.is_banned ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>{u.is_banned ? 'YASAĞI KALDIR' : 'BANLA'}</button>
                     </div>
-                  ))
-                )}
-              </div>
-
-              {reports.length > 0 && (
-                <div className="flex items-center justify-between border-t dark:border-white/10 pt-6">
-                  <span className="text-sm font-bold text-gray-400">
-                    Sayfa {reportPage} / {totalReportPages}
-                  </span>
-                  <div className="flex gap-2">
-                    <button 
-                      onClick={() => setReportPage(p => Math.max(1, p - 1))} 
-                      disabled={reportPage === 1}
-                      className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/5 disabled:opacity-30 font-black hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
-                    >
-                      ÖNCEKİ
-                    </button>
-                    <button 
-                      onClick={() => setReportPage(p => Math.min(totalReportPages, p + 1))} 
-                      disabled={reportPage >= totalReportPages}
-                      className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/5 disabled:opacity-30 font-black hover:bg-gray-200 dark:hover:bg-white/10 transition-all"
-                    >
-                      SONRAKİ
-                    </button>
                   </div>
+                ))}
+              </div>
+              
+              {totalUsers > USERS_PER_PAGE && (
+                <div className="flex justify-between items-center mt-6 border-t pt-4 dark:border-white/10">
+                   <span className="text-xs font-bold text-gray-400">Toplam: {totalUsers}</span>
+                   <div className="flex gap-2">
+                     <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1} className="px-4 py-2 bg-gray-100 dark:bg-white/10 rounded-lg text-xs font-black disabled:opacity-50">ÖNCEKİ</button>
+                     <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page>=totalPages} className="px-4 py-2 bg-gray-100 dark:bg-white/10 rounded-lg text-xs font-black disabled:opacity-50">SONRAKİ</button>
+                   </div>
                 </div>
               )}
             </div>
           )}
+
+          {/* --- 3. ŞİKAYETLER (GÜNCELLENDİ: LİNK EKLENDİ) --- */}
+          {activeTab === 'sikayetler' && (
+            <div className="space-y-6">
+              <div className="flex flex-wrap gap-2">
+                {['all', 'pending', 'resolved', 'rejected'].map(f => (
+                  <button key={f} onClick={() => { setReportFilter(f); setReportPage(1); }} className={`px-4 py-2 rounded-xl font-black uppercase text-xs ${reportFilter === f ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-500'}`}>
+                    {f === 'all' ? 'Tümü' : f === 'pending' ? 'Bekleyen' : f === 'resolved' ? 'Çözüldü' : 'Reddedildi'}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                {reports.map(r => (
+                  <div key={r.id} className="p-6 rounded-2xl border dark:border-white/5 bg-white dark:bg-white/5 hover:shadow-xl transition-all">
+                    <div className="flex justify-between mb-4">
+                      <div className="flex gap-3 items-center">
+                        <span className="px-3 py-1 bg-gray-100 dark:bg-white/10 rounded-full text-xs font-black uppercase">{getTargetEmoji(r.target_type)} {r.target_type}</span>
+                        <span className="text-sm font-bold dark:text-white">@{r.reporter?.username || 'Anonim'}</span>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : r.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
+                    </div>
+                    <div className="p-4 bg-gray-50 dark:bg-black/20 rounded-xl mb-4 border-l-4 border-red-500">
+                      <p className="text-xs font-black text-gray-400 mb-1">SEBEP</p>
+                      <p className="text-sm dark:text-white">{r.reason}</p>
+                    </div>
+                    {r.content_snapshot && (
+                        <div className="mb-4 p-4 rounded-xl bg-gray-50 dark:bg-black/20 border-l-4 border-orange-500">
+                          <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Örnek:</p>
+                          <p className="text-sm dark:text-white line-clamp-2 italic">"{r.content_snapshot}"</p>
+                        </div>
+                    )}
+                    <div className="flex gap-2 flex-wrap justify-end">
+                      {/* --- YENİ EKLENEN BUTON --- */}
+                      <button onClick={() => navigateToTarget(r.target_type, r.target_id)} className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-black shadow-sm">
+                        🔗 İNCELE
+                      </button>
+                      
+                      {r.status !== 'resolved' && <button onClick={() => updateReportStatus(r.id, 'resolved')} className="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-black">✅ ÇÖZ</button>}
+                      {r.status !== 'rejected' && <button onClick={() => updateReportStatus(r.id, 'rejected')} className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-black">❌ REDDET</button>}
+                      <button onClick={() => deleteReport(r.id)} className="px-3 py-2 bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white rounded-lg text-xs font-black">🗑️ SİL</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* --- 4. DESTEK --- */}
+          {activeTab === 'destek' && (
+            <div className="space-y-6">
+              <div className="flex flex-wrap gap-2 justify-between items-center">
+                <div className="flex gap-2">
+                  {[
+                    { val: 'all', label: 'TÜMÜ' },
+                    { val: 'new', label: 'YENİ' },
+                    { val: 'in_progress', label: 'İŞLENİYOR' },
+                    { val: 'resolved', label: 'ÇÖZÜLDÜ' }
+                  ].map(f => (
+                    <button key={f.val} onClick={() => { setSupportFilter(f.val); setSupportPage(1); }} className={`px-4 py-2 rounded-xl font-black uppercase text-xs ${supportFilter === f.val ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-500'}`}>
+                      {f.label}
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs font-bold text-gray-400">{totalSupport} Mesaj</span>
+              </div>
+
+              <div className="grid gap-4">
+                {supportMessages.length === 0 ? (
+                   <div className="text-center py-20 opacity-30 font-black uppercase dark:text-white">Mesaj bulunamadı</div>
+                ) : (
+                  supportMessages.map(item => (
+                    <div key={item.id} className="p-6 rounded-2xl border dark:border-white/5 bg-white dark:bg-white/5 hover:shadow-xl transition-all flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                           <h3 className="font-black text-lg dark:text-white">{item.full_name}</h3>
+                           <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${item.status === 'new' ? 'bg-blue-100 text-blue-700' : item.status === 'in_progress' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`}>
+                             {item.status === 'new' ? '🔵 YENİ' : item.status === 'in_progress' ? '⏳ İŞLENİYOR' : '✅ ÇÖZÜLDÜ'}
+                           </span>
+                        </div>
+                        <p className="text-sm font-bold text-gray-500 mb-1">{item.subject}</p>
+                        <p className="text-xs text-gray-400">{new Date(item.created_at).toLocaleDateString('tr-TR')} • {item.email}</p>
+                      </div>
+                      
+                      <div className="flex gap-2">
+                        <button onClick={() => setSupportModal(item)} className="px-4 py-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 rounded-xl text-xs font-black dark:text-white">📄 OKU</button>
+                        <button onClick={() => deleteSupport(item.id)} className="px-4 py-2 bg-red-100 dark:bg-red-900/20 text-red-600 rounded-xl text-xs font-black">🗑️ SİL</button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {totalSupport > SUPPORT_PER_PAGE && (
+                <div className="flex justify-between items-center mt-6 border-t pt-4 dark:border-white/10">
+                   <span className="text-xs font-bold text-gray-400">Sayfa {supportPage} / {totalSupportPages}</span>
+                   <div className="flex gap-2">
+                     <button onClick={() => setSupportPage(p => Math.max(1, p-1))} disabled={supportPage===1} className="px-4 py-2 bg-gray-100 dark:bg-white/10 rounded-lg text-xs font-black disabled:opacity-50">ÖNCEKİ</button>
+                     <button onClick={() => setSupportPage(p => Math.min(totalSupportPages, p+1))} disabled={supportPage>=totalSupportPages} className="px-4 py-2 bg-gray-100 dark:bg-white/10 rounded-lg text-xs font-black disabled:opacity-50">SONRAKİ</button>
+                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
+
+      {/* --- DESTEK DETAY MODALI --- */}
+      {supportModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSupportModal(null)}>
+          <div className="bg-white dark:bg-[#111] rounded-3xl p-8 max-w-2xl w-full shadow-2xl border dark:border-white/10" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h2 className="text-2xl font-black dark:text-white">{supportModal.full_name}</h2>
+                <p className="text-sm text-gray-500">{supportModal.email}</p>
+              </div>
+              <button onClick={() => setSupportModal(null)} className="p-2 bg-gray-100 dark:bg-white/10 rounded-full">✕</button>
+            </div>
+            
+            <div className="mb-6">
+              <span className="text-xs font-black text-gray-400 uppercase tracking-widest">KONU</span>
+              <p className="text-lg font-bold dark:text-white mb-4">{supportModal.subject}</p>
+              
+              <span className="text-xs font-black text-gray-400 uppercase tracking-widest">MESAJ</span>
+              <div className="p-4 bg-gray-50 dark:bg-black/30 rounded-2xl mt-1 max-h-60 overflow-y-auto">
+                <p className="text-sm dark:text-gray-300 whitespace-pre-wrap leading-relaxed">{supportModal.message}</p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2 pt-4 border-t dark:border-white/10">
+              <button onClick={() => updateSupportStatus(supportModal.id, 'in_progress')} className="flex-1 py-3 bg-yellow-500 hover:bg-yellow-600 text-white rounded-xl font-black text-xs uppercase">⏳ İŞLEMDE</button>
+              <button onClick={() => updateSupportStatus(supportModal.id, 'resolved')} className="flex-1 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-black text-xs uppercase">✅ ÇÖZÜLDÜ</button>
+              <button onClick={() => deleteSupport(supportModal.id)} className="px-4 py-3 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl font-black text-xs uppercase">🗑️ SİL</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

@@ -60,7 +60,7 @@ export default function Navbar() {
       .select('*')
       .eq('recipient_email', email)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
     setNotifications(n || []);
   }
 
@@ -135,9 +135,104 @@ export default function Navbar() {
 
   if (!mounted) return null;
 
-  const bookNotifs = notifications.filter(n => n.type === 'vote' || n.type === 'comment');
-  const socialNotifs = notifications.filter(n => n.type === 'follow');
+  // BİLDİRİM KATEGORİLERİ
+  const socialNotifs = notifications.filter(n => n.type === 'follow' || n.type === 'reply');
+  const activityNotifs = notifications.filter(n => 
+    n.type === 'vote' || 
+    n.type === 'chapter_vote' || 
+    n.type === 'comment' || 
+    n.type === 'new_chapter' || 
+    n.type === 'pano_vote' || 
+    n.type === 'pano_comment'
+  );
   const unreadCount = notifications.filter(n => !n.is_read).length;
+
+  // BİLDİRİM LİNK OLUŞTURUCU
+  function getNotificationLink(n) {
+    switch(n.type) {
+      case 'vote':
+        return n.book_id ? `/kitap/${n.book_id}` : '#';
+      
+      case 'chapter_vote':
+        return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
+      
+      case 'comment':
+        if (n.chapter_id && n.book_id) {
+          return `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
+        } else if (n.book_id) {
+          return `/kitap/${n.book_id}`;
+        }
+        return '#';
+      
+      case 'new_chapter':
+        return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
+      
+      case 'pano_vote':
+      case 'pano_comment':
+        return n.pano_id ? `/pano/${n.pano_id}` : '#';
+      
+      case 'reply':
+        if (n.chapter_id && n.book_id) {
+          return `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
+        } else if (n.book_id) {
+          return `/kitap/${n.book_id}`;
+        } else if (n.pano_id) {
+          return `/pano/${n.pano_id}`;
+        }
+        return '#';
+      
+      case 'follow':
+        return n.actor_username ? `/yazar/${n.actor_username}` : '#';
+      
+      default:
+        return '#';
+    }
+  }
+
+  // BİLDİRİM METNİ OLUŞTURUCU
+  function getNotificationText(n) {
+    switch(n.type) {
+      case 'vote':
+        return 'eserini beğendi';
+      case 'chapter_vote':
+        return 'bölümünü beğendi';
+      case 'comment':
+        return n.chapter_id ? 'bölümüne yorum yaptı' : 'eserine yorum yaptı';
+      case 'new_chapter':
+        return 'yeni bölüm yayınladı';
+      case 'pano_vote':
+        return 'panonuzu beğendi';
+      case 'pano_comment':
+        return 'panonuza yorum yaptı';
+      case 'reply':
+        return 'yorumunuza yanıt verdi';
+      case 'follow':
+        return 'seni takip etti';
+      default:
+        return 'bir aktivite gerçekleştirdi';
+    }
+  }
+
+  // BİLDİRİM İKONU
+  function getNotificationIcon(n) {
+    switch(n.type) {
+      case 'vote':
+      case 'chapter_vote':
+      case 'pano_vote':
+        return '⭐';
+      case 'comment':
+      case 'pano_comment':
+        return '💬';
+      case 'new_chapter':
+        return '🆕';
+      case 'reply':
+        return '↩️';
+      case 'follow':
+        return '👤';
+      default:
+        return '🔔';
+    }
+  }
 
   return (
     <nav className="w-full border-b sticky top-0 z-[100] backdrop-blur-md bg-white/80 dark:bg-black/90 border-gray-100 dark:border-gray-800 transition-all h-16 md:h-20">
@@ -166,7 +261,7 @@ export default function Navbar() {
 
         {/* ARAMA BARI - Desktop */}
         <div className="hidden md:flex flex-1 max-w-md relative" ref={searchRef}>
-          <div className="relative">
+          <div className="relative w-full">
             <input 
               type="text" 
               value={query} 
@@ -280,11 +375,11 @@ export default function Navbar() {
                 </button>
                 
                 {showNotifs && (
-                  <div className="absolute top-14 right-0 w-[320px] md:w-[500px] bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden z-[120] animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="p-5 border-b dark:border-white/5 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 flex justify-between items-center">
+                  <div className="absolute top-14 right-0 w-[90vw] max-w-[320px] md:w-[500px] md:max-w-none bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden z-[120] animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-4 md:p-5 border-b dark:border-white/5 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 flex justify-between items-center">
                       <div>
-                        <p className="text-sm font-black dark:text-white">Bildirimler</p>
-                        <p className="text-[9px] text-gray-500 uppercase tracking-widest">
+                        <p className="text-xs md:text-sm font-black dark:text-white">Bildirimler</p>
+                        <p className="text-[8px] md:text-[9px] text-gray-500 uppercase tracking-widest">
                           {notifications.length} bildirim
                         </p>
                       </div>
@@ -296,98 +391,81 @@ export default function Navbar() {
                       </button>
                     </div>
                     
-                    <div className="flex divide-x dark:divide-white/5 h-[400px]">
+                    <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 max-h-[60vh] md:h-[400px]">
+                      {/* AKTİVİTELER */}
                       <div className="flex-1 overflow-y-auto no-scrollbar">
-                        <div className="p-4 bg-gray-50/50 dark:bg-white/[0.02] sticky top-0 backdrop-blur-sm">
+                        <div className="p-3 md:p-4 bg-gray-50/50 dark:bg-white/[0.02] sticky top-0 backdrop-blur-sm z-10">
                           <p className="text-[8px] font-black uppercase text-red-600 tracking-[0.2em] flex items-center gap-2">
-                            📚 Eserler
+                            🔔 Aktiviteler
                           </p>
                         </div>
-                        <div className="p-3 space-y-2">
-                          {bookNotifs.length === 0 ? (
-                            <div className="text-center py-12">
-                              <span className="text-3xl block mb-2 opacity-20">😴</span>
-                              <p className="text-[9px] text-gray-400 italic">Henüz hareket yok</p>
+                        <div className="p-2 md:p-3 space-y-2">
+                          {activityNotifs.length === 0 ? (
+                            <div className="text-center py-8 md:py-12">
+                              <span className="text-2xl md:text-3xl block mb-2 opacity-20">😴</span>
+                              <p className="text-[8px] md:text-[9px] text-gray-400 italic">Henüz aktivite yok</p>
                             </div>
-                          ) : bookNotifs.map(n => {
-                            let linkUrl = '#';
-                            if (n.type === 'vote' && n.book_id) {
-                              linkUrl = `/kitap/${n.book_id}`;
-                            } else if (n.type === 'comment' && n.book_id) {
-                              if (n.chapter_id) {
-                                linkUrl = `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
-                              } else {
-                                linkUrl = `/kitap/${n.book_id}`;
-                              }
-                            } else if (n.type === 'new_chapter' && n.book_id && n.chapter_id) {
-                              linkUrl = `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
-                            }
-
-                            return (
+                          ) : activityNotifs.map(n => (
                             <Link
                               key={n.id}
-                              href={linkUrl}
+                              href={getNotificationLink(n)}
                               onClick={() => setShowNotifs(false)}
-                              className="block p-3 rounded-2xl transition-all group hover:scale-[1.02] bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/20"
+                              className="block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/20"
                             >
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-red-600/10 flex items-center justify-center shrink-0">
-                                  <span className="text-xs">
-                                    {n.type === 'vote' ? '⭐' : n.type === 'new_chapter' ? '🆕' : '💬'}
-                                  </span>
+                              <div className="flex items-start gap-2 md:gap-3">
+                                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-600/10 flex items-center justify-center shrink-0">
+                                  <span className="text-xs">{getNotificationIcon(n)}</span>
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[10px] font-bold leading-relaxed">
+                                  <p className="text-[9px] md:text-[10px] font-bold leading-relaxed">
                                     <span className="text-red-600 font-black">@{n.actor_username}</span>
                                     {' '}
-                                    {n.type === 'vote' 
-                                      ? 'eserini oyladı' 
-                                      : n.type === 'new_chapter'
-                                      ? 'yeni bölüm yayınladı'
-                                      : 'eserine yorum yaptı'}
+                                    {getNotificationText(n)}
                                   </p>
                                   {n.book_title && (
-                                    <p className="text-[9px] text-gray-500 mt-1 truncate italic">"{n.book_title}"</p>
+                                    <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">"{n.book_title}"</p>
                                   )}
-                                  <p className="text-[8px] text-gray-400 mt-1">
+                                  <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
                                     {new Date(n.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                   </p>
                                 </div>
                               </div>
                             </Link>
-                          )})}
+                          ))}
                         </div>
                       </div>
 
-                      <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50/30 dark:bg-white/[0.01]">
-                        <div className="p-4 bg-blue-50/50 dark:bg-blue-950/10 sticky top-0 backdrop-blur-sm">
+                      {/* SOSYAL */}
+                      <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50/30 dark:bg-white/[0.01] border-t md:border-t-0 dark:border-white/5">
+                        <div className="p-3 md:p-4 bg-blue-50/50 dark:bg-blue-950/10 sticky top-0 backdrop-blur-sm z-10">
                           <p className="text-[8px] font-black uppercase text-blue-600 tracking-[0.2em] flex items-center gap-2">
                             👥 Sosyal
                           </p>
                         </div>
-                        <div className="p-3 space-y-2">
+                        <div className="p-2 md:p-3 space-y-2">
                           {socialNotifs.length === 0 ? (
-                            <div className="text-center py-12">
-                              <span className="text-3xl block mb-2 opacity-20">🫥</span>
-                              <p className="text-[9px] text-gray-400 italic">Henüz takipçi yok</p>
+                            <div className="text-center py-8 md:py-12">
+                              <span className="text-2xl md:text-3xl block mb-2 opacity-20">🫥</span>
+                              <p className="text-[8px] md:text-[9px] text-gray-400 italic">Henüz sosyal aktivite yok</p>
                             </div>
                           ) : socialNotifs.map(n => (
                             <Link
                               key={n.id}
-                              href={`/yazar/${n.actor_username}`}
+                              href={getNotificationLink(n)}
                               onClick={() => setShowNotifs(false)}
-                              className="block p-3 rounded-2xl transition-all group hover:scale-[1.02] bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                              className="block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-blue-950/20"
                             >
-                              <div className="flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-full bg-blue-600/10 flex items-center justify-center shrink-0 font-black text-blue-600 text-xs">
+                              <div className="flex items-start gap-2 md:gap-3">
+                                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-blue-600/10 flex items-center justify-center shrink-0 font-black text-blue-600 text-xs">
                                   {n.actor_username?.[0]?.toUpperCase() || 'U'}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <p className="text-[10px] font-bold leading-relaxed">
+                                  <p className="text-[9px] md:text-[10px] font-bold leading-relaxed">
                                     <span className="text-blue-600 font-black">@{n.actor_username}</span>
-                                    {' '}seni takip etti
+                                    {' '}
+                                    {getNotificationText(n)}
                                   </p>
-                                  <p className="text-[8px] text-gray-400 mt-1">
+                                  <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
                                     {new Date(n.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                   </p>
                                 </div>
