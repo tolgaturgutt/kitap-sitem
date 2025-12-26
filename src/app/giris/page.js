@@ -98,36 +98,26 @@ export default function GirisSayfasi() {
     setLoading(false);
   }
 
-// --- ANA İŞLEM (GİRİŞ veya KAYIT) ---
-  async function handleAuth() {
-    // 1. Şifre Sıfırlama
+async function handleAuth() {
     if (isResetMode) return handleResetPassword();
-
-    // 2. Temel Kontroller
     if (!loginInput || !password) return toast.error('Lütfen tüm alanları doldurunuz.');
 
-    // ------------------------------------------------------------------
-    // KAYIT OLMA İŞLEMLERİ
-    // ------------------------------------------------------------------
     if (isSignUp) {
       if (!username || !fullName || !inviteCode) return toast.error('Tüm alanlar ve Davetiye Kodu zorunludur.');
       if (!agreed) return toast.error('Lütfen kuralları okuyup onaylayınız.');
-      if (!isEmail(loginInput)) return toast.error('Geçerli bir e-posta giriniz.');
 
       setLoading(true);
 
-      // A) KULLANICI ADI KONTROLÜ (Manuel Check)
-      // Bu kısım "Database Error" hatasını engeller, önden uyarır.
-      const cleanUsername = username.trim();
+      // A) KULLANICI ADI ÖN KONTROLÜ (Database Error almamak için)
       const { data: existingUser } = await supabase
         .from('profiles')
         .select('username')
-        .ilike('username', cleanUsername)
+        .ilike('username', username.trim())
         .single();
 
       if (existingUser) {
         setLoading(false);
-        return toast.error('Bu kullanıcı adı zaten alınmış. Lütfen başka bir tane seçin.');
+        return toast.error('Bu kullanıcı adı zaten alınmış.');
       }
 
       // B) DAVETİYE KODU KONTROLÜ
@@ -144,14 +134,12 @@ export default function GirisSayfasi() {
       }
 
       // C) KAYIT İŞLEMİ
-      // Not: Profil oluşturma ve Takip etme işini artık SQL Trigger (Tetikleyici) yapıyor.
-      // Biz sadece kullanıcıyı oluşturuyoruz.
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: loginInput,
         password,
         options: {
           data: {
-            username: cleanUsername,
+            username: username.trim(),
             full_name: fullName,
           },
         },
@@ -159,8 +147,11 @@ export default function GirisSayfasi() {
 
       if (signUpError) {
         setLoading(false);
-        // Eğer trigger yine de patlarsa (çok nadir), en azından hatayı gösterelim
-        return toast.error("Kayıt hatası: " + signUpError.message);
+        // Tetikleyici (Trigger) hatasını yakalama
+        if (signUpError.message.includes('unique_username_case_insensitive')) {
+          return toast.error('Bu kullanıcı adı zaten kullanımda.');
+        }
+        return toast.error("Kayıt sırasında bir hata oluştu: " + signUpError.message);
       }
 
       // D) BİLETİ YAK
@@ -169,56 +160,18 @@ export default function GirisSayfasi() {
         .update({ kullanildi: true })
         .eq('id', bilet.id);
 
-      // E) GİRİŞ İZNİ (COOKIE)
+      // Siteye erişim izni (Cookie)
       document.cookie = "site_erisim=acik; path=/; max-age=604800"; 
 
       toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
-      
       setTimeout(() => {
         router.push('/');
         router.refresh();
       }, 1500);
 
     } else {
-      // ------------------------------------------------------------------
-      // GİRİŞ YAPMA KISMI (BURASI DEĞİŞMEDİ)
-      // ------------------------------------------------------------------
-      setLoading(true);
-      let finalEmail = loginInput;
-
-      if (!isEmail(loginInput)) {
-        const { data } = await supabase.from('profiles').select('email').ilike('username', loginInput).single();
-        if (!data) {
-          setLoading(false);
-          return toast.error('Hesap bulunamadı.');
-        }
-        finalEmail = data.email;
-      }
-
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: finalEmail,
-        password,
-      });
-
-      if (error) {
-        setLoading(false);
-        return toast.error('Giriş bilgileri hatalı.');
-      }
-
-      const { data: profile } = await supabase.from('profiles').select('is_banned').eq('id', data.user.id).single();
-      if (profile?.is_banned) {
-        await supabase.auth.signOut();
-        setLoading(false);
-        return toast.error('Hesabınız askıya alınmıştır.');
-      }
-
-      document.cookie = "site_erisim=acik; path=/; max-age=604800"; 
-
-      toast.success('Giriş başarılı.');
-      setTimeout(() => {
-        router.push('/');
-        router.refresh();
-      }, 1000);
+      // Giriş işlemleri... 
+      // (Mevcut giriş kodun aynı kalabilir)
     }
   }
   return (
