@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
+export const dynamic = 'force-dynamic';
 
 export default function PanoDuzenle({ params }) {
   const { id } = use(params);

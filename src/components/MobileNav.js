@@ -64,7 +64,7 @@ export default function MobileNav() {
           {/* 1. KÜTÜPHANE */}
           <Link 
             href="/kutuphane" 
-            className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
               isActive('/kutuphane') 
                 ? 'text-red-600' 
                 : 'text-gray-400 hover:text-red-600'
@@ -74,10 +74,23 @@ export default function MobileNav() {
             <span className="text-[9px] font-black uppercase tracking-tight">Kütüphane</span>
           </Link>
 
-          {/* 2. ARTIYA TIKLA */}
+          {/* 2. KİTAPLARIM */}
+          <Link 
+            href="/kitaplarim" 
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
+              isActive('/kitaplarim') 
+                ? 'text-red-600' 
+                : 'text-gray-400 hover:text-red-600'
+            }`}
+          >
+            <div className="text-2xl">📖</div>
+            <span className="text-[9px] font-black uppercase tracking-tight">Kitaplarım</span>
+          </Link>
+
+          {/* 3. ARTIYA TIKLA (ORTADA) */}
           <button 
             onClick={() => setShowPlusMenu(!showPlusMenu)}
-            className={`flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all ${
               showPlusMenu 
                 ? 'text-red-600 scale-110' 
                 : 'text-gray-400 hover:text-red-600'
@@ -87,20 +100,20 @@ export default function MobileNav() {
             <span className="text-[9px] font-black uppercase tracking-tight">Oluştur</span>
           </button>
 
-          {/* 3. ETKİNLİKLER (YAKINDA) */}
+          {/* 4. ETKİNLİKLER (YAKINDA) */}
           <button 
             onClick={handleComingSoon}
-            className="flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
+            className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
           >
             <div className="text-2xl">🎉</div>
             <span className="text-[9px] font-black uppercase tracking-tight">Etkinlik</span>
             <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
           </button>
 
-          {/* 4. SIRALAMA (YAKINDA) */}
+          {/* 5. SIRALAMA (YAKINDA) */}
           <button 
             onClick={handleComingSoon}
-            className="flex flex-col items-center justify-center gap-1 px-4 py-2 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
+            className="flex flex-col items-center justify-center gap-1 px-3 py-2 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
           >
             <div className="text-2xl">🏆</div>
             <span className="text-[9px] font-black uppercase tracking-tight">Sıralama</span>

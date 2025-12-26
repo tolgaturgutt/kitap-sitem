@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import YorumAlani from '@/components/YorumAlani';
-import { Toaster, toast } from 'react-hot-toast'; // Toast eklendi
+import { Toaster, toast } from 'react-hot-toast';
 import { createChapterVoteNotification } from '@/lib/notifications'; 
 
 export default function BolumDetay({ params }) {
@@ -16,7 +16,7 @@ export default function BolumDetay({ params }) {
   const [loading, setLoading] = useState(true);
   const [activePara, setActivePara] = useState(null);
   const [paraCommentCounts, setParaCommentCounts] = useState({});
-  const [user, setUser] = useState(null); // User state'i eklendi
+  const [user, setUser] = useState(null);
 
   // ✅ YENİ: BEĞENİ STATE'LERİ
   const [likes, setLikes] = useState(0);
@@ -52,7 +52,7 @@ export default function BolumDetay({ params }) {
         const { data: all } = await supabase.from('chapters').select('id, title').eq('book_id', id).order('order_no', { ascending: true });
         
         const { data: { user: currentUser } } = await supabase.auth.getUser();
-        setUser(currentUser); // User'ı state'e at
+        setUser(currentUser);
         
         if (currentUser) {
           // Okunma sayısını arttır
@@ -169,7 +169,18 @@ const handleLike = async () => {
   const currentIndex = data.allChapters.findIndex(c => Number(c.id) === Number(bolumId));
   const prevChapter = currentIndex > 0 ? data.allChapters[currentIndex - 1] : null;
   const nextChapter = (currentIndex !== -1 && currentIndex < data.allChapters.length - 1) ? data.allChapters[currentIndex + 1] : null;
-  const paragraphs = data.chapter?.content ? data.chapter.content.split('\n') : [];
+  
+  // ✅ HTML içeriği için doğru split mantığı
+  const paragraphs = data.chapter?.content 
+    ? data.chapter.content
+        .split(/<\/p>|<br\s*\/?>|\n/)
+        .map(p => {
+          let cleaned = p.replace(/<p[^>]*>/g, '').trim();
+          cleaned = cleaned.replace(/\s*style=""\s*/g, '');
+          return cleaned;
+        })
+        .filter(p => p !== '' && p !== '<br>' && p !== '<br/>')
+    : [];
 
   return (
     <div className={`min-h-screen transition-colors duration-500 ${readerSettings.theme}`}>
@@ -213,7 +224,11 @@ const handleLike = async () => {
               return (
                 <div key={i} className="relative mb-10 group">
                   <div className={`flex items-start gap-4 transition-all duration-500 rounded-[1.8rem] p-4 -mx-4 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5' : ''}`}>
-                    <p className="flex-1">{para}</p>
+                    {/* ✅ BURADA DEĞİŞİKLİK: dangerouslySetInnerHTML ile HTML render et */}
+                    <div 
+                      className="flex-1"
+                      dangerouslySetInnerHTML={{ __html: para }}
+                    />
                     <button onClick={() => setActivePara(activePara === paraId ? null : paraId)} className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all border ${count > 0 || activePara === paraId ? 'bg-red-600 border-red-600 text-white shadow-lg' : 'bg-transparent border-current opacity-20 group-hover:opacity-100 hover:text-red-600'}`}>
                       <span className="text-[9px] font-black">{count > 0 ? count : '+'}</span>
                     </button>
@@ -280,7 +295,7 @@ const handleLike = async () => {
                 bookId={id} 
                 paraId={null}
                 onCommentAdded={handleCommentAdded}
-                includeParagraphs={true} // Paragraf yorumları dahil
+                includeParagraphs={true}
               />
             ) : (
               <p className="text-center text-red-500">ID'ler yüklenemedi</p>

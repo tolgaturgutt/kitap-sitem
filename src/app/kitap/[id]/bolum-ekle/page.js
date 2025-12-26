@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use, useEffect } from 'react';
+import { useState, use, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
@@ -11,6 +11,12 @@ export default function BolumEkle({ params }) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const [bannedWords, setBannedWords] = useState([]);
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    underline: false
+  });
+  const editorRef = useRef(null);
   const router = useRouter();
 
   // 🔴 YASAKLI KELİMELERİ VERİTABANINDAN ÇEK
@@ -34,7 +40,7 @@ export default function BolumEkle({ params }) {
   function findBannedWords(text) {
     if (!text || bannedWords.length === 0) return [];
     
-    const words = text.toLowerCase().split(/\b/); // Kelime sınırlarına göre böl
+    const words = text.toLowerCase().split(/\b/);
     const found = [];
     
     bannedWords.forEach(banned => {
@@ -45,13 +51,37 @@ export default function BolumEkle({ params }) {
       });
     });
     
-    return [...new Set(found)]; // Tekrarları kaldır
+    return [...new Set(found)];
   }
 
   const detectedBannedInTitle = findBannedWords(title);
   const detectedBannedInContent = findBannedWords(content);
   const allDetectedBanned = [...new Set([...detectedBannedInTitle, ...detectedBannedInContent])];
   const hasBannedWords = allDetectedBanned.length > 0;
+
+  // 🎨 FORMATLAMA FONKSİYONLARI
+  function formatText(command, value = null) {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+    setTimeout(updateFormatState, 10);
+  }
+
+  // Format durumunu güncelle
+  function updateFormatState() {
+    setActiveFormats({
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline')
+    });
+  }
+
+  // İçerik değişikliğini yakala
+  function handleInput() {
+    if (editorRef.current) {
+      setContent(editorRef.current.innerText);
+    }
+    updateFormatState();
+  }
 
   // 🔴 İÇERİĞİ HIGHLIGHT ET
   function highlightContent(text) {
@@ -79,13 +109,23 @@ export default function BolumEkle({ params }) {
     return censored;
   }
 
-  async function bolumKaydet() {
+  async function bolumKaydet(e) {
+    e.preventDefault();
+    
+    let htmlContent = editorRef.current?.innerHTML || '';
+    
+    // ✅ TÜM style attribute'larını temizle (boş olsun dolu olsun)
+    htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
+    // Font taglarını da temizle
+    htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
+    // Span taglarını temizle
+    htmlContent = htmlContent.replace(/<\/?span[^>]*>/g, '');
+    
     if (!title.trim() || !content.trim()) {
       toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
       return;
     }
 
-    // 🔴 YASAKLI KELİME VARSA İZİN VERME
     if (hasBannedWords) {
       toast.error(`⚠️ Yasaklı kelimeler tespit edildi: ${allDetectedBanned.join(', ')}`);
       return;
@@ -94,14 +134,12 @@ export default function BolumEkle({ params }) {
     setLoading(true);
 
     try {
-      // Kitap bilgisini al
       const { data: book } = await supabase
         .from('books')
         .select('title, username')
         .eq('id', id)
         .single();
 
-      // Mevcut bölüm sayısını bulup sıra numarası ver
       const { count } = await supabase
         .from('chapters')
         .select('*', { count: 'exact', head: true })
@@ -109,16 +147,15 @@ export default function BolumEkle({ params }) {
 
       const sirasi = (count || 0) + 1;
 
-      // 🔴 SANSÜRLÜ İÇERİK OLUŞTUR
       const censoredTitle = censorContent(title);
-      const censoredContent = censorContent(content);
+      const censoredContent = censorContent(htmlContent);
 
       const { data: newChapter, error } = await supabase
         .from('chapters')
         .insert([{
           book_id: id,
-          title: censoredTitle, // 👈 Sansürlü başlık
-          content: censoredContent, // 👈 Sansürlü içerik
+          title: censoredTitle,
+          content: censoredContent,
           order_no: sirasi,
         }])
         .select()
@@ -126,7 +163,6 @@ export default function BolumEkle({ params }) {
 
       if (error) throw error;
 
-      // TAKİPÇİLERE BİLDİRİM GÖNDER
       const { data: followers } = await supabase
         .from('follows')
         .select('user_email')
@@ -162,15 +198,20 @@ export default function BolumEkle({ params }) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-black text-gray-900 dark:text-white p-6">
+    <div className="min-h-screen py-24 px-6 bg-[#fcfcfc] dark:bg-[#080808]">
       <Toaster position="top-right" />
 
-      <div className="w-full max-w-4xl bg-white dark:bg-gray-900 p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-xl">
-        <h1 className="text-2xl font-bold mb-6">Yeni Bölüm Ekle</h1>
+      <div className="max-w-3xl mx-auto">
+        <header className="mb-16 text-center">
+          <h1 className="text-4xl font-black dark:text-white tracking-tighter mb-4">Yeni Bölüm Ekle</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 italic">
+            Hikayeni Devam Ettir
+          </p>
+        </header>
 
-        <div className="space-y-6">
+        <form onSubmit={bolumKaydet} className="space-y-8 bg-white dark:bg-black/20 p-10 rounded-[3rem] border dark:border-white/5 shadow-xl shadow-black/5">
           <div>
-            <label className="block text-sm font-medium mb-2 opacity-70">
+            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-4">
               Bölüm Başlığı
               {detectedBannedInTitle.length > 0 && (
                 <span className="ml-2 text-red-500 text-xs animate-pulse">
@@ -182,15 +223,14 @@ export default function BolumEkle({ params }) {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className={`w-full p-3 bg-gray-50 dark:bg-black border rounded-lg outline-none focus:border-blue-500 font-bold ${
+              className={`w-full p-5 bg-gray-50 dark:bg-white/5 border rounded-full outline-none focus:ring-2 ring-red-600/20 dark:text-white font-bold ${
                 detectedBannedInTitle.length > 0 
                   ? 'border-red-500 dark:border-red-500' 
-                  : 'border-gray-300 dark:border-gray-700'
+                  : 'dark:border-white/5'
               }`}
               placeholder="Örn: 1. Başlangıç"
             />
             
-            {/* 🔴 BAŞLIKTA YASAKLI KELİMELERİ GÖSTER */}
             {detectedBannedInTitle.length > 0 && title && (
               <div className="mt-3 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
                 <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-1">
@@ -205,7 +245,7 @@ export default function BolumEkle({ params }) {
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 opacity-70">
+            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-4">
               Bölüm İçeriği
               {detectedBannedInContent.length > 0 && (
                 <span className="ml-2 text-red-500 text-xs animate-pulse">
@@ -214,34 +254,77 @@ export default function BolumEkle({ params }) {
               )}
             </label>
             
-            {/* 🔴 TEXTAREA (Yazma için) */}
-            <textarea
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows="15"
-              className={`w-full p-4 bg-gray-50 dark:bg-black border rounded-lg outline-none focus:border-blue-500 leading-relaxed resize-y ${
+            {/* 🎨 FORMATLAMA TOOLBAR */}
+            <div className="mb-3 flex gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => formatText('bold')}
+                className={`px-4 py-2 rounded-md font-bold transition-all select-none ${
+                  activeFormats.bold
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 hover:text-white'
+                }`}
+                title="Kalın (Ctrl+B)"
+              >
+                B
+              </button>
+
+              <button
+                type="button"
+                onClick={() => formatText('italic')}
+                className={`px-4 py-2 rounded-md italic transition-all select-none ${
+                  activeFormats.italic
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 hover:text-white'
+                }`}
+                title="İtalik (Ctrl+I)"
+              >
+                I
+              </button>
+
+              <button
+                type="button"
+                onClick={() => formatText('underline')}
+                className={`px-4 py-2 rounded-md underline transition-all select-none ${
+                  activeFormats.underline
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 hover:text-white'
+                }`}
+                title="Altı Çizili (Ctrl+U)"
+              >
+                U
+              </button>
+            </div>
+
+            {/* 🎨 WYSIWYG EDITOR */}
+            <div
+              ref={editorRef}
+              contentEditable
+              onInput={handleInput}
+              onMouseUp={updateFormatState}
+              onKeyUp={updateFormatState}
+              className={`w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed overflow-auto ${
                 detectedBannedInContent.length > 0 
                   ? 'border-red-500 dark:border-red-500' 
-                  : 'border-gray-300 dark:border-gray-700'
+                  : 'dark:border-white/5'
               }`}
-              placeholder="Hikayenizi buraya yazın..."
-            ></textarea>
+              data-placeholder="Hikayenizi buraya yazın..."
+              suppressContentEditableWarning
+            />
 
-            {/* 🔴 İÇERİKTE YASAKLI KELİMELERİ GÖSTER */}
             {detectedBannedInContent.length > 0 && content && (
               <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
                 <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-2">
                   ÖNİZLEME (Yasaklı kelimeler vurgulandı):
                 </p>
                 <div 
-                  className="text-sm leading-relaxed whitespace-pre-wrap"
+                  className="text-sm leading-relaxed whitespace-pre-wrap font-serif"
                   dangerouslySetInnerHTML={{ __html: highlightContent(content) }}
                 />
               </div>
             )}
             
-            {/* ✅ KELİME SAYACI */}
-            <div className="flex justify-between items-center mt-2 px-1">
+            <div className="flex justify-between items-center mt-2 px-4">
               {hasBannedWords && (
                 <span className="text-xs font-bold text-red-500">
                   🚫 Bu içerik yayınlanamaz
@@ -253,22 +336,23 @@ export default function BolumEkle({ params }) {
             </div>
           </div>
 
-          <div className="flex justify-end gap-4">
-             <button
+          <div className="flex gap-4">
+            <button
+              type="button"
               onClick={() => router.back()}
-              className="px-6 py-3 bg-gray-200 dark:bg-gray-800 rounded-lg font-medium hover:bg-gray-300 transition"
+              className="flex-1 h-14 rounded-full bg-gray-100 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-all"
             >
               İptal
             </button>
             <button
-              onClick={bolumKaydet}
+              type="submit"
               disabled={loading || hasBannedWords}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-[2] h-14 rounded-full bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-600/10 hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Kaydediliyor...' : hasBannedWords ? '🚫 Yayınlanamaz' : 'Yayınla 🚀'}
+              {loading ? 'YAYINLANIYOR...' : hasBannedWords ? '🚫 Yayınlanamaz' : 'YAYINLA 🚀'}
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

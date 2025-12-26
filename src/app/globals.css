@@ -385,4 +385,58 @@
     background: white !important;
     color: black !important;
   }
+}/* ContentEditable Seçim Vurgusu - EXTRA BELİRGİN */
+[contenteditable] {
+  outline: none;
+  caret-color: #3b82f6;
+}
+
+[contenteditable]:empty:before {
+  content: attr(data-placeholder);
+  color: #adb5bd;
+  pointer-events: none;
+}
+
+/* Seçim rengi - SARI ARKA PLAN */
+[contenteditable]::selection,
+[contenteditable] *::selection {
+  background: #fbbf24 !important;
+  color: #000000 !important;
+  text-shadow: none !important;
+}
+
+[contenteditable]::-moz-selection,
+[contenteditable] *::-moz-selection {
+  background: #fbbf24 !important;
+  color: #000000 !important;
+}
+
+/* Format Stilleri */
+[contenteditable] strong,
+[contenteditable] b {
+  font-weight: 700 !important;
+}
+
+[contenteditable] em,
+[contentedible] i {
+  font-style: italic !important;
+}
+
+[contenteditable] u {
+  text-decoration: underline !important;
+}
+
+[contenteditable] font[size="7"] {
+  font-size: 2em !important;
+  font-weight: bold !important;
+  display: block;
+  margin: 0.5em 0;
+}
+
+[contenteditable] blockquote {
+  border-left: 3px solid #ccc;
+  padding-left: 1em;
+  margin: 0.5em 0;
+  opacity: 0.8;
+  display: block;
 }

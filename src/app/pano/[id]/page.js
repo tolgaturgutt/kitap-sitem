@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import PanoModal from '@/components/PanoModal';
+export const dynamic = 'force-dynamic';
 
 export default function PanoPage({ params }) {
   // ✅ params'ı unwrap et

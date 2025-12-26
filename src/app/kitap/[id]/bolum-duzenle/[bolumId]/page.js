@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useState, use, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
@@ -12,6 +12,13 @@ export default function BolumDuzenle({ params }) {
   const [formData, setFormData] = useState({ title: '', content: '' });
   const [ids, setIds] = useState({ kitapId: null, bolumId: null });
   const [bannedWords, setBannedWords] = useState([]);
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    underline: false
+  });
+  const editorRef = useRef(null);
+  const [editorLoaded, setEditorLoaded] = useState(false);
 
   // 🔴 YASAKLI KELİMELERİ VERİTABANINDAN ÇEK
   useEffect(() => {
@@ -52,6 +59,30 @@ export default function BolumDuzenle({ params }) {
   const detectedBannedInContent = findBannedWords(formData.content);
   const allDetectedBanned = [...new Set([...detectedBannedInTitle, ...detectedBannedInContent])];
   const hasBannedWords = allDetectedBanned.length > 0;
+
+  // 🎨 FORMATLAMA FONKSİYONLARI
+  function formatText(command, value = null) {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+    setTimeout(updateFormatState, 10);
+  }
+
+  // Format durumunu güncelle
+  function updateFormatState() {
+    setActiveFormats({
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline')
+    });
+  }
+
+  // İçerik değişikliğini yakala
+  function handleInput() {
+    if (editorRef.current) {
+      setFormData({...formData, content: editorRef.current.innerText});
+    }
+    updateFormatState();
+  }
 
   // 🔴 İÇERİĞİ HIGHLIGHT ET
   function highlightContent(text) {
@@ -119,8 +150,14 @@ export default function BolumDuzenle({ params }) {
           return router.push(`/kitap/${ids.kitapId}`);
         }
 
-        setFormData({ title: chapter.title, content: chapter.content });
+        // ✅ Form data'yı set et
+        setFormData({ 
+          title: chapter.title, 
+          content: chapter.content 
+        });
+        
         setLoading(false);
+        setEditorLoaded(true);
       } catch (error) {
         console.error('Hata:', error);
         toast.error("Bir hata oluştu.");
@@ -130,8 +167,24 @@ export default function BolumDuzenle({ params }) {
     getChapterData();
   }, [ids, router]);
 
+  // ✅ Editor'a içeriği yükle (formData hazır olduktan SONRA)
+  useEffect(() => {
+    if (editorLoaded && editorRef.current && formData.content) {
+      editorRef.current.innerHTML = formData.content;
+    }
+  }, [editorLoaded, formData.content]);
+
   async function handleUpdate(e) {
     e.preventDefault();
+    
+    let htmlContent = editorRef.current?.innerHTML || '';
+    
+    // ✅ TÜM style attribute'larını temizle (boş olsun dolu olsun)
+    htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
+    // Font taglarını da temizle
+    htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
+    // Span taglarını temizle
+    htmlContent = htmlContent.replace(/<\/?span[^>]*>/g, '');
     
     if (!formData.title.trim() || !formData.content.trim()) {
       toast.error("Başlık ve içerik boş olamaz.");
@@ -147,9 +200,9 @@ export default function BolumDuzenle({ params }) {
     setUpdating(true);
 
     try {
-      // 🔴 SANSÜRLÜ İÇERİK OLUŞTUR
+      // 🔴 SANSÜRLü İÇERİK OLUŞTUR
       const censoredTitle = censorContent(formData.title);
-      const censoredContent = censorContent(formData.content);
+      const censoredContent = censorContent(htmlContent);
 
       const { data, error } = await supabase
         .from('chapters')
@@ -245,17 +298,63 @@ export default function BolumDuzenle({ params }) {
                 </span>
               )}
             </label>
-            <textarea 
-              required
-              rows="15"
-              value={formData.content}
-              onChange={e => setFormData({...formData, content: e.target.value})}
-              className={`w-full p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed ${
+
+            {/* 🎨 FORMATLAMA TOOLBAR */}
+            <div className="mb-3 flex gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => formatText('bold')}
+                className={`px-4 py-2 rounded-md font-bold transition-all select-none ${
+                  activeFormats.bold
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 hover:text-white'
+                }`}
+                title="Kalın (Ctrl+B)"
+              >
+                B
+              </button>
+
+              <button
+                type="button"
+                onClick={() => formatText('italic')}
+                className={`px-4 py-2 rounded-md italic transition-all select-none ${
+                  activeFormats.italic
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 hover:text-white'
+                }`}
+                title="İtalik (Ctrl+I)"
+              >
+                I
+              </button>
+
+              <button
+                type="button"
+                onClick={() => formatText('underline')}
+                className={`px-4 py-2 rounded-md underline transition-all select-none ${
+                  activeFormats.underline
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 hover:text-white'
+                }`}
+                title="Altı Çizili (Ctrl+U)"
+              >
+                U
+              </button>
+            </div>
+
+            {/* 🎨 WYSIWYG EDITOR */}
+            <div
+              ref={editorRef}
+              contentEditable
+              onInput={handleInput}
+              onMouseUp={updateFormatState}
+              onKeyUp={updateFormatState}
+              className={`w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed ${
                 detectedBannedInContent.length > 0 
                   ? 'border-red-500 dark:border-red-500' 
                   : 'dark:border-white/5'
               }`}
-              placeholder="Hikayeni buraya yaz..."
+              data-placeholder="Hikayeni buraya yaz..."
+              suppressContentEditableWarning
             />
             
             {/* 🔴 İÇERİKTE YASAKLI KELİMELERİ GÖSTER */}

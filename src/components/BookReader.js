@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
-// İkonlar (Aynı)
+// İkonlar
 const Icons = {
   Comment: () => (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-3 h-3"><path fillRule="evenodd" d="M4.804 21.644A6.707 6.707 0 0 0 6 21.75a6.721 6.721 0 0 0 3.583-1.029c.774.182 1.584.279 2.417.279 5.322 0 9.75-3.97 9.75-9 0-5.03-4.428-9-9.75-9s-9.75 3.97-9.75 9c0 2.409 1.025 4.562 2.632 6.19l-.368 1.454a3.75 3.75 0 0 0 2.287 4.65c.343.088.7.13 1.053.13Z" clipRule="evenodd" /></svg>),
   Close: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>),
@@ -17,25 +17,35 @@ export default function BookReader({ content, bookId, chapterId }) {
   const [activeParagraph, setActiveParagraph] = useState(null);
   const [newComment, setNewComment] = useState('');
   const [user, setUser] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false); // YENİ: Admin durumu
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  const paragraflar = content ? content.split('\n').filter(p => p.trim() !== '') : [];
+  // ✅ HTML içeriği için doğru split mantığı + temizleme
+  const paragraflar = content 
+    ? content
+        .split(/<\/p>|<br\s*\/?>|\n/) // p tagları, br tagları veya \n ile böl
+        .map(p => {
+          // <p> taglarını temizle
+          let cleaned = p.replace(/<p[^>]*>/g, '').trim();
+          // Boş style attribute'larını temizle
+          cleaned = cleaned.replace(/\s*style=""\s*/g, '');
+          return cleaned;
+        })
+        .filter(p => p !== '' && p !== '<br>' && p !== '<br/>') // Boşları at
+    : [];
 
   useEffect(() => {
     if (chapterId) {
       supabase.rpc('increment_views', { target_chapter_id: chapterId });
       loadComments();
     }
-    checkUserAndAdmin(); // Kullanıcı ve admin kontrolü
+    checkUserAndAdmin();
   }, [chapterId]);
 
-  // YENİ: Hem kullanıcıyı hem admin durumunu çeken fonksiyon
   async function checkUserAndAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
     setUser(user);
     
     if (user) {
-      // Admin mi kontrol et
       const { data } = await supabase
         .from('announcement_admins')
         .select('*')
@@ -105,7 +115,11 @@ export default function BookReader({ content, bookId, chapterId }) {
           const count = comments.filter(c => c.paragraph_id === i).length;
           return (
             <div key={i} className="group relative mb-8 pr-8">
-              <p className="text-xl md:text-2xl leading-[1.8] text-gray-800 dark:text-gray-200 font-serif antialiased">{p}</p>
+              {/* ✅ HTML render için dangerouslySetInnerHTML - Artık <b>, <i>, <u> düzgün gösterilecek */}
+              <div 
+                className="text-xl md:text-2xl leading-[1.8] text-gray-800 dark:text-gray-200 font-serif antialiased"
+                dangerouslySetInnerHTML={{ __html: p }}
+              />
               <button 
                 onClick={() => setActiveParagraph(i)} 
                 className={`absolute right-0 top-1 w-6 h-6 flex items-center justify-center rounded-full transition-all duration-300
@@ -146,19 +160,15 @@ export default function BookReader({ content, bookId, chapterId }) {
                       <div className="flex justify-between items-start">
                         <span className="font-black text-[10px] uppercase text-gray-900 dark:text-white tracking-tight">@{c.profiles?.username || 'Anonim'}</span>
                         
-                        {/* --- GOD MODE UYGULAMASI --- */}
                         {user && (
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            {/* Kendi yorumuysa VEYA Adminse -> SİL BUTONU GÖZÜKÜR */}
                             {(user.id === c.user_id || isAdmin) ? (
                               <button onClick={() => handleDelete(c.id)} title="Sil" className="text-gray-300 hover:text-red-500 transition-colors"><Icons.Trash /></button>
                             ) : (
-                              // Değilse Raporla butonu gözükür
                               <button onClick={() => handleReport(c.id, c.content)} title="Raporla" className="text-gray-300 hover:text-yellow-500 transition-colors"><Icons.Flag /></button>
                             )}
                           </div>
                         )}
-                        {/* ------------------------- */}
 
                       </div>
                       <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 leading-snug">{c.content}</p>
