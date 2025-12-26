@@ -64,59 +64,59 @@ export default function MobileNav() {
           {/* ✅ KÜTÜPHANE - EŞİT BOYUT */}
           <Link 
             href="/kutuphane" 
-            className={`flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all ${
               isActive('/kutuphane') 
                 ? 'text-red-600' 
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
             <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">📚</div>
-            <span className="text-[9px] font-black uppercase tracking-tight">Kütüphane</span>
+            <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Kütüphane</span>
           </Link>
 
           {/* ✅ KİTAPLARIM - EŞİT BOYUT */}
           <Link 
             href="/kitaplarim" 
-            className={`flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all ${
               isActive('/kitaplarim') 
                 ? 'text-red-600' 
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
             <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">📖</div>
-            <span className="text-[9px] font-black uppercase tracking-tight">Kitaplarım</span>
+            <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Kitaplarım</span>
           </Link>
 
           {/* ✅ ARTIYA TIKLA (ORTADA) - EŞİT BOYUT */}
           <button 
             onClick={() => setShowPlusMenu(!showPlusMenu)}
-            className={`flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all ${
               showPlusMenu 
                 ? 'text-red-600 scale-110' 
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
             <div className={`text-3xl leading-none flex items-center justify-center w-8 h-8 transition-transform ${showPlusMenu ? 'rotate-45' : ''}`}>➕</div>
-            <span className="text-[9px] font-black uppercase tracking-tight">Oluştur</span>
+            <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Oluştur</span>
           </button>
 
           {/* ✅ ETKİNLİKLER (YAKINDA) - EŞİT BOYUT */}
           <button 
             onClick={handleComingSoon}
-            className="flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
+            className="flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
           >
             <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">🎉</div>
-            <span className="text-[9px] font-black uppercase tracking-tight">Etkinlik</span>
+            <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Etkinlik</span>
             <div className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
           </button>
 
           {/* ✅ SIRALAMA (YAKINDA) - EŞİT BOYUT */}
           <button 
             onClick={handleComingSoon}
-            className="flex flex-col items-center justify-center gap-1 w-16 h-16 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
+            className="flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
           >
             <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">🏆</div>
-            <span className="text-[9px] font-black uppercase tracking-tight">Sıralama</span>
+            <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Sıralama</span>
             <div className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
           </button>
 
