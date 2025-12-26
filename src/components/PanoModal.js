@@ -21,19 +21,35 @@ export default function PanoModal({
   const [panoComments, setPanoComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState(null);
+  
+  // Pano sahibinin güncel profilini tutacak state
+  const [panoOwnerProfile, setPanoOwnerProfile] = useState(null);
 
   // --- 1. VERİLERİ YÜKLE ---
   useEffect(() => {
     if (!selectedPano) return;
 
-    // ✅ KRİTİK DÜZELTME: Pano değiştiği an eski verileri temizle/sıfırla.
-    // Böylece yeni veriler yüklenene kadar eskiler görünüp kafa karıştırmaz.
     setPanoLikes(0);
     setHasLiked(false);
     setPanoComments([]);
+    setPanoOwnerProfile(null); // Sıfırla
 
     async function loadPanoData() {
-      // Beğeni sayısı
+      // A) Pano Sahibinin GÜNCEL Bilgilerini Çek (İsim/Foto değiştiyse diye)
+      // Önce ID var mı diye bakıyoruz, yoksa email'den bulmaya çalışıyoruz (eski kayıtlar için)
+      let ownerQuery = supabase.from('profiles').select('username, avatar_url, email');
+      
+      if (selectedPano.user_id) {
+        ownerQuery = ownerQuery.eq('id', selectedPano.user_id);
+      } else {
+        ownerQuery = ownerQuery.eq('email', selectedPano.user_email);
+      }
+      
+      const { data: ownerData } = await ownerQuery.single();
+      if (ownerData) setPanoOwnerProfile(ownerData);
+
+
+      // B) Beğeni Sayısı
       const { count } = await supabase
         .from('pano_votes')
         .select('*', { count: 'exact', head: true })
@@ -41,7 +57,7 @@ export default function PanoModal({
       
       setPanoLikes(count || 0);
 
-      // Kullanıcı beğenmiş mi?
+      // C) Kullanıcı beğenmiş mi?
       if (user) {
         const { data } = await supabase
           .from('pano_votes')
@@ -49,63 +65,47 @@ export default function PanoModal({
           .eq('pano_id', selectedPano.id)
           .eq('user_email', user.email)
           .single();
-        
         setHasLiked(!!data);
       }
 
-      // Yorumları çek
+      // D) Yorumları Çek (İLİŞKİLİ VERİ GETİRME - DOĞRUSU BU)
+      // user_id üzerinden profile gidip güncel veriyi alıyoruz.
       const { data: comments } = await supabase
         .from('pano_comments')
-        .select('*')
+        .select(`
+          *,
+          profiles:user_id ( username, avatar_url )
+        `)
         .eq('pano_id', selectedPano.id)
         .order('created_at', { ascending: true });
 
-      // Profilleri eşleştir
-      if (comments && comments.length > 0) {
-        const commentsWithProfiles = await Promise.all(
-          comments.map(async (comment) => {
-            if (!comment.username) return comment;
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('username, avatar_url')
-              .eq('username', comment.username)
-              .single();
-            return { ...comment, profiles: profile };
-          })
-        );
-        setPanoComments(commentsWithProfiles);
-      } else {
-        setPanoComments([]);
-      }
+      // Veriyi formatla (profiles nesnesini düzleştir veya olduğu gibi kullan)
+      setPanoComments(comments || []);
     }
 
     loadPanoData();
   }, [selectedPano, user]);
 
   // --- 2. FONKSİYONLAR ---
-async function handleLike() {
-  if (!user) return toast.error('Giriş yapmalısın!');
-  
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('username')
-    .eq('id', user.id)
-    .single();
-  const username = profile?.username || user.email.split('@')[0];
-  
-  if (hasLiked) {
-    await supabase.from('pano_votes').delete().eq('pano_id', selectedPano.id).eq('user_email', user.email);
-    setHasLiked(false);
-    setPanoLikes(prev => prev - 1);
-  } else {
-    await supabase.from('pano_votes').insert({ pano_id: selectedPano.id, user_email: user.email });
-    setHasLiked(true);
-    setPanoLikes(prev => prev + 1);
+  async function handleLike() {
+    if (!user) return toast.error('Giriş yapmalısın!');
     
-    // ✅ BİLDİRİM GÖNDER
-    await createPanoVoteNotification(username, user.email, selectedPano.id, selectedPano.user_email);
+    // Bildirim için gönderen adı
+    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+    const username = profile?.username || user.email.split('@')[0];
+    
+    if (hasLiked) {
+      await supabase.from('pano_votes').delete().eq('pano_id', selectedPano.id).eq('user_email', user.email);
+      setHasLiked(false);
+      setPanoLikes(prev => prev - 1);
+    } else {
+      await supabase.from('pano_votes').insert({ pano_id: selectedPano.id, user_email: user.email });
+      setHasLiked(true);
+      setPanoLikes(prev => prev + 1);
+      
+      await createPanoVoteNotification(username, user.email, selectedPano.id, selectedPano.user_email);
+    }
   }
-}
 
  async function handleComment() {
   if (!user) return toast.error('Giriş yapmalısın!');
@@ -114,50 +114,39 @@ async function handleLike() {
   const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
   const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
   
+  // Yorumu ekle (user_id İLE BERABER!)
   const { error } = await supabase.from('pano_comments').insert({
     pano_id: selectedPano.id,
     parent_id: replyTo,
     user_email: user.email,
-    username: username,
+    user_id: user.id, // <--- ARTIK ID DE KAYDEDİYORUZ
+    username: username, // Yedek olarak kalsın
     content: newComment
   });
 
   if (error) { toast.error('Hata oluştu!'); return; }
 
-  // ✅ BİLDİRİM GÖNDER
+  // Bildirimler
   if (replyTo) {
-    // Yanıt ise
     const parentComment = panoComments.find(c => c.id === replyTo);
     if (parentComment) {
-      await createReplyNotification(
-        username,
-        user.email,
-        parentComment.user_email,
-        null, // bookId yok
-        null, // chapterId yok
-        selectedPano.id // panoId
-      );
+      await createReplyNotification(username, user.email, parentComment.user_email, null, null, selectedPano.id);
     }
   } else {
-    // Normal yorum ise
     await createPanoCommentNotification(username, user.email, selectedPano.id, selectedPano.user_email);
   }
 
   setNewComment('');
   setReplyTo(null);
 
-  // Listeyi güncelle
-  const { data: comments } = await supabase.from('pano_comments').select('*').eq('pano_id', selectedPano.id).order('created_at', { ascending: true });
-  if (comments) {
-    const commentsWithProfiles = await Promise.all(
-      comments.map(async (comment) => {
-        if (!comment.username) return comment;
-        const { data: p } = await supabase.from('profiles').select('username, avatar_url').eq('username', comment.username).single();
-        return { ...comment, profiles: p };
-      })
-    );
-    setPanoComments(commentsWithProfiles);
-  }
+  // Yorumları tekrar çek (Canlı güncelleme)
+  const { data: comments } = await supabase
+    .from('pano_comments')
+    .select(`*, profiles:user_id ( username, avatar_url )`)
+    .eq('pano_id', selectedPano.id)
+    .order('created_at', { ascending: true });
+
+  setPanoComments(comments || []);
   toast.success('Yorum eklendi!');
 }
 
@@ -183,10 +172,15 @@ async function handleLike() {
 
   const CommentItem = ({ comment, isReply = false }) => {
     const canDelete = isAdmin || isOwner || (user && user.email === comment.user_email);
+    
+    // Profilden gelen veriyi öncelikli kullan
+    const displayAvatar = comment.profiles?.avatar_url;
+    const displayUsername = comment.profiles?.username || comment.username;
+
     return (
       <div className={`flex gap-3 ${isReply ? 'ml-11' : ''}`}>
         <img
-          src={comment.profiles?.avatar_url || '/avatar-placeholder.png'}
+          src={displayAvatar || '/avatar-placeholder.png'}
           className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'} rounded-full object-cover bg-gray-200`}
           alt=""
           onError={(e) => { e.target.src = '/avatar-placeholder.png' }} 
@@ -194,10 +188,10 @@ async function handleLike() {
         <div className="flex-1 group">
           <div className="flex items-center gap-2">
             <Link 
-              href={comment.user_email === user?.email ? '/profil' : `/yazar/${comment.profiles?.username || comment.username}`}
+              href={comment.user_email === user?.email ? '/profil' : `/yazar/${displayUsername}`}
               className="text-[10px] md:text-xs font-black hover:text-red-600 transition-colors"
             >
-              <Username username={comment.profiles?.username || comment.username} isAdmin={adminEmails.includes(comment.user_email)} />
+              <Username username={displayUsername} isAdmin={adminEmails.includes(comment.user_email)} />
             </Link>
             {canDelete && (
               <button onClick={() => handleDeleteComment(comment.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-gray-300 hover:text-red-600 font-bold uppercase">SİL</button>
@@ -214,12 +208,13 @@ async function handleLike() {
 
   if (!selectedPano) return null;
 
+  // Pano sahibi bilgileri (State'den geleni kullan, yoksa prop'tan geleni)
+  const ownerUsername = panoOwnerProfile?.username || selectedPano.profiles?.username || selectedPano.username;
+  const ownerAvatar = panoOwnerProfile?.avatar_url || selectedPano.profiles?.avatar_url;
+  const ownerEmail = panoOwnerProfile?.email || selectedPano.user_email;
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={onClose}>
-      {/* ✅ KRİTİK AYAR: h-[90vh] ile yüksekliği sabitledik.
-         Böylece içerik ne kadar uzarsa uzasın modal ekran boyunu aşmayacak,
-         sadece içindeki "overflow-y-auto" olan kısım kayacak.
-      */}
       <div className="bg-white dark:bg-[#080808] w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col md:flex-row" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-xl">✕</button>
 
@@ -230,20 +225,16 @@ async function handleLike() {
           </div>
         )}
 
-        {/* SAĞ TARAF: Flex yapısı ile bölündü */}
+        {/* SAĞ TARAF */}
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-[#080808]">
           
-         {/* 1. SCROLL ALANI (BAŞLIK + YAZI + YORUMLAR) */}
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
-            
-            {/* 📱 MOBİL İÇİN KAPAK FOTOĞRAFI */}
             {selectedPano.books?.cover_url && (
               <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
                 <img src={selectedPano.books.cover_url} className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl max-h-[250px] w-auto" alt="" />
               </div>
             )}
 
-            {/* Pano İçeriği */}
             <div className="mb-8">
               <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
                 📖 {selectedPano.books?.title}
@@ -257,7 +248,6 @@ async function handleLike() {
               </div>
             </div>
 
-            {/* Yorumlar Listesi */}
             <div>
                <h3 className="text-xs font-black uppercase tracking-wider text-gray-400 mb-4">Yorumlar</h3>
                <div className="space-y-4 pb-4">
@@ -275,8 +265,6 @@ async function handleLike() {
             </div>
           </div>
 
-          {/* 2. SABİT FOOTER (INPUT + BUTONLAR) */}
-          {/* shrink-0 sayesinde asla küçülmez ve hep altta kalır */}
           <div className="shrink-0 p-6 md:p-8 border-t dark:border-white/5 bg-white dark:bg-[#080808] z-20">
             {user && (
               <div className="bg-gray-50 dark:bg-white/5 p-2 rounded-[2rem] border dark:border-white/5 mb-4">
@@ -296,10 +284,10 @@ async function handleLike() {
             <div className="flex flex-col gap-3">
               <div className="flex items-center gap-3">
                  <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-                    {selectedPano.profiles?.avatar_url ? <img src={selectedPano.profiles.avatar_url} className="w-full h-full object-cover" alt="" /> : null}
+                    {ownerAvatar ? <img src={ownerAvatar} className="w-full h-full object-cover" alt="" /> : (ownerUsername?.[0] || 'U')}
                  </div>
                  <div>
-                    <p className="text-[10px] font-black uppercase"><Username username={selectedPano.profiles?.username || selectedPano.username} isAdmin={adminEmails.includes(selectedPano.user_email)} /></p>
+                    <p className="text-[10px] font-black uppercase"><Username username={ownerUsername} isAdmin={adminEmails.includes(ownerEmail)} /></p>
                     <span className="text-[9px] text-gray-400 font-bold">{new Date(selectedPano.created_at).toLocaleDateString('tr-TR')}</span>
                  </div>
               </div>

@@ -32,10 +32,10 @@ export default function Top100Page() {
   async function fetchBooks(currentOffset) {
     try {
       // 1. Kitapları Okunma Sayısına (views) göre çek
-      // NOT: chapters(id, views) ile bölümlerin okunma sayılarını da alıyoruz ki toplayabilelim.
+      // ✅ GÜNCELLEME: profiles:user_id ile yazarın güncel adını ve rolünü direkt alıyoruz.
       let { data: newBooks } = await supabase
         .from('books')
-        .select('*, chapters(id, views)') 
+        .select('*, chapters(id, views), profiles:user_id(username, role)') 
         .order('views', { ascending: false })
         .range(currentOffset, currentOffset + LIMIT_PER_PAGE - 1);
 
@@ -73,36 +73,32 @@ export default function Top100Page() {
         .select('chapter_id')
         .in('chapter_id', allChapterIds);
 
-      // D. Yazarların rollerini çek (Sarı tik için)
-      const authorNames = [...new Set(newBooks.map(b => b.username))];
-      const { data: roles } = await supabase
-        .from('profiles')
-        .select('username, role')
-        .in('username', authorNames);
+      // (NOT: Artık ayrı bir profiles sorgusuna gerek yok, veri yukarıda geldi)
 
       // --- VERİLERİ BİRLEŞTİR ---
       newBooks = newBooks.map(book => {
-        const author = roles?.find(r => r.username === book.username);
+        // İlişkisel veriden gelen güncel profil (Yoksa eski veriyi kullan - Hibrit)
+        const profile = book.profiles;
+        const displayUsername = profile?.username || book.username;
+        const displayRole = profile?.role;
         
         // 1. Toplam Yorum
         const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
 
         // 2. Toplam Beğeni
-        // Kitabın bölümlerinin ID listesi
         const chapterIds = book.chapters.map(c => c.id);
         const totalVotes = votesData?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
 
         // 3. Toplam Okunma (Bölümlerin toplamı)
-        // Eğer book.views güvenilirse onu kullan, değilse alttakini aç:
         const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
-        // const displayViews = totalViews > book.views ? totalViews : book.views; // Hangisi büyükse onu göster (Garanti olsun)
 
         return { 
           ...book, 
-          author_role: author?.role,
+          username: displayUsername, // Güncel isim
+          author_role: displayRole,  // Güncel rol
           totalComments,
           totalVotes,
-          totalViews // displayViews olarak da kullanabilirsin
+          totalViews
         };
       });
 

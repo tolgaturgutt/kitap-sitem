@@ -39,9 +39,18 @@ export default function KutuphanePage() {
       setAdminEmails(emails);
 
       // Kütüphane kitaplarını çek
+      // ✅ GÜNCELLEME: Kitabın yazarını (profiles:user_id) ile bağlıyoruz.
+      // Böylece yazar adını değiştirdiğinde kütüphanede de güncel görünür.
       const { data: follows } = await supabase
         .from('follows')
-        .select('*, books!inner(*, chapters(id, views, chapter_votes(chapter_id)))')
+        .select(`
+          *, 
+          books!inner(
+            *, 
+            chapters(id, views, chapter_votes(chapter_id)),
+            profiles:user_id(username, role, email)
+          )
+        `)
         .eq('user_email', currentUser.email)
         .eq('books.is_draft', false)
         .order('created_at', { ascending: false });
@@ -54,6 +63,11 @@ export default function KutuphanePage() {
           const book = follow.books;
           if (!book) return null;
 
+          // Güncel Profil Verileri (Hibrit Sistem)
+          const profile = book.profiles;
+          const displayUsername = profile?.username || book.username;
+          const ownerEmail = profile?.email || book.user_email;
+
           const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
           const chapterIds = book.chapters?.map(c => c.id) || [];
           const totalVotes = book.chapters?.reduce((sum, c) => sum + (c.chapter_votes?.length || 0), 0) || 0;
@@ -61,7 +75,8 @@ export default function KutuphanePage() {
 
           return {
             ...book,
-            is_admin: emails.includes(book.user_email),
+            username: displayUsername, // Güncel isim
+            is_admin: emails.includes(ownerEmail), // Güncel admin kontrolü
             totalViews,
             totalVotes,
             totalComments

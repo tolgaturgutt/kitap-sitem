@@ -511,11 +511,11 @@ export default function Home() {
       const emails = adminList?.map(a => a.user_email) || [];
       setAdminEmails(emails);
 
-      // OKUMAYA DEVAM ET
+      // OKUMAYA DEVAM ET - GÜNCEL PROFİL VERİSİ İLE ÇEK
       if (activeUser) {
         const { data: history } = await supabase
           .from('reading_history')
-          .select('*, books(*, chapters(id, views, chapter_votes(chapter_id))), chapters(*)')
+          .select('*, books(*, profiles:user_id(username, avatar_url, email), chapters(id, views, chapter_votes(chapter_id))), chapters(*)')
           .eq('user_email', activeUser.email)
           .order('updated_at', { ascending: false })
           .limit(5);
@@ -525,34 +525,49 @@ export default function Home() {
           const book = item.books;
           const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
           const totalVotes = book.chapters?.reduce((sum, c) => sum + (c.chapter_votes?.length || 0), 0) || 0;
+          
           return {
             ...item,
-            books: { ...book, totalViews, totalVotes, totalComments: 0 } 
+            books: { 
+              ...book,
+              // GÜNCEL VERİLERİ KULLAN
+              username: book.profiles?.username || book.username,
+              totalViews, 
+              totalVotes, 
+              totalComments: 0 
+            } 
           };
         });
         setContinueReading(historyWithStats || []);
       }
 
-      // ✅ YENİ: SON EKLENEN BÖLÜMLERİ ÇEK (Admin kontrolü için user_email eklendi)
+      // ✅ SON EKLENEN BÖLÜMLER - GÜNCEL PROFİL VERİSİ İLE ÇEK
       const { data: recentChaps } = await supabase
         .from('chapters')
-        .select('id, title, created_at, book_id, books!inner(title, cover_url, username, is_draft, user_email)')
+        .select('id, title, created_at, book_id, books!inner(title, cover_url, username, is_draft, user_email, user_id, profiles:user_id(username, avatar_url, email))')
         .eq('books.is_draft', false)
         .order('created_at', { ascending: false })
         .limit(20);
       
-      // Admin tikini ekle
-      const recentChapsWithAdmin = recentChaps?.map(c => ({
-          ...c,
-          is_admin: emails.includes(c.books?.user_email)
-      })) || [];
+      const recentChapsWithAdmin = recentChaps?.map(c => {
+         const bookOwnerEmail = c.books?.profiles?.email || c.books?.user_email;
+         return {
+            ...c,
+            books: {
+                ...c.books,
+                // GÜNCEL VERİLERİ KULLAN
+                username: c.books.profiles?.username || c.books.username
+            },
+            is_admin: emails.includes(bookOwnerEmail)
+         };
+      }) || [];
 
       setLatestChapters(recentChapsWithAdmin);
 
-      // 1. Kitapları ve Bölümleri Çek
+      // 1. Kitapları ve Bölümleri Çek - GÜNCEL PROFİL VERİSİ İLE
       let { data: allBooks, error: booksError } = await supabase
         .from('books')
-        .select('*, chapters(id, views)');
+        .select('*, profiles:user_id(username, avatar_url, email), chapters(id, views)');
       
       if (booksError) {
         setLoading(false);
@@ -573,10 +588,14 @@ export default function Home() {
           const chapterIds = book.chapters.map(c => c.id);
           const totalVotes = allVotes?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
           const totalComments = allComments?.filter(c => c.book_id === book.id).length || 0;
+          
+          const bookOwnerEmail = book.profiles?.email || book.user_email;
 
           return { 
             ...book, 
-            is_admin: emails.includes(book.user_email),
+            // GÜNCEL VERİLERİ KULLAN
+            username: book.profiles?.username || book.username,
+            is_admin: emails.includes(bookOwnerEmail),
             totalViews,
             totalVotes,
             totalComments

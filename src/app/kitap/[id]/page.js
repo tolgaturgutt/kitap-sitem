@@ -42,28 +42,53 @@ export default function KitapDetay({ params }) {
   useEffect(() => {
     async function fetchAll() {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
       
-      const { data: chapters } = await supabase.from('chapters')
+      // 1. KİTABI ÇEK (Temel veriyi al)
+      const { data: book, error: bookError } = await supabase
+        .from('books')
         .select('*')
-        .eq('book_id', id)
-        .order('order_no', { ascending: true });
+        .eq('id', id)
+        .single();
       
-     let authorProfile = null;
-     let authorIsAdmin = false;
-     if (book) {
-       const { data: profile } = await supabase.from('profiles').select('*').eq('username', book.username).single();
-       authorProfile = profile;
-       
-       const { data: authorAdminCheck } = await supabase
-         .from('announcement_admins')
-         .select('*')
-         .eq('user_email', book.user_email)
-         .single();
-       
-       authorIsAdmin = !!authorAdminCheck;
-     }
+      if (bookError || !book) {
+        setLoading(false);
+        return;
+      }
 
+      // 2. PROFİLİ BUL (GARANTİ YÖNTEM - Hibrit Sistem)
+      // Önce user_id ile dene (Yeni Sistem)
+      let authorProfile = null;
+
+      if (book.user_id) {
+        const { data: pId } = await supabase.from('profiles').select('*').eq('id', book.user_id).single();
+        if (pId) authorProfile = pId;
+      }
+
+      // Eğer ID ile bulamazsa Username ile dene (Eski Sistem - Kurtarıcı)
+      if (!authorProfile && book.username) {
+        const { data: pUser } = await supabase.from('profiles').select('*').eq('username', book.username).single();
+        if (pUser) authorProfile = pUser;
+      }
+
+      // Hala yoksa Email ile dene (Son Çare)
+      if (!authorProfile && book.user_email) {
+        const { data: pEmail } = await supabase.from('profiles').select('*').eq('email', book.user_email).single();
+        if (pEmail) authorProfile = pEmail;
+      }
+
+      // 3. YAZAR ADMİN Mİ?
+      let authorIsAdmin = false;
+      const targetEmail = authorProfile?.email || book.user_email;
+      if (targetEmail) {
+         const { data: authorAdminCheck } = await supabase
+           .from('announcement_admins')
+           .select('*')
+           .eq('user_email', targetEmail)
+           .single();
+         authorIsAdmin = !!authorAdminCheck;
+      }
+
+      // 4. BEN ADMİN MİYİM?
       let adminStatus = false;
       if (user) {
         const { data: admin } = await supabase
@@ -74,6 +99,13 @@ export default function KitapDetay({ params }) {
         if (admin) adminStatus = true;
       }
       
+      // 5. BÖLÜMLERİ ÇEK
+      const { data: chapters } = await supabase.from('chapters')
+        .select('*')
+        .eq('book_id', id)
+        .order('order_no', { ascending: true });
+      
+      // --- İSTATİSTİKLER ---
       const totalViews = chapters?.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
       
       const totalWords = chapters?.reduce((acc, curr) => {
@@ -102,7 +134,7 @@ export default function KitapDetay({ params }) {
 
       setData({ 
         book, 
-        authorProfile, 
+        authorProfile, // Artık dolu gelmesi garanti
         chapters: chapters || [], 
         stats: { 
           views: totalViews, 
@@ -121,6 +153,8 @@ export default function KitapDetay({ params }) {
     }
     fetchAll();
   }, [id]);
+
+  // --- FONKSİYONLAR (HEPSİ KORUNDU) ---
 
   async function handleToggleDraft() {
     const isAuthor = data.user && data.book.user_email === data.user.email;
@@ -254,6 +288,12 @@ export default function KitapDetay({ params }) {
     );
   }
 
+  // --- GÖSTERİM AYARLARI (KRİTİK KISIM) ---
+  // Eğer authorProfile varsa onun verisini kullan (Günceldir)
+  // Yoksa kitabın üzerindeki eski veriyi kullan (Yedek)
+  const displayAuthorName = data.authorProfile?.username || data.book.username;
+  const displayAuthorAvatar = data.authorProfile?.avatar_url;
+
   return (
     <div className="min-h-screen py-16 px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
       <Toaster />
@@ -304,17 +344,17 @@ export default function KitapDetay({ params }) {
               {data.book.title}
             </h1>
             
-            <Link href={`/yazar/${data.book.username}`} className="flex items-center gap-4 mb-10 group w-fit">
+            <Link href={`/yazar/${displayAuthorName}`} className="flex items-center gap-4 mb-10 group w-fit">
               <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-sm uppercase">
-                {data.authorProfile?.avatar_url && data.authorProfile.avatar_url.includes('http') ? (
-                  <img src={data.authorProfile.avatar_url} className="w-full h-full object-cover" alt="" />
+                {displayAuthorAvatar && displayAuthorAvatar.includes('http') ? (
+                  <img src={displayAuthorAvatar} className="w-full h-full object-cover" alt="" />
                 ) : (
-                  data.book.username[0]
+                  (displayAuthorName || 'U')[0]
                 )}
               </div>
               <div>
                 <p className="text-sm font-black group-hover:text-red-600 transition-colors">
-                  <Username username={data.book.username} isAdmin={data.authorIsAdmin} />
+                  <Username username={displayAuthorName} isAdmin={data.authorIsAdmin} />
                 </p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Eser Sahibi</p>
               </div>
@@ -352,7 +392,6 @@ export default function KitapDetay({ params }) {
             </div>
 
             <div className="mb-10 p-8 bg-white dark:bg-white/5 rounded-[2rem] border dark:border-white/5">
-              {/* ✅ DÜZELTME: whitespace-pre-wrap EKLENDİ */}
               <p className="text-lg text-gray-600 dark:text-gray-400 font-serif italic leading-relaxed whitespace-pre-wrap">
                 {data.book.summary}
               </p>

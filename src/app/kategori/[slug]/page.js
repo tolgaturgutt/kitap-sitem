@@ -37,9 +37,10 @@ export default function KategoriSayfasi() {
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
       // 1. KİTAPLARI VE BÖLÜMLERİNİ ÇEK (Okunma sayısı için views eklendi)
+      // ✅ GÜNCELLEME: profiles:user_id ile yazarın güncel adını ve rolünü direkt çekiyoruz.
       let { data: categoryBooks } = await supabase
         .from('books')
-        .select('*, chapters(id, views)')
+        .select('*, chapters(id, views), profiles:user_id(username, role)')
         .ilike('category', category);
 
       // 2. TÜM YORUMLARI VE OYLARI ÇEK (Güvenli Hesaplama İçin)
@@ -60,16 +61,14 @@ export default function KategoriSayfasi() {
           return (hasChapters && !book.is_draft) || isOwner;
         });
 
-        // YAZAR ROLLERİNİ ÇEK
-        const authorNames = [...new Set(categoryBooks.map(b => b.username))];
-        const { data: roles } = await supabase
-          .from('profiles')
-          .select('username, role')
-          .in('username', authorNames);
+        // NOT: Artık ayrı bir "roles" sorgusuna gerek kalmadı, veriyi yukarıda çektik.
 
         // VERİLERİ BİRLEŞTİR VE HESAPLA
         const scored = categoryBooks.map(book => {
-          const author = roles?.find(r => r.username === book.username);
+          // İlişkisel veriden gelen güncel profil (Yoksa eski veriyi kullan - Hibrit)
+          const profile = book.profiles;
+          const displayUsername = profile?.username || book.username;
+          const displayRole = profile?.role;
           
           // A. GENEL TOPLAMLAR (Kartın altında görünecek)
           const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
@@ -89,7 +88,8 @@ export default function KategoriSayfasi() {
 
           return { 
             ...book, 
-            author_role: author?.role,
+            username: displayUsername, // Güncel isim
+            author_role: displayRole,  // Güncel rol
             interactionScore: score,
             totalViews,
             totalVotes,
