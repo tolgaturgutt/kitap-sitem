@@ -183,7 +183,7 @@ export default function ProfilSayfasi() {
          .single();
 
        if (existingUser) {
-         toast.error("Bu kullanıcı adı zaten alınmış!");
+         toast.error('Bu kullanıcı adı zaten kullanımda. Lütfen başka bir tane seçin.');
          return;
        }
     }
@@ -202,9 +202,15 @@ export default function ProfilSayfasi() {
       updated_at: new Date()
     });
 
-    if (error) { 
-      console.log("HATA:", error); // Konsoldan detayına bakabilirsin
-      toast.error("Kaydedilemedi: " + error.message); 
+  if (error) { 
+      console.log("HATA:", error);
+      
+      // 🔥 KULLANICI ADI DOLU MU?
+      if (error.message.includes('unique_username_case_insensitive')) {
+        toast.error('Bu kullanıcı adı zaten kullanımda. Lütfen başka bir tane seçin.');
+      } else {
+        toast.error("Kaydedilemedi: " + error.message); 
+      }
     } else {
       toast.success("Güncellendi ✅"); 
       setIsEditing(false); 

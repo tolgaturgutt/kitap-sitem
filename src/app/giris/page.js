@@ -5,97 +5,132 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 
+// ==========================================
+// 1. MODAL BİLEŞENİ (PENCERE)
+// ==========================================
+function DocumentModal({ isOpen, onClose, title, content }) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-gray-900 w-full max-w-4xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col border border-gray-200 dark:border-gray-800 relative">
+        {/* Başlık */}
+        <div className="p-5 border-b dark:border-gray-800 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-900 rounded-t-2xl z-10">
+          <h2 className="text-xl font-black text-red-600 uppercase tracking-tight">{title}</h2>
+          <button 
+            onClick={onClose}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/10 hover:bg-red-600 hover:text-white transition-colors font-bold"
+          >
+            ✕
+          </button>
+        </div>
+        
+        {/* İçerik */}
+        <div className="p-6 overflow-y-auto custom-scrollbar text-sm leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-line">
+          {content}
+        </div>
+
+        {/* Alt Buton */}
+        <div className="p-5 border-t dark:border-gray-800 bg-gray-50 dark:bg-black/20 rounded-b-2xl flex justify-end">
+          <button 
+            onClick={onClose}
+            className="px-8 py-3 bg-black dark:bg-white text-white dark:text-black rounded-xl font-bold hover:scale-105 transition-transform"
+          >
+            Okudum, Anladım
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 2. ANA GİRİŞ SAYFASI
+// ==========================================
 export default function GirisSayfasi() {
-  // loginInput: Hem e-posta hem kullanıcı adı tutar
+  // Giriş Bilgileri
   const [loginInput, setLoginInput] = useState(''); 
   const [password, setPassword] = useState('');
   
-  // Kayıt olma için ek alanlar
+  // Kayıt Bilgileri
   const [username, setUsername] = useState(''); 
   const [fullName, setFullName] = useState('');
+  const [inviteCode, setInviteCode] = useState(''); // 🔑 DAVETİYE KODU ALANI
   
-  // Modlar
+  // Kontroller
+  const [agreed, setAgreed] = useState(false); // ✅ ONAY KUTUSU
   const [isSignUp, setIsSignUp] = useState(false);
-  const [isResetMode, setIsResetMode] = useState(false); // Şifre sıfırlama modu
+  const [isResetMode, setIsResetMode] = useState(false);
   
+  // Modallar
+  const [showKvkk, setShowKvkk] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // E-posta formatı kontrolü için yardımcı fonksiyon
   const isEmail = (text) => text.includes('@');
 
   // --- ŞİFRE SIFIRLAMA ---
   async function handleResetPassword() {
-    if (!loginInput) {
-      toast.error('Lütfen e-posta adresinizi veya kullanıcı adınızı giriniz.');
-      return;
-    }
-
+    if (!loginInput) return toast.error('E-posta veya kullanıcı adı giriniz.');
     setLoading(true);
+    
     let targetEmail = loginInput;
-
-    // Eğer girilen değer e-posta değilse (kullanıcı adıysa), veritabanından e-postayı bul
     if (!isEmail(loginInput)) {
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('email')
-        .ilike('username', loginInput) // Büyük/küçük harf duyarsız arama
-        .single();
-
-      if (profileError || !profileData) {
-        toast.error('Bu kullanıcı adı ile eşleşen bir hesap bulunamadı.');
+      const { data } = await supabase.from('profiles').select('email').ilike('username', loginInput).single();
+      if (!data) {
         setLoading(false);
-        return;
+        return toast.error('Kullanıcı bulunamadı.');
       }
-      targetEmail = profileData.email;
+      targetEmail = data.email;
     }
 
-    // E-postaya sıfırlama bağlantısı gönder
     const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
-      redirectTo: `${window.location.origin}/sifre-yenile`, // Şifre yenileme sayfası
+      redirectTo: `${window.location.origin}/sifre-yenile`,
     });
 
-    if (error) {
-      toast.error('Bir hata oluştu: ' + error.message);
-    } else {
-      toast.success('Şifre sıfırlama bağlantısı kayıtlı e-posta adresinize gönderildi.');
-      setIsResetMode(false); // Giriş ekranına dön
+    if (error) toast.error(error.message);
+    else {
+      toast.success('Sıfırlama bağlantısı gönderildi.');
+      setIsResetMode(false);
     }
     setLoading(false);
   }
 
-  // --- GİRİŞ / KAYIT ---
+ // --- ANA İŞLEM (GİRİŞ veya KAYIT) ---
   async function handleAuth() {
-    // 1. Şifre Sıfırlama Modundaysa
-    if (isResetMode) {
-      await handleResetPassword();
-      return;
-    }
+    // 1. Şifre Sıfırlama
+    if (isResetMode) return handleResetPassword();
 
-    // 2. Boş alan kontrolü
-    if (!loginInput || !password) {
-      toast.error('Lütfen tüm alanları doldurunuz.');
-      return;
-    }
+    // 2. Temel Kontroller
+    if (!loginInput || !password) return toast.error('Lütfen tüm alanları doldurunuz.');
 
-    if (isSignUp && (!username || !fullName)) {
-      toast.error('Ad Soyad ve Kullanıcı Adı alanları zorunludur.');
-      return;
-    }
-
-    setLoading(true);
-    let error = null;
-
+    // ------------------------------------------------------------------
+    // KAYIT OLMA İŞLEMLERİ
+    // ------------------------------------------------------------------
     if (isSignUp) {
-      // --- KAYIT OLMA ---
-      // Kayıtta loginInput her zaman e-posta olmalı
-      if (!isEmail(loginInput)) {
-        toast.error('Kayıt işlemi için geçerli bir e-posta adresi giriniz.');
+      if (!username || !fullName || !inviteCode) return toast.error('Tüm alanlar ve Davetiye Kodu zorunludur.');
+      if (!agreed) return toast.error('Lütfen kuralları okuyup onaylayınız.');
+      if (!isEmail(loginInput)) return toast.error('Geçerli bir e-posta giriniz.');
+
+      setLoading(true);
+
+      // A) DAVETİYE KODU KONTROLÜ
+      const { data: bilet, error: biletError } = await supabase
+        .from('davetiyeler')
+        .select('*')
+        .eq('kod', inviteCode)
+        .eq('kullanildi', false)
+        .single();
+
+      if (biletError || !bilet) {
         setLoading(false);
-        return;
+        return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
       }
 
-      const { error: signUpError } = await supabase.auth.signUp({
+      // B) KAYIT İŞLEMİ
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: loginInput,
         password,
         options: {
@@ -105,140 +140,174 @@ export default function GirisSayfasi() {
           },
         },
       });
-      error = signUpError;
 
-    } else {
-      // --- GİRİŞ YAPMA ---
-      
-      let finalEmail = loginInput;
-
-      // Eğer girilen değer e-posta değilse (yani kullanıcı adıysa), e-postayı bulmaya çalış
-      if (!isEmail(loginInput)) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('email')
-          .ilike('username', loginInput)
-          .single();
-
-        if (profileError || !profileData) {
-          toast.error('Bu kullanıcı bilgileriyle bir hesap bulunamadı.');
-          setLoading(false);
-          return;
+      if (signUpError) {
+        setLoading(false);
+        if (signUpError.message.includes('unique_username_case_insensitive')) {
+             return toast.error('Bu kullanıcı adı zaten kullanımda. Lütfen başka bir tane seçin.');
         }
-        
-        finalEmail = profileData.email;
+        return toast.error(signUpError.message);
       }
 
-      // 1. Giriş yapmayı dene (Email ile)
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      // C) BİLETİ YAK
+      await supabase
+        .from('davetiyeler')
+        .update({ kullanildi: true })
+        .eq('id', bilet.id);
+
+      // D) OTOMATİK TAKİP (KitapLab)
+      const KITAPLAB_RESMI_ID = "4990d668-2cdf-4c9d-b409-21ecf14f43ac"; 
+      if (authData?.user?.id) {
+        await supabase.from('author_follows').insert({
+          follower_id: authData.user.id,
+          followed_id: KITAPLAB_RESMI_ID
+        }).catch(err => console.error("Oto-takip hatası:", err));
+      }
+
+      // 🔥 EKLENEN KISIM 1: KAYIT OLAN KULLANICIYA GİRİŞ İZNİ (COOKIE) VER
+      document.cookie = "site_erisim=acik; path=/; max-age=604800"; // 7 Günlük İzin
+
+      toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
+      
+      // Kayıttan sonra direkt içeri alıyoruz
+      setTimeout(() => {
+        router.push('/');
+        router.refresh();
+      }, 1500);
+      
+      // setLoading(false); // Yönlendirme yapacağımız için loading'i kapatmaya gerek yok
+
+    } else {
+      // ------------------------------------------------------------------
+      // GİRİŞ YAPMA KISMI
+      // ------------------------------------------------------------------
+      setLoading(true);
+      let finalEmail = loginInput;
+
+      if (!isEmail(loginInput)) {
+        const { data } = await supabase.from('profiles').select('email').ilike('username', loginInput).single();
+        if (!data) {
+          setLoading(false);
+          return toast.error('Hesap bulunamadı.');
+        }
+        finalEmail = data.email;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: finalEmail,
         password,
       });
-      error = signInError;
 
-      // 2. Giriş başarılıysa hemen profili kontrol et: BANLI MI?
-      if (!error && data?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_banned')
-          .eq('id', data.user.id)
-          .single();
-
-        // Eğer kullanıcı banlıysa...
-        if (profile && profile.is_banned) {
-          await supabase.auth.signOut(); // Hemen çıkış yaptır
-          toast.error('Hesabınız askıya alınmıştır. Lütfen yönetici ile iletişime geçiniz.');
-          setLoading(false);
-          return; 
-        }
-      }
-    }
-
-    if (error) {
-      toast.error(error.message === 'Invalid login credentials' ? 'Giriş bilgileri hatalı.' : error.message);
-      setLoading(false);
-    } else {
-      toast.success(isSignUp ? 'Kayıt başarılı! Lütfen e-posta adresinizi doğrulayınız.' : 'Giriş başarılı.');
-      
-      if (!isSignUp) {
-        setTimeout(() => {
-          router.push('/');
-          router.refresh();
-        }, 1000);
-      } else {
+      if (error) {
         setLoading(false);
+        return toast.error('Giriş bilgileri hatalı.');
       }
+
+      const { data: profile } = await supabase.from('profiles').select('is_banned').eq('id', data.user.id).single();
+      if (profile?.is_banned) {
+        await supabase.auth.signOut();
+        setLoading(false);
+        return toast.error('Hesabınız askıya alınmıştır.');
+      }
+
+      // 🔥 EKLENEN KISIM 2: GİRİŞ YAPAN KULLANICIYA DA İZİN VER
+      // (Böylece hesabı olanlar tekrar giriş yapınca kapıda kalmaz)
+      document.cookie = "site_erisim=acik; path=/; max-age=604800"; 
+
+      toast.success('Giriş başarılı.');
+      setTimeout(() => {
+        router.push('/');
+        router.refresh();
+      }, 1000);
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white p-6 transition-colors">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white p-6">
       <Toaster position="top-right" />
 
-      <div className="w-full max-w-md bg-gray-50 dark:bg-gray-900 p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-2xl">
-        <h1 className="text-3xl font-bold mb-2 text-center">
-          {isResetMode ? 'Şifremi Unuttum' : (isSignUp ? 'Hesap Oluştur' : 'Giriş Yap')}
+      {/* --- MODALLAR --- */}
+      <DocumentModal 
+        isOpen={showKvkk} 
+        onClose={() => setShowKvkk(false)} 
+        title="KVKK AYDINLATMA METNİ" 
+        content={FULL_KVKK_TEXT} 
+      />
+      <DocumentModal 
+        isOpen={showRules} 
+        onClose={() => setShowRules(false)} 
+        title="TOPLULUK SÖZLEŞMESİ" 
+        content={FULL_RULES_TEXT} 
+      />
+
+      <div className="w-full max-w-md bg-gray-50 dark:bg-gray-900 p-8 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl">
+        <h1 className="text-3xl font-black mb-2 text-center tracking-tight">
+          {isResetMode ? 'ŞİFREMİ UNUTTUM' : (isSignUp ? 'DAVETİYE İLE KAYIT' : 'GİRİŞ YAP')}
         </h1>
-        <p className="text-gray-500 mb-8 text-sm text-center">
-          {isResetMode 
-            ? 'Hesabınıza ait e-posta veya kullanıcı adını giriniz.' 
-            : (isSignUp ? 'Yeni bir hesap oluşturun.' : 'Hesabınıza giriş yapın.')}
+        <p className="text-gray-500 mb-8 text-sm text-center font-medium">
+          {isResetMode ? 'Bilgilerinizi girerek şifrenizi sıfırlayın.' : (isSignUp ? 'Kodu gir, aramıza katıl.' : 'Hesabınıza giriş yapın.')}
         </p>
 
         <div className="space-y-4">
           
-          {/* Sadece Kayıt Modunda Gözükecekler */}
+          {/* SADECE KAYIT MODUNDA: İsim, Kullanıcı Adı ve DAVETİYE KODU */}
           {isSignUp && !isResetMode && (
             <>
               <div>
-                <label className="block text-sm font-medium mb-1 opacity-70">Ad Soyad</label>
+                <label className="block text-xs font-bold mb-1 opacity-60 uppercase">Ad Soyad</label>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600"
+                  className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
                   placeholder="Adınız Soyadınız"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 opacity-70">Kullanıcı Adı</label>
+                <label className="block text-xs font-bold mb-1 opacity-60 uppercase">Kullanıcı Adı</label>
                 <input
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600"
+                  className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
                   placeholder="kullaniciadi"
+                />
+              </div>
+              {/* 🔑 DAVETİYE KODU KUTUSU */}
+              <div className="relative">
+                <label className="block text-xs font-bold mb-1 text-red-600 uppercase">Davetiye Kodu (Zorunlu)</label>
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  className="w-full p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all font-mono tracking-widest text-center font-bold"
+                  placeholder="KODU BURAYA YAZ"
                 />
               </div>
             </>
           )}
 
-          {/* E-posta veya Kullanıcı Adı Alanı */}
+          {/* E-posta ve Şifre (Her Zaman Var) */}
           <div>
-            <label className="block text-sm font-medium mb-1 opacity-70">
-              {/* Reset modunda veya Giriş modunda ikisi de olabilir, Kayıtta sadece E-posta */}
+            <label className="block text-xs font-bold mb-1 opacity-60 uppercase">
               {isSignUp && !isResetMode ? 'E-posta Adresi' : 'E-posta veya Kullanıcı Adı'}
             </label>
             <input
               type="text" 
               value={loginInput}
               onChange={(e) => setLoginInput(e.target.value)}
-              className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600"
-              placeholder={isSignUp && !isResetMode ? "mail@ornek.com" : "mail@ornek.com veya kullaniciadi"}
+              className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
+              placeholder={isSignUp ? "mail@ornek.com" : "Giriş bilgisi"}
             />
           </div>
 
-          {/* Şifre Alanı (Reset modunda gizli) */}
           {!isResetMode && (
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="block text-sm font-medium opacity-70">Şifre</label>
+                <label className="block text-xs font-bold opacity-60 uppercase">Şifre</label>
                 {!isSignUp && (
-                  <button 
-                    onClick={() => { setIsResetMode(true); setLoginInput(''); }}
-                    className="text-xs text-red-600 hover:underline font-bold"
-                  >
-                    Şifremi Unuttum?
+                  <button onClick={() => { setIsResetMode(true); setLoginInput(''); }} className="text-xs text-red-600 hover:underline font-bold">
+                    Unuttum?
                   </button>
                 )}
               </div>
@@ -246,38 +315,56 @@ export default function GirisSayfasi() {
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600"
+                className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
                 placeholder="******"
               />
+            </div>
+          )}
+
+          {/* ✅ ONAY KUTUSU (Sadece Kayıtta) */}
+          {isSignUp && !isResetMode && (
+            <div className="flex items-start gap-3 p-2">
+              <input 
+                type="checkbox" 
+                id="agreed"
+                checked={agreed}
+                onChange={(e) => setAgreed(e.target.checked)}
+                className="mt-1 w-4 h-4 accent-red-600 cursor-pointer"
+              />
+              <label htmlFor="agreed" className="text-xs text-gray-500 cursor-pointer select-none">
+                <span className="font-bold text-red-600 hover:underline" onClick={(e) => { e.preventDefault(); setShowRules(true); }}>
+                  Topluluk Kuralları
+                </span>
+                {' ve '}
+                <span className="font-bold text-red-600 hover:underline" onClick={(e) => { e.preventDefault(); setShowKvkk(true); }}>
+                  KVKK Metni
+                </span>
+                'ni okudum, anladım ve kabul ediyorum.
+              </label>
             </div>
           )}
 
           <button
             onClick={handleAuth}
             disabled={loading}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-lg transition-colors mt-4 shadow-lg shadow-red-600/20"
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl transition-all mt-2 shadow-lg shadow-red-600/20 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'İşleniyor...' : (
-              isResetMode ? 'Sıfırlama Bağlantısı Gönder' : (isSignUp ? 'Kayıt Ol' : 'Giriş Yap')
-            )}
+            {loading ? 'İşleniyor...' : (isResetMode ? 'Bağlantı Gönder' : (isSignUp ? 'Kayıt Ol' : 'Giriş Yap'))}
           </button>
 
-          <div className="text-center mt-4 text-sm text-gray-500">
+          <div className="text-center mt-6 text-xs font-bold text-gray-500">
             {isResetMode ? (
-              <button 
-                onClick={() => setIsResetMode(false)}
-                className="text-gray-500 hover:text-black dark:hover:text-white font-bold"
-              >
+              <button onClick={() => setIsResetMode(false)} className="hover:text-black dark:hover:text-white">
                 ← Girişe Dön
               </button>
             ) : (
               <>
                 {isSignUp ? 'Zaten hesabınız var mı?' : 'Hesabınız yok mu?'}
                 <button 
-                  onClick={() => { setIsSignUp(!isSignUp); setIsResetMode(false); }}
-                  className="ml-2 text-red-600 hover:underline font-bold"
+                  onClick={() => { setIsSignUp(!isSignUp); setIsResetMode(false); setInviteCode(''); setAgreed(false); }}
+                  className="ml-2 text-red-600 hover:underline"
                 >
-                  {isSignUp ? 'Giriş Yap' : 'Hesap Oluştur'}
+                  {isSignUp ? 'Giriş Yap' : 'Davetiye ile Kayıt Ol'}
                 </button>
               </>
             )}
@@ -287,3 +374,110 @@ export default function GirisSayfasi() {
     </div>
   );
 }
+
+// ==========================================
+// 3. FULL METİNLER
+// ==========================================
+
+const FULL_KVKK_TEXT = `
+KİŞİSEL VERİLERİN KORUNMASI VE AYDINLATMA METNİ
+(6698 Sayılı Kişisel Verilerin Korunması Kanunu Kapsamında)
+
+Bu Aydınlatma Metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) uyarınca, KitapLab (“Platform”) tarafından, kişisel verileri işlenen gerçek kişileri bilgilendirmek amacıyla hazırlanmıştır.
+
+Platform; kullanıcıların gizliliğine, kişisel verilerinin güvenliğine ve veri mahremiyetine azami önem verir.
+
+1. VERİ SORUMLUSU
+6698 sayılı KVKK uyarınca kişisel verileriniz;
+Veri Sorumlusu: KitapLab [iletisim@kitaplab.com] tarafından, aşağıda açıklanan kapsamda işlenmektedir.
+
+2. KİŞİSEL VERİ NEDİR?
+Kişisel veri; kimliği belirli veya belirlenebilir gerçek kişiye ilişkin her türlü bilgiyi ifade eder.
+Bu kapsamda Platform üzerinde işlenebilecek kişisel verilere örnek olarak şunlar verilebilir:
+Ad, soyad, Kullanıcı adı / takma ad, E-posta adresi, Profil fotoğrafı, IP adresi, Cihaz bilgileri, Tarayıcı bilgileri, Oturum kayıtları, Mesajlaşma kayıtları, Yorum ve etkileşim kayıtları.
+
+3. İŞLENEN KİŞİSEL VERİ KATEGORİLERİ
+3.1. Kimlik Verileri: Ad, soyad, Kullanıcı adı.
+3.2. İletişim Verileri: E-posta adresi, Bildirim tercihleri.
+3.3. Kullanıcı İşlem Verileri: Üyelik oluşturma tarihi, Giriş-çıkış logları, Takip, beğeni, yorum, mesaj kayıtları.
+3.4. Teknik ve Log Verileri: IP adresi, Cihaz türü, İşletim sistemi, Tarayıcı bilgisi, Çerez kayıtları.
+3.5. İçerik ve Etkileşim Verileri: Paylaşılan kitaplar, bölümler, yorumlar, panolar, mesajlar.
+3.6. Hukuki ve Güvenlik Verileri: Raporlama kayıtları, Moderasyon kararları, İhlal kayıtları.
+
+4. KİŞİSEL VERİLERİN İŞLENME AMAÇLARI
+Kişisel verileriniz aşağıdaki amaçlarla işlenmektedir:
+Üyelik işlemlerinin gerçekleştirilmesi, Kullanıcı hesabının yönetilmesi, İçerik paylaşımı ve etkileşimlerin sağlanması, Topluluk kurallarının uygulanması, Güvenlik süreçlerinin yürütülmesi, Hukuki yükümlülüklerin yerine getirilmesi.
+
+5. KİŞİSEL VERİLERİN TOPLANMA YÖNTEMLERİ
+Kişisel verileriniz; Üyelik formları, Profil düzenleme alanları, İçerik paylaşımı, Çerezler ve Otomatik loglama sistemleri aracılığıyla toplanmaktadır.
+
+6. KİŞİSEL VERİLERİN HUKUKİ SEBEPLERİ
+Verileriniz; Kanunlarda öngörülmesi, Sözleşmenin ifası, Hukuki yükümlülük, Meşru menfaat ve Açık rıza sebeplerine dayanarak işlenir.
+
+7. KİŞİSEL VERİLERİN AKTARILMASI
+Kişisel verileriniz; Yetkili kamu kurumlarına, Hukuki yükümlülükler kapsamında adli mercilere, Sunucu ve barındırma sağlayıcılarına aktarılabilir.
+
+8. KİŞİSEL VERİLERİN SAKLANMA SÜRESİ
+Kişisel veriler, işleme amacının gerektirdiği süre boyunca veya mevzuatta öngörülen süreler kadar saklanır. Süre sonunda silinir veya anonim hale getirilir.
+
+9. VERİ GÜVENLİĞİNE İLİŞKİN ÖNLEMLER
+Platform, verilerin güvenliği için teknik ve idari tedbirleri, yetkisiz erişim önlemlerini ve güvenli sunucu altyapısını uygular.
+
+10. KVKK KAPSAMINDA KULLANICI HAKLARI
+KVKK’nın 11. maddesi uyarınca kullanıcılar; Verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini veya silinmesini isteme haklarına sahiptir.
+
+11. BAŞVURU YÖNTEMİ
+Taleplerinizi [iletisim@kitaplab.com] adresi veya Platform içi destek sistemi üzerinden iletebilirsiniz.
+`;
+
+const FULL_RULES_TEXT = `
+TOPLULUK SÖZLEŞMESİ VE TOPLULUK KURALLARI
+
+Bu platform; yazarlara üretim alanı, okurlara keşif alanı sunan, yaratıcı içeriklerin paylaşıldığı bir okuma–yazma topluluğudur. Amacımız, herkesin kendini güvende hissedebileceği bir ortam oluşturmaktır.
+
+1. TANIMLAR
+Platform: Web ve mobil uygulama.
+Kullanıcı: Hizmetlerden yararlanan kişi.
+İçerik: Bölüm, kitap, yorum, mesaj vb. tüm üretimler.
+Yaptırım: Uyarıdan hesap kapatmaya kadar giden cezalar.
+
+2. TOPLULUĞUN TEMEL İLKELERİ
+Saygı, Güvenlik, Emeğe saygı, İfade özgürlüğü, Adaletli moderasyon ve Topluluk ruhu (linç kültürüne hayır) esastır.
+
+3. HESAP VE DAVRANIŞ SORUMLULUĞU
+Kullanıcılar doğru bilgi vermekle yükümlüdür. Yan hesaplarla manipülasyon yapmak yasaktır. Başkasının kimliğine bürünmek yasaktır. İletişimde saygılı dil esastır.
+
+4. TACİZ VE ZORBALIĞA SIFIR TOLERANS
+Kişisel hakaret, tehdit, stalking (ısrarlı takip), linç çağrısı, cinsel taciz ve şantaj kesinlikle yasaktır.
+
+5. NEFRET SÖYLEMİ VE AYRIMCILIK
+Irk, din, cinsiyet, yönelim gibi özellikler üzerinden ayrımcılık yapmak ve nefret söyleminde bulunmak yasaktır.
+
+6. İÇERİK PAYLAŞIM KURALLARI
+Şiddet, kan, taciz, ölüm gibi temalar içeren içerikler mutlaka ETİKETLENMELİDİR.
+Yasak İçerikler: Çocuk istismarı, Rıza dışı içerik övgüsü, Doxxing (ifşa), İntihar teşviki, Terör propagandası.
+
+7. YORUM VE ELEŞTİRİ KÜLTÜRÜ
+Eleştiri serbesttir, ancak saldırı yasaktır. Spoiler içeren yorumlar işaretlenmelidir. Spam ve reklam yasaktır.
+
+8. MESAJLAŞMA VE TAKİP
+Kullanıcı istemediği halde ısrarla mesaj atmak taciz sayılır. Cinsel içerikli mesajlar yasaktır.
+
+9. PANO VE YARIŞMALAR
+Panolarda linç yasaktır. Yarışmalarda hile (bot, sahte hesap) yasaktır.
+
+10. TELİF HAKLARI
+İçeriklerin telif hakkı üretene aittir. İntihal ve içerik çalmak yasaktır.
+
+11. GİZLİLİK VE GÜVENLİK
+Kullanıcılar birbirlerinin kişisel bilgilerini (adres, telefon vb.) paylaşamaz.
+
+12. RAPORLAMA SİSTEMİ
+Yalan raporlama veya raporlama tehdidi yasaktır.
+
+13. YAPTIRIMLAR
+İhlal durumunda: İçerik uyarısı, Resmî uyarı, Geçici kısıtlama, Hesabı askıya alma veya Kalıcı kapatma uygulanabilir.
+
+14. KABUL BEYANI
+Platformu kullanan herkes, bu kuralları kabul etmiş sayılır.
+`;
