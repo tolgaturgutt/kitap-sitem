@@ -98,7 +98,7 @@ export default function GirisSayfasi() {
     setLoading(false);
   }
 
- // --- ANA İŞLEM (GİRİŞ veya KAYIT) ---
+// --- ANA İŞLEM (GİRİŞ veya KAYIT) ---
   async function handleAuth() {
     // 1. Şifre Sıfırlama
     if (isResetMode) return handleResetPassword();
@@ -116,7 +116,21 @@ export default function GirisSayfasi() {
 
       setLoading(true);
 
-      // A) DAVETİYE KODU KONTROLÜ
+      // A) KULLANICI ADI KONTROLÜ (Manuel Check)
+      // Bu kısım "Database Error" hatasını engeller, önden uyarır.
+      const cleanUsername = username.trim();
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('username')
+        .ilike('username', cleanUsername)
+        .single();
+
+      if (existingUser) {
+        setLoading(false);
+        return toast.error('Bu kullanıcı adı zaten alınmış. Lütfen başka bir tane seçin.');
+      }
+
+      // B) DAVETİYE KODU KONTROLÜ
       const { data: bilet, error: biletError } = await supabase
         .from('davetiyeler')
         .select('*')
@@ -129,13 +143,15 @@ export default function GirisSayfasi() {
         return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
       }
 
-      // B) KAYIT İŞLEMİ
+      // C) KAYIT İŞLEMİ
+      // Not: Profil oluşturma ve Takip etme işini artık SQL Trigger (Tetikleyici) yapıyor.
+      // Biz sadece kullanıcıyı oluşturuyoruz.
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: loginInput,
         password,
         options: {
           data: {
-            username: username,
+            username: cleanUsername,
             full_name: fullName,
           },
         },
@@ -143,37 +159,17 @@ export default function GirisSayfasi() {
 
       if (signUpError) {
         setLoading(false);
-        if (signUpError.message.includes('unique_username_case_insensitive')) {
-             return toast.error('Bu kullanıcı adı zaten kullanımda. Lütfen başka bir tane seçin.');
-        }
-        return toast.error(signUpError.message);
+        // Eğer trigger yine de patlarsa (çok nadir), en azından hatayı gösterelim
+        return toast.error("Kayıt hatası: " + signUpError.message);
       }
 
-      // C) BİLETİ YAK
+      // D) BİLETİ YAK
       await supabase
         .from('davetiyeler')
         .update({ kullanildi: true })
         .eq('id', bilet.id);
 
-      // -----------------------------------------------------------
-      // 🔥 DÜZELTİLEN KISIM: OTOMATİK TAKİP (Catch hatası giderildi)
-      // -----------------------------------------------------------
-      const KITAPLAB_RESMI_ID = "4990d668-2cdf-4c9d-b409-21ecf14f43ac"; 
-
-      if (authData?.user?.id) {
-        // .catch() yerine direkt error değişkenine bakıyoruz. Bu asla patlamaz.
-        const { error: followError } = await supabase.from('author_follows').insert({
-          follower_id: authData.user.id,
-          followed_id: KITAPLAB_RESMI_ID
-        });
-        
-        if (followError) {
-          console.log("Oto-takip yapılamadı (Önemli değil):", followError.message);
-        }
-      }
-      // -----------------------------------------------------------
-
-      // D) GİRİŞ İZNİ (COOKIE)
+      // E) GİRİŞ İZNİ (COOKIE)
       document.cookie = "site_erisim=acik; path=/; max-age=604800"; 
 
       toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
@@ -185,7 +181,7 @@ export default function GirisSayfasi() {
 
     } else {
       // ------------------------------------------------------------------
-      // GİRİŞ YAPMA KISMI (BURASI AYNI)
+      // GİRİŞ YAPMA KISMI (BURASI DEĞİŞMEDİ)
       // ------------------------------------------------------------------
       setLoading(true);
       let finalEmail = loginInput;
@@ -216,7 +212,6 @@ export default function GirisSayfasi() {
         return toast.error('Hesabınız askıya alınmıştır.');
       }
 
-      // Giriş yapana da cookie ver
       document.cookie = "site_erisim=acik; path=/; max-age=604800"; 
 
       toast.success('Giriş başarılı.');
@@ -226,7 +221,6 @@ export default function GirisSayfasi() {
       }, 1000);
     }
   }
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white p-6">
       <Toaster position="top-right" />
