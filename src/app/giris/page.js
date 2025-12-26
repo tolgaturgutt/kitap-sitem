@@ -14,7 +14,6 @@ function DocumentModal({ isOpen, onClose, title, content }) {
   return (
     <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white dark:bg-gray-900 w-full max-w-4xl max-h-[85vh] rounded-2xl shadow-2xl flex flex-col border border-gray-200 dark:border-gray-800 relative">
-        {/* Başlık */}
         <div className="p-5 border-b dark:border-gray-800 flex justify-between items-center sticky top-0 bg-white dark:bg-gray-900 rounded-t-2xl z-10">
           <h2 className="text-xl font-black text-red-600 uppercase tracking-tight">{title}</h2>
           <button 
@@ -25,12 +24,10 @@ function DocumentModal({ isOpen, onClose, title, content }) {
           </button>
         </div>
         
-        {/* İçerik */}
         <div className="p-6 overflow-y-auto custom-scrollbar text-sm leading-relaxed text-gray-800 dark:text-gray-200 whitespace-pre-line">
           {content}
         </div>
 
-        {/* Alt Buton */}
         <div className="p-5 border-t dark:border-gray-800 bg-gray-50 dark:bg-black/20 rounded-b-2xl flex justify-end">
           <button 
             onClick={onClose}
@@ -48,30 +45,22 @@ function DocumentModal({ isOpen, onClose, title, content }) {
 // 2. ANA GİRİŞ SAYFASI
 // ==========================================
 export default function GirisSayfasi() {
-  // Giriş Bilgileri
   const [loginInput, setLoginInput] = useState(''); 
   const [password, setPassword] = useState('');
-  
-  // Kayıt Bilgileri
   const [username, setUsername] = useState(''); 
   const [fullName, setFullName] = useState('');
-  const [inviteCode, setInviteCode] = useState(''); // 🔑 DAVETİYE KODU ALANI
-  
-  // Kontroller
-  const [agreed, setAgreed] = useState(false); // ✅ ONAY KUTUSU
+  const [inviteCode, setInviteCode] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [isResetMode, setIsResetMode] = useState(false);
-  
-  // Modallar
   const [showKvkk, setShowKvkk] = useState(false);
   const [showRules, setShowRules] = useState(false);
-
   const [loading, setLoading] = useState(false);
+  
   const router = useRouter();
-
   const isEmail = (text) => text.includes('@');
 
-  // --- ŞİFRE SIFIRLAMA ---
+  // ŞİFRE SIFIRLAMA
   async function handleResetPassword() {
     if (!loginInput) return toast.error('E-posta veya kullanıcı adı giriniz.');
     setLoading(true);
@@ -98,151 +87,243 @@ export default function GirisSayfasi() {
     setLoading(false);
   }
 
-// --- ANA İŞLEM (GİRİŞ veya KAYIT) ---
-  async function handleAuth() {
-    // 1. Şifre Sıfırlama Modu Kontrolü
-    if (isResetMode) return handleResetPassword();
+  // KAYIT İŞLEMİ - DÜZELTİLMİŞ VERSİYON
+  async function handleSignUp() {
+    if (!username || !fullName || !inviteCode) {
+      return toast.error('Tüm alanlar ve Davetiye Kodu zorunludur.');
+    }
+    if (!agreed) {
+      return toast.error('Lütfen kuralları okuyup onaylayınız.');
+    }
+    if (!isEmail(loginInput)) {
+      return toast.error('Geçerli bir e-posta giriniz.');
+    }
 
-    // 2. Temel Boşluk Kontrolü
-    if (!loginInput || !password) return toast.error('Lütfen tüm alanları doldurunuz.');
+    setLoading(true);
 
-    // ------------------------------------------------------------------
-    // KAYIT OLMA İŞLEMLERİ
-    // ------------------------------------------------------------------
-    if (isSignUp) {
-      if (!username || !fullName || !inviteCode) return toast.error('Tüm alanlar ve Davetiye Kodu zorunludur.');
-      if (!agreed) return toast.error('Lütfen kuralları okuyup onaylayınız.');
-      if (!isEmail(loginInput)) return toast.error('Geçerli bir e-posta giriniz.');
+    try {
+      const cleanUsername = username.trim().toLowerCase();
+      const cleanEmail = loginInput.trim().toLowerCase();
 
-      setLoading(true);
+      // 1. KULLANICI ADI KONTROLÜ
+      console.log('Kullanıcı adı kontrol ediliyor:', cleanUsername);
+      const { data: existingUsername } = await supabase
+        .from('profiles')
+        .select('username')
+        .ilike('username', cleanUsername)
+        .maybeSingle();
 
-      try {
-        // A) KULLANICI ADI ÖN KONTROLÜ (Database Error hatasını engellemek için)
-        const cleanUsername = username.trim();
-        const { data: existingUser } = await supabase
-          .from('profiles')
-          .select('username')
-          .ilike('username', cleanUsername)
-          .single();
-
-        if (existingUser) {
-          setLoading(false);
-          return toast.error('Bu kullanıcı adı zaten alınmış. Lütfen başka bir tane seçin.');
-        }
-
-        // B) DAVETİYE KODU KONTROLÜ
-        const { data: bilet, error: biletError } = await supabase
-          .from('davetiyeler')
-          .select('*')
-          .eq('kod', inviteCode)
-          .eq('kullanildi', false)
-          .single();
-
-        if (biletError || !bilet) {
-          setLoading(false);
-          return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
-        }
-
-        // C) AUTH KAYIT İŞLEMİ
-        // Not: Profil oluşturma ve KitapLab'ı takip etme işini veritabanındaki SQL Trigger hallediyor.
-        const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email: loginInput,
-          password,
-          options: {
-            data: {
-              username: cleanUsername,
-              full_name: fullName,
-            },
-          },
-        });
-
-        if (signUpError) {
-          setLoading(false);
-          return toast.error("Kayıt hatası: " + signUpError.message);
-        }
-
-        // D) DAVETİYEYİ GEÇERSİZ KIL (BİLETİ YAK)
-        await supabase
-          .from('davetiyeler')
-          .update({ kullanildi: true })
-          .eq('id', bilet.id);
-
-        // E) ERİŞİM DAMGASI (COOKIE) - Bakım modunda ana sayfaya girebilmesi için
-        document.cookie = "site_erisim=acik; path=/; max-age=604800"; // 7 günlük izin
-
-        toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
-        
-        setTimeout(() => {
-          router.push('/');
-          router.refresh();
-        }, 1500);
-
-      } catch (err) {
+      if (existingUsername) {
         setLoading(false);
-        toast.error("Beklenmedik bir hata oluştu.");
-        console.error(err);
+        return toast.error('Bu kullanıcı adı zaten alınmış.');
       }
 
-    } else {
-      // ------------------------------------------------------------------
-      // GİRİŞ YAPMA İŞLEMLERİ
-      // ------------------------------------------------------------------
-      setLoading(true);
-      let finalEmail = loginInput;
+      // 2. E-POSTA KONTROLÜ
+      console.log('E-posta kontrol ediliyor:', cleanEmail);
+      const { data: existingEmail } = await supabase
+        .from('profiles')
+        .select('email')
+        .ilike('email', cleanEmail)
+        .maybeSingle();
 
-      // Kullanıcı adı ile giriş desteği
-      if (!isEmail(loginInput)) {
-        const { data } = await supabase
-          .from('profiles')
-          .select('email')
-          .ilike('username', loginInput)
-          .single();
-          
-        if (!data) {
-          setLoading(false);
-          return toast.error('Hesap bulunamadı.');
-        }
-        finalEmail = data.email;
+      if (existingEmail) {
+        setLoading(false);
+        return toast.error('Bu e-posta adresi zaten kayıtlı.');
       }
 
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: finalEmail,
+      // 3. DAVETİYE KODU KONTROLÜ
+      console.log('Davetiye kodu kontrol ediliyor:', inviteCode);
+      const { data: bilet, error: biletError } = await supabase
+        .from('davetiyeler')
+        .select('*')
+        .eq('kod', inviteCode.trim())
+        .eq('kullanildi', false)
+        .maybeSingle();
+
+      if (biletError) {
+        console.error('Davetiye sorgu hatası:', biletError);
+        setLoading(false);
+        return toast.error('Davetiye kontrolünde hata oluştu.');
+      }
+
+      if (!bilet) {
+        setLoading(false);
+        return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
+      }
+
+      // 4. AUTH KAYIT
+      console.log('Kullanıcı kaydı yapılıyor...');
+      const { data: authData, error: signUpError } = await supabase.auth.signUp({
+        email: cleanEmail,
         password,
+        options: {
+          data: {
+            username: cleanUsername,
+            full_name: fullName.trim(),
+          },
+        },
       });
 
-      if (error) {
+      if (signUpError) {
+        console.error('Kayıt hatası:', signUpError);
         setLoading(false);
-        return toast.error('Giriş bilgileri hatalı.');
+        return toast.error("Kayıt hatası: " + signUpError.message);
       }
 
-      // Ban Kontrolü
-      const { data: profile } = await supabase
+      if (!authData.user) {
+        setLoading(false);
+        return toast.error('Kullanıcı oluşturulamadı.');
+      }
+
+      console.log('Kullanıcı oluşturuldu:', authData.user.id);
+
+      // 5. PROFİL KONTROLÜ VE OLUŞTURMA (Trigger çalışmadıysa manuel)
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Trigger için bekleme
+      
+      const { data: profileCheck } = await supabase
         .from('profiles')
-        .select('is_banned')
-        .eq('id', data.user.id)
-        .single();
+        .select('id')
+        .eq('id', authData.user.id)
+        .maybeSingle();
 
-      if (profile?.is_banned) {
-        await supabase.auth.signOut();
-        setLoading(false);
-        return toast.error('Hesabınız askıya alınmıştır.');
+      if (!profileCheck) {
+        console.log('Profil trigger çalışmadı, manuel oluşturuluyor...');
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            username: cleanUsername,
+            full_name: fullName.trim(),
+            email: cleanEmail,
+            avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername}`,
+          });
+
+        if (profileError) {
+          console.error('Profil oluşturma hatası:', profileError);
+          await supabase.auth.signOut();
+          setLoading(false);
+          return toast.error('Profil oluşturulamadı: ' + profileError.message);
+        }
       }
 
-      // Giriş yapana da erişim damgasını basıyoruz
+      // 6. KİTAPLAB'I TAKİP ET (varsa)
+      try {
+        console.log('KitapLab takip ediliyor...');
+        const { data: kitaplab } = await supabase
+          .from('profiles')
+          .select('id')
+          .ilike('username', 'kitaplab')
+          .maybeSingle();
+
+        if (kitaplab) {
+          const { error: followError } = await supabase
+            .from('followers')
+            .insert({
+              follower_id: authData.user.id,
+              following_id: kitaplab.id,
+            })
+            .select()
+            .maybeSingle();
+
+          if (followError && !followError.message.includes('duplicate')) {
+            console.error('Takip hatası:', followError);
+          }
+        }
+      } catch (followErr) {
+        console.error('KitapLab takip hatası:', followErr);
+        // Takip hatası kayıt işlemini engellemez
+      }
+
+      // 7. DAVETİYEYİ GEÇERSİZ KIL
+      console.log('Davetiye geçersiz kılınıyor...');
+      await supabase
+        .from('davetiyeler')
+        .update({ kullanildi: true })
+        .eq('id', bilet.id);
+
+      // 8. ERİŞİM DAMGASI
       document.cookie = "site_erisim=acik; path=/; max-age=604800";
 
-      toast.success('Giriş başarılı.');
+      toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
+      
       setTimeout(() => {
         router.push('/');
         router.refresh();
-      }, 1000);
+      }, 1500);
+
+    } catch (err) {
+      console.error('Beklenmedik hata:', err);
+      setLoading(false);
+      toast.error("Beklenmedik bir hata oluştu: " + err.message);
     }
   }
+
+  // GİRİŞ İŞLEMİ
+  async function handleSignIn() {
+    setLoading(true);
+    let finalEmail = loginInput;
+
+    if (!isEmail(loginInput)) {
+      const { data } = await supabase
+        .from('profiles')
+        .select('email')
+        .ilike('username', loginInput)
+        .single();
+        
+      if (!data) {
+        setLoading(false);
+        return toast.error('Hesap bulunamadı.');
+      }
+      finalEmail = data.email;
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: finalEmail,
+      password,
+    });
+
+    if (error) {
+      setLoading(false);
+      return toast.error('Giriş bilgileri hatalı.');
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_banned')
+      .eq('id', data.user.id)
+      .single();
+
+    if (profile?.is_banned) {
+      await supabase.auth.signOut();
+      setLoading(false);
+      return toast.error('Hesabınız askıya alınmıştır.');
+    }
+
+    document.cookie = "site_erisim=acik; path=/; max-age=604800";
+
+    toast.success('Giriş başarılı.');
+    setTimeout(() => {
+      router.push('/');
+      router.refresh();
+    }, 1000);
+  }
+
+  // ANA İŞLEM YÖNLENDİRİCİ
+  async function handleAuth() {
+    if (isResetMode) return handleResetPassword();
+    if (!loginInput || !password) return toast.error('Lütfen tüm alanları doldurunuz.');
+    
+    if (isSignUp) {
+      return handleSignUp();
+    } else {
+      return handleSignIn();
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white p-6">
       <Toaster position="top-right" />
 
-      {/* --- MODALLAR --- */}
       <DocumentModal 
         isOpen={showKvkk} 
         onClose={() => setShowKvkk(false)} 
@@ -266,7 +347,6 @@ export default function GirisSayfasi() {
 
         <div className="space-y-4">
           
-          {/* SADECE KAYIT MODUNDA: İsim, Kullanıcı Adı ve DAVETİYE KODU */}
           {isSignUp && !isResetMode && (
             <>
               <div>
@@ -289,7 +369,6 @@ export default function GirisSayfasi() {
                   placeholder="kullaniciadi"
                 />
               </div>
-              {/* 🔑 DAVETİYE KODU KUTUSU */}
               <div className="relative">
                 <label className="block text-xs font-bold mb-1 text-red-600 uppercase">Davetiye Kodu (Zorunlu)</label>
                 <input
@@ -303,7 +382,6 @@ export default function GirisSayfasi() {
             </>
           )}
 
-          {/* E-posta ve Şifre (Her Zaman Var) */}
           <div>
             <label className="block text-xs font-bold mb-1 opacity-60 uppercase">
               {isSignUp && !isResetMode ? 'E-posta Adresi' : 'E-posta veya Kullanıcı Adı'}
@@ -337,7 +415,6 @@ export default function GirisSayfasi() {
             </div>
           )}
 
-          {/* ✅ ONAY KUTUSU (Sadece Kayıtta) */}
           {isSignUp && !isResetMode && (
             <div className="flex items-start gap-3 p-2">
               <input 
@@ -391,15 +468,11 @@ export default function GirisSayfasi() {
   );
 }
 
-// ==========================================
-// 3. FULL METİNLER
-// ==========================================
-
 const FULL_KVKK_TEXT = `
 KİŞİSEL VERİLERİN KORUNMASI VE AYDINLATMA METNİ
 (6698 Sayılı Kişisel Verilerin Korunması Kanunu Kapsamında)
 
-Bu Aydınlatma Metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu (“KVKK”) uyarınca, KitapLab (“Platform”) tarafından, kişisel verileri işlenen gerçek kişileri bilgilendirmek amacıyla hazırlanmıştır.
+Bu Aydınlatma Metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca, KitapLab ("Platform") tarafından, kişisel verileri işlenen gerçek kişileri bilgilendirmek amacıyla hazırlanmıştır.
 
 Platform; kullanıcıların gizliliğine, kişisel verilerinin güvenliğine ve veri mahremiyetine azami önem verir.
 
@@ -440,16 +513,16 @@ Kişisel veriler, işleme amacının gerektirdiği süre boyunca veya mevzuatta 
 Platform, verilerin güvenliği için teknik ve idari tedbirleri, yetkisiz erişim önlemlerini ve güvenli sunucu altyapısını uygular.
 
 10. KVKK KAPSAMINDA KULLANICI HAKLARI
-KVKK’nın 11. maddesi uyarınca kullanıcılar; Verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini veya silinmesini isteme haklarına sahiptir.
+KVKK'nın 11. maddesi uyarınca kullanıcılar; Verilerinin işlenip işlenmediğini öğrenme, bilgi talep etme, düzeltilmesini veya silinmesini isteme haklarına sahiptir.
 
 11. BAŞVURU YÖNTEMİ
 Taleplerinizi [iletisim@kitaplab.com] adresi veya Platform içi destek sistemi üzerinden iletebilirsiniz.
 `;
 
 const FULL_RULES_TEXT = `
-TOPLULUK SÖZLEŞMESİ VE TOPLULUK KURALLARI
+TOPLULUK SÖZLEŞMESİ VE TOPLULUK KURALLAR
 
-Bu platform; yazarlara üretim alanı, okurlara keşif alanı sunan, yaratıcı içeriklerin paylaşıldığı bir okuma–yazma topluluğudur. Amacımız, herkesin kendini güvende hissedebileceği bir ortam oluşturmaktır.
+Bu platform; yazarlara üretim alanı, okurlara keşif alanı sunan, yaratıcı içeriklerin paylaşıldığı bir okuma—yazma topluluğudur. Amacımız, herkesin kendini güvende hissedebileceği bir ortam oluşturmaktır.
 
 1. TANIMLAR
 Platform: Web ve mobil uygulama.
@@ -463,7 +536,7 @@ Saygı, Güvenlik, Emeğe saygı, İfade özgürlüğü, Adaletli moderasyon ve 
 3. HESAP VE DAVRANIŞ SORUMLULUĞU
 Kullanıcılar doğru bilgi vermekle yükümlüdür. Yan hesaplarla manipülasyon yapmak yasaktır. Başkasının kimliğine bürünmek yasaktır. İletişimde saygılı dil esastır.
 
-4. TACİZ VE ZORBALIĞA SIFIR TOLERANS
+4. TACİZ VE ZORBALĞA SIFIR TOLERANS
 Kişisel hakaret, tehdit, stalking (ısrarlı takip), linç çağrısı, cinsel taciz ve şantaj kesinlikle yasaktır.
 
 5. NEFRET SÖYLEMİ VE AYRIMCILIK
