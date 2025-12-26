@@ -375,7 +375,7 @@ export default function Navbar() {
                 </button>
                 
                 {showNotifs && (
-                  <div className="absolute top-14 right-0 w-[90vw] max-w-[320px] md:w-[500px] md:max-w-none bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden z-[120] animate-in fade-in slide-in-from-top-2 duration-200">
+                 <div className="absolute top-14 right-0 w-[95vw] max-w-[380px] md:w-[500px] md:max-w-none bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl overflow-hidden z-[120] animate-in fade-in slide-in-from-top-2 duration-200 -translate-x-2 md:translate-x-0">
                     <div className="p-4 md:p-5 border-b dark:border-white/5 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 flex justify-between items-center">
                       <div>
                         <p className="text-xs md:text-sm font-black dark:text-white">Bildirimler</p>
