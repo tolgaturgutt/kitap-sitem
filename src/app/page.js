@@ -12,7 +12,7 @@ const KATEGORILER = [
   "Aksiyon", "Bilim Kurgu", "Biyografi", "Dram", "Fantastik", "Felsefe", "Genel", 
   "Genç Kurgu", "Gizem/Gerilim", "Hayran Kurgu", "Korku", "Kurgu Olmayan", 
   "Kısa Hikaye", "Macera", "Mizah", "Paranormal", "Polisiye", "Romantik", 
-  "Senaryo", "Şiir", "Tarihi"
+  "Senaryo","Suç", "Şiir", "Tarihi"
 ];
 
 // --- YARDIMCI: SAYI FORMATLAMA (1200 -> 1.2K) ---

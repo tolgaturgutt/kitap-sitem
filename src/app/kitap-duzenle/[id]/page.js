@@ -24,6 +24,7 @@ const KATEGORILER = [
   "Polisiye",
   "Romantik",
   "Senaryo",
+  "Suç",
   "Şiir",
   "Tarihi"
 ];
