@@ -98,80 +98,144 @@ export default function GirisSayfasi() {
     setLoading(false);
   }
 
-async function handleAuth() {
+// --- ANA İŞLEM (GİRİŞ veya KAYIT) ---
+  async function handleAuth() {
+    // 1. Şifre Sıfırlama Modu Kontrolü
     if (isResetMode) return handleResetPassword();
+
+    // 2. Temel Boşluk Kontrolü
     if (!loginInput || !password) return toast.error('Lütfen tüm alanları doldurunuz.');
 
+    // ------------------------------------------------------------------
+    // KAYIT OLMA İŞLEMLERİ
+    // ------------------------------------------------------------------
     if (isSignUp) {
       if (!username || !fullName || !inviteCode) return toast.error('Tüm alanlar ve Davetiye Kodu zorunludur.');
       if (!agreed) return toast.error('Lütfen kuralları okuyup onaylayınız.');
+      if (!isEmail(loginInput)) return toast.error('Geçerli bir e-posta giriniz.');
 
       setLoading(true);
 
-      // A) KULLANICI ADI ÖN KONTROLÜ (Database Error almamak için)
-      const { data: existingUser } = await supabase
-        .from('profiles')
-        .select('username')
-        .ilike('username', username.trim())
-        .single();
+      try {
+        // A) KULLANICI ADI ÖN KONTROLÜ (Database Error hatasını engellemek için)
+        const cleanUsername = username.trim();
+        const { data: existingUser } = await supabase
+          .from('profiles')
+          .select('username')
+          .ilike('username', cleanUsername)
+          .single();
 
-      if (existingUser) {
-        setLoading(false);
-        return toast.error('Bu kullanıcı adı zaten alınmış.');
-      }
+        if (existingUser) {
+          setLoading(false);
+          return toast.error('Bu kullanıcı adı zaten alınmış. Lütfen başka bir tane seçin.');
+        }
 
-      // B) DAVETİYE KODU KONTROLÜ
-      const { data: bilet, error: biletError } = await supabase
-        .from('davetiyeler')
-        .select('*')
-        .eq('kod', inviteCode)
-        .eq('kullanildi', false)
-        .single();
+        // B) DAVETİYE KODU KONTROLÜ
+        const { data: bilet, error: biletError } = await supabase
+          .from('davetiyeler')
+          .select('*')
+          .eq('kod', inviteCode)
+          .eq('kullanildi', false)
+          .single();
 
-      if (biletError || !bilet) {
-        setLoading(false);
-        return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
-      }
+        if (biletError || !bilet) {
+          setLoading(false);
+          return toast.error('Geçersiz veya kullanılmış davetiye kodu!');
+        }
 
-      // C) KAYIT İŞLEMİ
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: loginInput,
-        password,
-        options: {
-          data: {
-            username: username.trim(),
-            full_name: fullName,
+        // C) AUTH KAYIT İŞLEMİ
+        // Not: Profil oluşturma ve KitapLab'ı takip etme işini veritabanındaki SQL Trigger hallediyor.
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: loginInput,
+          password,
+          options: {
+            data: {
+              username: cleanUsername,
+              full_name: fullName,
+            },
           },
-        },
+        });
+
+        if (signUpError) {
+          setLoading(false);
+          return toast.error("Kayıt hatası: " + signUpError.message);
+        }
+
+        // D) DAVETİYEYİ GEÇERSİZ KIL (BİLETİ YAK)
+        await supabase
+          .from('davetiyeler')
+          .update({ kullanildi: true })
+          .eq('id', bilet.id);
+
+        // E) ERİŞİM DAMGASI (COOKIE) - Bakım modunda ana sayfaya girebilmesi için
+        document.cookie = "site_erisim=acik; path=/; max-age=604800"; // 7 günlük izin
+
+        toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
+        
+        setTimeout(() => {
+          router.push('/');
+          router.refresh();
+        }, 1500);
+
+      } catch (err) {
+        setLoading(false);
+        toast.error("Beklenmedik bir hata oluştu.");
+        console.error(err);
+      }
+
+    } else {
+      // ------------------------------------------------------------------
+      // GİRİŞ YAPMA İŞLEMLERİ
+      // ------------------------------------------------------------------
+      setLoading(true);
+      let finalEmail = loginInput;
+
+      // Kullanıcı adı ile giriş desteği
+      if (!isEmail(loginInput)) {
+        const { data } = await supabase
+          .from('profiles')
+          .select('email')
+          .ilike('username', loginInput)
+          .single();
+          
+        if (!data) {
+          setLoading(false);
+          return toast.error('Hesap bulunamadı.');
+        }
+        finalEmail = data.email;
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: finalEmail,
+        password,
       });
 
-      if (signUpError) {
+      if (error) {
         setLoading(false);
-        // Tetikleyici (Trigger) hatasını yakalama
-        if (signUpError.message.includes('unique_username_case_insensitive')) {
-          return toast.error('Bu kullanıcı adı zaten kullanımda.');
-        }
-        return toast.error("Kayıt sırasında bir hata oluştu: " + signUpError.message);
+        return toast.error('Giriş bilgileri hatalı.');
       }
 
-      // D) BİLETİ YAK
-      await supabase
-        .from('davetiyeler')
-        .update({ kullanildi: true })
-        .eq('id', bilet.id);
+      // Ban Kontrolü
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('is_banned')
+        .eq('id', data.user.id)
+        .single();
 
-      // Siteye erişim izni (Cookie)
-      document.cookie = "site_erisim=acik; path=/; max-age=604800"; 
+      if (profile?.is_banned) {
+        await supabase.auth.signOut();
+        setLoading(false);
+        return toast.error('Hesabınız askıya alınmıştır.');
+      }
 
-      toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
+      // Giriş yapana da erişim damgasını basıyoruz
+      document.cookie = "site_erisim=acik; path=/; max-age=604800";
+
+      toast.success('Giriş başarılı.');
       setTimeout(() => {
         router.push('/');
         router.refresh();
-      }, 1500);
-
-    } else {
-      // Giriş işlemleri... 
-      // (Mevcut giriş kodun aynı kalabilir)
+      }, 1000);
     }
   }
   return (
