@@ -26,10 +26,12 @@ function AramaIcerik() {
           // ✅ chapters(id) EKLEDİK Kİ BÖLÜM SAYISINI GÖRELİM
           .select('id, title, summary, cover_url, username, category, chapters(id)') 
           .ilike('title', `%${query}%`),
+          
+        // ✅ GÜNCELLEME BURADA: Sadece username değil, full_name de aranıyor.
         supabase
           .from('profiles')
-          .select('username, avatar_url, bio, role') 
-          .ilike('username', `%${query}%`)
+          .select('username, full_name, avatar_url, bio, role') // full_name'i de çektik
+          .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`) // İkisinden biri tutarsa getir
       ]);
 
       let booksData = booksRes.data || [];
@@ -152,7 +154,10 @@ function AramaIcerik() {
                           className="font-bold dark:text-white group-hover:text-red-600 transition-colors"
                         />
                       </div>
-                      <p className="text-[10px] text-gray-400 uppercase font-black mt-2 tracking-widest">Yazar</p>
+                      {/* Gerçek ismi varsa gösterelim, yoksa 'Yazar' yazsın */}
+                      <p className="text-[10px] text-gray-400 uppercase font-black mt-2 tracking-widest">
+                        {u.full_name || 'Yazar'}
+                      </p>
                     </Link>
                   ))}
                 </div>
