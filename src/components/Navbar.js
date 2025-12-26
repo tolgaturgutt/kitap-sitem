@@ -68,15 +68,33 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  async function loadNotifications(email) {
-    const { data: n } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('recipient_email', email)
-      .order('created_at', { ascending: false })
-      .limit(50);
-    setNotifications(n || []);
+ async function loadNotifications(email) {
+  const { data: n } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('recipient_email', email)
+    .order('created_at', { ascending: false })
+    .limit(50);
+  
+  // ✅ Eğer chapter_id varsa ama chapter_title yoksa, bölüm adını çek
+  if (n && n.length > 0) {
+    for (let notif of n) {
+      if (notif.chapter_id && !notif.chapter_title) {
+        const { data: chapter } = await supabase
+          .from('chapters')
+          .select('title')
+          .eq('id', notif.chapter_id)
+          .single();
+        
+        if (chapter) {
+          notif.chapter_title = chapter.title;
+        }
+      }
+    }
   }
+  
+  setNotifications(n || []);
+}
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -196,19 +214,20 @@ export default function Navbar() {
     }
   }
 
-  function getNotificationText(n) {
-    switch(n.type) {
-      case 'vote': return 'eserini beğendi';
-      case 'chapter_vote': return 'bölümünü beğendi';
-      case 'comment': return n.chapter_id ? 'bölümüne yorum yaptı' : 'eserine yorum yaptı';
-      case 'new_chapter': return 'yeni bölüm yayınladı';
-      case 'pano_vote': return 'panonuzu beğendi';
-      case 'pano_comment': return 'panonuza yorum yaptı';
-      case 'reply': return 'yorumunuza yanıt verdi';
-      case 'follow': return 'seni takip etti';
-      default: return 'bir aktivite gerçekleştirdi';
-    }
+function getNotificationText(n) {
+  switch(n.type) {
+    case 'vote': return 'eserini beğendi';
+    case 'chapter_vote': return 'bölümünü beğendi';
+    case 'comment': 
+      return n.chapter_id ? 'bölümüne yorum yaptı' : 'eserine yorum yaptı';
+    case 'new_chapter': return 'yeni bölüm yayınladı';
+    case 'pano_vote': return 'panonuzu beğendi';
+    case 'pano_comment': return 'panonuza yorum yaptı';
+    case 'reply': return 'yorumunuza yanıt verdi';
+    case 'follow': return 'seni takip etti';
+    default: return 'bir aktivite gerçekleştirdi';
   }
+}
 
   function getNotificationIcon(n) {
     switch(n.type) {
@@ -385,39 +404,50 @@ export default function Navbar() {
                           </p>
                         </div>
                         <div className="p-2 md:p-3 space-y-2">
-                          {activityNotifs.length === 0 ? (
-                            <div className="text-center py-8 md:py-12">
-                              <span className="text-2xl md:text-3xl block mb-2 opacity-20">😴</span>
-                              <p className="text-[8px] md:text-[9px] text-gray-400 italic">Henüz aktivite yok</p>
-                            </div>
-                          ) : activityNotifs.map(n => (
-                            <Link
-                              key={n.id}
-                              href={getNotificationLink(n)}
-                              onClick={() => setShowNotifs(false)}
-                              className="block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/20"
-                            >
-                              <div className="flex items-start gap-2 md:gap-3">
-                                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-600/10 flex items-center justify-center shrink-0">
-                                  <span className="text-xs">{getNotificationIcon(n)}</span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-[9px] md:text-[10px] font-bold leading-relaxed">
-                                    <span className="text-red-600 font-black">@{n.actor_username}</span>
-                                    {' '}
-                                    {getNotificationText(n)}
-                                  </p>
-                                  {n.book_title && (
-                                    <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">"{n.book_title}"</p>
-                                  )}
-                                  <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
-                                    {new Date(n.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                  </p>
-                                </div>
-                              </div>
-                            </Link>
-                          ))}
-                        </div>
+  {activityNotifs.length === 0 ? (
+    <div className="text-center py-8 md:py-12">
+      <span className="text-2xl md:text-3xl block mb-2 opacity-20">😴</span>
+      <p className="text-[8px] md:text-[9px] text-gray-400 italic">Henüz aktivite yok</p>
+    </div>
+  ) : activityNotifs.map(n => (
+    <Link
+      key={n.id}
+      href={getNotificationLink(n)}
+      onClick={() => setShowNotifs(false)}
+      className="block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/20"
+    >
+      <div className="flex items-start gap-2 md:gap-3">
+        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-600/10 flex items-center justify-center shrink-0">
+          <span className="text-xs">{getNotificationIcon(n)}</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[9px] md:text-[10px] font-bold leading-relaxed">
+            <span className="text-red-600 font-black">@{n.actor_username}</span>
+            {' '}
+            {getNotificationText(n)}
+          </p>
+          
+          {/* ✅ BURADA DEĞİŞİKLİK: Bölüm varsa kitap adı - bölüm adı göster */}
+          {n.book_title && (
+            <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">
+              "{n.book_title}
+              {n.chapter_title && ` - ${n.chapter_title}`}"
+            </p>
+          )}
+          
+          <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
+            {new Date(n.created_at).toLocaleDateString('tr-TR', { 
+              day: 'numeric', 
+              month: 'short', 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </p>
+        </div>
+      </div>
+    </Link>
+  ))}
+</div>
                       </div>
 
                       <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50/30 dark:bg-white/[0.01] border-t md:border-t-0 dark:border-white/5 h-1/2 md:h-auto">
