@@ -23,6 +23,16 @@ function formatNumber(num) {
   return num;
 }
 
+// --- YARDIMCI: DİZİYİ RASTGELE KARIŞTIR ---
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 function DuyuruPaneli({ isAdmin }) {
   const [duyurular, setDuyurular] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -204,175 +214,6 @@ function ContinueReadingCarousel({ books }) {
   );
 }
 
-// ✅ GÜNCELLENMİŞ COMPONENT: ÇARPI TUŞU + AKILLI PROFİL LİNKİ
-function RecentlyAddedChapters({ chapters, currentUser }) {
-  const [selectedChapter, setSelectedChapter] = useState(null);
-  const scrollRef = useRef(null);
-  
-  const scroll = (dir) => { 
-    if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' }); 
-  };
-
-  if (!chapters || chapters.length === 0) return null;
-
-  // Profil linkini belirleyen yardımcı mantık
-  const getProfileLink = (chapterBook) => {
-    // Eğer giriş yapan kullanıcının emaili ile kitabın yazarının emaili aynıysa
-    if (currentUser && currentUser.email === chapterBook.user_email) {
-      return '/profil'; // Kendi profiline git
-    }
-    // Değilse yazarın sayfasına git
-    return `/yazar/${chapterBook.username}`;
-  };
-
-  return (
-    <>
-      {/* --- MİNİK SEÇİM MODALI --- */}
-      {selectedChapter && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setSelectedChapter(null)}>
-          <div className="bg-white dark:bg-[#1a1a1a] w-full max-w-[320px] rounded-2xl p-6 pt-10 text-center shadow-2xl border border-gray-100 dark:border-gray-800 relative flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            
-            {/* 🔴 YENİ: SAĞ ÜST KÖŞE KAPATMA (X) TUŞU */}
-            <button 
-              onClick={() => setSelectedChapter(null)} 
-              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/10 text-gray-500 hover:text-red-600 dark:text-gray-300 rounded-full transition-colors font-bold"
-            >
-              ✕
-            </button>
-
-            {/* Modal Başlık Kısmı */}
-            <div>
-              <h3 className="text-lg font-black dark:text-white leading-tight mb-1 line-clamp-2">
-                {selectedChapter.title}
-              </h3>
-              <p className="text-xs text-gray-500 font-medium">
-                {selectedChapter.books?.title}
-              </p>
-            </div>
-
-            {/* Seçenek Butonları */}
-            <div className="flex flex-col gap-2.5 w-full">
-              {/* 1. Seçenek: Bölüme Git */}
-              <Link href={`/kitap/${selectedChapter.book_id}/bolum/${selectedChapter.id}`} className="flex items-center justify-center gap-2 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-red-600/20">
-                📖 Bölüme Git
-              </Link>
-              
-              {/* 2. Seçenek: Akıllı Profil Linki */}
-              <Link href={getProfileLink(selectedChapter.books)} className="flex items-center justify-center gap-2 w-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-black dark:text-white font-bold py-3 rounded-xl text-sm transition-all">
-                👤 Yazarın Profili
-              </Link>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* --- LİSTE --- */}
-      <div className="mb-20 group relative px-1">
-        <div className="flex items-end justify-between mb-5">
-           <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 italic flex items-center gap-2">
-             🆕 Son Eklenen Bölümler
-           </h2>
-        </div>
-
-        <button onClick={() => scroll('left')} className="absolute left-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">←</button>
-        <button onClick={() => scroll('right')} className="absolute right-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">→</button>
-
-        <div ref={scrollRef} className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide snap-x py-2 px-1">
-          {chapters.map(chapter => (
-            <div key={chapter.id} onClick={() => setSelectedChapter(chapter)} className="flex-none w-[38%] md:w-32 lg:w-40 snap-start group/card cursor-pointer">
-              {/* KAPAK + BÖLÜM ADI OVERLAY */}
-              <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
-                {chapter.books?.cover_url ? (
-                  <img src={chapter.books.cover_url} className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500" alt="" />
-                ) : (
-                  <div className="w-full h-full bg-gray-200 dark:bg-gray-900" />
-                )}
-                
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 pt-6">
-                  <p className="text-[10px] text-white font-black uppercase leading-tight line-clamp-2">
-                    {chapter.title}
-                  </p>
-                </div>
-              </div>
-              
-              <h3 className="font-bold text-[11px] dark:text-white leading-tight truncate group-hover/card:text-red-600 transition-colors">
-                {chapter.books?.title}
-              </h3>
-              <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
-                 <Username username={chapter.books?.username} isAdmin={chapter.is_admin} />
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
-  );
-}
-
-
-// --- EDİTÖRÜN SEÇİMİ ---
-function EditorsChoiceSection({ books }) {
-  const scrollRef = useRef(null);
-  const scroll = (dir) => { if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' }); };
-
-  if (!books || books.length === 0) return null;
-
-  return (
-    <div className="mb-12">
-      <div className="flex items-center justify-between mb-5">
-        <h2 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-yellow-600 dark:text-yellow-500 flex items-center gap-2">
-          <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-yellow-500 mb-1"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-          EDİTÖRÜN SEÇİMİ
-        </h2>
-        <div className="hidden md:flex gap-2">
-          <button onClick={() => scroll('left')} className="w-8 h-8 rounded-full border border-yellow-600/20 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 flex items-center justify-center text-yellow-600 transition-all text-sm">←</button>
-          <button onClick={() => scroll('right')} className="w-8 h-8 rounded-full border border-yellow-600/20 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 flex items-center justify-center text-yellow-600 transition-all text-sm">→</button>
-        </div>
-      </div>
-
-      <div ref={scrollRef} className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide snap-x py-4 px-2">
-        {books.map(kitap => (
-          <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-[38%] md:w-36 lg:w-48 snap-start group">
-            <div className="relative aspect-[2/3] rounded-xl overflow-hidden transition-all duration-300 border-2 border-yellow-500/40 group-hover:border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)] group-hover:shadow-[0_0_25px_rgba(234,179,8,0.5)]">
-               <img src={kitap.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={kitap.title} />
-            </div>
-            
-            <div className="mt-3">
-              <h3 className="text-sm font-black dark:text-white leading-tight mb-1 truncate group-hover:text-yellow-500 transition-colors flex items-center gap-1.5">
-                <div className="shrink-0" title="Editörün Seçimi">
-                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-500 drop-shadow-sm"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
-                </div>
-                <span className="truncate">{kitap.title}</span>
-              </h3>
-
-              {kitap.is_completed && (
-                <div className="mb-1">
-                  <span className="text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-md uppercase tracking-wide">
-                    ✅ Tamamlandı
-                  </span>
-                </div>
-              )}
-
-              <p className="text-[9px] font-bold uppercase tracking-widest pl-6"> 
-                <Username username={kitap.username} isAdmin={kitap.is_admin} />
-              </p>
-
-              {/* ✅ İSTATİSTİKLER */}
-              <div className="flex items-center gap-2 md:gap-3
-              mt-2 pl-1 text-[9px] font-bold text-gray-400">
-                <span className="flex items-center gap-1">👁️ {formatNumber(kitap.totalViews)}</span>
-                <span className="flex items-center gap-1">❤️ {formatNumber(kitap.totalVotes)}</span>
-                <span className="flex items-center gap-1">💬 {formatNumber(kitap.totalComments)}</span>
-              </div>
-            </div>
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 // --- KATEGORİ SATIRI ---
 function CategoryRow({ title, books, isFeatured = false }) {
   const scrollRef = useRef(null);
@@ -413,7 +254,7 @@ function CategoryRow({ title, books, isFeatured = false }) {
               </div>
             )}
             
-            <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest opacity-80">
+            <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest opacity-80">
               <Username username={kitap.username} isAdmin={kitap.is_admin} />
             </p>
 
@@ -430,7 +271,7 @@ function CategoryRow({ title, books, isFeatured = false }) {
   );
 }
 
-// --- EN ÇOK OKUNANLAR ---
+// --- EN ÇOĞK OKUNANLAR ---
 function TopReadRow({ books }) {
   const scrollRef = useRef(null);
   const scroll = (dir) => { if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' }); };
@@ -465,7 +306,7 @@ function TopReadRow({ books }) {
               </div>
             )}
 
-            <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest opacity-80">
+            <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest opacity-80">
               <Username username={kitap.username} isAdmin={kitap.is_admin} />
             </p>
             
@@ -619,7 +460,8 @@ export default function Home() {
           const rCommentsCount = recentComments?.filter(c => c.book_id === b.id).length || 0;
           const rFollowsCount = recentFollows?.filter(f => f.book_id === b.id).length || 0;
           
-          const score = (b.totalViews * 0.1) + (rVotesCount * 5) + (rCommentsCount * 10) + (rFollowsCount * 20);
+          // ✅ YENİ SKOR SİSTEMİ: Kütüphane > Yorum > Beğeni > Okunma
+          const score = (rFollowsCount * 100) + (rCommentsCount * 50) + (rVotesCount * 10) + (b.totalViews * 0.1);
           return { ...b, interactionScore: score };
         });
 
@@ -631,7 +473,9 @@ export default function Home() {
         const grouped = {};
         KATEGORILER.forEach(cat => {
           const categoryBooks = scored.filter(b => b.category === cat);
-          grouped[cat] = categoryBooks.sort((a, b) => b.interactionScore - a.interactionScore).slice(0, 20);
+          // ✅ HER KATEGORİ İÇİN RASTGELE 10 KİTAP SEÇ
+          const shuffled = shuffleArray(categoryBooks);
+          grouped[cat] = shuffled.slice(0, 10);
         });
         setBooksByCategory(grouped);
       }
@@ -665,5 +509,174 @@ export default function Home() {
         {Object.entries(booksByCategory).map(([cat, books]) => <CategoryRow key={cat} title={cat} books={books} />)}
       </div>
     </div>
+  );
+}
+
+// ✅ GÜNCELLENMİŞ COMPONENT: ÇARPI TUŞU + AKILLI PROFİL LİNKİ
+function RecentlyAddedChapters({ chapters, currentUser }) {
+  const [selectedChapter, setSelectedChapter] = useState(null);
+  const scrollRef = useRef(null);
+  
+  const scroll = (dir) => { 
+    if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' }); 
+  };
+
+  if (!chapters || chapters.length === 0) return null;
+
+  // Profil linkini belirleyen yardımcı mantık
+  const getProfileLink = (chapterBook) => {
+    // Eğer giriş yapan kullanıcının emaili ile kitabın yazarının emaili aynıysa
+    if (currentUser && currentUser.email === chapterBook.user_email) {
+      return '/profil'; // Kendi profiline git
+    }
+    // Değilse yazarın sayfasına git
+    return `/yazar/${chapterBook.username}`;
+  };
+
+  return (
+    <>
+      {/* --- MİNİK SEÇİM MODALİ --- */}
+      {selectedChapter && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setSelectedChapter(null)}>
+          <div className="bg-white dark:bg-[#1a1a1a] w-full max-w-[320px] rounded-2xl p-6 pt-10 text-center shadow-2xl border border-gray-100 dark:border-gray-800 relative flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            
+            {/* 🔴 YENİ: SAĞ ÜST KÖŞE KAPATMA (X) TUŞU */}
+            <button 
+              onClick={() => setSelectedChapter(null)} 
+              className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/10 text-gray-500 hover:text-red-600 dark:text-gray-300 rounded-full transition-colors font-bold"
+            >
+              ✕
+            </button>
+
+            {/* Modal Başlık Kısmı */}
+            <div>
+              <h3 className="text-lg font-black dark:text-white leading-tight mb-1 line-clamp-2">
+                {selectedChapter.title}
+              </h3>
+              <p className="text-xs text-gray-500 font-medium">
+                {selectedChapter.books?.title}
+              </p>
+            </div>
+
+            {/* Seçenek Butonları */}
+            <div className="flex flex-col gap-2.5 w-full">
+              {/* 1. Seçenek: Bölüme Git */}
+              <Link href={`/kitap/${selectedChapter.book_id}/bolum/${selectedChapter.id}`} className="flex items-center justify-center gap-2 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-red-600/20">
+                📖 Bölüme Git
+              </Link>
+              
+              {/* 2. Seçenek: Akıllı Profil Linki */}
+              <Link href={getProfileLink(selectedChapter.books)} className="flex items-center justify-center gap-2 w-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-black dark:text-white font-bold py-3 rounded-xl text-sm transition-all">
+                👤 Yazarın Profili
+              </Link>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* --- LİSTE --- */}
+      <div className="mb-20 group relative px-1">
+        <div className="flex items-end justify-between mb-5">
+           <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 italic flex items-center gap-2">
+             🆕 Son Eklenen Bölümler
+           </h2>
+        </div>
+
+        <button onClick={() => scroll('left')} className="absolute left-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">←</button>
+        <button onClick={() => scroll('right')} className="absolute right-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">→</button>
+
+        <div ref={scrollRef} className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide snap-x py-2 px-1">
+          {chapters.map(chapter => (
+            <div key={chapter.id} onClick={() => setSelectedChapter(chapter)} className="flex-none w-[38%] md:w-32 lg:w-40 snap-start group/card cursor-pointer">
+              {/* KAPAK + BÖLÜM ADI OVERLAY */}
+              <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
+                {chapter.books?.cover_url ? (
+                  <img src={chapter.books.cover_url} className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500" alt="" />
+                ) : (
+                  <div className="w-full h-full bg-gray-200 dark:bg-gray-900" />
+                )}
+                
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 pt-6">
+                  <p className="text-[10px] text-white font-black uppercase leading-tight line-clamp-2">
+                    {chapter.title}
+                  </p>
+                </div>
+              </div>
+              
+              <h3 className="font-bold text-[11px] dark:text-white leading-tight truncate group-hover/card:text-red-600 transition-colors">
+                {chapter.books?.title}
+              </h3>
+              <p className="text-[8px] md:text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1">
+                 <Username username={chapter.books?.username} isAdmin={chapter.is_admin} />
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
+  );
+}
+
+
+// --- EDİTÖRÜN SEÇİMİ ---
+function EditorsChoiceSection({ books }) {
+  const scrollRef = useRef(null);
+  const scroll = (dir) => { if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' }); };
+
+  if (!books || books.length === 0) return null;
+
+  return (
+    <div className="mb-12">
+      <div className="flex items-center justify-between mb-5">
+        <h2 className="text-xl md:text-2xl font-black uppercase tracking-tighter text-yellow-600 dark:text-yellow-500 flex items-center gap-2">
+          <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 text-yellow-500 mb-1"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+          EDİTÖRÜN SEÇİMİ
+        </h2>
+        <div className="hidden md:flex gap-2">
+          <button onClick={() => scroll('left')} className="w-8 h-8 rounded-full border border-yellow-600/20 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 flex items-center justify-center text-yellow-600 transition-all text-sm">←</button>
+          <button onClick={() => scroll('right')} className="w-8 h-8 rounded-full border border-yellow-600/20 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 flex items-center justify-center text-yellow-600 transition-all text-sm">→</button>
+        </div>
+      </div>
+
+      <div ref={scrollRef} className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide snap-x py-4 px-2">
+        {books.map(kitap => (
+          <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-[38%] md:w-36 lg:w-48 snap-start group">
+            <div className="relative aspect-[2/3] rounded-xl overflow-hidden transition-all duration-300 border-2 border-yellow-500/40 group-hover:border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)] group-hover:shadow-[0_0_25px_rgba(234,179,8,0.5)]">
+               <img src={kitap.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={kitap.title} />
+            </div>
+            
+            <div className="mt-3">
+              <h3 className="text-sm font-black dark:text-white leading-tight mb-1 truncate group-hover:text-yellow-500 transition-colors flex items-center gap-1.5">
+                <div className="shrink-0" title="Editörün Seçimi">
+                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-500 drop-shadow-sm"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                </div>
+                <span className="truncate">{kitap.title}</span>
+              </h3>
+
+              {kitap.is_completed && (
+                <div className="mb-1">
+                  <span className="text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-md uppercase tracking-wide">
+                    ✅ Tamamlandı
+                  </span>
+                </div>
+              )}
+
+              <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest pl-6"> 
+                <Username username={kitap.username} isAdmin={kitap.is_admin} />
+              </p>
+
+              {/* ✅ İSTATİSTİKLER */}
+              <div className="flex items-center gap-2 md:gap-3
+              mt-2 pl-1 text-[9px] font-bold text-gray-400">
+                <span className="flex items-center gap-1">👁️ {formatNumber(kitap.totalViews)}</span>
+                <span className="flex items-center gap-1">❤️ {formatNumber(kitap.totalVotes)}</span>
+                <span className="flex items-center gap-1">💬 {formatNumber(kitap.totalComments)}</span>
+              </div>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div> 
   );
 }

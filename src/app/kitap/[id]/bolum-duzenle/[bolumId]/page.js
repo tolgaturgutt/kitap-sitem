@@ -11,12 +11,75 @@ export default function BolumDuzenle({ params }) {
   const [updating, setUpdating] = useState(false);
   const [formData, setFormData] = useState({ title: '', content: '' });
   const [ids, setIds] = useState({ kitapId: null, bolumId: null });
+  const [bannedWords, setBannedWords] = useState([]);
+
+  // 🔴 YASAKLI KELİMELERİ VERİTABANINDAN ÇEK
+  useEffect(() => {
+    async function fetchBannedWords() {
+      const { data } = await supabase
+        .from('banned_words')
+        .select('word');
+      
+      if (data) {
+        setBannedWords(data.map(item => item.word.toLowerCase()));
+      }
+    }
+    fetchBannedWords();
+  }, []);
 
   // ✅ KELİME SAYISINI HESAPLA
   const wordCount = formData.content.trim() === '' ? 0 : formData.content.trim().split(/\s+/).length;
 
+  // 🔴 YASAKLI KELİMELERİ TESPİT ET
+  function findBannedWords(text) {
+    if (!text || bannedWords.length === 0) return [];
+    
+    const words = text.toLowerCase().split(/\b/);
+    const found = [];
+    
+    bannedWords.forEach(banned => {
+      words.forEach(word => {
+        if (word.includes(banned)) {
+          found.push(banned);
+        }
+      });
+    });
+    
+    return [...new Set(found)];
+  }
+
+  const detectedBannedInTitle = findBannedWords(formData.title);
+  const detectedBannedInContent = findBannedWords(formData.content);
+  const allDetectedBanned = [...new Set([...detectedBannedInTitle, ...detectedBannedInContent])];
+  const hasBannedWords = allDetectedBanned.length > 0;
+
+  // 🔴 İÇERİĞİ HIGHLIGHT ET
+  function highlightContent(text) {
+    if (!text || bannedWords.length === 0) return text;
+    
+    let highlighted = text;
+    bannedWords.forEach(banned => {
+      const regex = new RegExp(`(${banned})`, 'gi');
+      highlighted = highlighted.replace(
+        regex, 
+        '<mark class="bg-red-600 text-white rounded px-1 animate-pulse">$1</mark>'
+      );
+    });
+    
+    return highlighted;
+  }
+
+  // 🔴 SANSÜRLEME FONKSİYONU
+  function censorContent(text) {
+    let censored = text;
+    bannedWords.forEach(banned => {
+      const regex = new RegExp(banned, 'gi');
+      censored = censored.replace(regex, '***');
+    });
+    return censored;
+  }
+
   useEffect(() => {
-    // Params'ı unwrap et
     async function unwrapParams() {
       const unwrapped = await params;
       setIds({ kitapId: unwrapped.id, bolumId: unwrapped.bolumId });
@@ -47,12 +110,10 @@ export default function BolumDuzenle({ params }) {
           return router.push(`/kitap/${ids.kitapId}`);
         }
 
-        // --- YENİ ADMİN KONTROLÜ ---
         let isAdmin = false;
         const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', user.email).single();
         if (adminData) isAdmin = true;
 
-        // Kural: Yazar değilse VE Admin değilse engelle
         if (chapter.books.user_email !== user?.email && !isAdmin) {
           toast.error("Bu yetkiye sahip değilsin.");
           return router.push(`/kitap/${ids.kitapId}`);
@@ -77,15 +138,24 @@ export default function BolumDuzenle({ params }) {
       return;
     }
 
+    // 🔴 YASAKLI KELİME VARSA İZİN VERME
+    if (hasBannedWords) {
+      toast.error(`⚠️ Yasaklı kelimeler tespit edildi: ${allDetectedBanned.join(', ')}`);
+      return;
+    }
+
     setUpdating(true);
 
     try {
-      // NOT: Veritabanına word_count eklenince buraya da eklenebilir.
+      // 🔴 SANSÜRLÜ İÇERİK OLUŞTUR
+      const censoredTitle = censorContent(formData.title);
+      const censoredContent = censorContent(formData.content);
+
       const { data, error } = await supabase
         .from('chapters')
         .update({ 
-          title: formData.title, 
-          content: formData.content,
+          title: censoredTitle,
+          content: censoredContent,
           updated_at: new Date() 
         })
         .eq('id', ids.bolumId)
@@ -134,32 +204,81 @@ export default function BolumDuzenle({ params }) {
           <div>
             <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-4">
               Bölüm Başlığı
+              {detectedBannedInTitle.length > 0 && (
+                <span className="ml-2 text-red-500 text-xs animate-pulse">
+                  ⚠️ Yasaklı kelime: {detectedBannedInTitle.join(', ')}
+                </span>
+              )}
             </label>
             <input 
               required
               value={formData.title}
               onChange={e => setFormData({...formData, title: e.target.value})}
-              className="w-full p-5 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full outline-none focus:ring-2 ring-red-600/20 dark:text-white font-bold"
+              className={`w-full p-5 bg-gray-50 dark:bg-white/5 border rounded-full outline-none focus:ring-2 ring-red-600/20 dark:text-white font-bold ${
+                detectedBannedInTitle.length > 0 
+                  ? 'border-red-500 dark:border-red-500' 
+                  : 'dark:border-white/5'
+              }`}
               placeholder="Örn: 1. Başlangıç"
             />
+            
+            {/* 🔴 BAŞLIKTA YASAKLI KELİMELERİ GÖSTER */}
+            {detectedBannedInTitle.length > 0 && formData.title && (
+              <div className="mt-3 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-1">
+                  ÖNİZLEME (Yasaklı kelimeler vurgulandı):
+                </p>
+                <div 
+                  className="text-sm font-bold"
+                  dangerouslySetInnerHTML={{ __html: highlightContent(formData.title) }}
+                />
+              </div>
+            )}
           </div>
 
           <div>
             <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-4">
               İçerik
+              {detectedBannedInContent.length > 0 && (
+                <span className="ml-2 text-red-500 text-xs animate-pulse">
+                  ⚠️ Yasaklı kelime: {detectedBannedInContent.join(', ')}
+                </span>
+              )}
             </label>
             <textarea 
               required
               rows="15"
               value={formData.content}
               onChange={e => setFormData({...formData, content: e.target.value})}
-              className="w-full p-8 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed"
+              className={`w-full p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed ${
+                detectedBannedInContent.length > 0 
+                  ? 'border-red-500 dark:border-red-500' 
+                  : 'dark:border-white/5'
+              }`}
               placeholder="Hikayeni buraya yaz..."
             />
             
-            {/* ✅ KELİME SAYACI - BURAYA EKLENDİ */}
-            <div className="flex justify-end mt-2 px-4">
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 select-none">
+            {/* 🔴 İÇERİKTE YASAKLI KELİMELERİ GÖSTER */}
+            {detectedBannedInContent.length > 0 && formData.content && (
+              <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-2">
+                  ÖNİZLEME (Yasaklı kelimeler vurgulandı):
+                </p>
+                <div 
+                  className="text-sm leading-relaxed whitespace-pre-wrap font-serif"
+                  dangerouslySetInnerHTML={{ __html: highlightContent(formData.content) }}
+                />
+              </div>
+            )}
+            
+            {/* ✅ KELİME SAYACI */}
+            <div className="flex justify-between items-center mt-2 px-4">
+              {hasBannedWords && (
+                <span className="text-xs font-bold text-red-500">
+                  🚫 Bu içerik güncellenemez
+                </span>
+              )}
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 select-none ml-auto">
                 {wordCount} Kelime
               </span>
             </div>
@@ -175,10 +294,10 @@ export default function BolumDuzenle({ params }) {
             </button>
             <button 
               type="submit" 
-              disabled={updating}
-              className="flex-[2] h-14 rounded-full bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-600/10 hover:bg-red-600 transition-all disabled:opacity-50"
+              disabled={updating || hasBannedWords}
+              className="flex-[2] h-14 rounded-full bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-600/10 hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {updating ? 'GÜNCELLENİYOR...' : 'DEĞİŞİKLİKLERİ KAYDET ✅'}
+              {updating ? 'GÜNCELLENİYOR...' : hasBannedWords ? '🚫 Güncellenemez' : 'DEĞİŞİKLİKLERİ KAYDET ✅'}
             </button>
           </div>
         </form>

@@ -11,6 +11,8 @@ const Icons = {
   Photo: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-10 h-10"><path strokeLinecap="round" strokeLinejoin="round" d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909m-18 3.75h16.5a2.25 2.25 0 0 0 2.25-2.25V6a2.25 2.25 0 0 0-2.25-2.25H3.75A2.25 2.25 0 0 0 1.5 6v12a2.25 2.25 0 0 0 2.25 2.25Z" /></svg>),
   Edit: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>),
   Delete: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>),
+  Plus: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>),
+  Ban: () => (<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636" /></svg>),
 };
 
 const getTargetEmoji = (type) => {
@@ -64,6 +66,12 @@ export default function AdminPanel() {
   const [supportFilter, setSupportFilter] = useState('all');
   const [loadingSupport, setLoadingSupport] = useState(false);
   const [supportModal, setSupportModal] = useState(null);
+
+  // 5. 🔴 YASAKLI KELİMELER (YENİ!)
+  const [bannedWords, setBannedWords] = useState([]);
+  const [newWord, setNewWord] = useState('');
+  const [loadingBanned, setLoadingBanned] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
 
   // --- VERİ ÇEKME FONKSİYONLARI ---
 
@@ -138,6 +146,22 @@ export default function AdminPanel() {
     setLoadingSupport(false);
   }, [supportFilter, SUPPORT_PER_PAGE]);
 
+  // 🔴 YASAKLI KELİMELERİ ÇEK
+  const fetchBannedWords = useCallback(async () => {
+    setLoadingBanned(true);
+    const { data, error } = await supabase
+      .from('banned_words')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    if (!error) {
+      setBannedWords(data || []);
+    } else {
+      toast.error('Yasaklı kelimeler yüklenemedi');
+    }
+    setLoadingBanned(false);
+  }, []);
+
   // GENEL YÜKLEME
   const loadData = useCallback(async () => {
     if (activeTab === 'duyurular') {
@@ -149,8 +173,10 @@ export default function AdminPanel() {
       fetchReports(1);
     } else if (activeTab === 'destek') {
       fetchSupport(1);
+    } else if (activeTab === 'yasakli') {
+      fetchBannedWords();
     }
-  }, [activeTab, searchQuery, fetchUsers, fetchReports, fetchSupport]);
+  }, [activeTab, searchQuery, fetchUsers, fetchReports, fetchSupport, fetchBannedWords]);
 
   // --- EFFECTLER ---
   useEffect(() => { checkAdmin(); }, []);
@@ -176,29 +202,27 @@ export default function AdminPanel() {
   async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return router.push('/giris');
+    setAdminEmail(user.email);
     const { data: admin } = await supabase.from('announcement_admins').select().eq('user_email', user.email).single();
     if (!admin) { toast.error('Yetkisiz!'); return router.push('/'); }
     setIsAdmin(true); setLoading(false);
   }
 
-  // --- 🔗 YÖNLENDİRME FONKSİYONU (YENİ) ---
+  // --- 🔗 YÖNLENDİRME FONKSİYONU ---
   const navigateToTarget = (type, id) => {
     let url = null;
     
-    // NOT: Bu rotaları kendi projendeki sayfa yapısına göre güncellemelisin!
     switch(type) {
         case 'user': 
-            url = `/profil/${id}`; // veya /kullanici/${id}
+            url = `/profil/${id}`;
             break;
         case 'book': 
             url = `/kitap/${id}`;
             break;
         case 'chapter': 
-            url = `/bolum/${id}`; // veya /okuma/${id}
+            url = `/bolum/${id}`;
             break;
         case 'comment':
-            // Yorumlar genellikle kitap detayındadır, direkt yorum ID ile gitmek için özel rota yoksa 
-            // şimdilik yorum ID'sine link veriyoruz, belki backend'den 'book_id' de çekmek gerekir.
             url = `/yorum/${id}`; 
             break;
         case 'review':
@@ -209,9 +233,66 @@ export default function AdminPanel() {
     }
 
     if (url) {
-        window.open(url, '_blank'); // Admin paneli kapanmasın diye yeni sekmede açar
+        window.open(url, '_blank');
     } else {
         toast.error('Bu içerik türü için link oluşturulamadı.');
+    }
+  }
+
+  // 🔴 YASAKLI KELİME İŞLEMLERİ
+  async function addBannedWord() {
+    if (!newWord.trim()) {
+      toast.error('Kelime boş olamaz!');
+      return;
+    }
+
+    // Aynı kelime var mı kontrol et
+    const exists = bannedWords.some(w => w.word.toLowerCase() === newWord.toLowerCase());
+    if (exists) {
+      toast.error('Bu kelime zaten listede!');
+      return;
+    }
+
+    const { error } = await supabase
+      .from('banned_words')
+      .insert([{
+        word: newWord.toLowerCase().trim(),
+        created_by: adminEmail,
+        is_active: true
+      }]);
+
+    if (error) {
+      toast.error('Eklenirken hata oluştu: ' + error.message);
+    } else {
+      toast.success('✅ Yasaklı kelime eklendi!');
+      setNewWord('');
+      fetchBannedWords();
+    }
+  }
+
+  async function toggleBannedWord(id, currentStatus) {
+    const { error } = await supabase
+      .from('banned_words')
+      .update({ is_active: !currentStatus })
+      .eq('id', id);
+
+    if (!error) {
+      toast.success(currentStatus ? 'Kelime pasif edildi' : 'Kelime aktif edildi');
+      fetchBannedWords();
+    }
+  }
+
+  async function deleteBannedWord(id) {
+    if (!confirm('Bu kelimeyi kalıcı olarak silmek istediğine emin misin?')) return;
+    
+    const { error } = await supabase
+      .from('banned_words')
+      .delete()
+      .eq('id', id);
+
+    if (!error) {
+      toast.success('🗑️ Kelime silindi');
+      fetchBannedWords();
     }
   }
 
@@ -282,7 +363,7 @@ export default function AdminPanel() {
     loadData();
   }
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-black">YÜKLENİYOR...</div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-black">YÜKLENIYOR...</div>;
   if (!isAdmin) return null;
 
   return (
@@ -294,9 +375,13 @@ export default function AdminPanel() {
 
         {/* --- SEKMELER --- */}
         <div className="flex justify-center mb-10 border-b dark:border-white/10 overflow-x-auto">
-          {['duyurular', 'kullanicilar', 'sikayetler', 'destek'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-8 py-4 font-black uppercase tracking-widest border-b-4 whitespace-nowrap ${activeTab === tab ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400'}`}>
-              {tab === 'duyurular' ? '📣 Duyurular' : tab === 'kullanicilar' ? '👥 Kullanıcılar' : tab === 'sikayetler' ? '⚠️ Şikayetler' : '📧 Destek'}
+          {['duyurular', 'kullanicilar', 'sikayetler', 'destek', 'yasakli'].map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-4 font-black uppercase tracking-widest border-b-4 whitespace-nowrap text-sm ${activeTab === tab ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400'}`}>
+              {tab === 'duyurular' ? '📣 Duyurular' : 
+               tab === 'kullanicilar' ? '👥 Kullanıcılar' : 
+               tab === 'sikayetler' ? '⚠️ Şikayetler' : 
+               tab === 'destek' ? '📧 Destek' :
+               '🚫 Yasaklı Kelimeler'}
             </button>
           ))}
         </div>
@@ -377,6 +462,96 @@ export default function AdminPanel() {
             </div>
           )}
 
+          {/* --- 5. 🔴 YASAKLI KELİMELER (YENİ SEKME!) --- */}
+          {activeTab === 'yasakli' && (
+            <div className="space-y-8">
+              <div className="flex flex-col md:flex-row gap-4 items-end">
+                <div className="flex-1">
+                  <label className="text-xs font-black text-gray-400 uppercase mb-2 block">Yeni Yasaklı Kelime</label>
+                  <input
+                    type="text"
+                    value={newWord}
+                    onChange={(e) => setNewWord(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addBannedWord()}
+                    placeholder="Kelime girin..."
+                    className="w-full p-4 bg-gray-50 dark:bg-black/20 border-2 border-transparent focus:border-red-600 rounded-2xl dark:text-white font-bold outline-none transition-all"
+                  />
+                </div>
+                <button
+                  onClick={addBannedWord}
+                  className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase flex items-center gap-2 transition-all shadow-lg"
+                >
+                  <Icons.Plus /> EKLE
+                </button>
+              </div>
+
+              <div className="border-t dark:border-white/10 pt-6">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-black dark:text-white uppercase">Yasaklı Kelimeler Listesi</h3>
+                  <span className="text-xs font-bold text-gray-400">{bannedWords.length} Kelime</span>
+                </div>
+
+                {loadingBanned ? (
+                  <div className="text-center py-12 opacity-50 font-black">YÜKLENİYOR...</div>
+                ) : bannedWords.length === 0 ? (
+                  <div className="text-center py-12 opacity-30 font-black uppercase dark:text-white">
+                    Henüz yasaklı kelime eklenmemiş
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {bannedWords.map(word => (
+                      <div
+                        key={word.id}
+                        className={`p-4 rounded-2xl border transition-all ${
+                          word.is_active
+                            ? 'bg-red-50 dark:bg-red-900/10 border-red-200 dark:border-red-800'
+                            : 'bg-gray-50 dark:bg-white/5 border-gray-200 dark:border-white/10 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${word.is_active ? 'bg-red-600' : 'bg-gray-400'}`}>
+                              <Icons.Ban />
+                            </div>
+                            <div>
+                              <p className={`font-black text-lg ${word.is_active ? 'dark:text-white' : 'text-gray-400'}`}>
+                                {word.word}
+                              </p>
+                              <p className="text-[10px] text-gray-400 font-bold uppercase">
+                                {new Date(word.created_at).toLocaleDateString('tr-TR')}
+                              </p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => toggleBannedWord(word.id, word.is_active)}
+                              className={`p-2 rounded-lg text-xs font-black ${
+                                word.is_active
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : 'bg-green-100 text-green-700'
+                              }`}
+                              title={word.is_active ? 'Pasif Yap' : 'Aktif Yap'}
+                            >
+                              {word.is_active ? '⏸️' : '▶️'}
+                            </button>
+                            <button
+                              onClick={() => deleteBannedWord(word.id)}
+                              className="p-2 bg-red-100 text-red-600 rounded-lg"
+                              title="Sil"
+                            >
+                              <Icons.Delete />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* --- 2. KULLANICILAR --- */}
           {activeTab === 'kullanicilar' && (
             <div className="space-y-8">
@@ -415,7 +590,7 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* --- 3. ŞİKAYETLER (GÜNCELLENDİ: LİNK EKLENDİ) --- */}
+          {/* --- 3. ŞİKAYETLER --- */}
           {activeTab === 'sikayetler' && (
             <div className="space-y-6">
               <div className="flex flex-wrap gap-2">
@@ -447,7 +622,6 @@ export default function AdminPanel() {
                         </div>
                     )}
                     <div className="flex gap-2 flex-wrap justify-end">
-                      {/* --- YENİ EKLENEN BUTON --- */}
                       <button onClick={() => navigateToTarget(r.target_type, r.target_id)} className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-black shadow-sm">
                         🔗 İNCELE
                       </button>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, use } from 'react';
+import { useState, use, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
@@ -10,15 +10,84 @@ export default function BolumEkle({ params }) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
+  const [bannedWords, setBannedWords] = useState([]);
   const router = useRouter();
 
+  // 🔴 YASAKLI KELİMELERİ VERİTABANINDAN ÇEK
+  useEffect(() => {
+    async function fetchBannedWords() {
+      const { data } = await supabase
+        .from('banned_words')
+        .select('word');
+      
+      if (data) {
+        setBannedWords(data.map(item => item.word.toLowerCase()));
+      }
+    }
+    fetchBannedWords();
+  }, []);
+
   // ✅ KELİME SAYISINI HESAPLA
-  // Metni boşluklara göre bölüp, boş olmayanları sayıyoruz
   const wordCount = content.trim() === '' ? 0 : content.trim().split(/\s+/).length;
+
+  // 🔴 YASAKLI KELİMELERİ TESPİT ET
+  function findBannedWords(text) {
+    if (!text || bannedWords.length === 0) return [];
+    
+    const words = text.toLowerCase().split(/\b/); // Kelime sınırlarına göre böl
+    const found = [];
+    
+    bannedWords.forEach(banned => {
+      words.forEach(word => {
+        if (word.includes(banned)) {
+          found.push(banned);
+        }
+      });
+    });
+    
+    return [...new Set(found)]; // Tekrarları kaldır
+  }
+
+  const detectedBannedInTitle = findBannedWords(title);
+  const detectedBannedInContent = findBannedWords(content);
+  const allDetectedBanned = [...new Set([...detectedBannedInTitle, ...detectedBannedInContent])];
+  const hasBannedWords = allDetectedBanned.length > 0;
+
+  // 🔴 İÇERİĞİ HIGHLIGHT ET
+  function highlightContent(text) {
+    if (!text || bannedWords.length === 0) return text;
+    
+    let highlighted = text;
+    bannedWords.forEach(banned => {
+      const regex = new RegExp(`(${banned})`, 'gi');
+      highlighted = highlighted.replace(
+        regex, 
+        '<mark class="bg-red-600 text-white rounded px-1 animate-pulse">$1</mark>'
+      );
+    });
+    
+    return highlighted;
+  }
+
+  // 🔴 SANSÜRLEME FONKSİYONU
+  function censorContent(text) {
+    let censored = text;
+    bannedWords.forEach(banned => {
+      const regex = new RegExp(banned, 'gi');
+      censored = censored.replace(regex, '***');
+    });
+    return censored;
+  }
 
   async function bolumKaydet() {
     if (!title.trim() || !content.trim()) {
       toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
+      return;
+    }
+
+    // 🔴 YASAKLI KELİME VARSA İZİN VERME
+    if (hasBannedWords) {
+      toast.error(`⚠️ Yasaklı kelimeler tespit edildi: ${allDetectedBanned.join(', ')}`);
       return;
     }
 
@@ -40,15 +109,17 @@ export default function BolumEkle({ params }) {
 
       const sirasi = (count || 0) + 1;
 
-      // ✅ NOT: Veritabanına word_count eklediğimizde buraya: word_count: wordCount satırını da ekleyeceğiz.
+      // 🔴 SANSÜRLÜ İÇERİK OLUŞTUR
+      const censoredTitle = censorContent(title);
+      const censoredContent = censorContent(content);
+
       const { data: newChapter, error } = await supabase
         .from('chapters')
         .insert([{
           book_id: id,
-          title: title,
-          content: content,
+          title: censoredTitle, // 👈 Sansürlü başlık
+          content: censoredContent, // 👈 Sansürlü içerik
           order_no: sirasi,
-          // word_count: wordCount // DB güncellemesi yapılınca bu satırı açarız
         }])
         .select()
         .single();
@@ -99,29 +170,84 @@ export default function BolumEkle({ params }) {
 
         <div className="space-y-6">
           <div>
-            <label className="block text-sm font-medium mb-2 opacity-70">Bölüm Başlığı</label>
+            <label className="block text-sm font-medium mb-2 opacity-70">
+              Bölüm Başlığı
+              {detectedBannedInTitle.length > 0 && (
+                <span className="ml-2 text-red-500 text-xs animate-pulse">
+                  ⚠️ Yasaklı kelime: {detectedBannedInTitle.join(', ')}
+                </span>
+              )}
+            </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full p-3 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-blue-500 font-bold"
+              className={`w-full p-3 bg-gray-50 dark:bg-black border rounded-lg outline-none focus:border-blue-500 font-bold ${
+                detectedBannedInTitle.length > 0 
+                  ? 'border-red-500 dark:border-red-500' 
+                  : 'border-gray-300 dark:border-gray-700'
+              }`}
               placeholder="Örn: 1. Başlangıç"
             />
+            
+            {/* 🔴 BAŞLIKTA YASAKLI KELİMELERİ GÖSTER */}
+            {detectedBannedInTitle.length > 0 && title && (
+              <div className="mt-3 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-1">
+                  ÖNİZLEME (Yasaklı kelimeler vurgulandı):
+                </p>
+                <div 
+                  className="text-sm font-bold"
+                  dangerouslySetInnerHTML={{ __html: highlightContent(title) }}
+                />
+              </div>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 opacity-70">Bölüm İçeriği</label>
+            <label className="block text-sm font-medium mb-2 opacity-70">
+              Bölüm İçeriği
+              {detectedBannedInContent.length > 0 && (
+                <span className="ml-2 text-red-500 text-xs animate-pulse">
+                  ⚠️ Yasaklı kelime: {detectedBannedInContent.join(', ')}
+                </span>
+              )}
+            </label>
+            
+            {/* 🔴 TEXTAREA (Yazma için) */}
             <textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               rows="15"
-              className="w-full p-4 bg-gray-50 dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-blue-500 leading-relaxed resize-y"
+              className={`w-full p-4 bg-gray-50 dark:bg-black border rounded-lg outline-none focus:border-blue-500 leading-relaxed resize-y ${
+                detectedBannedInContent.length > 0 
+                  ? 'border-red-500 dark:border-red-500' 
+                  : 'border-gray-300 dark:border-gray-700'
+              }`}
               placeholder="Hikayenizi buraya yazın..."
             ></textarea>
+
+            {/* 🔴 İÇERİKTE YASAKLI KELİMELERİ GÖSTER */}
+            {detectedBannedInContent.length > 0 && content && (
+              <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-2">
+                  ÖNİZLEME (Yasaklı kelimeler vurgulandı):
+                </p>
+                <div 
+                  className="text-sm leading-relaxed whitespace-pre-wrap"
+                  dangerouslySetInnerHTML={{ __html: highlightContent(content) }}
+                />
+              </div>
+            )}
             
-            {/* ✅ KELİME SAYACI - SAYDAM VE ŞIK */}
-            <div className="flex justify-end mt-2 px-1">
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 select-none">
+            {/* ✅ KELİME SAYACI */}
+            <div className="flex justify-between items-center mt-2 px-1">
+              {hasBannedWords && (
+                <span className="text-xs font-bold text-red-500">
+                  🚫 Bu içerik yayınlanamaz
+                </span>
+              )}
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 select-none ml-auto">
                 {wordCount} Kelime
               </span>
             </div>
@@ -136,10 +262,10 @@ export default function BolumEkle({ params }) {
             </button>
             <button
               onClick={bolumKaydet}
-              disabled={loading}
-              className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition disabled:opacity-50"
+              disabled={loading || hasBannedWords}
+              className="px-6 py-3 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Kaydediliyor...' : 'Yayınla 🚀'}
+              {loading ? 'Kaydediliyor...' : hasBannedWords ? '🚫 Yayınlanamaz' : 'Yayınla 🚀'}
             </button>
           </div>
         </div>
