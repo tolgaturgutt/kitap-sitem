@@ -223,31 +223,39 @@ const handleLike = async () => {
             <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
           </header>
           
-          {/* ✅ PARAGRAFLAR - Az boşluk, yazılar sağa kadar */}
+          {/* ✅ PARAGRAFLAR - Mobilde buton alta, PC'de sağda */}
           <article className={`${readerSettings.fontFamily} leading-[2.1]`} style={{ fontSize: `${readerSettings.fontSize}px` }}>
             {paragraphs.map((para, i) => {
               const paraId = i.toString();
               const count = paraCommentCounts[paraId] || 0;
               
               return (
-                <div key={i} className="relative group mb-3 flex items-start justify-between gap-2">
-                  {/* ✅ Paragraf - max genişlik */}
-                  <div 
-                    className={`flex-1 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2' : ''}`}
-                    dangerouslySetInnerHTML={{ __html: para }}
-                    style={{ whiteSpace: 'pre-wrap' }}
-                  />
-                  {/* ✅ Yorum butonu - PC'de normal, mobilde çok küçük */}
-                  <button 
-                    onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                    className={`shrink-0 w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-all border text-[6px] md:text-[7px] font-black mt-1 ${
-                      count > 0 || activePara === paraId 
-                        ? 'bg-red-600 border-red-600 text-white shadow-lg' 
-                        : 'bg-gray-200 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-500 dark:text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white'
-                    }`}
-                  >
-                    {count > 0 ? count : '+'}
-                  </button>
+                <div key={i} className="relative group mb-3">
+                  {/* ✅ PC: Yan yana, Mobil: Alt alta */}
+                  <div className="flex flex-col md:flex-row md:items-start md:justify-between md:gap-2">
+                    {/* ✅ Paragraf */}
+                    <div 
+                      className={`flex-1 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 md:px-3 md:py-2' : ''}`}
+                      dangerouslySetInnerHTML={{ __html: para }}
+                      style={{ whiteSpace: 'pre-wrap' }}
+                    />
+                    
+                    {/* ✅ Yorum butonu - Mobilde paragrafın altında sağda, PC'de yan tarafta */}
+                    <button 
+                      onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
+                      className={`self-end md:self-start shrink-0 w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-all border text-[6px] md:text-[7px] font-black mt-1 ${
+                        count > 0 || activePara === paraId 
+                          ? 'bg-red-600 border-red-600 text-white shadow-lg' 
+                          : readerSettings.theme.includes('bg-[#f4ecd8]')
+                            ? 'bg-[#e8d9c3] border-[#d4c4a8] text-[#8b7355] hover:bg-red-600 hover:border-red-600 hover:text-white'
+                            : readerSettings.theme.includes('bg-[#0a0a0a]')
+                              ? 'bg-white/10 border-white/20 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white'
+                              : 'bg-gray-200 border-gray-300 text-gray-500 hover:bg-red-600 hover:border-red-600 hover:text-white'
+                      }`}
+                    >
+                      {count > 0 ? count : '+'}
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -277,7 +285,13 @@ const handleLike = async () => {
         <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[280px] transition-all duration-500 z-50 ${
           activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
         }`}>
-          <div className="h-full bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+          {/* ✅ Mobilde backdrop - tıklayınca kapansın */}
+          <div 
+            className="absolute inset-0 bg-black/50 md:hidden"
+            onClick={() => setActivePara(null)}
+          />
+          
+          <div className="absolute inset-4 md:inset-0 h-[calc(100%-2rem)] md:h-full bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
               Paragraf Yorumları
               <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-lg">✕</button>
