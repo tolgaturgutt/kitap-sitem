@@ -237,7 +237,7 @@ const handleLike = async () => {
                     <div 
                       className={`flex-1 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2' : ''}`}
                       dangerouslySetInnerHTML={{ __html: para }}
-                      style={{ whiteSpace: 'pre-wrap' }}
+                      
                     />
                     
                     {/* ✅ Yuvarlak mini - mobilde 10px, PC'de aynı kalıyor */}

@@ -110,6 +110,76 @@ export default function BolumDuzenle({ params }) {
     }
   }
 
+  // ✅ PASTE (YAPIŞTIRMA) - GARANTİ YÖNTEM
+  function handlePaste(e) {
+    e.preventDefault(); // Varsayılan yapıştırmayı durdur
+
+    // 1. Düz metin yedeğini al (Her ihtimale karşı)
+    const plainText = e.clipboardData.getData('text/plain');
+    
+    // 2. HTML verisini al
+    let html = e.clipboardData.getData('text/html');
+
+    // Eğer HTML yoksa direkt düz metni yapıştır
+    if (!html) {
+      document.execCommand("insertText", false, plainText);
+      handleInput();
+      return;
+    }
+
+    try {
+      // --- TEMİZLİK BAŞLIYOR ---
+      
+      // Word'ün gereksiz meta taglarını temizle
+      html = html.replace(/<xml[^>]*>[\s\S]*?<\/xml>/g, "")
+                 .replace(/<meta[^>]*>/g, "")
+                 .replace(/<link[^>]*>/g, "")
+                 .replace(/<style[^>]*>[\s\S]*?<\/style>/g, "") // Style bloklarını içindekilerle sil
+                 .replace(/<\/?(html|head|body|o:|xml)[^>]*>/gi, "");
+
+      // Tüm etiketlerden class, style, id, align gibi özellikleri sök (Sadece etiketin kendisi kalsın)
+      // Örnek: <b style="color:red"> -> <b>
+      html = html.replace(/<([a-z][a-z0-9]*)[^>]*>/gi, function(match, tag) {
+        // İzin verilen taglar dışındaysa, olduğu gibi döndür (aşağıda siliyoruz zaten)
+        // Link (a) tagını da koruyalım
+        if (['b', 'strong', 'i', 'em', 'u', 'br', 'a'].includes(tag.toLowerCase())) {
+           return `<${tag}>`;
+        }
+        // p, div, h1 gibi blok elementlerin attribute'larını siliyoruz sadece
+        return match.replace(/ (class|style|id|align|lang|dir|face|size)="[^"]*"/gi, "");
+      });
+
+      // Blok elementleri (p, div, h1..) satır sonuna (<br>) çevir
+      // Açılış taglarını sil (<p> -> boşluk)
+      html = html.replace(/<(div|p|h[1-6]|li|ul|ol|table|tr|td)[^>]*>/gi, "");
+      // Kapanış taglarını <br> yap (</p> -> <br>)
+      html = html.replace(/<\/(div|p|h[1-6]|li|ul|ol|table|tr|td)>/gi, "<br>");
+
+      // Gereksiz span ve font taglarını tamamen kaldır (içerik kalsın)
+      html = html.replace(/<\/?(span|font)[^>]*>/gi, "");
+
+      // Çoklu <br> varsa tek'e düşür (isteğe bağlı, bazen Word 2-3 tane atar)
+      // html = html.replace(/(<br\s*\/?>\s*){2,}/gi, "<br>");
+
+      // --- TEMİZLİK BİTTİ ---
+
+      // Temizlenmiş HTML'i yapıştır
+      const success = document.execCommand("insertHTML", false, html);
+
+      // Eğer insertHTML başarısız olursa (bazı tarayıcılar reddederse) düz metne dön
+      if (!success) {
+        throw new Error("HTML insert failed");
+      }
+
+    } catch (err) {
+      console.log("HTML yapıştırma başarısız, düz metin yapıştırılıyor...", err);
+      document.execCommand("insertText", false, plainText);
+    }
+    
+    // State'i güncelle
+    handleInput();
+  }
+
   // 🔴 İÇERİĞİ HIGHLIGHT ET
   function highlightContent(text) {
     if (!text || bannedWords.length === 0) return text;
@@ -219,7 +289,7 @@ export default function BolumDuzenle({ params }) {
     // ✅ innerHTML kullan - formatlar korunacak
     let htmlContent = editorRef.current?.innerHTML || '';
     
-    // ✅ Sadece gereksiz style, font ve span taglarını temizle
+    // ✅ Sadece gereksiz style, font ve span taglarını temizle (Güvenlik Önlemi)
     htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
     htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
     htmlContent = htmlContent.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
@@ -227,11 +297,10 @@ export default function BolumDuzenle({ params }) {
     htmlContent = htmlContent.replace(/<div>/g, '<br>').replace(/<\/div>/g, '');
     
     if (!formData.title.trim() || !formData.content.trim()) {
-      toast.error("Başlık ve içerik boş olamaz.");
+      toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
       return;
     }
 
-    // 🔴 YASAKLI KELİME VARSA İZİN VERME
     if (hasBannedWords) {
       toast.error(`⚠️ Yasaklı kelimeler tespit edildi: ${allDetectedBanned.join(', ')}`);
       return;
@@ -240,7 +309,6 @@ export default function BolumDuzenle({ params }) {
     setUpdating(true);
 
     try {
-      // 🔴 SANSÜRLÜ İÇERİK OLUŞTUR
       const censoredTitle = censorContent(formData.title);
       const censoredContent = censorContent(htmlContent);
 
@@ -261,14 +329,14 @@ export default function BolumDuzenle({ params }) {
         return;
       }
 
-      toast.success("Bölüm güncellendi! ✅");
+      toast.success('Bölüm güncellendi! ✅');
       setTimeout(() => {
         router.push(`/kitap/${ids.kitapId}/bolum/${ids.bolumId}`);
         router.refresh();
       }, 1000);
     } catch (error) {
       console.error('Güncelleme hatası:', error);
-      toast.error("Güncelleme sırasında hata oluştu: " + (error.message || "Bilinmeyen hata"));
+      toast.error('Bir hata oluştu.');
     } finally {
       setUpdating(false);
     }
@@ -284,7 +352,8 @@ export default function BolumDuzenle({ params }) {
 
   return (
     <div className="min-h-screen py-24 px-6 bg-[#fcfcfc] dark:bg-[#080808]">
-      <Toaster />
+      <Toaster position="top-right" />
+
       <div className="max-w-3xl mx-auto">
         <header className="mb-16 text-center">
           <h1 className="text-4xl font-black dark:text-white tracking-tighter mb-4">Bölümü Düzenle</h1>
@@ -304,7 +373,7 @@ export default function BolumDuzenle({ params }) {
               )}
             </label>
             <input 
-              required
+              type="text"
               value={formData.title}
               onChange={e => setFormData({...formData, title: e.target.value})}
               className={`w-full p-5 bg-gray-50 dark:bg-white/5 border rounded-full outline-none focus:ring-2 ring-red-600/20 dark:text-white font-bold ${
@@ -315,7 +384,6 @@ export default function BolumDuzenle({ params }) {
               placeholder="Örn: 1. Başlangıç"
             />
             
-            {/* 🔴 BAŞLIKTA YASAKLI KELİMELERİ GÖSTER */}
             {detectedBannedInTitle.length > 0 && formData.title && (
               <div className="mt-3 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
                 <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-1">
@@ -331,14 +399,14 @@ export default function BolumDuzenle({ params }) {
 
           <div>
             <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-4">
-              İçerik
+              Bölüm İçeriği
               {detectedBannedInContent.length > 0 && (
                 <span className="ml-2 text-red-500 text-xs animate-pulse">
                   ⚠️ Yasaklı kelime: {detectedBannedInContent.join(', ')}
                 </span>
               )}
             </label>
-
+            
             {/* 🎨 FORMATLAMA TOOLBAR */}
             <div className="mb-3 flex gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
               <button
@@ -381,28 +449,24 @@ export default function BolumDuzenle({ params }) {
               </button>
             </div>
 
-            {/* 🎨 WYSIWYG EDITOR - ✅ ENTER sadece <br> ekleyecek */}
+            {/* 🎨 WYSIWYG EDITOR - ✅ ENTER sadece <br> ekler, PASTE düzeltildi */}
             <div
               ref={editorRef}
               contentEditable
               onInput={handleInput}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               onMouseUp={updateFormatState}
               onKeyUp={updateFormatState}
-              className={`w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed ${
+              className={`w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed overflow-auto ${
                 detectedBannedInContent.length > 0 
                   ? 'border-red-500 dark:border-red-500' 
                   : 'dark:border-white/5'
               }`}
-              style={{
-                whiteSpace: 'pre-wrap',
-                wordWrap: 'break-word'
-              }}
-              data-placeholder="Hikayeni buraya yaz..."
+              data-placeholder="Hikayenizi buraya yazın..."
               suppressContentEditableWarning
             />
-            
-            {/* 🔴 İÇERİKTE YASAKLI KELİMELERİ GÖSTER */}
+
             {detectedBannedInContent.length > 0 && formData.content && (
               <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
                 <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-2">
@@ -415,7 +479,6 @@ export default function BolumDuzenle({ params }) {
               </div>
             )}
             
-            {/* ✅ KELİME SAYACI */}
             <div className="flex justify-between items-center mt-2 px-4">
               {hasBannedWords && (
                 <span className="text-xs font-bold text-red-500">
@@ -431,10 +494,10 @@ export default function BolumDuzenle({ params }) {
           <div className="flex gap-4">
             <button 
               type="button" 
-              onClick={() => router.push(`/kitap/${ids.kitapId}`)}
+              onClick={() => router.back()}
               className="flex-1 h-14 rounded-full bg-gray-100 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-all"
             >
-              Vazgeç
+              İptal
             </button>
             <button 
               type="submit" 
