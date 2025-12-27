@@ -76,9 +76,10 @@ export default function BolumDuzenle({ params }) {
     });
   }
 
-  // İçerik değişikliğini yakala
+  // ✅ İçerik değişikliğini yakala - HTML'i KORU
   function handleInput() {
     if (editorRef.current) {
+      // innerText'i state'e kaydet (sadece yasaklı kelime kontrolü için)
       setFormData({...formData, content: editorRef.current.innerText});
     }
     updateFormatState();
@@ -150,10 +151,13 @@ export default function BolumDuzenle({ params }) {
           return router.push(`/kitap/${ids.kitapId}`);
         }
 
-        // ✅ Form data'yı set et
+        // ✅ Form data'yı set et - content için innerText al (yasaklı kelime kontrolü için)
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = chapter.content;
+        
         setFormData({ 
           title: chapter.title, 
-          content: chapter.content 
+          content: tempDiv.innerText || tempDiv.textContent || '' 
         });
         
         setLoading(false);
@@ -170,21 +174,30 @@ export default function BolumDuzenle({ params }) {
   // ✅ Editor'a içeriği yükle (formData hazır olduktan SONRA)
   useEffect(() => {
     if (editorLoaded && editorRef.current && formData.content) {
-      editorRef.current.innerHTML = formData.content;
+      // Veritabanından gelen HTML içeriğini direkt yükle
+      const { data: chapter } = supabase
+        .from('chapters')
+        .select('content')
+        .eq('id', ids.bolumId)
+        .single()
+        .then(result => {
+          if (result.data && editorRef.current) {
+            editorRef.current.innerHTML = result.data.content;
+          }
+        });
     }
-  }, [editorLoaded, formData.content]);
+  }, [editorLoaded, ids.bolumId]);
 
   async function handleUpdate(e) {
     e.preventDefault();
     
+    // ✅ innerHTML kullan - formatlar korunacak
     let htmlContent = editorRef.current?.innerHTML || '';
     
-    // ✅ TÜM style attribute'larını temizle (boş olsun dolu olsun)
+    // ✅ Sadece gereksiz style, font ve span taglarını temizle
     htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
-    // Font taglarını da temizle
     htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
-    // Span taglarını temizle
-    htmlContent = htmlContent.replace(/<\/?span[^>]*>/g, '');
+    htmlContent = htmlContent.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
     
     if (!formData.title.trim() || !formData.content.trim()) {
       toast.error("Başlık ve içerik boş olamaz.");
@@ -200,7 +213,7 @@ export default function BolumDuzenle({ params }) {
     setUpdating(true);
 
     try {
-      // 🔴 SANSÜRLü İÇERİK OLUŞTUR
+      // 🔴 SANSÜRLÜ İÇERİK OLUŞTUR
       const censoredTitle = censorContent(formData.title);
       const censoredContent = censorContent(htmlContent);
 
@@ -341,7 +354,7 @@ export default function BolumDuzenle({ params }) {
               </button>
             </div>
 
-            {/* 🎨 WYSIWYG EDITOR */}
+            {/* 🎨 WYSIWYG EDITOR - ✅ PARAGRAFLAR KORUNACAK */}
             <div
               ref={editorRef}
               contentEditable
@@ -353,6 +366,10 @@ export default function BolumDuzenle({ params }) {
                   ? 'border-red-500 dark:border-red-500' 
                   : 'dark:border-white/5'
               }`}
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word'
+              }}
               data-placeholder="Hikayeni buraya yaz..."
               suppressContentEditableWarning
             />

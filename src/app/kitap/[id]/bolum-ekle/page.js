@@ -75,9 +75,10 @@ export default function BolumEkle({ params }) {
     });
   }
 
-  // İçerik değişikliğini yakala
+  // ✅ İçerik değişikliğini yakala - HTML'i KORU
   function handleInput() {
     if (editorRef.current) {
+      // innerText'i state'e kaydet (sadece yasaklı kelime kontrolü için)
       setContent(editorRef.current.innerText);
     }
     updateFormatState();
@@ -112,14 +113,13 @@ export default function BolumEkle({ params }) {
   async function bolumKaydet(e) {
     e.preventDefault();
     
+    // ✅ innerHTML kullan - formatlar korunacak
     let htmlContent = editorRef.current?.innerHTML || '';
     
-    // ✅ TÜM style attribute'larını temizle (boş olsun dolu olsun)
+    // ✅ Sadece gereksiz style, font ve span taglarını temizle
     htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
-    // Font taglarını da temizle
     htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
-    // Span taglarını temizle
-    htmlContent = htmlContent.replace(/<\/?span[^>]*>/g, '');
+    htmlContent = htmlContent.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
     
     if (!title.trim() || !content.trim()) {
       toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
@@ -296,7 +296,7 @@ export default function BolumEkle({ params }) {
               </button>
             </div>
 
-            {/* 🎨 WYSIWYG EDITOR */}
+            {/* 🎨 WYSIWYG EDITOR - ✅ PARAGRAFLAR KORUNACAK */}
             <div
               ref={editorRef}
               contentEditable
@@ -308,6 +308,10 @@ export default function BolumEkle({ params }) {
                   ? 'border-red-500 dark:border-red-500' 
                   : 'dark:border-white/5'
               }`}
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word'
+              }}
               data-placeholder="Hikayenizi buraya yazın..."
               suppressContentEditableWarning
             />

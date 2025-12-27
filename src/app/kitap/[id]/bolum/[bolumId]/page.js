@@ -18,7 +18,6 @@ export default function BolumDetay({ params }) {
   const [paraCommentCounts, setParaCommentCounts] = useState({});
   const [user, setUser] = useState(null);
 
-  // ✅ YENİ: BEĞENİ STATE'LERİ
   const [likes, setLikes] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
 
@@ -55,13 +54,11 @@ export default function BolumDetay({ params }) {
         setUser(currentUser);
         
         if (currentUser) {
-          // Okunma sayısını arttır
           await supabase.rpc('increment_view_count', {
             p_chapter_id: Number(bolumId),
             p_user_id: currentUser.id
           });
 
-          // Geçmişe ekle
           await supabase.from('reading_history').upsert({
             user_email: currentUser.email,
             book_id: Number(id),
@@ -69,7 +66,6 @@ export default function BolumDetay({ params }) {
             updated_at: new Date()
           }, { onConflict: 'user_email, book_id' });
 
-          // ✅ YENİ: KULLANICI BU BÖLÜMÜ BEĞENMİŞ Mİ KONTROL ET
           const { data: vote } = await supabase
             .from('chapter_votes')
             .select('*')
@@ -80,7 +76,6 @@ export default function BolumDetay({ params }) {
           setHasLiked(!!vote);
         }
 
-        // ✅ YENİ: TOPLAM BEĞENİ SAYISINI ÇEK
         const { count: likeCount } = await supabase
           .from('chapter_votes')
           .select('*', { count: 'exact', head: true })
@@ -88,7 +83,6 @@ export default function BolumDetay({ params }) {
         
         setLikes(likeCount || 0);
 
-        // Yorum sayıları (Paragraf)
         const { data: counts } = await supabase.from('comments').select('paragraph_id').eq('chapter_id', bolumId).not('paragraph_id', 'is', null);
         const countMap = {};
         counts?.forEach(c => {
@@ -111,7 +105,6 @@ export default function BolumDetay({ params }) {
 const handleLike = async () => {
   if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
 
-  // Kullanıcı adını al
   const { data: profile } = await supabase
     .from('profiles')
     .select('username')
@@ -121,7 +114,6 @@ const handleLike = async () => {
   const username = profile?.username || user.email.split('@')[0];
 
   if (hasLiked) {
-    // Beğeniyi Kaldır
     const { error } = await supabase
       .from('chapter_votes')
       .delete()
@@ -133,7 +125,6 @@ const handleLike = async () => {
       setHasLiked(false);
     }
   } else {
-    // Beğen
     const { error } = await supabase
       .from('chapter_votes')
       .insert({
@@ -146,7 +137,6 @@ const handleLike = async () => {
       setHasLiked(true);
       toast.success("Bölüm beğenildi ❤️");
       
-      // ✅ BİLDİRİM GÖNDER
       await createChapterVoteNotification(username, user.email, id, bolumId);
     }
   }
@@ -170,32 +160,37 @@ const handleLike = async () => {
   const prevChapter = currentIndex > 0 ? data.allChapters[currentIndex - 1] : null;
   const nextChapter = (currentIndex !== -1 && currentIndex < data.allChapters.length - 1) ? data.allChapters[currentIndex + 1] : null;
   
-  // ✅ HTML içeriği için doğru split mantığı
+  // ✅ HTML içeriği için doğru split mantığı - paragraflar arası boşluk korunacak
   const paragraphs = data.chapter?.content 
     ? data.chapter.content
-        .split(/<\/p>|<br\s*\/?>|\n/)
-        .map(p => {
-          let cleaned = p.replace(/<p[^>]*>/g, '').trim();
-          cleaned = cleaned.replace(/\s*style=""\s*/g, '');
-          return cleaned;
-        })
-        .filter(p => p !== '' && p !== '<br>' && p !== '<br/>')
+        .split(/(<\/p>|<br\s*\/?>|\n)/) // Ayırıcıları da tut
+        .reduce((acc, part, i, arr) => {
+          // Sadece içerik parçalarını al, ayırıcıları say
+          if (i % 2 === 0 && part.trim()) {
+            let cleaned = part.replace(/<p[^>]*>/g, '').trim();
+            cleaned = cleaned.replace(/\s*style=""\s*/g, '');
+            if (cleaned && cleaned !== '<br>' && cleaned !== '<br/>') {
+              acc.push(cleaned);
+            }
+          }
+          return acc;
+        }, [])
     : [];
 
   return (
-    <div className={`min-h-screen transition-colors duration-500 ${readerSettings.theme}`}>
+    <div className="min-h-screen bg-[#fcfcfc] dark:bg-[#080808]">
       <Toaster />
       
       <nav className="fixed top-20 left-1/2 -translate-x-1/2 z-40 w-[85%] max-w-2xl h-11 bg-white/60 dark:bg-black/60 backdrop-blur-3xl border dark:border-white/5 rounded-full flex items-center justify-between px-6 shadow-sm">
         <Link href={`/kitap/${id}`} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-all">
           ← Geri
         </Link>
-        <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600">AYARLAR Aa</button>
+        <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600">AYARLAR</button>
       </nav>
 
       {isSettingsOpen && (
         <div className="fixed top-32 left-1/2 -translate-x-1/2 z-[60] w-[85%] max-w-md bg-white dark:bg-gray-900 border dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-200">
-          <div className="flex justify-between items-center mb-8"><span className="text-[9px] font-black uppercase tracking-widest opacity-40">Ayarlar</span><button onClick={() => setIsSettingsOpen(false)}>✕</button></div>
+          <div className="flex justify-between items-center mb-8"><span className="text-[9px] font-black uppercase tracking-widest opacity-40">Okuma Ayarları</span><button onClick={() => setIsSettingsOpen(false)}>✕</button></div>
           <div className="space-y-8">
             <div>
               <div className="flex justify-between mb-4"><span className="text-[10px] font-bold uppercase tracking-widest">Boyut</span><span className="text-[10px] font-black">{readerSettings.fontSize}px</span></div>
@@ -211,9 +206,10 @@ const handleLike = async () => {
       )}
 
       <div className="flex justify-center min-h-screen relative">
-        <main className="w-full max-w-2xl pt-48 pb-40 px-8 shrink-0">
+        {/* ✅ OKUMA ALANI - Sadece burada tema değişsin */}
+        <main className={`w-full max-w-2xl pt-48 pb-40 px-6 md:px-8 shrink-0 transition-colors duration-500 ${readerSettings.theme}`}>
           <header className="mb-24 text-center">
-            <h1 className={`text-4xl md:text-6xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
+            <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
           </header>
           
           <article className={`${readerSettings.fontFamily} leading-[2.1]`} style={{ fontSize: `${readerSettings.fontSize}px` }}>
@@ -222,15 +218,25 @@ const handleLike = async () => {
               const paraId = i.toString();
               const count = paraCommentCounts[paraId] || 0;
               return (
-                <div key={i} className="relative mb-10 group">
-                  <div className={`flex items-start gap-4 transition-all duration-500 rounded-[1.8rem] p-4 -mx-4 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5' : ''}`}>
-                    {/* ✅ BURADA DEĞİŞİKLİK: dangerouslySetInnerHTML ile HTML render et */}
+                <div key={i} className="relative group">
+                  {/* ✅ Paragraflar arası boşluk: mb-6 (normal), mb-4 (mobil) */}
+                  <div className={`flex items-start gap-2 md:gap-4 transition-all duration-500 rounded-[1.8rem] p-3 md:p-4 -mx-3 md:-mx-4 mb-2 md:mb-3 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5' : ''}`}>
+                    {/* ✅ HTML içeriği - formatlar korunacak */}
                     <div 
                       className="flex-1"
                       dangerouslySetInnerHTML={{ __html: para }}
+                      style={{ whiteSpace: 'pre-wrap' }}
                     />
-                    <button onClick={() => setActivePara(activePara === paraId ? null : paraId)} className={`shrink-0 w-8 h-8 flex items-center justify-center rounded-full transition-all border ${count > 0 || activePara === paraId ? 'bg-red-600 border-red-600 text-white shadow-lg' : 'bg-transparent border-current opacity-20 group-hover:opacity-100 hover:text-red-600'}`}>
-                      <span className="text-[9px] font-black">{count > 0 ? count : '+'}</span>
+                    {/* ✅ Yorum butonu - mobilde küçük (w-6 h-6), masaüstünde büyük (md:w-8 md:h-8) */}
+                    <button 
+                      onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
+                      className={`shrink-0 w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-all border text-[8px] md:text-[9px] font-black ${
+                        count > 0 || activePara === paraId 
+                          ? 'bg-red-600 border-red-600 text-white shadow-lg' 
+                          : 'bg-transparent border-current opacity-20 group-hover:opacity-100 hover:text-red-600'
+                      }`}
+                    >
+                      {count > 0 ? count : '+'}
                     </button>
                   </div>
                 </div>
@@ -256,26 +262,42 @@ const handleLike = async () => {
               </div>
             )}
           </div>
+        </main>
 
-          {/* ============================================ */}
-          {/* BÖLÜM YORUMLARI & BEĞENİ ALANI */}
-          {/* ============================================ */}
-          <section className="mt-32 mb-20 p-8 border-4 border-red-600 rounded-3xl bg-white/50 dark:bg-black/30">
-            
+        {/* PARAGRAF YORUM PANELİ - Mobilde tam ekran, masaüstünde sağda */}
+        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[350px] transition-all duration-500 z-50 ${
+          activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
+        }`}>
+          <div className="h-full bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 md:rounded-[2.8rem] shadow-2xl flex flex-col overflow-hidden">
+            <div className="p-6 border-b dark:border-white/5 flex justify-between items-center font-black text-[9px] uppercase opacity-40 tracking-widest">
+              Yorumlar
+              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-xl">✕</button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar">
+              <YorumAlani type="paragraph" targetId={bolumId} bookId={id} paraId={activePara} onCommentAdded={handleCommentAdded} />
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* ✅ BÖLÜM YORUMLARI - Site teması ile (sepya rengi karışmasın) */}
+      <section className="bg-[#fcfcfc] dark:bg-[#080808] py-20">
+        <div className="max-w-2xl mx-auto px-6 md:px-8">
+          <div className="p-8 border-4 border-red-600 rounded-3xl bg-white/50 dark:bg-black/30">
             <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-black flex items-center justify-center gap-3">
+              <h2 className="text-3xl md:text-4xl font-black flex items-center justify-center gap-3 dark:text-white">
                 <span className="text-red-600">📖</span> 
                 Bölüm Yorumları
               </h2>
               
-              {/* ✅ YENİ: BÖLÜM BEĞENME BUTONU */}
+              {/* BÖLÜM BEĞENME BUTONU */}
               <div className="flex justify-center mt-6">
                 <button 
                   onClick={handleLike}
                   className={`flex items-center gap-3 px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 ${
                     hasLiked 
                       ? 'bg-red-600 text-white shadow-red-600/30' 
-                      : 'bg-white dark:bg-white/10 text-gray-500 hover:text-red-600'
+                      : 'bg-white dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-red-600'
                   }`}
                 >
                   <span className="text-xl">{hasLiked ? '❤️' : '🤍'}</span>
@@ -300,19 +322,9 @@ const handleLike = async () => {
             ) : (
               <p className="text-center text-red-500">ID'ler yüklenemedi</p>
             )}
-          </section>
-        </main>
-
-        {/* PARAGRAF YORUM PANELİ */}
-        <aside className={`fixed top-24 right-8 bottom-8 w-[350px] transition-all duration-500 z-50 ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-12 pointer-events-none'}`}>
-          <div className="h-full bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-[2.8rem] shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-6 border-b dark:border-white/5 flex justify-between items-center font-black text-[9px] uppercase opacity-40 tracking-widest">Yorumlar<button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-xl">✕</button></div>
-            <div className="flex-1 overflow-y-auto p-8 no-scrollbar">
-              <YorumAlani type="paragraph" targetId={bolumId} bookId={id} paraId={activePara} onCommentAdded={handleCommentAdded} />
-            </div>
           </div>
-        </aside>
-      </div>
+        </div>
+      </section>
     </div>
   );
 }
