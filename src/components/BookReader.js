@@ -19,18 +19,27 @@ export default function BookReader({ content, bookId, chapterId }) {
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // ✅ HTML içeriği için doğru split mantığı + temizleme
+  // ✅ Hem HTML hem düz metin destekli
   const paragraflar = content 
-    ? content
-        .split(/<\/p>|<br\s*\/?>|\n/) // p tagları, br tagları veya \n ile böl
-        .map(p => {
-          // <p> taglarını temizle
-          let cleaned = p.replace(/<p[^>]*>/g, '').trim();
-          // Boş style attribute'larını temizle
-          cleaned = cleaned.replace(/\s*style=""\s*/g, '');
-          return cleaned;
-        })
-        .filter(p => p !== '' && p !== '<br>' && p !== '<br/>') // Boşları at
+    ? (() => {
+        const hasHTML = /<br|<p|<\/p/i.test(content);
+        
+        if (hasHTML) {
+          return content
+            .split(/<\/p>|<br\s*\/?>/)
+            .map(p => {
+              let cleaned = p.replace(/<p[^>]*>/g, '').trim();
+              cleaned = cleaned.replace(/\s*style=""\s*/g, '');
+              return cleaned;
+            })
+            .filter(p => p !== '' && p !== '<br>' && p !== '<br/>');
+        } else {
+          return content
+            .split(/\n\n+/)
+            .map(p => p.trim())
+            .filter(p => p !== '');
+        }
+      })()
     : [];
 
   useEffect(() => {
@@ -114,21 +123,22 @@ export default function BookReader({ content, bookId, chapterId }) {
         {paragraflar.map((p, i) => {
           const count = comments.filter(c => c.paragraph_id === i).length;
           return (
-            <div key={i} className="group relative mb-8 pr-8">
-              {/* ✅ HTML render için dangerouslySetInnerHTML - Artık <b>, <i>, <u> düzgün gösterilecek */}
+            <div key={i} className="group relative mb-3 flex items-start justify-between gap-2">
+              {/* ✅ HTML render için dangerouslySetInnerHTML */}
               <div 
-                className="text-xl md:text-2xl leading-[1.8] text-gray-800 dark:text-gray-200 font-serif antialiased"
+                className="flex-1 text-xl md:text-2xl leading-[1.8] text-gray-800 dark:text-gray-200 font-serif antialiased"
                 dangerouslySetInnerHTML={{ __html: p }}
               />
+              {/* ✅ Çok küçük buton - mobilde 10px, PC'de 16px */}
               <button 
                 onClick={() => setActiveParagraph(i)} 
-                className={`absolute right-0 top-1 w-6 h-6 flex items-center justify-center rounded-full transition-all duration-300
+                className={`shrink-0 w-2.5 h-2.5 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border text-[5px] md:text-[6px] font-black mt-0.5 md:mt-1
                   ${count > 0 || activeParagraph === i 
-                    ? 'bg-red-600 text-white shadow-md opacity-100 scale-100' 
-                    : 'bg-gray-100 dark:bg-gray-800 text-gray-400 opacity-0 group-hover:opacity-100 scale-90 group-hover:scale-100'
+                    ? 'bg-red-600 border-red-600 text-white shadow-lg' 
+                    : 'bg-gray-200 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-500 dark:text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white'
                   }`}
               >
-                {count > 0 ? <span className="text-[9px] font-bold">{count}</span> : <Icons.Comment />}
+                {count > 0 ? count : '+'}
               </button>
             </div>
           );
@@ -137,8 +147,9 @@ export default function BookReader({ content, bookId, chapterId }) {
 
       {activeParagraph !== null && (
         <>
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-[90]" onClick={() => setActiveParagraph(null)} />
-          <div className="fixed inset-y-0 right-0 w-full md:w-96 bg-white dark:bg-[#0a0a0a] shadow-2xl z-[100] flex flex-col animate-slide-in border-l dark:border-white/5">
+          {/* ✅ Mobilde backdrop - tıklayınca kapansın */}
+          <div className="fixed inset-0 bg-black/50 md:bg-black/20 backdrop-blur-[1px] z-[90]" onClick={() => setActiveParagraph(null)} />
+          <div className="fixed inset-0 md:inset-y-0 md:right-0 md:left-auto w-full md:w-96 bg-white dark:bg-[#0a0a0a] shadow-2xl z-[100] flex flex-col animate-slide-in border-l dark:border-white/5">
             <div className="p-6 border-b dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
               <h3 className="font-black text-xs uppercase tracking-widest dark:text-white flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-red-600"></span>
@@ -154,7 +165,7 @@ export default function BookReader({ content, bookId, chapterId }) {
                 comments.filter(c => c.paragraph_id === activeParagraph).map(c => (
                   <div key={c.id} className="group relative flex gap-3 animate-in fade-in duration-300">
                     <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden">
-                       {c.profiles?.avatar_url ? <img src={c.profiles.avatar_url} className="w-full h-full object-cover"/> : (c.profiles?.username || c.user_email || "?")[0].toUpperCase()}
+                       {c.profiles?.avatar_url ? <img src={c.profiles.avatar_url} className="w-full h-full object-cover" alt="avatar"/> : (c.profiles?.username || c.user_email || "?")[0].toUpperCase()}
                     </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-start">
