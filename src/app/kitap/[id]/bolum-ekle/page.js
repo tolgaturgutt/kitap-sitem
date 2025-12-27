@@ -110,43 +110,71 @@ export default function BolumEkle({ params }) {
   }
 
   // ✅ PASTE (YAPIŞTIRMA) - WORD FORMATINI TEMİZLE AMA STİLİ KORU
+// ✅ PASTE (YAPIŞTIRMA) - GARANTİ YÖNTEM
   function handlePaste(e) {
-    e.preventDefault(); // Standart yapıştırmayı durdur
+    e.preventDefault(); // Varsayılan yapıştırmayı durdur
 
-    // 1. Panodaki veriyi HTML olarak al
-    let pastedData = e.clipboardData.getData('text/html');
+    // 1. Düz metin yedeğini al (Her ihtimale karşı)
+    const plainText = e.clipboardData.getData('text/plain');
     
-    // Eğer HTML yoksa (düz metinse) düz metni al
-    if (!pastedData) {
-        const text = e.clipboardData.getData('text/plain');
-        document.execCommand("insertText", false, text);
-        handleInput();
-        return;
+    // 2. HTML verisini al
+    let html = e.clipboardData.getData('text/html');
+
+    // Eğer HTML yoksa direkt düz metni yapıştır
+    if (!html) {
+      document.execCommand("insertText", false, plainText);
+      handleInput();
+      return;
     }
 
-    // 2. TEMİZLİK OPERASYONU (Word Çöplerini At)
-    // Yorumları, meta, link, xml, style taglarını temizle
-    pastedData = pastedData.replace(g, ""); 
-    pastedData = pastedData.replace(/<(\/)*meta[^>]*>/gi, ""); 
-    pastedData = pastedData.replace(/<(\/)*link[^>]*>/gi, ""); 
-    pastedData = pastedData.replace(/<(\/)*xml[^>]*>/gi, ""); 
-    pastedData = pastedData.replace(/<(\/)*style[^>]*>/gi, ""); 
-    pastedData = pastedData.replace(/<(\/)*o:[^>]*>/gi, ""); 
+    try {
+      // --- TEMİZLİK BAŞLIYOR ---
+      
+      // Word'ün gereksiz meta taglarını temizle
+      html = html.replace(//g, "")
+                 .replace(/<meta[^>]*>/g, "")
+                 .replace(/<link[^>]*>/g, "")
+                 .replace(/<style[^>]*>[\s\S]*?<\/style>/g, "") // Style bloklarını içindekilerle sil
+                 .replace(/<\/?(html|head|body|o:|xml)[^>]*>/gi, "");
 
-    // class, style, id, align gibi özellikleri tüm taglardan sök
-    pastedData = pastedData.replace(/\s(class|style|id|align|lang|dir)="[^"]*"/gi, "");
+      // Tüm etiketlerden class, style, id, align gibi özellikleri sök (Sadece etiketin kendisi kalsın)
+      // Örnek: <b style="color:red"> -> <b>
+      html = html.replace(/<([a-z][a-z0-9]*)[^>]*>/gi, function(match, tag) {
+        // İzin verilen taglar dışındaysa, olduğu gibi döndür (aşağıda siliyoruz zaten)
+        // Link (a) tagını da koruyalım
+        if (['b', 'strong', 'i', 'em', 'u', 'br', 'a'].includes(tag.toLowerCase())) {
+           return `<${tag}>`;
+        }
+        // p, div, h1 gibi blok elementlerin attribute'larını siliyoruz sadece
+        return match.replace(/ (class|style|id|align|lang|dir|face|size)="[^"]*"/gi, "");
+      });
 
-    // 3. BLOKLARI SATIR SONUNA ÇEVİR
-    // <p>, <div>, <h1> kapandığında <br> koy, açıldığında sil.
-    pastedData = pastedData.replace(/<\/(div|p|h[1-6])>/gi, "<br>"); 
-    pastedData = pastedData.replace(/<(div|p|h[1-6])[^>]*>/gi, "");
+      // Blok elementleri (p, div, h1..) satır sonuna (<br>) çevir
+      // Açılış taglarını sil (<p> -> boşluk)
+      html = html.replace(/<(div|p|h[1-6]|li|ul|ol|table|tr|td)[^>]*>/gi, "");
+      // Kapanış taglarını <br> yap (</p> -> <br>)
+      html = html.replace(/<\/(div|p|h[1-6]|li|ul|ol|table|tr|td)>/gi, "<br>");
 
-    // 4. GEREKSİZ SPAN VE FONT TAGLARINI KALDIR (İçeriği koru)
-    pastedData = pastedData.replace(/<\/?span[^>]*>/gi, "");
-    pastedData = pastedData.replace(/<\/?font[^>]*>/gi, "");
-    
-    // 5. Temizlenmiş HTML'i yapıştır
-    document.execCommand("insertHTML", false, pastedData);
+      // Gereksiz span ve font taglarını tamamen kaldır (içerik kalsın)
+      html = html.replace(/<\/?(span|font)[^>]*>/gi, "");
+
+      // Çoklu <br> varsa tek'e düşür (isteğe bağlı, bazen Word 2-3 tane atar)
+      // html = html.replace(/(<br\s*\/?>\s*){2,}/gi, "<br>");
+
+      // --- TEMİZLİK BİTTİ ---
+
+      // Temizlenmiş HTML'i yapıştır
+      const success = document.execCommand("insertHTML", false, html);
+
+      // Eğer insertHTML başarısız olursa (bazı tarayıcılar reddederse) düz metne dön
+      if (!success) {
+        throw new Error("HTML insert failed");
+      }
+
+    } catch (err) {
+      console.log("HTML yapıştırma başarısız, düz metin yapıştırılıyor...", err);
+      document.execCommand("insertText", false, plainText);
+    }
     
     // State'i güncelle
     handleInput();
