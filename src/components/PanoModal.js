@@ -21,6 +21,7 @@ export default function PanoModal({
   const [panoComments, setPanoComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState(null);
+  const [chapterTitle, setChapterTitle] = useState(null);
   
   // Pano sahibinin güncel profilini tutacak state
   const [panoOwnerProfile, setPanoOwnerProfile] = useState(null);
@@ -32,11 +33,11 @@ export default function PanoModal({
     setPanoLikes(0);
     setHasLiked(false);
     setPanoComments([]);
-    setPanoOwnerProfile(null); // Sıfırla
+    setPanoOwnerProfile(null);
+    setChapterTitle(null);
 
     async function loadPanoData() {
-      // A) Pano Sahibinin GÜNCEL Bilgilerini Çek (İsim/Foto değiştiyse diye)
-      // Önce ID var mı diye bakıyoruz, yoksa email'den bulmaya çalışıyoruz (eski kayıtlar için)
+      // A) Pano Sahibinin GÜNCEL Bilgilerini Çek
       let ownerQuery = supabase.from('profiles').select('username, avatar_url, email');
       
       if (selectedPano.user_id) {
@@ -48,8 +49,18 @@ export default function PanoModal({
       const { data: ownerData } = await ownerQuery.single();
       if (ownerData) setPanoOwnerProfile(ownerData);
 
+      // B) Bölüm bilgisini çek (eğer varsa)
+      if (selectedPano.chapter_id) {
+        const { data: chapterData } = await supabase
+          .from('chapters')
+          .select('title')
+          .eq('id', selectedPano.chapter_id)
+          .single();
+        
+        if (chapterData) setChapterTitle(chapterData.title);
+      }
 
-      // B) Beğeni Sayısı
+      // C) Beğeni Sayısı
       const { count } = await supabase
         .from('pano_votes')
         .select('*', { count: 'exact', head: true })
@@ -57,7 +68,7 @@ export default function PanoModal({
       
       setPanoLikes(count || 0);
 
-      // C) Kullanıcı beğenmiş mi?
+      // D) Kullanıcı beğenmiş mi?
       if (user) {
         const { data } = await supabase
           .from('pano_votes')
@@ -68,8 +79,7 @@ export default function PanoModal({
         setHasLiked(!!data);
       }
 
-      // D) Yorumları Çek (İLİŞKİLİ VERİ GETİRME - DOĞRUSU BU)
-      // user_id üzerinden profile gidip güncel veriyi alıyoruz.
+      // E) Yorumları Çek
       const { data: comments } = await supabase
         .from('pano_comments')
         .select(`
@@ -79,7 +89,6 @@ export default function PanoModal({
         .eq('pano_id', selectedPano.id)
         .order('created_at', { ascending: true });
 
-      // Veriyi formatla (profiles nesnesini düzleştir veya olduğu gibi kullan)
       setPanoComments(comments || []);
     }
 
@@ -90,7 +99,6 @@ export default function PanoModal({
   async function handleLike() {
     if (!user) return toast.error('Giriş yapmalısın!');
     
-    // Bildirim için gönderen adı
     const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
     const username = profile?.username || user.email.split('@')[0];
     
@@ -107,48 +115,46 @@ export default function PanoModal({
     }
   }
 
- async function handleComment() {
-  if (!user) return toast.error('Giriş yapmalısın!');
-  if (!newComment.trim()) return;
+  async function handleComment() {
+    if (!user) return toast.error('Giriş yapmalısın!');
+    if (!newComment.trim()) return;
 
-  const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
-  const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
-  
-  // Yorumu ekle (user_id İLE BERABER!)
-  const { error } = await supabase.from('pano_comments').insert({
-    pano_id: selectedPano.id,
-    parent_id: replyTo,
-    user_email: user.email,
-    user_id: user.id, // <--- ARTIK ID DE KAYDEDİYORUZ
-    username: username, // Yedek olarak kalsın
-    content: newComment
-  });
+    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+    const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
+    
+    const { error } = await supabase.from('pano_comments').insert({
+      pano_id: selectedPano.id,
+      parent_id: replyTo,
+      user_email: user.email,
+      user_id: user.id,
+      username: username,
+      content: newComment
+    });
 
-  if (error) { toast.error('Hata oluştu!'); return; }
+    if (error) { toast.error('Hata oluştu!'); return; }
 
-  // Bildirimler
-  if (replyTo) {
-    const parentComment = panoComments.find(c => c.id === replyTo);
-    if (parentComment) {
-      await createReplyNotification(username, user.email, parentComment.user_email, null, null, selectedPano.id);
+    // Bildirimler
+    if (replyTo) {
+      const parentComment = panoComments.find(c => c.id === replyTo);
+      if (parentComment) {
+        await createReplyNotification(username, user.email, parentComment.user_email, null, null, selectedPano.id);
+      }
+    } else {
+      await createPanoCommentNotification(username, user.email, selectedPano.id, selectedPano.user_email);
     }
-  } else {
-    await createPanoCommentNotification(username, user.email, selectedPano.id, selectedPano.user_email);
+
+    setNewComment('');
+    setReplyTo(null);
+
+    const { data: comments } = await supabase
+      .from('pano_comments')
+      .select(`*, profiles:user_id ( username, avatar_url )`)
+      .eq('pano_id', selectedPano.id)
+      .order('created_at', { ascending: true });
+
+    setPanoComments(comments || []);
+    toast.success('Yorum eklendi!');
   }
-
-  setNewComment('');
-  setReplyTo(null);
-
-  // Yorumları tekrar çek (Canlı güncelleme)
-  const { data: comments } = await supabase
-    .from('pano_comments')
-    .select(`*, profiles:user_id ( username, avatar_url )`)
-    .eq('pano_id', selectedPano.id)
-    .order('created_at', { ascending: true });
-
-  setPanoComments(comments || []);
-  toast.success('Yorum eklendi!');
-}
 
   async function handleDeleteComment(commentId) {
     if (!confirm('Silmek istiyor musun?')) return;
@@ -173,22 +179,28 @@ export default function PanoModal({
   const CommentItem = ({ comment, isReply = false }) => {
     const canDelete = isAdmin || isOwner || (user && user.email === comment.user_email);
     
-    // Profilden gelen veriyi öncelikli kullan
     const displayAvatar = comment.profiles?.avatar_url;
     const displayUsername = comment.profiles?.username || comment.username;
+    
+    // ✅ Kendi yorumumuzsa /profil, değilse /yazar/username
+    const profileLink = user && comment.user_email === user.email 
+      ? '/profil' 
+      : `/yazar/${displayUsername}`;
 
     return (
       <div className={`flex gap-3 ${isReply ? 'ml-11' : ''}`}>
-        <img
-          src={displayAvatar || '/avatar-placeholder.png'}
-          className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'} rounded-full object-cover bg-gray-200`}
-          alt=""
-          onError={(e) => { e.target.src = '/avatar-placeholder.png' }} 
-        />
+        <Link href={profileLink}>
+          <img
+            src={displayAvatar || '/avatar-placeholder.png'}
+            className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'} rounded-full object-cover bg-gray-200 cursor-pointer hover:ring-2 hover:ring-red-600 transition-all`}
+            alt=""
+            onError={(e) => { e.target.src = '/avatar-placeholder.png' }} 
+          />
+        </Link>
         <div className="flex-1 group">
           <div className="flex items-center gap-2">
             <Link 
-              href={comment.user_email === user?.email ? '/profil' : `/yazar/${displayUsername}`}
+              href={profileLink}
               className="text-[10px] md:text-xs font-black hover:text-red-600 transition-colors"
             >
               <Username username={displayUsername} isAdmin={adminEmails.includes(comment.user_email)} />
@@ -208,17 +220,31 @@ export default function PanoModal({
 
   if (!selectedPano) return null;
 
-  // Pano sahibi bilgileri (State'den geleni kullan, yoksa prop'tan geleni)
+  // Pano sahibi bilgileri
   const ownerUsername = panoOwnerProfile?.username || selectedPano.profiles?.username || selectedPano.username;
   const ownerAvatar = panoOwnerProfile?.avatar_url || selectedPano.profiles?.avatar_url;
   const ownerEmail = panoOwnerProfile?.email || selectedPano.user_email;
+  
+  // ✅ Pano sahibi biziz mi kontrol et
+  const ownerProfileLink = user && ownerEmail === user.email 
+    ? '/profil' 
+    : `/yazar/${ownerUsername}`;
+  
+  // ✅ Buton linki ve metni
+  const buttonLink = selectedPano.chapter_id 
+    ? `/kitap/${selectedPano.book_id}/bolum/${selectedPano.chapter_id}`
+    : `/kitap/${selectedPano.book_id}`;
+  
+  const buttonText = selectedPano.chapter_id && chapterTitle
+    ? `"${chapterTitle}" BÖLÜMÜNE GİT →`
+    : 'KİTABA GİT →';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={onClose}>
       <div className="bg-white dark:bg-[#080808] w-full max-w-5xl h-[85vh] md:h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col md:flex-row" onClick={(e) => e.stopPropagation()}>
         <button onClick={onClose} className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-xl">✕</button>
 
-        {/* SOL TARA: GÖRSEL */}
+        {/* SOL TARAF: GÖRSEL */}
         {selectedPano.books?.cover_url && (
           <div className="shrink-0 hidden md:flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
             <img src={selectedPano.books.cover_url} className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-full w-auto" alt="" />
@@ -282,7 +308,7 @@ export default function PanoModal({
             )}
 
             <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-3">
+              <Link href={ownerProfileLink} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                  <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
                     {ownerAvatar ? <img src={ownerAvatar} className="w-full h-full object-cover" alt="" /> : (ownerUsername?.[0] || 'U')}
                  </div>
@@ -290,9 +316,11 @@ export default function PanoModal({
                     <p className="text-[10px] font-black uppercase"><Username username={ownerUsername} isAdmin={adminEmails.includes(ownerEmail)} /></p>
                     <span className="text-[9px] text-gray-400 font-bold">{new Date(selectedPano.created_at).toLocaleDateString('tr-TR')}</span>
                  </div>
-              </div>
+              </Link>
               <div className="flex gap-2">
-                 <Link href={`/kitap/${selectedPano.book_id}`} className="flex-1 text-center bg-red-600 hover:bg-red-700 text-white font-black text-[10px] px-4 py-3 rounded-xl uppercase tracking-wider transition-all">KİTABA GİT →</Link>
+                 <Link href={buttonLink} className="flex-1 text-center bg-red-600 hover:bg-red-700 text-white font-black text-[10px] px-4 py-3 rounded-xl uppercase tracking-wider transition-all">
+                   {buttonText}
+                 </Link>
                  {isOwner && <Link href={`/pano-duzenle/${selectedPano.id}`} className="bg-blue-600 text-white font-black text-[10px] px-4 py-3 rounded-xl uppercase">DÜZENLE</Link>}
                  {(isAdmin || isOwner) && <button onClick={handleDeletePano} className="bg-black dark:bg-white text-white dark:text-black font-black text-[10px] px-4 py-3 rounded-xl uppercase">SİL</button>}
               </div>
