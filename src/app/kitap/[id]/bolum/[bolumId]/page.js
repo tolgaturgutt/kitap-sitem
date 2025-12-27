@@ -240,10 +240,10 @@ const handleLike = async () => {
                       style={{ whiteSpace: 'pre-wrap' }}
                     />
                     
-                    {/* ✅ Yorum butonu - Çok çok küçük yuvarlak */}
+                    {/* ✅ ALLAH RAZI OLSUN ÇOK MİNİK BUTON - mobilde 6px! */}
                     <button 
                       onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                      className={`shrink-0 w-2.5 h-2.5 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border text-[5px] md:text-[6px] font-black mt-0.5 md:mt-1 ${
+                      className={`shrink-0 w-[6px] h-[6px] md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[4px] md:text-[6px] font-black mt-0.5 md:mt-1 ${
                         count > 0 || activePara === paraId 
                           ? 'bg-red-600 border-red-600 text-white shadow-lg' 
                           : readerSettings.theme.includes('bg-[#f4ecd8]')
@@ -253,7 +253,7 @@ const handleLike = async () => {
                               : 'bg-gray-200 border-gray-300 text-gray-500 hover:bg-red-600 hover:border-red-600 hover:text-white'
                       }`}
                     >
-                      {count > 0 ? count : '+'}
+                      {count > 0 ? <span className="hidden md:inline">{count}</span> : <span className="hidden md:inline">+</span>}
                     </button>
                   </div>
                 </div>
