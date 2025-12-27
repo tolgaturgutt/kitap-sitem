@@ -160,16 +160,32 @@ const handleLike = async () => {
   const prevChapter = currentIndex > 0 ? data.allChapters[currentIndex - 1] : null;
   const nextChapter = (currentIndex !== -1 && currentIndex < data.allChapters.length - 1) ? data.allChapters[currentIndex + 1] : null;
   
-  // ✅ HTML içeriği için doğru split mantığı - sadece <br> ve <p> taglarına göre böl
+  // ✅ Hem HTML hem düz metin destekli paragraf ayrıştırma
   const paragraphs = data.chapter?.content 
-    ? data.chapter.content
-        .split(/<br\s*\/?>|<\/p>/) // Sadece <br> ve </p> ile böl
-        .map(p => {
-          let cleaned = p.replace(/<p[^>]*>/g, '').trim();
-          cleaned = cleaned.replace(/\s*style=""\s*/g, '');
-          return cleaned;
-        })
-        .filter(p => p !== '' && p !== '<br>' && p !== '<br/>')
+    ? (() => {
+        const content = data.chapter.content;
+        
+        // HTML içeriyor mu kontrol et
+        const hasHTML = /<br|<p|<\/p/i.test(content);
+        
+        if (hasHTML) {
+          // Yeni bölümler: HTML ile ayrıştır
+          return content
+            .split(/<br\s*\/?>|<\/p>/)
+            .map(p => {
+              let cleaned = p.replace(/<p[^>]*>/g, '').trim();
+              cleaned = cleaned.replace(/\s*style=""\s*/g, '');
+              return cleaned;
+            })
+            .filter(p => p !== '' && p !== '<br>' && p !== '<br/>');
+        } else {
+          // Eski bölümler: \n\n ile ayrıştır
+          return content
+            .split(/\n\n+/)
+            .map(p => p.trim())
+            .filter(p => p !== '');
+        }
+      })()
     : [];
 
   return (
@@ -201,82 +217,87 @@ const handleLike = async () => {
       )}
 
       <div className="flex justify-center min-h-screen relative">
-        {/* ✅ OKUMA ALANI - Sadece burada tema değişsin */}
-        <main className={`w-full max-w-2xl pt-48 pb-40 px-6 md:px-8 shrink-0 transition-colors duration-500 ${readerSettings.theme}`}>
+        {/* ✅ OKUMA ALANI */}
+        <main className={`w-full max-w-2xl pt-48 pb-20 px-6 md:px-8 shrink-0 transition-colors duration-500 ${readerSettings.theme}`}>
           <header className="mb-24 text-center">
             <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
           </header>
           
+          {/* ✅ PARAGRAFLAR - Az boşluk, yazılar sağa kadar */}
           <article className={`${readerSettings.fontFamily} leading-[2.1]`} style={{ fontSize: `${readerSettings.fontSize}px` }}>
             {paragraphs.map((para, i) => {
-              if (!para.trim()) return null;
               const paraId = i.toString();
               const count = paraCommentCounts[paraId] || 0;
+              
               return (
-                <div key={i} className="relative group mb-2 md:mb-3">
-                  {/* ✅ Paragraf ve buton yan yana - inline-flex kullan */}
-                  <div className={`inline-flex items-start gap-1.5 md:gap-2 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2' : ''}`}>
-                    {/* ✅ HTML içeriği - formatlar korunacak */}
-                    <div 
-                      className="flex-1"
-                      dangerouslySetInnerHTML={{ __html: para }}
-                      style={{ whiteSpace: 'pre-wrap' }}
-                    />
-                    {/* ✅ Yorum butonu - mobilde çok küçük, son kelimenin yanında */}
-                    <button 
-                      onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                      className={`shrink-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full transition-all border text-[7px] md:text-[8px] font-black ${
-                        count > 0 || activePara === paraId 
-                          ? 'bg-red-600 border-red-600 text-white shadow-lg' 
-                          : 'bg-transparent border-current opacity-0 group-hover:opacity-100 hover:text-red-600'
-                      }`}
-                    >
-                      {count > 0 ? count : '+'}
-                    </button>
-                  </div>
+                <div key={i} className="relative group mb-3 flex items-start justify-between gap-2">
+                  {/* ✅ Paragraf - max genişlik */}
+                  <div 
+                    className={`flex-1 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2' : ''}`}
+                    dangerouslySetInnerHTML={{ __html: para }}
+                    style={{ whiteSpace: 'pre-wrap' }}
+                  />
+                  {/* ✅ Yorum butonu - PC'de normal, mobilde çok küçük */}
+                  <button 
+                    onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
+                    className={`shrink-0 w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-all border text-[6px] md:text-[7px] font-black mt-1 ${
+                      count > 0 || activePara === paraId 
+                        ? 'bg-red-600 border-red-600 text-white shadow-lg' 
+                        : 'bg-gray-200 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-500 dark:text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white'
+                    }`}
+                  >
+                    {count > 0 ? count : '+'}
+                  </button>
                 </div>
               );
             })}
           </article>
 
-          {/* NAVİGASYON BUTONLARI */}
-          <div className="mt-40 flex items-center justify-between gap-6 border-t border-current/10 pt-10">
+          {/* ✅ NAVİGASYON BUTONLARI - Az boşluk üstte */}
+          <div className="mt-16 flex items-center justify-between gap-6 border-t border-current/10 pt-8">
             {prevChapter ? (
-              <Link href={`/kitap/${id}/bolum/${prevChapter.id}`} className="flex-1 h-12 flex items-center justify-center rounded-full bg-current/5 text-[9px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 hover:bg-current/10 transition-all">
+              <Link href={`/kitap/${id}/bolum/${prevChapter.id}`} className="flex-1 h-11 flex items-center justify-center rounded-full bg-current/5 text-[9px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 hover:bg-current/10 transition-all">
                 ← Önceki
               </Link>
             ) : <div className="flex-1" />}
 
             {nextChapter ? (
-              <Link href={`/kitap/${id}/bolum/${nextChapter.id}`} className="flex-1 h-12 flex items-center justify-center rounded-full bg-black dark:bg-white text-white dark:text-black text-[9px] font-black uppercase tracking-widest shadow-xl hover:bg-red-600 dark:hover:bg-red-600 dark:hover:text-white transition-all">
-                Sonraki Bölüm →
+              <Link href={`/kitap/${id}/bolum/${nextChapter.id}`} className="flex-1 h-11 flex items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-black uppercase tracking-widest shadow-xl hover:bg-red-700 transition-all">
+                Sonraki →
               </Link>
             ) : (
-              <div className="flex-1 h-12 flex items-center justify-center rounded-full border border-current/10 text-[9px] font-black uppercase opacity-20 text-center">
+              <div className="flex-1 h-11 flex items-center justify-center rounded-full border border-current/10 text-[9px] font-black uppercase opacity-20 text-center">
                 Eserin Sonu
               </div>
             )}
           </div>
         </main>
 
-        {/* PARAGRAF YORUM PANELİ - Mobilde tam ekran, masaüstünde sağda */}
-        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[350px] transition-all duration-500 z-50 ${
+        {/* ✅ PARAGRAF YORUM PANELİ - Mobilde tam ekran küçük, PC'de sağda sabit */}
+        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[280px] transition-all duration-500 z-50 ${
           activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
         }`}>
-          <div className="h-full bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 md:rounded-[2.8rem] shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-6 border-b dark:border-white/5 flex justify-between items-center font-black text-[9px] uppercase opacity-40 tracking-widest">
-              Yorumlar
-              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-xl">✕</button>
+          <div className="h-full bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 md:rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+            <div className="p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
+              Paragraf Yorumları
+              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-lg">✕</button>
             </div>
-            <div className="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar">
-              <YorumAlani type="paragraph" targetId={bolumId} bookId={id} paraId={activePara} onCommentAdded={handleCommentAdded} />
+            
+            <div className="flex-1 overflow-y-auto p-4">
+              <YorumAlani 
+                type="paragraph" 
+                targetId={bolumId} 
+                bookId={id} 
+                paraId={activePara} 
+                onCommentAdded={handleCommentAdded} 
+              />
             </div>
           </div>
         </aside>
       </div>
 
-      {/* ✅ BÖLÜM YORUMLARI - Site teması ile (sepya rengi karışmasın) */}
-      <section className="bg-[#fcfcfc] dark:bg-[#080808] py-20">
+      {/* ✅ BÖLÜM YORUMLARI - Az boşluk üstte */}
+      <section className="bg-[#fcfcfc] dark:bg-[#080808] pt-12 pb-20">
         <div className="max-w-2xl mx-auto px-6 md:px-8">
           <div className="p-8 border-4 border-red-600 rounded-3xl bg-white/50 dark:bg-black/30">
             <div className="text-center mb-12">
@@ -285,7 +306,6 @@ const handleLike = async () => {
                 Bölüm Yorumları
               </h2>
               
-              {/* BÖLÜM BEĞENME BUTONU */}
               <div className="flex justify-center mt-6">
                 <button 
                   onClick={handleLike}
