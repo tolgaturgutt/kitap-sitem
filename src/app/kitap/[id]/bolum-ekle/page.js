@@ -84,6 +84,31 @@ export default function BolumEkle({ params }) {
     updateFormatState();
   }
 
+  // ✅ ENTER tuşunu yakala - sadece <br> ekle
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      
+      // Seçili metni al
+      const selection = window.getSelection();
+      const range = selection.getRangeAt(0);
+      
+      // <br> elementi oluştur ve ekle
+      const br = document.createElement('br');
+      range.deleteContents();
+      range.insertNode(br);
+      
+      // İmleci <br>'den sonraya taşı
+      range.setStartAfter(br);
+      range.setEndAfter(br);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      // İçeriği güncelle
+      handleInput();
+    }
+  }
+
   // 🔴 İÇERİĞİ HIGHLIGHT ET
   function highlightContent(text) {
     if (!text || bannedWords.length === 0) return text;
@@ -120,6 +145,8 @@ export default function BolumEkle({ params }) {
     htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
     htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
     htmlContent = htmlContent.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
+    // ✅ <div> taglarını <br> ile değiştir
+    htmlContent = htmlContent.replace(/<div>/g, '<br>').replace(/<\/div>/g, '');
     
     if (!title.trim() || !content.trim()) {
       toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
@@ -296,11 +323,12 @@ export default function BolumEkle({ params }) {
               </button>
             </div>
 
-            {/* 🎨 WYSIWYG EDITOR - ✅ PARAGRAFLAR KORUNACAK */}
+            {/* 🎨 WYSIWYG EDITOR - ✅ ENTER sadece <br> ekleyecek */}
             <div
               ref={editorRef}
               contentEditable
               onInput={handleInput}
+              onKeyDown={handleKeyDown}
               onMouseUp={updateFormatState}
               onKeyUp={updateFormatState}
               className={`w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed overflow-auto ${
