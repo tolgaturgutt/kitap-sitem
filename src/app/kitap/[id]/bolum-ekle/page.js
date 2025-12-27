@@ -109,6 +109,49 @@ export default function BolumEkle({ params }) {
     }
   }
 
+  // ✅ PASTE (YAPIŞTIRMA) - WORD FORMATINI TEMİZLE AMA STİLİ KORU
+  function handlePaste(e) {
+    e.preventDefault(); // Standart yapıştırmayı durdur
+
+    // 1. Panodaki veriyi HTML olarak al
+    let pastedData = e.clipboardData.getData('text/html');
+    
+    // Eğer HTML yoksa (düz metinse) düz metni al
+    if (!pastedData) {
+        const text = e.clipboardData.getData('text/plain');
+        document.execCommand("insertText", false, text);
+        handleInput();
+        return;
+    }
+
+    // 2. TEMİZLİK OPERASYONU (Word Çöplerini At)
+    // Yorumları, meta, link, xml, style taglarını temizle
+    pastedData = pastedData.replace(g, ""); 
+    pastedData = pastedData.replace(/<(\/)*meta[^>]*>/gi, ""); 
+    pastedData = pastedData.replace(/<(\/)*link[^>]*>/gi, ""); 
+    pastedData = pastedData.replace(/<(\/)*xml[^>]*>/gi, ""); 
+    pastedData = pastedData.replace(/<(\/)*style[^>]*>/gi, ""); 
+    pastedData = pastedData.replace(/<(\/)*o:[^>]*>/gi, ""); 
+
+    // class, style, id, align gibi özellikleri tüm taglardan sök
+    pastedData = pastedData.replace(/\s(class|style|id|align|lang|dir)="[^"]*"/gi, "");
+
+    // 3. BLOKLARI SATIR SONUNA ÇEVİR
+    // <p>, <div>, <h1> kapandığında <br> koy, açıldığında sil.
+    pastedData = pastedData.replace(/<\/(div|p|h[1-6])>/gi, "<br>"); 
+    pastedData = pastedData.replace(/<(div|p|h[1-6])[^>]*>/gi, "");
+
+    // 4. GEREKSİZ SPAN VE FONT TAGLARINI KALDIR (İçeriği koru)
+    pastedData = pastedData.replace(/<\/?span[^>]*>/gi, "");
+    pastedData = pastedData.replace(/<\/?font[^>]*>/gi, "");
+    
+    // 5. Temizlenmiş HTML'i yapıştır
+    document.execCommand("insertHTML", false, pastedData);
+    
+    // State'i güncelle
+    handleInput();
+  }
+
   // 🔴 İÇERİĞİ HIGHLIGHT ET
   function highlightContent(text) {
     if (!text || bannedWords.length === 0) return text;
@@ -141,7 +184,7 @@ export default function BolumEkle({ params }) {
     // ✅ innerHTML kullan - formatlar korunacak
     let htmlContent = editorRef.current?.innerHTML || '';
     
-    // ✅ Sadece gereksiz style, font ve span taglarını temizle
+    // ✅ Sadece gereksiz style, font ve span taglarını temizle (Güvenlik Önlemi)
     htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
     htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
     htmlContent = htmlContent.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
@@ -323,12 +366,13 @@ export default function BolumEkle({ params }) {
               </button>
             </div>
 
-            {/* 🎨 WYSIWYG EDITOR - ✅ ENTER sadece <br> ekleyecek */}
+            {/* 🎨 WYSIWYG EDITOR - ✅ ENTER sadece <br> ekler, PASTE düzeltildi */}
             <div
               ref={editorRef}
               contentEditable
               onInput={handleInput}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               onMouseUp={updateFormatState}
               onKeyUp={updateFormatState}
               className={`w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed overflow-auto ${
