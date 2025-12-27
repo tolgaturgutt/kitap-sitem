@@ -34,7 +34,7 @@ export default function BolumDuzenle({ params }) {
     fetchBannedWords();
   }, []);
 
-  // ✅ KELİME SAYISINI HESAPLA
+  // ✅ KELİME SAYISINI HESAPLA - BÖLÜM EKLEME İLE AYNI MANTIK
   const wordCount = formData.content.trim() === '' ? 0 : formData.content.trim().split(/\s+/).length;
 
   // 🔴 YASAKLI KELİMELERİ TESPİT ET
@@ -112,15 +112,11 @@ export default function BolumDuzenle({ params }) {
 
   // ✅ PASTE (YAPIŞTIRMA) - GARANTİ YÖNTEM
   function handlePaste(e) {
-    e.preventDefault(); // Varsayılan yapıştırmayı durdur
+    e.preventDefault();
 
-    // 1. Düz metin yedeğini al (Her ihtimale karşı)
     const plainText = e.clipboardData.getData('text/plain');
-    
-    // 2. HTML verisini al
     let html = e.clipboardData.getData('text/html');
 
-    // Eğer HTML yoksa direkt düz metni yapıştır
     if (!html) {
       document.execCommand("insertText", false, plainText);
       handleInput();
@@ -128,45 +124,25 @@ export default function BolumDuzenle({ params }) {
     }
 
     try {
-      // --- TEMİZLİK BAŞLIYOR ---
-      
-      // Word'ün gereksiz meta taglarını temizle
       html = html.replace(/<xml[^>]*>[\s\S]*?<\/xml>/g, "")
                  .replace(/<meta[^>]*>/g, "")
                  .replace(/<link[^>]*>/g, "")
-                 .replace(/<style[^>]*>[\s\S]*?<\/style>/g, "") // Style bloklarını içindekilerle sil
+                 .replace(/<style[^>]*>[\s\S]*?<\/style>/g, "")
                  .replace(/<\/?(html|head|body|o:|xml)[^>]*>/gi, "");
 
-      // Tüm etiketlerden class, style, id, align gibi özellikleri sök (Sadece etiketin kendisi kalsın)
-      // Örnek: <b style="color:red"> -> <b>
       html = html.replace(/<([a-z][a-z0-9]*)[^>]*>/gi, function(match, tag) {
-        // İzin verilen taglar dışındaysa, olduğu gibi döndür (aşağıda siliyoruz zaten)
-        // Link (a) tagını da koruyalım
         if (['b', 'strong', 'i', 'em', 'u', 'br', 'a'].includes(tag.toLowerCase())) {
            return `<${tag}>`;
         }
-        // p, div, h1 gibi blok elementlerin attribute'larını siliyoruz sadece
         return match.replace(/ (class|style|id|align|lang|dir|face|size)="[^"]*"/gi, "");
       });
 
-      // Blok elementleri (p, div, h1..) satır sonuna (<br>) çevir
-      // Açılış taglarını sil (<p> -> boşluk)
       html = html.replace(/<(div|p|h[1-6]|li|ul|ol|table|tr|td)[^>]*>/gi, "");
-      // Kapanış taglarını <br> yap (</p> -> <br>)
       html = html.replace(/<\/(div|p|h[1-6]|li|ul|ol|table|tr|td)>/gi, "<br>");
-
-      // Gereksiz span ve font taglarını tamamen kaldır (içerik kalsın)
       html = html.replace(/<\/?(span|font)[^>]*>/gi, "");
 
-      // Çoklu <br> varsa tek'e düşür (isteğe bağlı, bazen Word 2-3 tane atar)
-      // html = html.replace(/(<br\s*\/?>\s*){2,}/gi, "<br>");
-
-      // --- TEMİZLİK BİTTİ ---
-
-      // Temizlenmiş HTML'i yapıştır
       const success = document.execCommand("insertHTML", false, html);
 
-      // Eğer insertHTML başarısız olursa (bazı tarayıcılar reddederse) düz metne dön
       if (!success) {
         throw new Error("HTML insert failed");
       }
@@ -176,7 +152,6 @@ export default function BolumDuzenle({ params }) {
       document.execCommand("insertText", false, plainText);
     }
     
-    // State'i güncelle
     handleInput();
   }
 
@@ -246,7 +221,6 @@ export default function BolumDuzenle({ params }) {
           return router.push(`/kitap/${ids.kitapId}`);
         }
 
-        // ✅ Form data'yı set et - content için innerText al (yasaklı kelime kontrolü için)
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = chapter.content;
         
@@ -266,10 +240,8 @@ export default function BolumDuzenle({ params }) {
     getChapterData();
   }, [ids, router]);
 
-  // ✅ Editor'a içeriği yükle (formData hazır olduktan SONRA)
   useEffect(() => {
     if (editorLoaded && editorRef.current && ids.bolumId) {
-      // Veritabanından gelen HTML içeriğini direkt yükle
       supabase
         .from('chapters')
         .select('content')
@@ -286,14 +258,11 @@ export default function BolumDuzenle({ params }) {
   async function handleUpdate(e) {
     e.preventDefault();
     
-    // ✅ innerHTML kullan - formatlar korunacak
     let htmlContent = editorRef.current?.innerHTML || '';
     
-    // ✅ Sadece gereksiz style, font ve span taglarını temizle (Güvenlik Önlemi)
     htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
     htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
     htmlContent = htmlContent.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
-    // ✅ <div> taglarını <br> ile değiştir
     htmlContent = htmlContent.replace(/<div>/g, '<br>').replace(/<\/div>/g, '');
     
     if (!formData.title.trim() || !formData.content.trim()) {
@@ -449,7 +418,7 @@ export default function BolumDuzenle({ params }) {
               </button>
             </div>
 
-            {/* 🎨 WYSIWYG EDITOR - ✅ ENTER sadece <br> ekler, PASTE düzeltildi */}
+            {/* 🎨 WYSIWYG EDITOR */}
             <div
               ref={editorRef}
               contentEditable
