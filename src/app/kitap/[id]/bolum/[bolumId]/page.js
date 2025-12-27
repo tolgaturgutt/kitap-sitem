@@ -240,10 +240,10 @@ const handleLike = async () => {
                       style={{ whiteSpace: 'pre-wrap' }}
                     />
                     
-                    {/* ✅ Yuvarlak çok küçük - mobilde 8px, PC'de 16px */}
+                    {/* ✅ Yuvarlak mini - mobilde 10px, PC'de aynı kalıyor */}
                     <button 
                       onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                      className={`shrink-0 w-2 h-2 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[8px] md:text-[9px] font-black mt-0.5 md:mt-1 ${
+                      className={`shrink-0 w-2.5 h-2.5 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[7px] md:text-[9px] font-black mt-0.5 md:mt-1 ${
                         count > 0 || activePara === paraId 
                           ? 'bg-red-600 border-red-600 text-white shadow-md' 
                           : readerSettings.theme.includes('bg-[#f4ecd8]')
@@ -294,7 +294,7 @@ const handleLike = async () => {
           <div className="absolute inset-4 md:inset-0 h-[calc(100%-2rem)] md:h-full bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
               Paragraf Yorumları
-              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-xl md:text-lg">✕</button>
+              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-2xl md:text-lg font-bold">✕</button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4">

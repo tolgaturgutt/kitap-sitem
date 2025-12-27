@@ -129,10 +129,10 @@ export default function BookReader({ content, bookId, chapterId }) {
                 className="flex-1 text-xl md:text-2xl leading-[1.8] text-gray-800 dark:text-gray-200 font-serif antialiased"
                 dangerouslySetInnerHTML={{ __html: p }}
               />
-              {/* ✅ Yuvarlak çok küçük - mobilde 8px, PC'de 16px */}
+              {/* ✅ Yuvarlak mini - mobilde 10px, PC'de aynı kalıyor */}
               <button 
                 onClick={() => setActiveParagraph(i)} 
-                className={`shrink-0 w-2 h-2 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[8px] md:text-[9px] font-black mt-0.5 md:mt-1
+                className={`shrink-0 w-2.5 h-2.5 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[7px] md:text-[9px] font-black mt-0.5 md:mt-1
                   ${count > 0 || activeParagraph === i 
                     ? 'bg-red-600 border-red-600 text-white shadow-md' 
                     : 'bg-gray-200 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-500 dark:text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white'
@@ -155,7 +155,7 @@ export default function BookReader({ content, bookId, chapterId }) {
                 <span className="w-2 h-2 rounded-full bg-red-600"></span>
                 Paragraf Yorumları
               </h3>
-              <button onClick={() => setActiveParagraph(null)} className="text-gray-400 hover:text-red-600 transition-colors"><Icons.Close /></button>
+              <button onClick={() => setActiveParagraph(null)} className="text-gray-400 hover:text-red-600 transition-colors text-2xl md:text-xl font-bold">✕</button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-6 space-y-6 no-scrollbar">
