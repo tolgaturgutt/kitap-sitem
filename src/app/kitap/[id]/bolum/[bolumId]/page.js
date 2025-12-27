@@ -223,7 +223,7 @@ const handleLike = async () => {
             <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
           </header>
           
-          {/* ✅ PARAGRAFLAR - Mobilde buton alta, PC'de sağda */}
+          {/* ✅ PARAGRAFLAR - Mobilde buton inline, PC'de sağda */}
           <article className={`${readerSettings.fontFamily} leading-[2.1]`} style={{ fontSize: `${readerSettings.fontSize}px` }}>
             {paragraphs.map((para, i) => {
               const paraId = i.toString();
@@ -231,19 +231,19 @@ const handleLike = async () => {
               
               return (
                 <div key={i} className="relative group mb-3">
-                  {/* ✅ PC: Yan yana, Mobil: Alt alta */}
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between md:gap-2">
+                  {/* ✅ PC: Yan yana, Mobil: Inline son kelime yanında */}
+                  <div className="flex items-start justify-between gap-2 md:gap-2">
                     {/* ✅ Paragraf */}
                     <div 
-                      className={`flex-1 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 md:px-3 md:py-2' : ''}`}
+                      className={`flex-1 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2' : ''}`}
                       dangerouslySetInnerHTML={{ __html: para }}
                       style={{ whiteSpace: 'pre-wrap' }}
                     />
                     
-                    {/* ✅ Yorum butonu - Mobilde paragrafın altında sağda, PC'de yan tarafta */}
+                    {/* ✅ Yorum butonu - Çok küçük yuvarlak */}
                     <button 
                       onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                      className={`self-end md:self-start shrink-0 w-4 h-4 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-all border text-[6px] md:text-[7px] font-black mt-1 ${
+                      className={`shrink-0 w-3 h-3 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-all border text-[5px] md:text-[7px] font-black mt-0.5 md:mt-1 ${
                         count > 0 || activePara === paraId 
                           ? 'bg-red-600 border-red-600 text-white shadow-lg' 
                           : readerSettings.theme.includes('bg-[#f4ecd8]')
@@ -294,7 +294,7 @@ const handleLike = async () => {
           <div className="absolute inset-4 md:inset-0 h-[calc(100%-2rem)] md:h-full bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
               Paragraf Yorumları
-              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-lg">✕</button>
+              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-xl md:text-lg">✕</button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4">
