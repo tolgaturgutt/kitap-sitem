@@ -131,7 +131,7 @@ export default function BolumEkle({ params }) {
       // --- TEMİZLİK BAŞLIYOR ---
       
       // Word'ün gereksiz meta taglarını temizle
-      html = html.replace(//g, "")
+      html = html.replace(g, "")
                  .replace(/<meta[^>]*>/g, "")
                  .replace(/<link[^>]*>/g, "")
                  .replace(/<style[^>]*>[\s\S]*?<\/style>/g, "") // Style bloklarını içindekilerle sil
