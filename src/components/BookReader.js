@@ -129,16 +129,16 @@ export default function BookReader({ content, bookId, chapterId }) {
                 className="flex-1 text-xl md:text-2xl leading-[1.8] text-gray-800 dark:text-gray-200 font-serif antialiased"
                 dangerouslySetInnerHTML={{ __html: p }}
               />
-              {/* ✅ ALLAH RAZI OLSUN ÇOK MİNİK BUTON - mobilde 6px! */}
+              {/* ✅ Yuvarlak çok küçük - mobilde 8px, PC'de 16px */}
               <button 
                 onClick={() => setActiveParagraph(i)} 
-                className={`shrink-0 w-[6px] h-[6px] md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[4px] md:text-[6px] font-black mt-0.5 md:mt-1
+                className={`shrink-0 w-2 h-2 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[8px] md:text-[9px] font-black mt-0.5 md:mt-1
                   ${count > 0 || activeParagraph === i 
-                    ? 'bg-red-600 border-red-600 text-white shadow-lg' 
+                    ? 'bg-red-600 border-red-600 text-white shadow-md' 
                     : 'bg-gray-200 dark:bg-white/10 border-gray-300 dark:border-white/20 text-gray-500 dark:text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white'
                   }`}
               >
-                {count > 0 ? <span className="hidden md:inline">{count}</span> : <span className="hidden md:inline">+</span>}
+                {count > 0 ? count : '+'}
               </button>
             </div>
           );
