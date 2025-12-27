@@ -240,10 +240,10 @@ const handleLike = async () => {
                       style={{ whiteSpace: 'pre-wrap' }}
                     />
                     
-                    {/* ✅ Yorum butonu - Çok küçük yuvarlak */}
+                    {/* ✅ Yorum butonu - Çok çok küçük yuvarlak */}
                     <button 
                       onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                      className={`shrink-0 w-3 h-3 md:w-5 md:h-5 flex items-center justify-center rounded-full transition-all border text-[5px] md:text-[7px] font-black mt-0.5 md:mt-1 ${
+                      className={`shrink-0 w-2.5 h-2.5 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border text-[5px] md:text-[6px] font-black mt-0.5 md:mt-1 ${
                         count > 0 || activePara === paraId 
                           ? 'bg-red-600 border-red-600 text-white shadow-lg' 
                           : readerSettings.theme.includes('bg-[#f4ecd8]')
