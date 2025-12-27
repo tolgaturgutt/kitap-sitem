@@ -160,21 +160,16 @@ const handleLike = async () => {
   const prevChapter = currentIndex > 0 ? data.allChapters[currentIndex - 1] : null;
   const nextChapter = (currentIndex !== -1 && currentIndex < data.allChapters.length - 1) ? data.allChapters[currentIndex + 1] : null;
   
-  // ✅ HTML içeriği için doğru split mantığı - paragraflar arası boşluk korunacak
+  // ✅ HTML içeriği için doğru split mantığı - sadece <br> ve <p> taglarına göre böl
   const paragraphs = data.chapter?.content 
     ? data.chapter.content
-        .split(/(<\/p>|<br\s*\/?>|\n)/) // Ayırıcıları da tut
-        .reduce((acc, part, i, arr) => {
-          // Sadece içerik parçalarını al, ayırıcıları say
-          if (i % 2 === 0 && part.trim()) {
-            let cleaned = part.replace(/<p[^>]*>/g, '').trim();
-            cleaned = cleaned.replace(/\s*style=""\s*/g, '');
-            if (cleaned && cleaned !== '<br>' && cleaned !== '<br/>') {
-              acc.push(cleaned);
-            }
-          }
-          return acc;
-        }, [])
+        .split(/<br\s*\/?>|<\/p>/) // Sadece <br> ve </p> ile böl
+        .map(p => {
+          let cleaned = p.replace(/<p[^>]*>/g, '').trim();
+          cleaned = cleaned.replace(/\s*style=""\s*/g, '');
+          return cleaned;
+        })
+        .filter(p => p !== '' && p !== '<br>' && p !== '<br/>')
     : [];
 
   return (
@@ -218,22 +213,22 @@ const handleLike = async () => {
               const paraId = i.toString();
               const count = paraCommentCounts[paraId] || 0;
               return (
-                <div key={i} className="relative group">
-                  {/* ✅ Paragraflar arası boşluk: mb-6 (normal), mb-4 (mobil) */}
-                  <div className={`flex items-start gap-2 md:gap-4 transition-all duration-500 rounded-[1.8rem] p-3 md:p-4 -mx-3 md:-mx-4 mb-2 md:mb-3 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5' : ''}`}>
+                <div key={i} className="relative group mb-2 md:mb-3">
+                  {/* ✅ Paragraf ve buton yan yana - inline-flex kullan */}
+                  <div className={`inline-flex items-start gap-1.5 md:gap-2 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2' : ''}`}>
                     {/* ✅ HTML içeriği - formatlar korunacak */}
                     <div 
                       className="flex-1"
                       dangerouslySetInnerHTML={{ __html: para }}
                       style={{ whiteSpace: 'pre-wrap' }}
                     />
-                    {/* ✅ Yorum butonu - mobilde küçük (w-6 h-6), masaüstünde büyük (md:w-8 md:h-8) */}
+                    {/* ✅ Yorum butonu - mobilde çok küçük, son kelimenin yanında */}
                     <button 
                       onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                      className={`shrink-0 w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded-full transition-all border text-[8px] md:text-[9px] font-black ${
+                      className={`shrink-0 w-5 h-5 md:w-6 md:h-6 flex items-center justify-center rounded-full transition-all border text-[7px] md:text-[8px] font-black ${
                         count > 0 || activePara === paraId 
                           ? 'bg-red-600 border-red-600 text-white shadow-lg' 
-                          : 'bg-transparent border-current opacity-20 group-hover:opacity-100 hover:text-red-600'
+                          : 'bg-transparent border-current opacity-0 group-hover:opacity-100 hover:text-red-600'
                       }`}
                     >
                       {count > 0 ? count : '+'}
