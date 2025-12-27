@@ -1,359 +1,435 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useState, use, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
-import YorumAlani from '@/components/YorumAlani';
-import { Toaster, toast } from 'react-hot-toast';
-import { createChapterVoteNotification } from '@/lib/notifications'; 
+import { useRouter } from 'next/navigation';
+import toast, { Toaster } from 'react-hot-toast';
 
-export default function BolumDetay({ params }) {
-  const decodedParams = use(params);
-  const id = decodedParams.id;
-  const bolumId = decodedParams.bolumId;
-
-  const [data, setData] = useState({ book: null, chapter: null, allChapters: [] });
-  const [loading, setLoading] = useState(true);
-  const [activePara, setActivePara] = useState(null);
-  const [paraCommentCounts, setParaCommentCounts] = useState({});
-  const [user, setUser] = useState(null);
-
-  const [likes, setLikes] = useState(0);
-  const [hasLiked, setHasLiked] = useState(false);
-
-  const [readerSettings, setReaderSettings] = useState({
-    fontSize: 20,
-    fontFamily: 'font-serif',
-    theme: 'bg-[#fdfdfd] text-gray-800'
+export default function BolumEkle({ params }) {
+  const { id } = use(params);
+  const [title, setTitle] = useState('');
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [bannedWords, setBannedWords] = useState([]);
+  const [activeFormats, setActiveFormats] = useState({
+    bold: false,
+    italic: false,
+    underline: false
   });
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const editorRef = useRef(null);
+  const router = useRouter();
 
+  // 🔴 YASAKLI KELİMELERİ VERİTABANINDAN ÇEK
   useEffect(() => {
-    window.scrollTo(0, 0);
-
-    const saved = localStorage.getItem('yazio_reader_settings');
-    if (saved) {
-      setReaderSettings(JSON.parse(saved));
-    } else {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setReaderSettings(prev => ({
-        ...prev,
-        theme: prefersDark ? 'bg-[#0a0a0a] text-gray-400' : 'bg-[#fdfdfd] text-gray-800'
-      }));
-    }
-
-    async function getFullData() {
-      if (!bolumId || !id) return;
-      try {
-        
-        const { data: chapter } = await supabase.from('chapters').select('*').eq('id', bolumId).single();
-        const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
-        const { data: all } = await supabase.from('chapters').select('id, title').eq('book_id', id).order('order_no', { ascending: true });
-        
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        setUser(currentUser);
-        
-        if (currentUser) {
-          await supabase.rpc('increment_view_count', {
-            p_chapter_id: Number(bolumId),
-            p_user_id: currentUser.id
-          });
-
-          await supabase.from('reading_history').upsert({
-            user_email: currentUser.email,
-            book_id: Number(id),
-            chapter_id: Number(bolumId),
-            updated_at: new Date()
-          }, { onConflict: 'user_email, book_id' });
-
-          const { data: vote } = await supabase
-            .from('chapter_votes')
-            .select('*')
-            .eq('chapter_id', bolumId)
-            .eq('user_email', currentUser.email)
-            .single();
-          
-          setHasLiked(!!vote);
-        }
-
-        const { count: likeCount } = await supabase
-          .from('chapter_votes')
-          .select('*', { count: 'exact', head: true })
-          .eq('chapter_id', bolumId);
-        
-        setLikes(likeCount || 0);
-
-        const { data: counts } = await supabase.from('comments').select('paragraph_id').eq('chapter_id', bolumId).not('paragraph_id', 'is', null);
-        const countMap = {};
-        counts?.forEach(c => {
-          if (c.paragraph_id !== null) {
-            countMap[c.paragraph_id] = (countMap[c.paragraph_id] || 0) + 1;
-          }
-        });
-
-        setData({ book, chapter, allChapters: all || [] });
-        setParaCommentCounts(countMap);
-      } catch (err) {
-        console.error("Yükleme hatası:", err);
-      } finally {
-        setLoading(false);
+    async function fetchBannedWords() {
+      const { data } = await supabase
+        .from('banned_words')
+        .select('word');
+      
+      if (data) {
+        setBannedWords(data.map(item => item.word.toLowerCase()));
       }
     }
-    getFullData();
-  }, [id, bolumId]);
+    fetchBannedWords();
+  }, []);
 
-const handleLike = async () => {
-  if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
+  // ✅ KELİME SAYISINI HESAPLA
+  const wordCount = content.trim() === '' ? 0 : content.trim().split(/\s+/).length;
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('username')
-    .eq('id', user.id)
-    .single();
-  
-  const username = profile?.username || user.email.split('@')[0];
-
-  if (hasLiked) {
-    const { error } = await supabase
-      .from('chapter_votes')
-      .delete()
-      .eq('chapter_id', bolumId)
-      .eq('user_email', user.email);
+  // 🔴 YASAKLI KELİMELERİ TESPİT ET
+  function findBannedWords(text) {
+    if (!text || bannedWords.length === 0) return [];
     
-    if (!error) {
-      setLikes(prev => prev - 1);
-      setHasLiked(false);
-    }
-  } else {
-    const { error } = await supabase
-      .from('chapter_votes')
-      .insert({
-        chapter_id: bolumId,
-        user_email: user.email
+    const words = text.toLowerCase().split(/\b/);
+    const found = [];
+    
+    bannedWords.forEach(banned => {
+      words.forEach(word => {
+        if (word.includes(banned)) {
+          found.push(banned);
+        }
       });
+    });
     
-    if (!error) {
-      setLikes(prev => prev + 1);
-      setHasLiked(true);
-      toast.success("Bölüm beğenildi ❤️");
+    return [...new Set(found)];
+  }
+
+  const detectedBannedInTitle = findBannedWords(title);
+  const detectedBannedInContent = findBannedWords(content);
+  const allDetectedBanned = [...new Set([...detectedBannedInTitle, ...detectedBannedInContent])];
+  const hasBannedWords = allDetectedBanned.length > 0;
+
+  // 🎨 FORMATLAMA FONKSİYONLARI
+  function formatText(command, value = null) {
+    document.execCommand(command, false, value);
+    editorRef.current?.focus();
+    setTimeout(updateFormatState, 10);
+  }
+
+  // Format durumunu güncelle
+  function updateFormatState() {
+    setActiveFormats({
+      bold: document.queryCommandState('bold'),
+      italic: document.queryCommandState('italic'),
+      underline: document.queryCommandState('underline')
+    });
+  }
+
+  // ✅ İçerik değişikliğini yakala - HTML'i KORU
+  function handleInput() {
+    if (editorRef.current) {
+      // innerText'i state'e kaydet (sadece yasaklı kelime kontrolü için)
+      setContent(editorRef.current.innerText);
+    }
+    updateFormatState();
+  }
+
+  // ✅ ENTER tuşunu yakala - sadece <br> ekle
+  function handleKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
       
-      await createChapterVoteNotification(username, user.email, id, bolumId);
+      // Seçili metni al
+      const selection = window.getSelection();
+      const range = selection.getRangeAt(0);
+      
+      // <br> elementi oluştur ve ekle
+      const br = document.createElement('br');
+      range.deleteContents();
+      range.insertNode(br);
+      
+      // İmleci <br>'den sonraya taşı
+      range.setStartAfter(br);
+      range.setEndAfter(br);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      // İçeriği güncelle
+      handleInput();
     }
   }
-};
 
-  const handleCommentAdded = (pId) => {
-    if (pId !== null) {
-      setParaCommentCounts(prev => ({ ...prev, [pId]: (prev[pId] || 0) + 1 }));
+  // ✅ PASTE (YAPIŞTIRMA) - WORD FORMATINI TEMİZLE AMA STİLİ KORU
+  function handlePaste(e) {
+    e.preventDefault(); // Standart yapıştırmayı durdur
+
+    // 1. Panodaki veriyi HTML olarak al
+    let pastedData = e.clipboardData.getData('text/html');
+    
+    // Eğer HTML yoksa (düz metinse) düz metni al
+    if (!pastedData) {
+        const text = e.clipboardData.getData('text/plain');
+        document.execCommand("insertText", false, text);
+        handleInput();
+        return;
     }
-  };
 
-  const updateSettings = (newSettings) => {
-    const updated = { ...readerSettings, ...newSettings };
-    setReaderSettings(updated);
-    localStorage.setItem('yazio_reader_settings', JSON.stringify(updated));
-  };
+    // 2. TEMİZLİK OPERASYONU (Word Çöplerini At)
+    // Yorumları, meta, link, xml, style taglarını temizle
+    pastedData = pastedData.replace(g, ""); 
+    pastedData = pastedData.replace(/<(\/)*meta[^>]*>/gi, ""); 
+    pastedData = pastedData.replace(/<(\/)*link[^>]*>/gi, ""); 
+    pastedData = pastedData.replace(/<(\/)*xml[^>]*>/gi, ""); 
+    pastedData = pastedData.replace(/<(\/)*style[^>]*>/gi, ""); 
+    pastedData = pastedData.replace(/<(\/)*o:[^>]*>/gi, ""); 
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-black opacity-10 animate-pulse text-5xl italic uppercase tracking-tighter">YUKLENIYOR</div>;
-  
-  const currentIndex = data.allChapters.findIndex(c => Number(c.id) === Number(bolumId));
-  const prevChapter = currentIndex > 0 ? data.allChapters[currentIndex - 1] : null;
-  const nextChapter = (currentIndex !== -1 && currentIndex < data.allChapters.length - 1) ? data.allChapters[currentIndex + 1] : null;
-  
-  // ✅ Hem HTML hem düz metin destekli paragraf ayrıştırma
-  const paragraphs = data.chapter?.content 
-    ? (() => {
-        const content = data.chapter.content;
-        
-        // HTML içeriyor mu kontrol et
-        const hasHTML = /<br|<p|<\/p/i.test(content);
-        
-        if (hasHTML) {
-          // Yeni bölümler: HTML ile ayrıştır
-          return content
-            .split(/<br\s*\/?>|<\/p>/)
-            .map(p => {
-              let cleaned = p.replace(/<p[^>]*>/g, '').trim();
-              cleaned = cleaned.replace(/\s*style=""\s*/g, '');
-              return cleaned;
-            })
-            .filter(p => p !== '' && p !== '<br>' && p !== '<br/>');
-        } else {
-          // Eski bölümler: \n\n ile ayrıştır
-          return content
-            .split(/\n\n+/)
-            .map(p => p.trim())
-            .filter(p => p !== '');
-        }
-      })()
-    : [];
+    // class, style, id, align gibi özellikleri tüm taglardan sök
+    pastedData = pastedData.replace(/\s(class|style|id|align|lang|dir)="[^"]*"/gi, "");
+
+    // 3. BLOKLARI SATIR SONUNA ÇEVİR
+    // <p>, <div>, <h1> kapandığında <br> koy, açıldığında sil.
+    pastedData = pastedData.replace(/<\/(div|p|h[1-6])>/gi, "<br>"); 
+    pastedData = pastedData.replace(/<(div|p|h[1-6])[^>]*>/gi, "");
+
+    // 4. GEREKSİZ SPAN VE FONT TAGLARINI KALDIR (İçeriği koru)
+    pastedData = pastedData.replace(/<\/?span[^>]*>/gi, "");
+    pastedData = pastedData.replace(/<\/?font[^>]*>/gi, "");
+    
+    // 5. Temizlenmiş HTML'i yapıştır
+    document.execCommand("insertHTML", false, pastedData);
+    
+    // State'i güncelle
+    handleInput();
+  }
+
+  // 🔴 İÇERİĞİ HIGHLIGHT ET
+  function highlightContent(text) {
+    if (!text || bannedWords.length === 0) return text;
+    
+    let highlighted = text;
+    bannedWords.forEach(banned => {
+      const regex = new RegExp(`(${banned})`, 'gi');
+      highlighted = highlighted.replace(
+        regex, 
+        '<mark class="bg-red-600 text-white rounded px-1 animate-pulse">$1</mark>'
+      );
+    });
+    
+    return highlighted;
+  }
+
+  // 🔴 SANSÜRLEME FONKSİYONU
+  function censorContent(text) {
+    let censored = text;
+    bannedWords.forEach(banned => {
+      const regex = new RegExp(banned, 'gi');
+      censored = censored.replace(regex, '***');
+    });
+    return censored;
+  }
+
+  async function bolumKaydet(e) {
+    e.preventDefault();
+    
+    // ✅ innerHTML kullan - formatlar korunacak
+    let htmlContent = editorRef.current?.innerHTML || '';
+    
+    // ✅ Sadece gereksiz style, font ve span taglarını temizle (Güvenlik Önlemi)
+    htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
+    htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
+    htmlContent = htmlContent.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
+    // ✅ <div> taglarını <br> ile değiştir
+    htmlContent = htmlContent.replace(/<div>/g, '<br>').replace(/<\/div>/g, '');
+    
+    if (!title.trim() || !content.trim()) {
+      toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
+      return;
+    }
+
+    if (hasBannedWords) {
+      toast.error(`⚠️ Yasaklı kelimeler tespit edildi: ${allDetectedBanned.join(', ')}`);
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data: book } = await supabase
+        .from('books')
+        .select('title, username')
+        .eq('id', id)
+        .single();
+
+      const { count } = await supabase
+        .from('chapters')
+        .select('*', { count: 'exact', head: true })
+        .eq('book_id', id);
+
+      const sirasi = (count || 0) + 1;
+
+      const censoredTitle = censorContent(title);
+      const censoredContent = censorContent(htmlContent);
+
+      const { data: newChapter, error } = await supabase
+        .from('chapters')
+        .insert([{
+          book_id: id,
+          title: censoredTitle,
+          content: censoredContent,
+          order_no: sirasi,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const { data: followers } = await supabase
+        .from('follows')
+        .select('user_email')
+        .eq('book_id', id);
+
+      if (followers && followers.length > 0) {
+        const notifications = followers.map(f => ({
+          recipient_email: f.user_email,
+          actor_username: book.username,
+          type: 'new_chapter',
+          book_title: book.title,
+          book_id: parseInt(id),
+          chapter_id: newChapter.id,
+          is_read: false,
+          created_at: new Date()
+        }));
+
+        await supabase.from('notifications').insert(notifications);
+      }
+
+      toast.success('Bölüm başarıyla yayınlandı!');
+      setTimeout(() => {
+        router.push(`/kitap/${id}`);
+        router.refresh();
+      }, 1000);
+
+    } catch (error) {
+      console.error(error);
+      toast.error('Bir hata oluştu.');
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-[#fcfcfc] dark:bg-[#080808]">
-      <Toaster />
-      
-      <nav className="fixed top-20 left-1/2 -translate-x-1/2 z-40 w-[85%] max-w-2xl h-11 bg-white/60 dark:bg-black/60 backdrop-blur-3xl border dark:border-white/5 rounded-full flex items-center justify-between px-6 shadow-sm">
-        <Link href={`/kitap/${id}`} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-all">
-          ← Geri
-        </Link>
-        <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600">AYARLAR</button>
-      </nav>
+    <div className="min-h-screen py-24 px-6 bg-[#fcfcfc] dark:bg-[#080808]">
+      <Toaster position="top-right" />
 
-      {isSettingsOpen && (
-        <div className="fixed top-32 left-1/2 -translate-x-1/2 z-[60] w-[85%] max-w-md bg-white dark:bg-gray-900 border dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-200">
-          <div className="flex justify-between items-center mb-8"><span className="text-[9px] font-black uppercase tracking-widest opacity-40">Okuma Ayarları</span><button onClick={() => setIsSettingsOpen(false)}>✕</button></div>
-          <div className="space-y-8">
-            <div>
-              <div className="flex justify-between mb-4"><span className="text-[10px] font-bold uppercase tracking-widest">Boyut</span><span className="text-[10px] font-black">{readerSettings.fontSize}px</span></div>
-              <input type="range" min="14" max="32" value={readerSettings.fontSize} onChange={(e) => updateSettings({ fontSize: Number(e.target.value) })} className="w-full h-1 bg-gray-100 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-600" />
-            </div>
-            <div className="flex gap-4">
-              <button onClick={() => updateSettings({ theme: 'bg-[#fdfdfd] text-gray-800' })} className="flex-1 h-10 rounded-xl bg-[#fdfdfd] border text-[9px] font-black uppercase">Light</button>
-              <button onClick={() => updateSettings({ theme: 'bg-[#f4ecd8] text-[#5b4636]' })} className="flex-1 h-10 rounded-xl bg-[#f4ecd8] border text-[9px] font-black uppercase">Sepya</button>
-              <button onClick={() => updateSettings({ theme: 'bg-[#0a0a0a] text-gray-400' })} className="flex-1 h-10 rounded-xl bg-[#0a0a0a] border text-[9px] font-black uppercase">Dark</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <div className="max-w-3xl mx-auto">
+        <header className="mb-16 text-center">
+          <h1 className="text-4xl font-black dark:text-white tracking-tighter mb-4">Yeni Bölüm Ekle</h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 italic">
+            Hikayeni Devam Ettir
+          </p>
+        </header>
 
-      <div className="flex justify-center min-h-screen relative">
-        {/* ✅ OKUMA ALANI */}
-        <main className={`w-full max-w-2xl pt-48 pb-20 px-6 md:px-8 shrink-0 transition-colors duration-500 ${readerSettings.theme}`}>
-          <header className="mb-24 text-center">
-            <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
-          </header>
-          
-          {/* ✅ PARAGRAFLAR - Mobilde buton inline, PC'de sağda */}
-          <article className={`${readerSettings.fontFamily} leading-[2.1]`} style={{ fontSize: `${readerSettings.fontSize}px` }}>
-            {paragraphs.map((para, i) => {
-              const paraId = i.toString();
-              const count = paraCommentCounts[paraId] || 0;
-              
-              return (
-                <div key={i} className="relative group mb-3">
-                  {/* ✅ PC: Yan yana, Mobil: Inline son kelime yanında */}
-                  <div className="flex items-start justify-between gap-2 md:gap-2">
-                    {/* ✅ Paragraf */}
-                    <div 
-                      className={`flex-1 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2' : ''}`}
-                      dangerouslySetInnerHTML={{ __html: para }}
-                      style={{ whiteSpace: 'pre-wrap' }}
-                    />
-                    
-                    {/* ✅ Yuvarlak mini - mobilde 10px, PC'de aynı kalıyor */}
-                    <button 
-                      onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                      className={`shrink-0 w-2.5 h-2.5 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[7px] md:text-[9px] font-black mt-0.5 md:mt-1 ${
-                        count > 0 || activePara === paraId 
-                          ? 'bg-red-600 border-red-600 text-white shadow-md' 
-                          : readerSettings.theme.includes('bg-[#f4ecd8]')
-                            ? 'bg-[#e8d9c3] border-[#d4c4a8] text-[#8b7355] hover:bg-red-600 hover:border-red-600 hover:text-white'
-                            : readerSettings.theme.includes('bg-[#0a0a0a]')
-                              ? 'bg-white/10 border-white/20 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white'
-                              : 'bg-gray-200 border-gray-300 text-gray-500 hover:bg-red-600 hover:border-red-600 hover:text-white'
-                      }`}
-                    >
-                      {count > 0 ? count : '+'}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </article>
-
-          {/* ✅ NAVİGASYON BUTONLARI - Az boşluk üstte */}
-          <div className="mt-16 flex items-center justify-between gap-6 border-t border-current/10 pt-8">
-            {prevChapter ? (
-              <Link href={`/kitap/${id}/bolum/${prevChapter.id}`} className="flex-1 h-11 flex items-center justify-center rounded-full bg-current/5 text-[9px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 hover:bg-current/10 transition-all">
-                ← Önceki
-              </Link>
-            ) : <div className="flex-1" />}
-
-            {nextChapter ? (
-              <Link href={`/kitap/${id}/bolum/${nextChapter.id}`} className="flex-1 h-11 flex items-center justify-center rounded-full bg-red-600 text-white text-[9px] font-black uppercase tracking-widest shadow-xl hover:bg-red-700 transition-all">
-                Sonraki →
-              </Link>
-            ) : (
-              <div className="flex-1 h-11 flex items-center justify-center rounded-full border border-current/10 text-[9px] font-black uppercase opacity-20 text-center">
-                Eserin Sonu
+        <form onSubmit={bolumKaydet} className="space-y-8 bg-white dark:bg-black/20 p-10 rounded-[3rem] border dark:border-white/5 shadow-xl shadow-black/5">
+          <div>
+            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-4">
+              Bölüm Başlığı
+              {detectedBannedInTitle.length > 0 && (
+                <span className="ml-2 text-red-500 text-xs animate-pulse">
+                  ⚠️ Yasaklı kelime: {detectedBannedInTitle.join(', ')}
+                </span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className={`w-full p-5 bg-gray-50 dark:bg-white/5 border rounded-full outline-none focus:ring-2 ring-red-600/20 dark:text-white font-bold ${
+                detectedBannedInTitle.length > 0 
+                  ? 'border-red-500 dark:border-red-500' 
+                  : 'dark:border-white/5'
+              }`}
+              placeholder="Örn: 1. Başlangıç"
+            />
+            
+            {detectedBannedInTitle.length > 0 && title && (
+              <div className="mt-3 p-3 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-1">
+                  ÖNİZLEME (Yasaklı kelimeler vurgulandı):
+                </p>
+                <div 
+                  className="text-sm font-bold"
+                  dangerouslySetInnerHTML={{ __html: highlightContent(title) }}
+                />
               </div>
             )}
           </div>
-        </main>
 
-        {/* ✅ PARAGRAF YORUM PANELİ - Mobilde tam ekran küçük, PC'de sağda sabit */}
-        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[280px] transition-all duration-500 z-50 ${
-          activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
-        }`}>
-          {/* ✅ Mobilde backdrop - tıklayınca kapansın */}
-          <div 
-            className="absolute inset-0 bg-black/50 md:hidden"
-            onClick={() => setActivePara(null)}
-          />
-          
-          <div className="absolute inset-4 md:inset-0 h-[calc(100%-2rem)] md:h-full bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
-              Paragraf Yorumları
-              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-2xl md:text-lg font-bold">✕</button>
-            </div>
+          <div>
+            <label className="block text-[9px] font-black uppercase tracking-widest text-gray-400 mb-3 ml-4">
+              Bölüm İçeriği
+              {detectedBannedInContent.length > 0 && (
+                <span className="ml-2 text-red-500 text-xs animate-pulse">
+                  ⚠️ Yasaklı kelime: {detectedBannedInContent.join(', ')}
+                </span>
+              )}
+            </label>
             
-            <div className="flex-1 overflow-y-auto p-4">
-              <YorumAlani 
-                type="paragraph" 
-                targetId={bolumId} 
-                bookId={id} 
-                paraId={activePara} 
-                onCommentAdded={handleCommentAdded} 
-              />
+            {/* 🎨 FORMATLAMA TOOLBAR */}
+            <div className="mb-3 flex gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+              <button
+                type="button"
+                onClick={() => formatText('bold')}
+                className={`px-4 py-2 rounded-md font-bold transition-all select-none ${
+                  activeFormats.bold
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 hover:text-white'
+                }`}
+                title="Kalın (Ctrl+B)"
+              >
+                B
+              </button>
+
+              <button
+                type="button"
+                onClick={() => formatText('italic')}
+                className={`px-4 py-2 rounded-md italic transition-all select-none ${
+                  activeFormats.italic
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 hover:text-white'
+                }`}
+                title="İtalik (Ctrl+I)"
+              >
+                I
+              </button>
+
+              <button
+                type="button"
+                onClick={() => formatText('underline')}
+                className={`px-4 py-2 rounded-md underline transition-all select-none ${
+                  activeFormats.underline
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-gray-300 dark:bg-gray-600 hover:bg-blue-500 hover:text-white'
+                }`}
+                title="Altı Çizili (Ctrl+U)"
+              >
+                U
+              </button>
+            </div>
+
+            {/* 🎨 WYSIWYG EDITOR - ✅ ENTER sadece <br> ekler, PASTE düzeltildi */}
+            <div
+              ref={editorRef}
+              contentEditable
+              onInput={handleInput}
+              onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
+              onMouseUp={updateFormatState}
+              onKeyUp={updateFormatState}
+              className={`w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed overflow-auto ${
+                detectedBannedInContent.length > 0 
+                  ? 'border-red-500 dark:border-red-500' 
+                  : 'dark:border-white/5'
+              }`}
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordWrap: 'break-word'
+              }}
+              data-placeholder="Hikayenizi buraya yazın..."
+              suppressContentEditableWarning
+            />
+
+            {detectedBannedInContent.length > 0 && content && (
+              <div className="mt-4 p-4 bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-xs font-bold text-red-600 dark:text-red-400 mb-2">
+                  ÖNİZLEME (Yasaklı kelimeler vurgulandı):
+                </p>
+                <div 
+                  className="text-sm leading-relaxed whitespace-pre-wrap font-serif"
+                  dangerouslySetInnerHTML={{ __html: highlightContent(content) }}
+                />
+              </div>
+            )}
+            
+            <div className="flex justify-between items-center mt-2 px-4">
+              {hasBannedWords && (
+                <span className="text-xs font-bold text-red-500">
+                  🚫 Bu içerik yayınlanamaz
+                </span>
+              )}
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-40 select-none ml-auto">
+                {wordCount} Kelime
+              </span>
             </div>
           </div>
-        </aside>
+
+          <div className="flex gap-4">
+            <button
+              type="button"
+              onClick={() => router.back()}
+              className="flex-1 h-14 rounded-full bg-gray-100 dark:bg-white/5 text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-gray-600 transition-all"
+            >
+              İptal
+            </button>
+            <button
+              type="submit"
+              disabled={loading || hasBannedWords}
+              className="flex-[2] h-14 rounded-full bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-600/10 hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? 'YAYINLANIYOR...' : hasBannedWords ? '🚫 Yayınlanamaz' : 'YAYINLA 🚀'}
+            </button>
+          </div>
+        </form>
       </div>
-
-      {/* ✅ BÖLÜM YORUMLARI - Az boşluk üstte */}
-      <section className="bg-[#fcfcfc] dark:bg-[#080808] pt-12 pb-20">
-        <div className="max-w-2xl mx-auto px-6 md:px-8">
-          <div className="p-8 border-4 border-red-600 rounded-3xl bg-white/50 dark:bg-black/30">
-            <div className="text-center mb-12">
-              <h2 className="text-3xl md:text-4xl font-black flex items-center justify-center gap-3 dark:text-white">
-                <span className="text-red-600">📖</span> 
-                Bölüm Yorumları
-              </h2>
-              
-              <div className="flex justify-center mt-6">
-                <button 
-                  onClick={handleLike}
-                  className={`flex items-center gap-3 px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 ${
-                    hasLiked 
-                      ? 'bg-red-600 text-white shadow-red-600/30' 
-                      : 'bg-white dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-red-600'
-                  }`}
-                >
-                  <span className="text-xl">{hasLiked ? '❤️' : '🤍'}</span>
-                  <span>{hasLiked ? 'Beğendin' : 'Bölümü Beğen'} • {likes}</span>
-                </button>
-              </div>
-
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-6 uppercase tracking-widest">
-                Bu bölüm hakkında ne düşündünüz?
-              </p>
-            </div>
-            
-            {bolumId && id ? (
-              <YorumAlani 
-                type="chapter" 
-                targetId={bolumId} 
-                bookId={id} 
-                paraId={null}
-                onCommentAdded={handleCommentAdded}
-                includeParagraphs={true}
-              />
-            ) : (
-              <p className="text-center text-red-500">ID'ler yüklenemedi</p>
-            )}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
