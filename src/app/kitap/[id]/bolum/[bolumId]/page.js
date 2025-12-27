@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import YorumAlani from '@/components/YorumAlani';
 import { Toaster, toast } from 'react-hot-toast';
-import { createChapterVoteNotification } from '@/lib/notifications'; 
+import { createChapterVoteNotification } from '@/lib/notifications';
+import Username from '@/components/Username';
 
 export default function BolumDetay({ params }) {
   const decodedParams = use(params);
@@ -17,6 +18,8 @@ export default function BolumDetay({ params }) {
   const [activePara, setActivePara] = useState(null);
   const [paraCommentCounts, setParaCommentCounts] = useState({});
   const [user, setUser] = useState(null);
+  const [authorProfile, setAuthorProfile] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const [likes, setLikes] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
@@ -52,6 +55,26 @@ export default function BolumDetay({ params }) {
         
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         setUser(currentUser);
+        
+        // Yazar profilini çek
+        if (book?.user_email) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, avatar_url, email')
+            .eq('email', book.user_email)
+            .single();
+          
+          setAuthorProfile(profile);
+          
+          // Admin mi kontrol et
+          const { data: adminData } = await supabase
+            .from('announcement_admins')
+            .select('user_email')
+            .eq('user_email', book.user_email)
+            .single();
+          
+          setIsAdmin(!!adminData);
+        }
         
         if (currentUser) {
           await supabase.rpc('increment_view_count', {
@@ -160,16 +183,13 @@ const handleLike = async () => {
   const prevChapter = currentIndex > 0 ? data.allChapters[currentIndex - 1] : null;
   const nextChapter = (currentIndex !== -1 && currentIndex < data.allChapters.length - 1) ? data.allChapters[currentIndex + 1] : null;
   
-  // ✅ Hem HTML hem düz metin destekli paragraf ayrıştırma
   const paragraphs = data.chapter?.content 
     ? (() => {
         const content = data.chapter.content;
         
-        // HTML içeriyor mu kontrol et
         const hasHTML = /<br|<p|<\/p/i.test(content);
         
         if (hasHTML) {
-          // Yeni bölümler: HTML ile ayrıştır
           return content
             .split(/<br\s*\/?>|<\/p>/)
             .map(p => {
@@ -179,7 +199,6 @@ const handleLike = async () => {
             })
             .filter(p => p !== '' && p !== '<br>' && p !== '<br/>');
         } else {
-          // Eski bölümler: \n\n ile ayrıştır
           return content
             .split(/\n\n+/)
             .map(p => p.trim())
@@ -187,6 +206,11 @@ const handleLike = async () => {
         }
       })()
     : [];
+
+  // Profil linki - kendi kitabımızsa /profil, değilse /yazar/username
+  const authorLink = user && authorProfile?.email === user.email
+    ? '/profil'
+    : `/yazar/${authorProfile?.username || data.book?.username}`;
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] dark:bg-[#080808]">
@@ -217,13 +241,11 @@ const handleLike = async () => {
       )}
 
       <div className="flex justify-center min-h-screen relative">
-        {/* ✅ OKUMA ALANI */}
         <main className={`w-full max-w-2xl pt-48 pb-20 px-6 md:px-8 shrink-0 transition-colors duration-500 ${readerSettings.theme}`}>
           <header className="mb-24 text-center">
             <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
           </header>
           
-          {/* ✅ PARAGRAFLAR - Mobilde buton inline, PC'de sağda */}
           <article className={`${readerSettings.fontFamily} leading-[2.1]`} style={{ fontSize: `${readerSettings.fontSize}px` }}>
             {paragraphs.map((para, i) => {
               const paraId = i.toString();
@@ -231,16 +253,13 @@ const handleLike = async () => {
               
               return (
                 <div key={i} className="relative group mb-3">
-                  {/* ✅ PC: Yan yana, Mobil: Inline son kelime yanında */}
                   <div className="flex items-start justify-between gap-2 md:gap-2">
-                    {/* ✅ Paragraf */}
                     <div 
                       className={`flex-1 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2' : ''}`}
                       dangerouslySetInnerHTML={{ __html: para }}
                       
                     />
                     
-                    {/* ✅ Yuvarlak mini - mobilde 10px, PC'de aynı kalıyor */}
                     <button 
                       onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
                       className={`shrink-0 w-2.5 h-2.5 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[7px] md:text-[9px] font-black mt-0.5 md:mt-1 ${
@@ -261,7 +280,7 @@ const handleLike = async () => {
             })}
           </article>
 
-          {/* ✅ NAVİGASYON BUTONLARI - Az boşluk üstte */}
+          {/* NAVİGASYON BUTONLARI */}
           <div className="mt-16 flex items-center justify-between gap-6 border-t border-current/10 pt-8">
             {prevChapter ? (
               <Link href={`/kitap/${id}/bolum/${prevChapter.id}`} className="flex-1 h-11 flex items-center justify-center rounded-full bg-current/5 text-[9px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 hover:bg-current/10 transition-all">
@@ -279,13 +298,62 @@ const handleLike = async () => {
               </div>
             )}
           </div>
+
+          {/* ✅ YAZAR BİLGİSİ - NAVİGASYON BUTONLARININ ALTINDA */}
+          {authorProfile && (
+            <Link 
+              href={authorLink}
+              className="mt-8 flex items-center gap-4 p-5 rounded-2xl bg-current/5 hover:bg-current/10 transition-all group border border-current/10"
+            >
+              <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 ${
+                readerSettings.theme.includes('bg-[#f4ecd8]')
+                  ? 'bg-[#e8d9c3]'
+                  : readerSettings.theme.includes('bg-[#0a0a0a]')
+                    ? 'bg-white/10'
+                    : 'bg-gray-200'
+              }`}>
+                {authorProfile.avatar_url ? (
+                  <img src={authorProfile.avatar_url} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  <div className={`w-full h-full flex items-center justify-center font-black text-lg ${
+                    readerSettings.theme.includes('bg-[#f4ecd8]')
+                      ? 'text-[#8b7355]'
+                      : readerSettings.theme.includes('bg-[#0a0a0a]')
+                        ? 'text-gray-400'
+                        : 'text-gray-600'
+                  }`}>
+                    {authorProfile.username?.[0]?.toUpperCase() || 'Y'}
+                  </div>
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${
+                  readerSettings.theme.includes('bg-[#f4ecd8]')
+                    ? 'text-[#8b7355] opacity-60'
+                    : readerSettings.theme.includes('bg-[#0a0a0a]')
+                      ? 'text-gray-500'
+                      : 'text-gray-400'
+                }`}>
+                  Yazar
+                </p>
+                <div className="text-sm font-bold group-hover:text-red-600 transition-colors">
+                  <Username 
+                    username={authorProfile.username || data.book?.username} 
+                    isAdmin={isAdmin}
+                  />
+                </div>
+              </div>
+              <div className="text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                →
+              </div>
+            </Link>
+          )}
         </main>
 
-        {/* ✅ PARAGRAF YORUM PANELİ - Mobilde tam ekran küçük, PC'de sağda sabit */}
+        {/* PARAGRAF YORUM PANELİ */}
         <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[280px] transition-all duration-500 z-50 ${
           activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
         }`}>
-          {/* ✅ Mobilde backdrop - tıklayınca kapansın */}
           <div 
             className="absolute inset-0 bg-black/50 md:hidden"
             onClick={() => setActivePara(null)}
@@ -310,7 +378,7 @@ const handleLike = async () => {
         </aside>
       </div>
 
-      {/* ✅ BÖLÜM YORUMLARI - Az boşluk üstte */}
+      {/* BÖLÜM YORUMLARI */}
       <section className="bg-[#fcfcfc] dark:bg-[#080808] pt-12 pb-20">
         <div className="max-w-2xl mx-auto px-6 md:px-8">
           <div className="p-8 border-4 border-red-600 rounded-3xl bg-white/50 dark:bg-black/30">
