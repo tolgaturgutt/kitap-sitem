@@ -8,13 +8,6 @@ import Username from '@/components/Username';
 import PanoCarousel from '@/components/PanoCarousel';
 import PanoModal from '@/components/PanoModal';
 
-const KATEGORILER = [
-  "Aksiyon", "Bilim Kurgu", "Biyografi", "Dram", "Fantastik", "Felsefe", "Genel", 
-  "Genç Kurgu", "Gizem/Gerilim", "Hayran Kurgu", "Korku", "Kurgu Olmayan", 
-  "Kısa Hikaye", "Macera", "Mizah", "Paranormal", "Polisiye", "Romantik", 
-  "Senaryo","Suç", "Şiir", "Tarihi"
-];
-
 // --- YARDIMCI: SAYI FORMATLAMA (1200 -> 1.2K) ---
 function formatNumber(num) {
   if (!num) return 0;
@@ -187,7 +180,6 @@ function ContinueReadingCarousel({ books }) {
                       <h3 className="text-xl md:text-3xl font-black dark:text-white mb-2 group-hover:text-red-600 transition-colors uppercase tracking-tight line-clamp-1">{item.books?.title}</h3>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Kaldığın Bölüm: {item.chapters?.title}</p>
                       
-                      {/* İSTATİSTİKLER */}
                       <div className="flex items-center gap-2 md:gap-3 mt-2 text-[9px] font-bold text-gray-400 mb-3 md:mb-4">
                         <span className="flex items-center gap-1">👁️ {formatNumber(item.books?.totalViews)}</span>
                         <span className="flex items-center gap-1">❤️ {formatNumber(item.books?.totalVotes)}</span>
@@ -254,12 +246,10 @@ function CategoryRow({ title, books, isFeatured = false }) {
               </div>
             )}
             
-            {/* 🔴 MOBİLDE DAHA KÜÇÜK - text-[7px] md:text-[9px] */}
             <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
               <Username username={kitap.username} isAdmin={kitap.is_admin} />
             </p>
 
-            {/* ✅ İSTATİSTİKLER - Mobilde daha küçük */}
             <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
                <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
                <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
@@ -307,12 +297,10 @@ function TopReadRow({ books }) {
               </div>
             )}
 
-            {/* 🔴 MOBİLDE DAHA KÜÇÜK */}
             <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
               <Username username={kitap.username} isAdmin={kitap.is_admin} />
             </p>
             
-            {/* ✅ İSTATİSTİKLER */}
             <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
                <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
                <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
@@ -338,6 +326,7 @@ export default function Home() {
   const [adminEmails, setAdminEmails] = useState([]);
   const [selectedPano, setSelectedPano] = useState(null);
   const [latestChapters, setLatestChapters] = useState([]);
+  const [topCategories, setTopCategories] = useState([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -352,6 +341,16 @@ export default function Home() {
       const { data: adminList } = await supabase.from('announcement_admins').select('user_email');
       const emails = adminList?.map(a => a.user_email) || [];
       setAdminEmails(emails);
+
+      // Priority'si en yüksek 5 kategoriyi çek
+      const { data: categoriesData } = await supabase
+        .from('categories')
+        .select('name')
+        .order('priority', { ascending: false })
+        .limit(5);
+      
+      const topCategoryNames = categoriesData?.map(c => c.name) || [];
+      setTopCategories(topCategoryNames);
 
       if (activeUser) {
         const { data: history } = await supabase
@@ -452,7 +451,7 @@ export default function Home() {
           const rCommentsCount = recentComments?.filter(c => c.book_id === b.id).length || 0;
           const rFollowsCount = recentFollows?.filter(f => f.book_id === b.id).length || 0;
           
-          const score = (rFollowsCount * 10) + (rCommentsCount * 2) + (rVotesCount *5 ) + (b.totalViews * 1);
+          const score = (rFollowsCount * 10) + (rCommentsCount * 2) + (rVotesCount * 5) + (b.totalViews * 1);
           return { ...b, interactionScore: score };
         });
 
@@ -461,8 +460,9 @@ export default function Home() {
         const mostRead = [...scored].sort((a, b) => b.totalViews - a.totalViews).slice(0, 20);
         setTopReadBooks(mostRead);
 
+        // Sadece priority'si yüksek kategoriler için kitapları grupla
         const grouped = {};
-        KATEGORILER.forEach(cat => {
+        topCategoryNames.forEach(cat => {
           const categoryBooks = scored.filter(b => b.category === cat);
           const shuffled = shuffleArray(categoryBooks);
           grouped[cat] = shuffled.slice(0, 10);
@@ -582,7 +582,6 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
               <h3 className="font-bold text-[11px] dark:text-white leading-tight truncate group-hover/card:text-red-600 transition-colors">
                 {chapter.books?.title}
               </h3>
-              {/* 🔴 MOBİLDE DAHA KÜÇÜK */}
               <p className="text-[7px] md:text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">
                  <Username username={chapter.books?.username} isAdmin={chapter.is_admin} />
               </p>
@@ -636,7 +635,6 @@ function EditorsChoiceSection({ books }) {
                 </div>
               )}
 
-              {/* 🔴 MOBİLDE DAHA KÜÇÜK */}
               <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest pl-6 truncate"> 
                 <Username username={kitap.username} isAdmin={kitap.is_admin} />
               </p>

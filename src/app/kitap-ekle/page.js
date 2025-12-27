@@ -1,43 +1,39 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 
-const KATEGORILER = [
-  "Aksiyon",
-  "Bilim Kurgu",
-  "Biyografi",
-  "Dram",
-  "Fantastik",
-  "Felsefe",
-  "Genç Kurgu",
-  "Gizem/Gerilim",
-  "Hayran Kurgu",
-  "Korku",
-  "Kurgu Olmayan",
-  "Kısa Hikaye",
-  "Macera",
-  "Mizah",
-  "Paranormal",
-  "Polisiye",
-  "Romantik",
-  "Senaryo",
-  "Suç",
-  "Şiir",
-  "Tarihi"
-];
-
 export default function KitapEkle() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
-    category: 'Macera',
+    category: '',
     summary: '',
     cover_file: null
   });
+
+  useEffect(() => {
+    async function fetchCategories() {
+      const { data } = await supabase
+        .from('categories')
+        .select('name')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+      
+      const categoryNames = data?.map(c => c.name) || [];
+      setCategories(categoryNames);
+      
+      // İlk kategoriyi default seç
+      if (categoryNames.length > 0) {
+        setFormData(prev => ({ ...prev, category: categoryNames[0] }));
+      }
+    }
+    fetchCategories();
+  }, []);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -49,7 +45,6 @@ export default function KitapEkle() {
       if (!user) throw new Error("Önce giriş yapmalısın.");
 
       // 2. Profildeki Güncel Kullanıcı Adını Al
-      // (Eski kodlarda burası yoktu, kitap isimsiz gidiyordu)
       const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
       const username = profile?.username || user.email.split('@')[0];
 
@@ -76,7 +71,7 @@ export default function KitapEkle() {
           summary: formData.summary,
           cover_url: coverUrl,
           user_email: user.email,
-          username: username // Güncel kullanıcı adını kaydeder
+          username: username
         }
       ]).select();
 
@@ -84,7 +79,6 @@ export default function KitapEkle() {
 
       toast.success("Kitap başarıyla yayınlandı!");
       
-      // Oluşturulan kitaba yönlendir
       setTimeout(() => {
         router.push(`/kitap/${data[0].id}`);
       }, 1000);
@@ -124,18 +118,15 @@ export default function KitapEkle() {
           {/* Kategori Seçimi */}
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Kategori</label>
-            <div className="flex flex-wrap gap-2">
-              {KATEGORILER.map(cat => (
-                <button
-                  key={cat}
-                  type="button"
-                  onClick={() => setFormData({...formData, category: cat})}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${formData.category === cat ? 'bg-red-600 text-white shadow-lg shadow-red-600/30' : 'bg-gray-100 dark:bg-black text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-800'}`}
-                >
-                  {cat}
-                </button>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({...formData, category: e.target.value})}
+              className="w-full p-4 bg-gray-50 dark:bg-black border dark:border-gray-800 rounded-2xl font-bold dark:text-white outline-none focus:border-red-600 transition-colors"
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
               ))}
-            </div>
+            </select>
           </div>
 
           {/* Özet Alanı */}

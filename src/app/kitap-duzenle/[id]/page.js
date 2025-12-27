@@ -5,36 +5,13 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 
-const KATEGORILER = [
-  "Aksiyon",
-  "Bilim Kurgu",
-  "Biyografi",
-  "Dram",
-  "Fantastik",
-  "Felsefe",
-  "Genç Kurgu",
-  "Gizem/Gerilim",
-  "Hayran Kurgu",
-  "Korku",
-  "Kurgu Olmayan",
-  "Kısa Hikaye",
-  "Macera",
-  "Mizah",
-  "Paranormal",
-  "Polisiye",
-  "Romantik",
-  "Senaryo",
-  "Suç",
-  "Şiir",
-  "Tarihi"
-];
-
 export default function KitapDuzenle({ params }) {
   const { id } = use(params);
 
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
-  const [category, setCategory] = useState('Genel');
+  const [category, setCategory] = useState('');
+  const [categories, setCategories] = useState([]);
   const [currentCover, setCurrentCover] = useState(null);
   const [newImageFile, setNewImageFile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,13 +19,25 @@ export default function KitapDuzenle({ params }) {
   const router = useRouter();
 
   useEffect(() => {
-    async function getBook() {
+    async function getData() {
+      // 1️⃣ Kategorileri çek
+      const { data: categoriesData } = await supabase
+        .from('categories')
+        .select('name')
+        .eq('is_active', true)
+        .order('name', { ascending: true });
+      
+      const categoryNames = categoriesData?.map(c => c.name) || [];
+      setCategories(categoryNames);
+
+      // 2️⃣ Kullanıcı kontrolü
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         router.push('/giris');
         return;
       }
 
+      // 3️⃣ Kitabı çek
       const { data: book, error } = await supabase
         .from('books')
         .select('*')
@@ -61,31 +50,30 @@ export default function KitapDuzenle({ params }) {
         return;
       }
 
-     // YENİSİ (Bunu Yapıştır)
-// 1. Admin mi diye bak
-let isAdmin = false;
-const { data: adminData } = await supabase
-  .from('announcement_admins')
-  .select('*')
-  .eq('user_email', user.email)
-  .single();
-if (adminData) isAdmin = true;
+      // 4️⃣ Admin kontrolü
+      let isAdmin = false;
+      const { data: adminData } = await supabase
+        .from('announcement_admins')
+        .select('*')
+        .eq('user_email', user.email)
+        .single();
+      if (adminData) isAdmin = true;
 
-// 2. Yazar değilse VE Admin de değilse engelle
-if (book.user_email !== user.email && !isAdmin) {
-  toast.error('Bu yetki size ait değil.');
-  router.push('/profil');
-  return;
-}
+      // 5️⃣ Yetki kontrolü
+      if (book.user_email !== user.email && !isAdmin) {
+        toast.error('Bu yetki size ait değil.');
+        router.push('/profil');
+        return;
+      }
 
       setTitle(book.title);
       setSummary(book.summary);
-      setCategory(book.category || 'Genel');
+      setCategory(book.category || categoryNames[0] || '');
       setCurrentCover(book.cover_url);
       setLoading(false);
     }
 
-    getBook();
+    getData();
   }, [id, router]);
 
   async function guncelle() {
@@ -181,7 +169,9 @@ if (book.user_email !== user.email && !isAdmin) {
               onChange={(e) => setCategory(e.target.value)}
               className="w-full p-3 bg-white dark:bg-black border dark:border-gray-800 rounded-xl outline-none"
             >
-              {KATEGORILER.map(t => <option key={t} value={t}>{t}</option>)}
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
           </div>
 

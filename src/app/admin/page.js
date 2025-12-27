@@ -26,13 +26,10 @@ export default function AdminPanel() {
   const [activeTab, setActiveTab] = useState('duyurular');
   const [loading, setLoading] = useState(true);
 
-  // --- SAYFALAMA AYARLARI ---
   const USERS_PER_PAGE = 10;
   const REPORTS_PER_PAGE = 15;
   const SUPPORT_PER_PAGE = 15;
 
-  // --- STATE TANIMLARI ---
-  
   // 1. DUYURULAR
   const [duyurular, setDuyurular] = useState([]);
   const [editingId, setEditingId] = useState(null);
@@ -67,15 +64,20 @@ export default function AdminPanel() {
   const [loadingSupport, setLoadingSupport] = useState(false);
   const [supportModal, setSupportModal] = useState(null);
 
-  // 5. 🔴 YASAKLI KELİMELER (YENİ!)
+  // 5. YASAKLI KELİMELER
   const [bannedWords, setBannedWords] = useState([]);
   const [newWord, setNewWord] = useState('');
   const [loadingBanned, setLoadingBanned] = useState(false);
   const [adminEmail, setAdminEmail] = useState('');
 
-  // --- VERİ ÇEKME FONKSİYONLARI ---
+  // 6. KATEGORİLER
+  const [categories, setCategories] = useState([]);
+  const [categoryForm, setCategoryForm] = useState({ name: '', slug: '', image_url: '', priority: 1, is_active: true });
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [uploadingCategoryImage, setUploadingCategoryImage] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
 
-  // KULLANICI ÇEK
+  // VERİ ÇEKME FONKSİYONLARI
   const fetchUsers = useCallback(async (query = '', pageNum = 1) => {
     setLoadingUsers(true);
     const from = (pageNum - 1) * USERS_PER_PAGE;
@@ -98,7 +100,6 @@ export default function AdminPanel() {
     setLoadingUsers(false);
   }, [USERS_PER_PAGE]);
 
-  // ŞİKAYET ÇEK
   const fetchReports = useCallback(async (pageNum = 1) => {
     setLoadingReports(true);
     const from = (pageNum - 1) * REPORTS_PER_PAGE;
@@ -121,7 +122,6 @@ export default function AdminPanel() {
     setLoadingReports(false);
   }, [reportFilter, REPORTS_PER_PAGE]);
 
-  // DESTEK ÇEK
   const fetchSupport = useCallback(async (pageNum = 1) => {
     setLoadingSupport(true);
     const from = (pageNum - 1) * SUPPORT_PER_PAGE;
@@ -146,7 +146,6 @@ export default function AdminPanel() {
     setLoadingSupport(false);
   }, [supportFilter, SUPPORT_PER_PAGE]);
 
-  // 🔴 YASAKLI KELİMELERİ ÇEK
   const fetchBannedWords = useCallback(async () => {
     setLoadingBanned(true);
     const { data, error } = await supabase
@@ -162,7 +161,21 @@ export default function AdminPanel() {
     setLoadingBanned(false);
   }, []);
 
-  // GENEL YÜKLEME
+  const fetchCategories = useCallback(async () => {
+    setLoadingCategories(true);
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('priority', { ascending: false });
+    
+    if (!error) {
+      setCategories(data || []);
+    } else {
+      toast.error('Kategoriler yüklenemedi');
+    }
+    setLoadingCategories(false);
+  }, []);
+
   const loadData = useCallback(async () => {
     if (activeTab === 'duyurular') {
       const { data } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
@@ -175,10 +188,11 @@ export default function AdminPanel() {
       fetchSupport(1);
     } else if (activeTab === 'yasakli') {
       fetchBannedWords();
+    } else if (activeTab === 'kategoriler') {
+      fetchCategories();
     }
-  }, [activeTab, searchQuery, fetchUsers, fetchReports, fetchSupport, fetchBannedWords]);
+  }, [activeTab, searchQuery, fetchUsers, fetchReports, fetchSupport, fetchBannedWords, fetchCategories]);
 
-  // --- EFFECTLER ---
   useEffect(() => { checkAdmin(); }, []);
   useEffect(() => { if (isAdmin) loadData(); }, [activeTab, isAdmin, loadData]);
   
@@ -197,8 +211,6 @@ export default function AdminPanel() {
     if (activeTab === 'destek') fetchSupport(supportPage);
   }, [supportFilter, supportPage, activeTab, fetchSupport]);
 
-
-  // --- AKSİYONLAR ---
   async function checkAdmin() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return router.push('/giris');
@@ -208,59 +220,34 @@ export default function AdminPanel() {
     setIsAdmin(true); setLoading(false);
   }
 
-  // --- 🔗 YÖNLENDİRME FONKSİYONU ---
   const navigateToTarget = (type, id) => {
     let url = null;
-    
     switch(type) {
-        case 'user': 
-            url = `/profil/${id}`;
-            break;
-        case 'book': 
-            url = `/kitap/${id}`;
-            break;
-        case 'chapter': 
-            url = `/bolum/${id}`;
-            break;
-        case 'comment':
-            url = `/yorum/${id}`; 
-            break;
-        case 'review':
-             url = `/degerlendirme/${id}`;
-             break;
-        default:
-            url = `/${type}/${id}`;
+        case 'user': url = `/profil/${id}`; break;
+        case 'book': url = `/kitap/${id}`; break;
+        case 'chapter': url = `/bolum/${id}`; break;
+        case 'comment': url = `/yorum/${id}`; break;
+        case 'review': url = `/degerlendirme/${id}`; break;
+        default: url = `/${type}/${id}`;
     }
-
-    if (url) {
-        window.open(url, '_blank');
-    } else {
-        toast.error('Bu içerik türü için link oluşturulamadı.');
-    }
+    if (url) window.open(url, '_blank');
+    else toast.error('Bu içerik türü için link oluşturulamadı.');
   }
 
-  // 🔴 YASAKLI KELİME İŞLEMLERİ
+  // YASAKLI KELİME İŞLEMLERİ
   async function addBannedWord() {
     if (!newWord.trim()) {
       toast.error('Kelime boş olamaz!');
       return;
     }
-
-    // Aynı kelime var mı kontrol et
     const exists = bannedWords.some(w => w.word.toLowerCase() === newWord.toLowerCase());
     if (exists) {
       toast.error('Bu kelime zaten listede!');
       return;
     }
-
     const { error } = await supabase
       .from('banned_words')
-      .insert([{
-        word: newWord.toLowerCase().trim(),
-        created_by: adminEmail,
-        is_active: true
-      }]);
-
+      .insert([{ word: newWord.toLowerCase().trim(), created_by: adminEmail, is_active: true }]);
     if (error) {
       toast.error('Eklenirken hata oluştu: ' + error.message);
     } else {
@@ -271,11 +258,7 @@ export default function AdminPanel() {
   }
 
   async function toggleBannedWord(id, currentStatus) {
-    const { error } = await supabase
-      .from('banned_words')
-      .update({ is_active: !currentStatus })
-      .eq('id', id);
-
+    const { error } = await supabase.from('banned_words').update({ is_active: !currentStatus }).eq('id', id);
     if (!error) {
       toast.success(currentStatus ? 'Kelime pasif edildi' : 'Kelime aktif edildi');
       fetchBannedWords();
@@ -284,19 +267,74 @@ export default function AdminPanel() {
 
   async function deleteBannedWord(id) {
     if (!confirm('Bu kelimeyi kalıcı olarak silmek istediğine emin misin?')) return;
-    
-    const { error } = await supabase
-      .from('banned_words')
-      .delete()
-      .eq('id', id);
-
+    const { error } = await supabase.from('banned_words').delete().eq('id', id);
     if (!error) {
       toast.success('🗑️ Kelime silindi');
       fetchBannedWords();
     }
   }
 
-  // Diğer Aksiyonlar
+  // KATEGORİ İŞLEMLERİ
+  async function handleCategoryImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploadingCategoryImage(true);
+    const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
+    try {
+      const { error } = await supabase.storage.from('images').upload(`categories/${fileName}`, file);
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(`categories/${fileName}`);
+      setCategoryForm({ ...categoryForm, image_url: publicUrl });
+      toast.success('Görsel yüklendi');
+    } catch (err) { 
+      toast.error('Hata: ' + err.message); 
+    } finally { 
+      setUploadingCategoryImage(false); 
+    }
+  }
+
+  async function handleCategorySubmit(e) {
+    e.preventDefault();
+    if (uploadingCategoryImage) return;
+    
+    const slug = categoryForm.slug || categoryForm.name.toLowerCase()
+      .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
+      .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+      .replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+    const payload = { ...categoryForm, slug };
+    const q = editingCategoryId 
+      ? supabase.from('categories').update(payload).eq('id', editingCategoryId)
+      : supabase.from('categories').insert([payload]);
+    
+    const { error } = await q;
+    if (error) {
+      toast.error('Hata: ' + error.message);
+    } else {
+      toast.success(editingCategoryId ? 'Güncellendi' : 'Eklendi');
+      setEditingCategoryId(null);
+      setCategoryForm({ name: '', slug: '', image_url: '', priority: 1, is_active: true });
+      fetchCategories();
+    }
+  }
+
+  async function deleteCategory(id) {
+    if (!confirm('Bu kategoriyi silmek istediğine emin misin?')) return;
+    const { error } = await supabase.from('categories').delete().eq('id', id);
+    if (!error) {
+      toast.success('Kategori silindi');
+      fetchCategories();
+    }
+  }
+
+  async function toggleCategory(id, currentStatus) {
+    const { error } = await supabase.from('categories').update({ is_active: !currentStatus }).eq('id', id);
+    if (!error) {
+      toast.success(currentStatus ? 'Kategori pasif edildi' : 'Kategori aktif edildi');
+      fetchCategories();
+    }
+  }
+
   async function toggleBan(userId, currentStatus) {
     if (!confirm(currentStatus ? "Yasak kalksın mı?" : "Banlansın mı?")) return;
     const { error } = await supabase.from('profiles').update({ is_banned: !currentStatus }).eq('id', userId);
@@ -307,6 +345,7 @@ export default function AdminPanel() {
     await supabase.from('reports').update({ status }).eq('id', id);
     toast.success('Güncellendi'); fetchReports(reportPage);
   }
+
   async function deleteReport(id) {
     if (!confirm('Silmek istediğine emin misin?')) return;
     await supabase.from('reports').delete().eq('id', id);
@@ -319,6 +358,7 @@ export default function AdminPanel() {
     fetchSupport(supportPage);
     if (supportModal && supportModal.id === id) setSupportModal(null);
   }
+
   async function deleteSupport(id) {
     if (!confirm('Bu mesajı silmek istediğine emin misin?')) return;
     await supabase.from('support_messages').delete().eq('id', id);
@@ -373,22 +413,23 @@ export default function AdminPanel() {
         
         <h1 className="text-4xl font-black text-center dark:text-white uppercase mb-12">YÖNETİM PANELİ</h1>
 
-        {/* --- SEKMELER --- */}
-        <div className="flex justify-center mb-10 border-b dark:border-white/10 overflow-x-auto">
-          {['duyurular', 'kullanicilar', 'sikayetler', 'destek', 'yasakli'].map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} className={`px-6 py-4 font-black uppercase tracking-widest border-b-4 whitespace-nowrap text-sm ${activeTab === tab ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400'}`}>
-              {tab === 'duyurular' ? '📣 Duyurular' : 
-               tab === 'kullanicilar' ? '👥 Kullanıcılar' : 
-               tab === 'sikayetler' ? '⚠️ Şikayetler' : 
-               tab === 'destek' ? '📧 Destek' :
-               '🚫 Yasaklı Kelimeler'}
-            </button>
-          ))}
+        <div className="mb-10 border-b dark:border-white/10 overflow-x-auto scrollbar-hide">
+          <div className="flex justify-start md:justify-center min-w-max">
+            {['duyurular', 'kullanicilar', 'sikayetler', 'destek', 'yasakli', 'kategoriler'].map(tab => (
+              <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 md:px-6 py-4 font-black uppercase tracking-widest border-b-4 whitespace-nowrap text-xs md:text-sm ${activeTab === tab ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400'}`}>
+                {tab === 'duyurular' ? '📣 Duyurular' : 
+                 tab === 'kullanicilar' ? '👥 Kullanıcılar' : 
+                 tab === 'sikayetler' ? '⚠️ Şikayetler' : 
+                 tab === 'destek' ? '📧 Destek' :
+                 tab === 'yasakli' ? '🚫 Yasaklı' :
+                 '📚 Kategoriler'}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="bg-white dark:bg-[#111] rounded-[2.5rem] shadow-2xl p-8 md:p-12 border dark:border-white/5">
           
-          {/* --- 1. DUYURULAR --- */}
           {activeTab === 'duyurular' && (
             <div className="grid lg:grid-cols-5 gap-12">
               <div className="lg:col-span-2 space-y-6">
@@ -462,7 +503,6 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* --- 5. 🔴 YASAKLI KELİMELER (YENİ SEKME!) --- */}
           {activeTab === 'yasakli' && (
             <div className="space-y-8">
               <div className="flex flex-col md:flex-row gap-4 items-end">
@@ -492,7 +532,7 @@ export default function AdminPanel() {
                 </div>
 
                 {loadingBanned ? (
-                  <div className="text-center py-12 opacity-50 font-black">YÜKLENİYOR...</div>
+                  <div className="text-center py-12 opacity-50 font-black">YÜKLENIYOR...</div>
                 ) : bannedWords.length === 0 ? (
                   <div className="text-center py-12 opacity-30 font-black uppercase dark:text-white">
                     Henüz yasaklı kelime eklenmemiş
@@ -533,7 +573,7 @@ export default function AdminPanel() {
                               }`}
                               title={word.is_active ? 'Pasif Yap' : 'Aktif Yap'}
                             >
-                              {word.is_active ? '⏸️' : '▶️'}
+                              {word.is_active ? '⸺' : '▶️'}
                             </button>
                             <button
                               onClick={() => deleteBannedWord(word.id)}
@@ -552,7 +592,155 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* --- 2. KULLANICILAR --- */}
+          {activeTab === 'kategoriler' && (
+            <div className="grid lg:grid-cols-5 gap-12">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-black dark:text-white uppercase">
+                    {editingCategoryId ? 'DÜZENLE' : 'YENİ KATEGORİ'}
+                  </h2>
+                  {editingCategoryId && (
+                    <button 
+                      onClick={() => {
+                        setEditingCategoryId(null);
+                        setCategoryForm({ name: '', slug: '', image_url: '', priority: 1, is_active: true });
+                      }}
+                      className="text-xs text-red-500 font-bold uppercase"
+                    >
+                      İPTAL
+                    </button>
+                  )}
+                </div>
+
+                <form onSubmit={handleCategorySubmit} className="space-y-6">
+                  <div className="relative group">
+                    <input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleCategoryImageUpload} 
+                      className="hidden" 
+                      id="category-image" 
+                    />
+                    <label 
+                      htmlFor="category-image" 
+                      className="w-full rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer aspect-[4/3] border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-black/20 hover:border-red-600 transition-all"
+                    >
+                      {categoryForm.image_url ? (
+                        <img 
+                          src={categoryForm.image_url} 
+                          className="w-full h-full object-cover rounded-3xl"
+                          alt="Kategori görseli"
+                        />
+                      ) : (
+                        <div className="text-center p-6 text-gray-400">
+                          <Icons.Photo />
+                          <span className="text-[10px] font-black mt-2 uppercase block">Görsel Seç</span>
+                        </div>
+                      )}
+                    </label>
+                    {categoryForm.image_url && (
+                      <button 
+                        type="button" 
+                        onClick={() => setCategoryForm({...categoryForm, image_url: ''})} 
+                        className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  
+                  <input 
+                    type="text" 
+                    placeholder="Kategori Adı *" 
+                    required 
+                    value={categoryForm.name} 
+                    onChange={e => setCategoryForm({...categoryForm, name: e.target.value})} 
+                    className="w-full p-5 bg-gray-50 dark:bg-black/20 rounded-2xl font-black text-xl dark:text-white outline-none" 
+                  />
+                  
+                  <input 
+                    type="text" 
+                    placeholder="Slug (otomatik oluşturulur)" 
+                    value={categoryForm.slug} 
+                    onChange={e => setCategoryForm({...categoryForm, slug: e.target.value})} 
+                    className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-mono text-sm outline-none" 
+                  />
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-gray-400">ÖNCELİK (Yüksek = Üstte)</label>
+                    <input 
+                      type="number" 
+                      min="1" 
+                      value={categoryForm.priority} 
+                      onChange={e => setCategoryForm({...categoryForm, priority: parseInt(e.target.value)})} 
+                      className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none" 
+                    />
+                  </div>
+
+                  <button type="submit" className="w-full py-5 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase tracking-[0.2em] shadow-2xl transition-all">
+                    {editingCategoryId ? 'GÜNCELLE' : 'EKLE'}
+                  </button>
+                </form>
+              </div>
+
+              <div className="lg:col-span-3 space-y-4 max-h-[800px] overflow-y-auto pr-2 border-l dark:border-white/5 lg:pl-8">
+                {loadingCategories ? (
+                  <div className="text-center py-12 opacity-50 font-black">YÜKLENIYOR...</div>
+                ) : categories.length === 0 ? (
+                  <div className="text-center py-12 opacity-30 font-black uppercase dark:text-white">
+                    Henüz kategori eklenmemiş
+                  </div>
+                ) : (
+                  categories.map(cat => (
+                    <div key={cat.id} className="group p-4 rounded-2xl border dark:border-white/5 bg-gray-50 dark:bg-white/5 flex gap-4 hover:border-red-500 transition-all">
+                      {cat.image_url && (
+                        <img src={cat.image_url} className="w-20 h-20 object-cover rounded-lg bg-gray-800" alt={cat.name} />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex justify-between mb-1">
+                          <div>
+                            <h3 className="font-black text-lg dark:text-white">{cat.name}</h3>
+                            <p className="text-xs text-gray-400 font-mono">/{cat.slug}</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => toggleCategory(cat.id, cat.is_active)}
+                              className={`p-2 rounded-lg text-xs font-black ${
+                                cat.is_active
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-500'
+                              }`}
+                              title={cat.is_active ? 'Pasif Yap' : 'Aktif Yap'}
+                            >
+                              {cat.is_active ? '✓' : '○'}
+                            </button>
+                            <button 
+                              onClick={() => { 
+                                setEditingCategoryId(cat.id); 
+                                setCategoryForm(cat); 
+                                window.scrollTo({top:0, behavior:'smooth'}); 
+                              }} 
+                              className="p-2 bg-blue-100 text-blue-500 rounded-lg"
+                            >
+                              <Icons.Edit />
+                            </button>
+                            <button 
+                              onClick={() => deleteCategory(cat.id)} 
+                              className="p-2 bg-red-100 text-red-500 rounded-lg"
+                            >
+                              <Icons.Delete />
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500">Öncelik: {cat.priority}</p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'kullanicilar' && (
             <div className="space-y-8">
               <div className="relative">
@@ -590,7 +778,6 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* --- 3. ŞİKAYETLER --- */}
           {activeTab === 'sikayetler' && (
             <div className="space-y-6">
               <div className="flex flex-wrap gap-2">
@@ -625,7 +812,6 @@ export default function AdminPanel() {
                       <button onClick={() => navigateToTarget(r.target_type, r.target_id)} className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-black shadow-sm">
                         🔗 İNCELE
                       </button>
-                      
                       {r.status !== 'resolved' && <button onClick={() => updateReportStatus(r.id, 'resolved')} className="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-black">✅ ÇÖZ</button>}
                       {r.status !== 'rejected' && <button onClick={() => updateReportStatus(r.id, 'rejected')} className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-black">❌ REDDET</button>}
                       <button onClick={() => deleteReport(r.id)} className="px-3 py-2 bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white rounded-lg text-xs font-black">🗑️ SİL</button>
@@ -636,7 +822,6 @@ export default function AdminPanel() {
             </div>
           )}
 
-          {/* --- 4. DESTEK --- */}
           {activeTab === 'destek' && (
             <div className="space-y-6">
               <div className="flex flex-wrap gap-2 justify-between items-center">
@@ -696,7 +881,6 @@ export default function AdminPanel() {
         </div>
       </div>
 
-      {/* --- DESTEK DETAY MODALI --- */}
       {supportModal && (
         <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setSupportModal(null)}>
           <div className="bg-white dark:bg-[#111] rounded-3xl p-8 max-w-2xl w-full shadow-2xl border dark:border-white/10" onClick={e => e.stopPropagation()}>
