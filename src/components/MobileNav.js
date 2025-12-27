@@ -61,17 +61,17 @@ export default function MobileNav() {
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]">
         <div className="flex items-center justify-around h-16 px-2">
           
-          {/* ✅ KÜTÜPHANE - EŞİT BOYUT */}
+         {/* ✅ KATEGORİLER - EŞİT BOYUT */}
           <Link 
-            href="/kutuphane" 
+            href="/kategori" 
             className={`flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all ${
-              isActive('/kutuphane') 
+              isActive('/kategori') 
                 ? 'text-red-600' 
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
-            <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">📚</div>
-            <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Kütüphane</span>
+            <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">⭐</div>
+            <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Kategoriler</span>
           </Link>
 
           {/* ✅ KİTAPLARIM - EŞİT BOYUT */}

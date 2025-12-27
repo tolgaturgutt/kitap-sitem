@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
+import Username from '@/components/Username';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -17,15 +18,22 @@ export default function KitaplarimSayfasi() {
   const [user, setUser] = useState(null);
   const [myBooks, setMyBooks] = useState([]);
   const [myDrafts, setMyDrafts] = useState([]);
+  const [libraryBooks, setLibraryBooks] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('yayinlanan');
+  const [activeTab, setActiveTab] = useState('eserlerim');
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [adminEmails, setAdminEmails] = useState([]);
 
   useEffect(() => {
     async function getData() {
       const { data: { user: activeUser } } = await supabase.auth.getUser();
       if (!activeUser) return (window.location.href = '/giris');
       setUser(activeUser);
+
+      // Admin listesi
+      const { data: adminList } = await supabase.from('announcement_admins').select('user_email');
+      const emails = adminList?.map(a => a.user_email) || [];
+      setAdminEmails(emails);
 
       // --- KİTAPLARI VE İSTATİSTİK VERİLERİNİ ÇEK ---
       const { data: written } = await supabase
@@ -34,13 +42,28 @@ export default function KitaplarimSayfasi() {
         .eq('user_email', activeUser.email)
         .order('created_at', { ascending: false });
 
+      // --- KÜTÜPHANE KİTAPLARINI ÇEK ---
+      const { data: follows } = await supabase
+        .from('follows')
+        .select(`
+          *, 
+          books!inner(
+            *, 
+            chapters(id, views, chapter_votes(chapter_id)),
+            profiles:user_id(username, role, email)
+          )
+        `)
+        .eq('user_email', activeUser.email)
+        .eq('books.is_draft', false)
+        .order('created_at', { ascending: false });
+
       // --- EKSTRA İSTATİSTİKLER (Yorumlar ve Beğeniler) ---
       const allBooksList = written || [];
       const allBookIds = allBooksList.map(b => b.id);
       const allChapterIds = allBooksList.flatMap(b => b.chapters?.map(c => c.id) || []);
 
-      const { data: commentsData } = await supabase.from('comments').select('book_id').in('book_id', allBookIds);
-      const { data: votesData } = await supabase.from('chapter_votes').select('chapter_id').in('chapter_id', allChapterIds);
+      const { data: commentsData } = await supabase.from('comments').select('book_id');
+      const { data: votesData } = await supabase.from('chapter_votes').select('chapter_id');
 
       // Verileri birleştirme fonksiyonu
       const mergeStats = (list) => {
@@ -61,10 +84,55 @@ export default function KitaplarimSayfasi() {
         setMyDrafts(enrichedWritten.filter(b => b.is_draft === true));
       }
 
+      // KÜTÜPHANE KİTAPLARINI AYARLA
+      if (follows) {
+        const booksWithStats = follows.map(follow => {
+          const book = follow.books;
+          if (!book) return null;
+
+          const profile = book.profiles;
+          const displayUsername = profile?.username || book.username;
+          const ownerEmail = profile?.email || book.user_email;
+
+          const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
+          const chapterIds = book.chapters?.map(c => c.id) || [];
+          const totalVotes = book.chapters?.reduce((sum, c) => sum + (c.chapter_votes?.length || 0), 0) || 0;
+          const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
+
+          return {
+            ...book,
+            username: displayUsername,
+            is_admin: emails.includes(ownerEmail),
+            totalViews,
+            totalVotes,
+            totalComments
+          };
+        }).filter(Boolean);
+
+        setLibraryBooks(booksWithStats);
+      }
+
       setLoading(false);
     }
     getData();
   }, []);
+
+  async function handleRemoveFromLibrary(bookId) {
+    if (!user) return;
+    
+    const { error } = await supabase
+      .from('follows')
+      .delete()
+      .eq('book_id', bookId)
+      .eq('user_email', user.email);
+
+    if (!error) {
+      setLibraryBooks(prev => prev.filter(b => b.id !== bookId));
+      toast.success('Kitap kütüphaneden kaldırıldı');
+    } else {
+      toast.error('Bir hata oluştu');
+    }
+  }
 
   if (loading) return (
     <div className="py-40 flex justify-center items-center animate-pulse">
@@ -75,7 +143,14 @@ export default function KitaplarimSayfasi() {
     </div>
   );
 
-  const currentBooks = activeTab === 'yayinlanan' ? myBooks : myDrafts;
+  const getCurrentBooks = () => {
+    if (activeTab === 'eserlerim') return myBooks;
+    if (activeTab === 'taslaklar') return myDrafts;
+    if (activeTab === 'kutuphane') return libraryBooks;
+    return [];
+  };
+
+  const currentBooks = getCurrentBooks();
 
   return (
     <div className="min-h-screen py-6 md:py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black transition-colors">
@@ -83,91 +158,153 @@ export default function KitaplarimSayfasi() {
 
       <div className="max-w-7xl mx-auto">
         {/* HEADER */}
-        <div className="mb-8 md:mb-12">
-          <h1 className="text-3xl md:text-5xl font-black uppercase dark:text-white mb-4">
+        <div className="mb-6 md:mb-12">
+          <h1 className="text-3xl md:text-5xl font-black uppercase dark:text-white mb-2 md:mb-4">
             📚 Kitaplarım
           </h1>
-          <p className="text-sm md:text-base text-gray-500 dark:text-gray-400">
-            Yazdığın tüm eserler ve taslaklar burada
+          <p className="text-xs md:text-base text-gray-500 dark:text-gray-400">
+            Yazdığın eserler ve takip ettiğin kitaplar
           </p>
         </div>
 
         {/* TABS */}
-        <div className="flex gap-4 md:gap-8 mb-6 md:mb-8 border-b dark:border-white/5 pb-4 overflow-x-auto">
+        <div className="flex gap-2 md:gap-8 mb-6 md:mb-8 border-b dark:border-white/5 pb-2 md:pb-4 overflow-x-auto scrollbar-hide">
           <button 
-            onClick={() => setActiveTab('yayinlanan')} 
-            className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-colors ${
-              activeTab === 'yayinlanan' ? 'text-red-600' : 'text-gray-400'
+            onClick={() => setActiveTab('eserlerim')} 
+            className={`text-[9px] md:text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors px-2 md:px-0 py-2 ${
+              activeTab === 'eserlerim' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-400'
             }`}
           >
-            Yayınlanan ({myBooks.length})
+            ✍️ Eserlerim ({myBooks.length})
           </button>
           <button 
             onClick={() => setActiveTab('taslaklar')} 
-            className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap transition-colors ${
-              activeTab === 'taslaklar' ? 'text-red-600' : 'text-gray-400'
+            className={`text-[9px] md:text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors px-2 md:px-0 py-2 ${
+              activeTab === 'taslaklar' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-400'
             }`}
           >
-            Taslaklar ({myDrafts.length})
+            📝 Taslaklar ({myDrafts.length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('kutuphane')} 
+            className={`text-[9px] md:text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors px-2 md:px-0 py-2 ${
+              activeTab === 'kutuphane' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-400'
+            }`}
+          >
+            📖 Kütüphane ({libraryBooks.length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('ozel')} 
+            className={`text-[9px] md:text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors px-2 md:px-0 py-2 ${
+              activeTab === 'ozel' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-400'
+            }`}
+          >
+            ⭐ Özel Kütüphane
           </button>
         </div>
 
-        {/* KİTAP LİSTESİ */}
-        {currentBooks.length === 0 ? (
+        {/* CONTENT */}
+        {activeTab === 'ozel' ? (
+          // Özel Kütüphane - Yakında
+          <div className="text-center py-16 md:py-32">
+            <div className="text-6xl md:text-8xl mb-4 md:mb-6">⭐</div>
+            <h2 className="text-xl md:text-3xl font-black dark:text-white mb-2 md:mb-4">
+              Özel Kütüphane
+            </h2>
+            <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 mb-4 md:mb-6">
+              Bu özellik çok yakında kullanıma açılacak!
+            </p>
+            <div className="inline-flex items-center gap-2 bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-400 font-black text-xs md:text-sm px-6 md:px-8 py-3 md:py-4 rounded-2xl uppercase tracking-wider">
+              🚀 Yakında
+            </div>
+          </div>
+        ) : currentBooks.length === 0 ? (
           <div className="text-center py-16 md:py-20">
             <div className="text-6xl md:text-8xl mb-4">📖</div>
-            <p className="text-lg md:text-xl font-bold text-gray-400 dark:text-gray-500 mb-2">
-              {activeTab === 'yayinlanan' ? 'Henüz yayınlanmış kitabın yok' : 'Henüz taslak oluşturmamışsın'}
+            <p className="text-base md:text-xl font-bold text-gray-400 dark:text-gray-500 mb-2">
+              {activeTab === 'eserlerim' && 'Henüz yayınlanmış kitabın yok'}
+              {activeTab === 'taslaklar' && 'Henüz taslak oluşturmamışsın'}
+              {activeTab === 'kutuphane' && 'Kütüphanen Boş'}
             </p>
-            <p className="text-sm text-gray-400">
-              {activeTab === 'yayinlanan' ? 'Hemen yazmaya başla!' : 'Fikirlerini taslak olarak sakla'}
+            <p className="text-xs md:text-sm text-gray-400">
+              {activeTab === 'eserlerim' && 'Hemen yazmaya başla!'}
+              {activeTab === 'taslaklar' && 'Fikirlerini taslak olarak sakla'}
+              {activeTab === 'kutuphane' && 'Henüz hiç kitap eklemedin. Keşfetmeye başla!'}
             </p>
+            {activeTab === 'kutuphane' && (
+              <Link
+                href="/"
+                className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-black text-xs md:text-sm px-6 md:px-8 py-3 md:py-4 rounded-2xl uppercase tracking-wider transition-all mt-6"
+              >
+                Kitap Keşfet →
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
             {currentBooks.map(k => (
-              <Link key={k.id} href={`/kitap/${k.id}`} className="group relative">
-                <div className="aspect-[2/3] rounded-xl md:rounded-[2rem] overflow-hidden border dark:border-white/5 mb-2 md:mb-3 shadow-md group-hover:-translate-y-1 transition-all relative">
-                  {k.cover_url ? (
-                    <img 
-                      src={k.cover_url} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
-                      alt={k.title}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-white/10 dark:to-white/5 flex items-center justify-center">
-                      <span className="text-4xl md:text-5xl opacity-20">📖</span>
+              <div key={k.id} className="group relative">
+                <Link href={`/kitap/${k.id}`} className="block">
+                  <div className="aspect-[2/3] rounded-xl md:rounded-[2rem] overflow-hidden border dark:border-white/5 mb-2 md:mb-3 shadow-md group-hover:-translate-y-1 transition-all relative">
+                    {k.cover_url ? (
+                      <img 
+                        src={k.cover_url} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
+                        alt={k.title}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-white/10 dark:to-white/5 flex items-center justify-center">
+                        <span className="text-4xl md:text-5xl opacity-20">📖</span>
+                      </div>
+                    )}
+                    
+                    {/* Taslak Rozeti */}
+                    {k.is_draft && (
+                      <div className="absolute top-2 right-2 bg-gray-500 text-white text-[7px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-lg z-10 uppercase tracking-wider">
+                        TASLAK
+                      </div>
+                    )}
+                  </div>
+                  
+                  <h3 className="text-[10px] md:text-[11px] font-black uppercase dark:text-white group-hover:text-red-600 transition-colors line-clamp-2 leading-tight mb-1">
+                    {k.title}
+                  </h3>
+                  
+                  {/* Kütüphane için yazar adı */}
+                  {activeTab === 'kutuphane' && (
+                    <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest mb-1">
+                      <Username username={k.username} isAdmin={k.is_admin} />
+                    </p>
+                  )}
+                  
+                  {/* Tamamlandı Rozeti */}
+                  {k.is_completed && (
+                    <div className="mb-1">
+                      <span className="text-[7px] md:text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-1.5 md:px-2 py-0.5 rounded-md uppercase tracking-wide inline-block">
+                        ✅ Tamamlandı
+                      </span>
                     </div>
                   )}
                   
-                  {/* Taslak Rozeti */}
-                  {k.is_draft && (
-                    <div className="absolute top-2 right-2 bg-gray-500 text-white text-[7px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-lg z-10 uppercase tracking-wider">
-                      TASLAK
-                    </div>
-                  )}
-                </div>
-                
-                <h3 className="text-[9px] md:text-[10px] font-black text-center uppercase truncate italic dark:text-white group-hover:text-red-600 transition-colors">
-                  {k.title}
-                </h3>
-                
-                {/* ✅ TAMAMLANDI ROZETİ */}
-                {k.is_completed && (
-                  <div className="flex justify-center mt-1">
-                    <span className="text-[7px] md:text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-1.5 md:px-2 py-0.5 rounded-md uppercase tracking-wide">
-                      ✅ TAMAMLANDI
-                    </span>
+                  {/* İstatistik Şeridi */}
+                  <div className="flex items-center justify-center gap-1.5 md:gap-2 mt-1 md:mt-1.5 text-[7px] md:text-[8px] font-black text-gray-400">
+                    <span className="flex items-center gap-0.5">👁️ {formatNumber(k.totalViews)}</span>
+                    <span className="flex items-center gap-0.5">❤️ {formatNumber(k.totalVotes)}</span>
+                    <span className="flex items-center gap-0.5">💬 {formatNumber(k.totalComments)}</span>
                   </div>
+                </Link>
+
+                {/* Kaldır butonu - sadece kütüphane için */}
+                {activeTab === 'kutuphane' && (
+                  <button
+                    onClick={() => handleRemoveFromLibrary(k.id)}
+                    className="absolute top-2 right-2 w-6 h-6 md:w-8 md:h-8 bg-white/90 dark:bg-black/90 backdrop-blur-sm border dark:border-white/10 rounded-full flex items-center justify-center shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:bg-red-600 hover:text-white text-xs md:text-sm"
+                    title="Kütüphaneden Kaldır"
+                  >
+                    ✕
+                  </button>
                 )}
-                
-                {/* ✅ İSTATİSTİK ŞERİDİ */}
-                <div className="flex items-center justify-center gap-1.5 md:gap-2 mt-1 md:mt-1.5 text-[7px] md:text-[8px] font-black text-gray-400">
-                  <span className="flex items-center gap-0.5">👁️ {formatNumber(k.totalViews)}</span>
-                  <span className="flex items-center gap-0.5">❤️ {formatNumber(k.totalVotes)}</span>
-                  <span className="flex items-center gap-0.5">💬 {formatNumber(k.totalComments)}</span>
-                </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
@@ -183,7 +320,7 @@ export default function KitaplarimSayfasi() {
               className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group"
             >
               <div className="w-10 h-10 bg-red-600/10 rounded-xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
-                ✍️
+                ✏️
               </div>
               <div>
                 <p className="text-xs font-black uppercase dark:text-white">Yeni Kitap</p>

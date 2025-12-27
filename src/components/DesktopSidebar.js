@@ -71,20 +71,20 @@ export default function DesktopSidebar() {
         {/* MENÜ ÖĞELERİ */}
         <div className="flex-1 overflow-y-auto p-6 space-y-3">
           
-          {/* 1. KÜTÜPHANE */}
+         {/* 1. KATEGORİLER */}
           <Link
-            href="/kutuphane"
+            href="/kategori"
             onClick={() => setIsOpen(false)}
             className={`flex items-center gap-4 p-4 rounded-2xl transition-all group ${
-              isActive('/kutuphane')
+              isActive('/kategori')
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
                 : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600'
             }`}
           >
-            <div className="text-3xl">📚</div>
+            <div className="text-3xl">⭐</div>
             <div className="flex-1">
-              <p className="font-black text-sm uppercase tracking-wide">Kütüphane</p>
-              <p className="text-[9px] opacity-70 font-medium">Tüm kitapları keşfet</p>
+              <p className="font-black text-sm uppercase tracking-wide">Kategoriler</p>
+              <p className="text-[9px] opacity-70 font-medium">Türlere göre keşfet</p>
             </div>
           </Link>
 
