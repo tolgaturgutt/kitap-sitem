@@ -340,63 +340,63 @@ export default function LeaderboardPage() {
         }
       `}</style>
 
-      <div className="max-w-7xl mx-auto mb-16 text-center">
-        <h1 className="text-5xl md:text-7xl font-black tracking-tighter mb-4">LİDERLİK <span className="text-red-600">TABLOSU</span></h1>
-        <p className="text-gray-500 dark:text-gray-400 font-medium text-lg max-w-2xl mx-auto">Haftalık ve aylık en iyiler. İstatistikler her Pazartesi sıfırlanır.</p>
+      <div className="max-w-7xl mx-auto mb-8 md:mb-16 text-center">
+        <h1 className="text-3xl md:text-7xl font-black tracking-tighter mb-2 md:mb-4">LİDERLİK <span className="text-red-600">TABLOSU</span></h1>
+        <p className="text-gray-500 dark:text-gray-400 font-medium text-sm md:text-lg max-w-2xl mx-auto">Haftalık ve aylık en iyiler. İstatistikler her Pazartesi sıfırlanır.</p>
       </div>
 
       <div className="max-w-7xl mx-auto space-y-20">
         {(lastWeekChampions.writer || lastWeekChampions.commenter || lastWeekChampions.book) && (
-          <div className="bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/5 rounded-[2rem] p-8 border border-yellow-500/20 relative overflow-hidden">
+          <div className="bg-gradient-to-r from-yellow-500/10 via-transparent to-yellow-500/5 rounded-2xl md:rounded-[2rem] p-4 md:p-8 border border-yellow-500/20 relative overflow-hidden mb-12 md:mb-20">
             <div className="absolute top-0 left-0 w-20 h-20 bg-yellow-500 blur-3xl opacity-20"></div>
-            <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-6 text-center text-yellow-600 dark:text-yellow-400">👑 GEÇEN HAFTANIN KRALLARI</h2>
-            <p className="text-sm font-bold opacity-70 uppercase tracking-widest text-center mb-8">Zirvenin sahipleri</p>
+            <h2 className="text-2xl md:text-4xl font-black tracking-tight mb-3 md:mb-6 text-center text-yellow-600 dark:text-yellow-400">👑 GEÇEN HAFTANIN KRALLARI</h2>
+            <p className="text-[10px] md:text-sm font-bold opacity-70 uppercase tracking-widest text-center mb-4 md:mb-8">Zirvenin sahipleri</p>
             
-            <div className="flex flex-col md:flex-row gap-6 justify-center items-stretch">
+            <div className="flex flex-col md:flex-row gap-3 md:gap-6 justify-center items-stretch">
               {lastWeekChampions.writer && (
-                <div className="flex-1 bg-white dark:bg-[#0a0a0a] rounded-2xl p-6 border border-yellow-500/30 hover:border-yellow-500 transition-all">
-                  <div className="text-center mb-4">
-                    <div className="text-4xl mb-2">✍️</div>
-                    <h3 className="font-black text-lg uppercase tracking-tight">En Çok Yazan</h3>
+                <div className="flex-1 bg-white dark:bg-[#0a0a0a] rounded-xl md:rounded-2xl p-4 md:p-6 border border-yellow-500/30 hover:border-yellow-500 transition-all">
+                  <div className="text-center mb-3 md:mb-4">
+                    <div className="text-2xl md:text-4xl mb-1 md:mb-2">✍️</div>
+                    <h3 className="font-black text-sm md:text-lg uppercase tracking-tight">En Çok Yazan</h3>
                   </div>
-                  <Link href={`/yazar/${lastWeekChampions.writer.username}`} className="flex flex-col items-center gap-3 group">
-                    <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-yellow-500 group-hover:scale-110 transition-transform bg-gray-200 dark:bg-gray-800">
+                  <Link href={`/yazar/${lastWeekChampions.writer.username}`} className="flex flex-col items-center gap-2 md:gap-3 group">
+                    <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden border-2 md:border-4 border-yellow-500 group-hover:scale-110 transition-transform bg-gray-200 dark:bg-gray-800">
                       {lastWeekChampions.writer.avatar && <img src={lastWeekChampions.writer.avatar} className="w-full h-full object-cover" alt="" />}
                     </div>
-                    <Username username={lastWeekChampions.writer.username} isAdmin={adminEmails.includes(lastWeekChampions.writer.email)} className="font-bold text-base group-hover:text-yellow-500 transition-colors" />
-                    <p className="text-xs text-gray-400 font-medium">{formatNumber(lastWeekChampions.writer.totalWords)} kelime</p>
+                    <Username username={lastWeekChampions.writer.username} isAdmin={adminEmails.includes(lastWeekChampions.writer.email)} className="font-bold text-xs md:text-base group-hover:text-yellow-500 transition-colors" />
+                    <p className="text-[10px] md:text-xs text-gray-400 font-medium">{formatNumber(lastWeekChampions.writer.totalWords)} kelime</p>
                   </Link>
                 </div>
               )}
 
               {lastWeekChampions.book && (
-                <div className="flex-1 bg-white dark:bg-[#0a0a0a] rounded-2xl p-6 border border-yellow-500/30 hover:border-yellow-500 transition-all">
-                  <div className="text-center mb-4">
-                    <div className="text-4xl mb-2">📚</div>
-                    <h3 className="font-black text-lg uppercase tracking-tight">En Çok Okunan</h3>
+                <div className="flex-1 bg-white dark:bg-[#0a0a0a] rounded-xl md:rounded-2xl p-4 md:p-6 border border-yellow-500/30 hover:border-yellow-500 transition-all">
+                  <div className="text-center mb-3 md:mb-4">
+                    <div className="text-2xl md:text-4xl mb-1 md:mb-2">📚</div>
+                    <h3 className="font-black text-sm md:text-lg uppercase tracking-tight">En Çok Okunan</h3>
                   </div>
-                  <Link href={`/kitap/${lastWeekChampions.book.id}`} className="flex flex-col items-center gap-3 group">
-                    <div className="w-24 aspect-[2/3] rounded-xl overflow-hidden border-4 border-yellow-500 group-hover:scale-110 transition-transform">
+                  <Link href={`/kitap/${lastWeekChampions.book.id}`} className="flex flex-col items-center gap-2 md:gap-3 group">
+                    <div className="w-16 md:w-24 aspect-[2/3] rounded-lg md:rounded-xl overflow-hidden border-2 md:border-4 border-yellow-500 group-hover:scale-110 transition-transform">
                       {lastWeekChampions.book.cover_url ? <img src={lastWeekChampions.book.cover_url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full bg-gray-200 dark:bg-gray-800" />}
                     </div>
-                    <p className="font-bold text-sm text-center group-hover:text-yellow-500 transition-colors line-clamp-2">{lastWeekChampions.book.title}</p>
-                    <p className="text-xs text-gray-400 font-medium">{formatNumber(lastWeekChampions.book.weekly_reads)} okuma</p>
+                    <p className="font-bold text-xs md:text-sm text-center group-hover:text-yellow-500 transition-colors line-clamp-2">{lastWeekChampions.book.title}</p>
+                    <p className="text-[10px] md:text-xs text-gray-400 font-medium">{formatNumber(lastWeekChampions.book.weekly_reads)} okuma</p>
                   </Link>
                 </div>
               )}
 
               {lastWeekChampions.commenter && (
-                <div className="flex-1 bg-white dark:bg-[#0a0a0a] rounded-2xl p-6 border border-yellow-500/30 hover:border-yellow-500 transition-all">
-                  <div className="text-center mb-4">
-                    <div className="text-4xl mb-2">💬</div>
-                    <h3 className="font-black text-lg uppercase tracking-tight">En Çok Konuşan</h3>
+                <div className="flex-1 bg-white dark:bg-[#0a0a0a] rounded-xl md:rounded-2xl p-4 md:p-6 border border-yellow-500/30 hover:border-yellow-500 transition-all">
+                  <div className="text-center mb-3 md:mb-4">
+                    <div className="text-2xl md:text-4xl mb-1 md:mb-2">💬</div>
+                    <h3 className="font-black text-sm md:text-lg uppercase tracking-tight">En Çok Konuşan</h3>
                   </div>
-                  <Link href={`/yazar/${lastWeekChampions.commenter.username}`} className="flex flex-col items-center gap-3 group">
-                    <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-yellow-500 group-hover:scale-110 transition-transform bg-gray-200 dark:bg-gray-800">
+                  <Link href={`/yazar/${lastWeekChampions.commenter.username}`} className="flex flex-col items-center gap-2 md:gap-3 group">
+                    <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden border-2 md:border-4 border-yellow-500 group-hover:scale-110 transition-transform bg-gray-200 dark:bg-gray-800">
                       {lastWeekChampions.commenter.avatar && <img src={lastWeekChampions.commenter.avatar} className="w-full h-full object-cover" alt="" />}
                     </div>
-                    <Username username={lastWeekChampions.commenter.username} isAdmin={adminEmails.includes(lastWeekChampions.commenter.email)} className="font-bold text-base group-hover:text-yellow-500 transition-colors" />
-                    <p className="text-xs text-gray-400 font-medium">{lastWeekChampions.commenter.count} yorum</p>
+                    <Username username={lastWeekChampions.commenter.username} isAdmin={adminEmails.includes(lastWeekChampions.commenter.email)} className="font-bold text-xs md:text-base group-hover:text-yellow-500 transition-colors" />
+                    <p className="text-[10px] md:text-xs text-gray-400 font-medium">{lastWeekChampions.commenter.count} yorum</p>
                   </Link>
                 </div>
               )}
@@ -404,12 +404,12 @@ export default function LeaderboardPage() {
           </div>
         )}
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-          <div className="bg-white dark:bg-[#0a0a0a] rounded-[2.5rem] p-6 md:p-10 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mb-12 md:mb-20">
+          <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl md:rounded-[2.5rem] p-4 md:p-10 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 p-32 bg-red-600/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-            <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-8 flex items-center gap-3">
-              <span className="text-4xl">✍️</span>
-              <div><span className="block text-xs text-red-600 tracking-widest mb-1 font-bold">HAFTANIN</span>EN ÇOK YAZANLARI</div>
+            <h2 className="text-lg md:text-2xl font-black uppercase tracking-tight mb-6 md:mb-8 flex items-center gap-2 md:gap-3">
+              <span className="text-2xl md:text-4xl">✍️</span>
+              <div><span className="block text-[10px] md:text-xs text-red-600 tracking-widest mb-1 font-bold">HAFTANIN</span>EN ÇOK YAZANLARI</div>
             </h2>
             <div className="space-y-4">
               {topWriters.length === 0 ? <p className="text-gray-500 italic text-center py-10">Veri yok.</p> : (
