@@ -71,31 +71,38 @@ export default function GirisSayfasi() {
     try {
       let targetEmail = cleanInput;
       
+      // Eğer @ yoksa, kullanıcı adıdır - email'i bul
       if (!isEmail(cleanInput)) {
-        // ✅ Kullanıcı adını temizle (boşluk varsa sil)
         const cleanedUsername = cleanInput.toLowerCase().replace(/\s+/g, '');
         
-        // 🔒 GÜVENLİK: .eq() kullanarak exact match
-        const { data, error } = await supabase
+        const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('email')
           .eq('username', cleanedUsername)
           .single();
         
-        if (error || !data) {
-          throw new Error('Kullanıcı bulunamadı.');
+        if (profileError || !profileData) {
+          toast.error('Bu kullanıcı adına kayıtlı hesap bulunamadı.');
+          setLoading(false);
+          return;
         }
-        targetEmail = data.email;
+        targetEmail = profileData.email;
       }
 
-      const { error } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+      // Email'e şifre sıfırlama linki gönder
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
         redirectTo: `${window.location.origin}/sifre-yenile`,
       });
 
-      if (error) throw error;
+      if (resetError) {
+        toast.error('Sıfırlama linki gönderilemedi: ' + resetError.message);
+        setLoading(false);
+        return;
+      }
       
-      toast.success('Sıfırlama bağlantısı gönderildi.');
+      toast.success('Sıfırlama bağlantısı e-postanıza gönderildi! 📧');
       setIsResetMode(false);
+      setLoginInput('');
       
     } catch (error) {
       toast.error(error.message || 'Bir hata oluştu.');
