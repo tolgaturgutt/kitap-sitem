@@ -39,21 +39,21 @@ export default function BolumDuzenle({ params }) {
 
   // 🔴 YASAKLI KELİMELERİ TESPİT ET
   function findBannedWords(text) {
-    if (!text || bannedWords.length === 0) return [];
-    
-    const words = text.toLowerCase().split(/\b/);
-    const found = [];
-    
-    bannedWords.forEach(banned => {
-      words.forEach(word => {
-        if (word.includes(banned)) {
-          found.push(banned);
-        }
-      });
-    });
-    
-    return [...new Set(found)];
-  }
+  if (!text || bannedWords.length === 0) return [];
+  
+  // Metni kelimelere ayır (noktalama işaretleri olmadan)
+  const words = text.toLowerCase().match(/\b[\wğüşıöçĞÜŞİÖÇ]+\b/g) || [];
+  const found = [];
+  
+  bannedWords.forEach(banned => {
+    // Tam eşleşme kontrolü
+    if (words.includes(banned.toLowerCase())) {
+      found.push(banned);
+    }
+  });
+  
+  return [...new Set(found)];
+}
 
   const detectedBannedInTitle = findBannedWords(formData.title);
   const detectedBannedInContent = findBannedWords(formData.content);

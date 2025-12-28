@@ -37,22 +37,22 @@ export default function BolumEkle({ params }) {
   const wordCount = content.trim() === '' ? 0 : content.trim().split(/\s+/).length;
 
   // 🔴 YASAKLI KELİMELERİ TESPİT ET
-  function findBannedWords(text) {
-    if (!text || bannedWords.length === 0) return [];
-    
-    const words = text.toLowerCase().split(/\b/);
-    const found = [];
-    
-    bannedWords.forEach(banned => {
-      words.forEach(word => {
-        if (word.includes(banned)) {
-          found.push(banned);
-        }
-      });
-    });
-    
-    return [...new Set(found)];
-  }
+function findBannedWords(text) {
+  if (!text || bannedWords.length === 0) return [];
+  
+  // Metni kelimelere ayır (noktalama işaretleri olmadan)
+  const words = text.toLowerCase().match(/\b[\wğüşıöçĞÜŞİÖÇ]+\b/g) || [];
+  const found = [];
+  
+  bannedWords.forEach(banned => {
+    // Tam eşleşme kontrolü
+    if (words.includes(banned.toLowerCase())) {
+      found.push(banned);
+    }
+  });
+  
+  return [...new Set(found)];
+}
 
   const detectedBannedInTitle = findBannedWords(title);
   const detectedBannedInContent = findBannedWords(content);
