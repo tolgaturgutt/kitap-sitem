@@ -262,38 +262,28 @@ export default function BolumDetay({ params }) {
                       dangerouslySetInnerHTML={{ __html: para }}
                     />
 
-                    <button
+                    <div
   onClick={() => setActivePara(activePara === paraId ? null : paraId)}
   className={`
     absolute right-[-12px] top-1/2 -translate-y-1/2
-    flex items-center justify-center
-    rounded-full
-    transition-all duration-200
-    z-10
-
-    /* GERÇEK BOYUT */
     w-[6px] h-[6px]
+    rounded-full bg-gray-400 opacity-40
+    z-10 cursor-pointer
+    transition-all
 
-    /* HİTBOX'I ZORLA KÜÇÜLT */
-    p-0 leading-none text-[8px]
-
-    /* NORMAL HAL */
-    bg-gray-400 opacity-40
-
-    /* HOVER / AKTİF */
     group-hover:w-4 group-hover:h-4
-    group-hover:opacity-100
-    group-hover:bg-red-600
+    group-hover:bg-red-600 group-hover:opacity-100
 
     ${count > 0 || activePara === paraId ? 'w-4 h-4 bg-red-600 opacity-100' : ''}
   `}
 >
-  {count > 0 ? (
-    <span className="scale-[0.7] text-white leading-none">{count}</span>
-  ) : (
-    <span className="scale-[0.7] text-white leading-none">+</span>
+  {(count > 0 || activePara === paraId) && (
+    <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white scale-[0.7]">
+      {count > 0 ? count : '+'}
+    </span>
   )}
-</button>
+</div>
+
 
 
 
