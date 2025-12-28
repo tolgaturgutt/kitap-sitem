@@ -38,9 +38,7 @@ export default function KitapDetay({ params }) {
     authorIsAdmin: false
   });
   const [loading, setLoading] = useState(true);
-  const [draggedIndex, setDraggedIndex] = useState(null);
-  const [dragOverIndex, setDragOverIndex] = useState(null);
-  const [isSorting, setIsSorting] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
 
   useEffect(() => {
     async function fetchAll() {
@@ -99,7 +97,7 @@ export default function KitapDetay({ params }) {
         if (admin) adminStatus = true;
       }
       
-      // 5. BÖLÜMLERI ÇEK
+      // 5. BÖLÜMLERİ ÇEK
       const { data: chapters } = await supabase.from('chapters')
         .select('*')
         .eq('book_id', id)
@@ -151,7 +149,7 @@ export default function KitapDetay({ params }) {
           votes: totalChapterVotes, 
           follows: follows || 0,
           comments: comments || 0,
-          chapters: publishedChapters.length, // Sadece yayında bölümler sayılır
+          chapters: publishedChapters.length,
           words: totalWords
         },
         isFollowing: following, 
@@ -164,7 +162,7 @@ export default function KitapDetay({ params }) {
     fetchAll();
   }, [id]);
 
-  // --- YENİ: BÖLÜM TASLAĞA ATMA ---
+  // --- BÖLÜM TASLAĞA ATMA ---
   async function handleToggleChapterDraft(chapterId) {
     const chapter = data.chapters.find(c => c.id === chapterId);
     if (!chapter) return;
@@ -188,54 +186,28 @@ export default function KitapDetay({ params }) {
       if (newDraftStatus) {
         toast.success("📝 Bölüm taslağa alındı");
       } else {
-        toast.success("🌐 Bölüm yayına alındı");
+        toast.success("🌍 Bölüm yayına alındı");
       }
     }
   }
 
-  // --- YENİ: SIRALAMA FONKSİYONLARI ---
-  function handleDragStart(index) {
-    setDraggedIndex(index);
-  }
-
-  function handleDragOver(e, index) {
-    e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== index) {
-      setDragOverIndex(index);
-    }
-  }
-
-  function handleDragLeave() {
-    setDragOverIndex(null);
-  }
-
-  function handleDragEnd() {
-    setDragOverIndex(null);
-  }
-
-  async function handleDrop(dropIndex) {
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
-      setDragOverIndex(null);
-      return;
-    }
+  // --- BÖLÜM SIRALAMA FONKSİYONLARI ---
+  async function moveChapter(index, direction) {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    
+    if (newIndex < 0 || newIndex >= data.chapters.length) return;
 
     const newChapters = [...data.chapters];
-    const [draggedChapter] = newChapters.splice(draggedIndex, 1);
-    newChapters.splice(dropIndex, 0, draggedChapter);
+    [newChapters[index], newChapters[newIndex]] = [newChapters[newIndex], newChapters[index]];
 
     // Yeni sıra numaralarını ata
-    const updatedChapters = newChapters.map((chapter, index) => ({
+    const updatedChapters = newChapters.map((chapter, idx) => ({
       ...chapter,
-      order_no: index + 1
+      order_no: idx + 1
     }));
 
     setData(prev => ({ ...prev, chapters: updatedChapters }));
-    setDraggedIndex(null);
-    setDragOverIndex(null);
-    setIsSorting(true);
 
-    // Veritabanını güncelle
     const toastId = toast.loading('Sıralama kaydediliyor...');
     try {
       const updates = updatedChapters.map(chapter => 
@@ -251,12 +223,9 @@ export default function KitapDetay({ params }) {
     } catch (error) {
       toast.dismiss(toastId);
       toast.error('Hata: ' + error.message);
-    } finally {
-      setIsSorting(false);
     }
   }
 
-  // --- DİĞER FONKSİYONLAR ---
   async function handleToggleDraft() {
     const isAuthor = data.user && data.book.user_email === data.user.email;
     if (!isAuthor && !data.isAdmin) return;
@@ -269,7 +238,7 @@ export default function KitapDetay({ params }) {
     } else {
       setData(prev => ({ ...prev, book: { ...prev.book, is_draft: newStatus } }));
       if (newStatus) toast.success("Kitap TASLAĞA alındı. Artık sadece sen görebilirsin. 🔒");
-      else toast.success("Kitap YAYINA alındı. Herkes görebilir. 🌐");
+      else toast.success("Kitap YAYINA alındı. Herkes görebilir. 🌍");
     }
   }
 
@@ -358,12 +327,12 @@ export default function KitapDetay({ params }) {
       </div>
     </div>
   );
+  
   if (!data.book) return <div className="py-20 text-center font-black">ESER BULUNAMADI</div>;
 
   const isAuthor = data.user && data.book.user_email === data.user.email;
   const canEdit = isAuthor || data.isAdmin;
 
-  // Taslak olmayan bölümleri filtrele (normal kullanıcılar için)
   const visibleChapters = canEdit 
     ? data.chapters 
     : data.chapters.filter(c => !c.is_draft);
@@ -479,10 +448,12 @@ export default function KitapDetay({ params }) {
                 <p className="text-3xl font-black dark:text-white mb-1">{formatNumber(data.stats.follows)}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📚 Kitaplık</p>
               </div>
+              
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{formatNumber(data.stats.comments)}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">💬 Yorum</p>
               </div>
+              
               <div className="text-center">
                 <p className="text-3xl font-black dark:text-white mb-1">{formatNumber(data.stats.chapters)}</p>
                 <p className="text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📖 Bölüm</p>
@@ -536,7 +507,7 @@ export default function KitapDetay({ params }) {
                          : 'bg-gray-800 text-gray-400 border border-white/10 hover:bg-gray-700 hover:text-white'
                      }`}
                    >
-                     {data.book.is_draft ? '🌐 YAYINLA (CANLIYA AL)' : '🔒 TASLAĞA ÇEK (GİZLE)'}
+                     {data.book.is_draft ? '🌍 YAYINLA (CANLIYA AL)' : '🔒 TASLAĞA ÇEK (GİZLE)'}
                    </button>
 
                    <button
@@ -556,12 +527,14 @@ export default function KitapDetay({ params }) {
                    >
                      + BÖLÜM EKLE
                    </Link>
+                   
                    <Link 
                      href={`/kitap-duzenle/${id}`} 
                      className="px-10 py-4 bg-gray-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-gray-700 transition-all"
                    >
                      ⚙️ DÜZENLE
                    </Link>
+                   
                    <button
                      onClick={handleDeleteBook}
                      className="px-10 py-4 bg-red-600 text-white rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-red-700 transition-all"
@@ -581,10 +554,18 @@ export default function KitapDetay({ params }) {
               📖 Eserin Bölümleri
               <span className="text-sm text-gray-400 font-normal">({visibleChapters.length})</span>
             </h2>
-            {canEdit && visibleChapters.length > 0 && (
-              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
-                🔄 Sürükle & Bırak ile sırala
-              </p>
+            
+            {canEdit && visibleChapters.length > 1 && (
+              <button
+                onClick={() => setReorderMode(!reorderMode)}
+                className={`px-6 py-3 rounded-full font-black text-[10px] uppercase tracking-widest transition-all ${
+                  reorderMode
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-white/20'
+                }`}
+              >
+                {reorderMode ? '✅ SIRALAMA TAMAMLA' : '🔄 SIRAYI DEĞİŞTİR'}
+              </button>
             )}
           </div>
           
@@ -596,95 +577,111 @@ export default function KitapDetay({ params }) {
               </div>
             ) : (
               visibleChapters.map((c, idx) => (
-                <div 
-                  key={c.id} 
-                  className={`group transition-all duration-300 ${
-                    draggedIndex === idx ? 'scale-105 rotate-2 z-50' : ''
-                  } ${dragOverIndex === idx ? 'scale-105' : ''}`}
-                  draggable={canEdit}
-                  onDragStart={() => handleDragStart(idx)}
-                  onDragOver={(e) => handleDragOver(e, idx)}
-                  onDragLeave={handleDragLeave}
-                  onDragEnd={handleDragEnd}
-                  onDrop={() => handleDrop(idx)}
-                >
-                  <div 
-                    className={`relative transition-all duration-300 ${
-                      dragOverIndex === idx ? 'mb-20' : ''
-                    }`}
-                  >
-                    <Link 
-                      href={`/kitap/${id}/bolum/${c.id}`} 
-                      className={`flex items-center justify-between p-6 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2rem] transition-all duration-300 ${
-                        draggedIndex === idx 
-                          ? 'opacity-40 blur-sm shadow-2xl border-red-600' 
-                          : 'hover:border-red-600 hover:shadow-xl'
-                      } ${
-                        dragOverIndex === idx 
-                          ? 'border-dashed border-red-600 border-2 bg-red-50 dark:bg-red-950/10' 
-                          : ''
-                      } ${
-                        c.is_draft ? 'opacity-60 border-dashed' : ''
-                      }`}
-                    >
-                      <div className="flex items-center gap-6 flex-1">
-                        {canEdit && (
-                          <div className="cursor-move text-gray-400 hover:text-red-600 transition-all duration-300 hover:scale-125">
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                            </svg>
-                          </div>
-                        )}
-                        <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center shrink-0">
-                          <span className="text-sm font-black text-red-600">{String(c.order_no).padStart(2, '0')}</span>
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-1">
-                            <h3 className="font-bold text-lg dark:text-white group-hover:text-red-600 transition-colors">
-                              {c.title}
-                            </h3>
-                            {c.is_draft && (
-                              <span className="text-[8px] font-black uppercase text-gray-500 bg-gray-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
-                                📝 Taslak
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                            👁️ {c.views || 0} okuma
-                          </p>
-                        </div>
+                <div key={c.id} className="group">
+                  
+                  {/* SIRALAMA MODU */}
+                  {reorderMode ? (
+                    <div className="flex items-center gap-4 p-6 bg-white dark:bg-white/5 border-2 border-blue-500 dark:border-blue-400 rounded-[2rem]">
+                      <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center shrink-0">
+                        <span className="text-sm font-black text-red-600">{String(c.order_no).padStart(2, '0')}</span>
                       </div>
-                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                        OKU →
-                      </span>
-                    </Link>
-                    {canEdit && (
-                      <div className="flex gap-2 mt-2 ml-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      
+                      <div className="flex-1">
+                        <h3 className="font-bold text-lg dark:text-white">{c.title}</h3>
+                        {c.is_draft && (
+                          <span className="text-[8px] font-black uppercase text-gray-500 bg-gray-100 dark:bg-white/5 px-2 py-0.5 rounded-full mt-1 inline-block">
+                            📝 Taslak
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex gap-2">
                         <button
-                          onClick={() => handleToggleChapterDraft(c.id)}
-                          className={`text-[9px] font-black uppercase transition-colors px-3 py-1 rounded-full ${
-                            c.is_draft
-                              ? 'text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/20'
-                              : 'text-gray-600 hover:text-gray-700 bg-gray-100 dark:bg-white/5'
+                          onClick={() => moveChapter(idx, 'up')}
+                          disabled={idx === 0}
+                          className={`w-12 h-12 flex items-center justify-center rounded-xl font-black text-xl transition-all ${
+                            idx === 0
+                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 cursor-not-allowed'
+                              : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
                           }`}
                         >
-                          {c.is_draft ? '🌐 Yayınla' : '📝 Taslağa Al'}
+                          ↑
                         </button>
-                        <Link 
-                          href={`/kitap/${id}/bolum-duzenle/${c.id}`}
-                          className="text-[9px] font-black uppercase text-blue-600 hover:text-blue-700 transition-colors px-3 py-1 bg-blue-50 dark:bg-blue-950/20 rounded-full"
-                        >
-                          ✏️ Düzenle
-                        </Link>
                         <button
-                          onClick={() => handleDeleteChapter(c.id)}
-                          className="text-[9px] font-black uppercase text-red-600 hover:text-red-700 transition-colors px-3 py-1 bg-red-50 dark:bg-red-950/20 rounded-full"
+                          onClick={() => moveChapter(idx, 'down')}
+                          disabled={idx === visibleChapters.length - 1}
+                          className={`w-12 h-12 flex items-center justify-center rounded-xl font-black text-xl transition-all ${
+                            idx === visibleChapters.length - 1
+                              ? 'bg-gray-100 dark:bg-white/5 text-gray-300 cursor-not-allowed'
+                              : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95'
+                          }`}
                         >
-                          🗑️ Sil
+                          ↓
                         </button>
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  ) : (
+                    /* NORMAL MOD */
+                    <>
+                      <Link 
+                        href={`/kitap/${id}/bolum/${c.id}`} 
+                        className={`flex items-center justify-between p-6 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2rem] transition-all duration-300 hover:border-red-600 hover:shadow-xl ${
+                          c.is_draft ? 'opacity-60 border-dashed' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-6 flex-1">
+                          <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center shrink-0">
+                            <span className="text-sm font-black text-red-600">{String(c.order_no).padStart(2, '0')}</span>
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-1">
+                              <h3 className="font-bold text-lg dark:text-white group-hover:text-red-600 transition-colors">
+                                {c.title}
+                              </h3>
+                              {c.is_draft && (
+                                <span className="text-[8px] font-black uppercase text-gray-500 bg-gray-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
+                                  📝 Taslak
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                              👁️ {c.views || 0} okuma
+                            </p>
+                          </div>
+                        </div>
+                        <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                          OKU →
+                        </span>
+                      </Link>
+                      
+                      {canEdit && (
+                        <div className="flex gap-2 mt-2 ml-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => handleToggleChapterDraft(c.id)}
+                            className={`text-[9px] font-black uppercase transition-colors px-3 py-1 rounded-full ${
+                              c.is_draft
+                                ? 'text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/20'
+                                : 'text-gray-600 hover:text-gray-700 bg-gray-100 dark:bg-white/5'
+                            }`}
+                          >
+                            {c.is_draft ? '🌍 Yayınla' : '📝 Taslağa Al'}
+                          </button>
+                          <Link 
+                            href={`/kitap/${id}/bolum-duzenle/${c.id}`}
+                            className="text-[9px] font-black uppercase text-blue-600 hover:text-blue-700 transition-colors px-3 py-1 bg-blue-50 dark:bg-blue-950/20 rounded-full"
+                          >
+                            ✏️ Düzenle
+                          </Link>
+                          <button
+                            onClick={() => handleDeleteChapter(c.id)}
+                            className="text-[9px] font-black uppercase text-red-600 hover:text-red-700 transition-colors px-3 py-1 bg-red-50 dark:bg-red-950/20 rounded-full"
+                          >
+                            🗑️ Sil
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               ))
             )}
