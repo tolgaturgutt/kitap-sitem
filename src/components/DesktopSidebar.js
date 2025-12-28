@@ -83,7 +83,7 @@ export default function DesktopSidebar() {
           >
             <div className="text-3xl">⭐</div>
             <div className="flex-1">
-              <p className="font-black text-sm uppercase tracking-wide">Kategoriler</p>
+              <p className="font-black text-sm uppercase tracking-wide">Kategori</p>
               <p className="text-[9px] opacity-70 font-medium">Türlere göre keşfet</p>
             </div>
           </Link>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import Image from 'next/image'; // 1. BURASI EKLENDİ
 
 export default function KategoriPage() {
   const [categories, setCategories] = useState([]);
@@ -55,19 +56,21 @@ export default function KategoriPage() {
               href={`/kategori/${category.slug}`}
               className="group relative aspect-[4/3] rounded-2xl md:rounded-3xl overflow-hidden border dark:border-white/10 hover:border-red-600 transition-all duration-300 shadow-lg hover:shadow-2xl hover:-translate-y-1"
             >
-              {/* 🖼️ ARKA PLAN GÖRSELI */}
+              {/* 🖼️ ARKA PLAN GÖRSELI (GÜNCELLENDİ) */}
               <div className="absolute inset-0">
-                <img 
+                <Image 
                   src={category.image_url} 
                   alt={category.name}
-                  className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  fill // Resmi kutuya tam sığdırır
+                  className="object-cover group-hover:scale-110 transition-transform duration-700"
+                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw" // Telefondaysa küçük, PC'de büyük yükle emri
                 />
                 {/* Gradient overlay */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent z-10" />
               </div>
 
               {/* 📝 KATEGORİ ADI */}
-              <div className="absolute inset-0 flex items-end p-4 md:p-6">
+              <div className="absolute inset-0 flex items-end p-4 md:p-6 z-20">
                 <h2 className="text-lg md:text-2xl font-black text-white uppercase tracking-tight group-hover:text-red-500 transition-colors drop-shadow-lg">
                   {category.name}
                 </h2>

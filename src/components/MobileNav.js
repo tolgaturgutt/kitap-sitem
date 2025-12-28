@@ -71,7 +71,7 @@ export default function MobileNav() {
             }`}
           >
             <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">⭐</div>
-            <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Kategoriler</span>
+            <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Kategori</span>
           </Link>
 
           {/* ✅ KİTAPLARIM - EŞİT BOYUT */}
