@@ -78,7 +78,7 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
             const style = getRankStyle(idx);
             const isUserAdmin = adminEmails.includes(book.profiles?.email);
             return (
-              <div key={book.id} className="group relative" style={{ width: '180px', flexShrink: 0 }}>
+              <div key={book.id} className="group relative" style={{ width: '140px', flexShrink: 0 }}>
                 <Link href={`/kitap/${book.id}`}>
                   <div className={`absolute top-0 left-0 z-10 font-black text-xs px-2.5 py-1.5 rounded-br-xl rounded-tl-xl shadow-lg flex items-center gap-1 ${idx < 3 ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-gray-800 text-white'}`}>
                     <span>{idx < 3 ? style.icon : `#${idx+1}`}</span>
