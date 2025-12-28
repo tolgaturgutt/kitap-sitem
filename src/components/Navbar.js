@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
+// 👇 1. usePathname EKLENDİ
+import { useRouter, usePathname } from 'next/navigation'; 
 import { useEffect, useState, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
@@ -13,14 +14,15 @@ export default function Navbar() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
+  // 👇 2. MEVCUT SAYFAYI ALIYORUZ
+  const pathname = usePathname(); 
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState({ books: [], users: [] });
   const [showSearch, setShowSearch] = useState(false);
   
-  // ✅ DÜZELTME 1: Mobil ve Masaüstü için ayrı referanslar
-  const searchRef = useRef(null);       // Masaüstü Arama Kutusu
-  const mobileSearchRef = useRef(null); // Mobil Arama Kutusu
+  const searchRef = useRef(null);       
+  const mobileSearchRef = useRef(null); 
 
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -29,6 +31,12 @@ export default function Navbar() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+
+  // 👇 3. KRİTİK NOKTA: ŞİFRE YENİLEME SAYFASINDAYSAK NAVBAR'I İPTAL ET
+  // Eğer başka sayfalarda da gizlemek istersen: if (['/sifre-yenile', '/giris'].includes(pathname))
+  if (pathname === '/sifre-yenile') {
+    return null;
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -48,14 +56,10 @@ export default function Navbar() {
     };
     loadSession();
 
-    // ✅ DÜZELTME 2: Tıklama Kontrolü (Hem masaüstü hem mobil kutuyu koruyoruz)
     const handleClickOutside = (e) => {
-      // Masaüstü kutusunun dışında mı tıklandı?
       const isOutsideDesktop = searchRef.current && !searchRef.current.contains(e.target);
-      // Mobil kutusunun dışında mı tıklandı?
       const isOutsideMobile = mobileSearchRef.current && !mobileSearchRef.current.contains(e.target);
 
-      // EĞER İKİSİNİN DE DIŞINA TIKLANDIYSA KAPAT
       if (isOutsideDesktop && isOutsideMobile) {
         setShowSearch(false);
       }
@@ -76,7 +80,6 @@ export default function Navbar() {
     .order('created_at', { ascending: false })
     .limit(50);
   
-  // ✅ Eğer chapter_id varsa ama chapter_title yoksa, bölüm adını çek
   if (n && n.length > 0) {
     for (let notif of n) {
       if (notif.chapter_id && !notif.chapter_title) {
@@ -167,7 +170,6 @@ export default function Navbar() {
 
   if (!mounted) return null;
 
-  // BİLDİRİM KATEGORİLERİ
   const socialNotifs = notifications.filter(n => n.type === 'follow' || n.type === 'reply');
   const activityNotifs = notifications.filter(n => 
     n.type === 'vote' || 
@@ -179,7 +181,6 @@ export default function Navbar() {
   );
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
-  // BİLDİRİM LİNK OLUŞTURUCU
   function getNotificationLink(n) {
     switch(n.type) {
       case 'vote':
@@ -427,7 +428,6 @@ function getNotificationText(n) {
             {getNotificationText(n)}
           </p>
           
-          {/* ✅ BURADA DEĞİŞİKLİK: Bölüm varsa kitap adı - bölüm adı göster */}
           {n.book_title && (
             <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">
               "{n.book_title}
@@ -587,7 +587,6 @@ function getNotificationText(n) {
         </div>
       </div>
 
-      {/* ✅ DÜZELTME 3: Mobil arama kutusuna referans (mobileSearchRef) ekledik */}
       {showMobileSearch && (
        <div ref={mobileSearchRef} className="md:hidden fixed top-16 left-0 w-full bg-white dark:bg-black border-b dark:border-white/10 p-3 z-[200] animate-in slide-in-from-top-2 duration-200">
           <div className="max-w-7xl mx-auto">
@@ -680,6 +679,6 @@ function getNotificationText(n) {
           </div>
         </div>
       )}
-    </nav>//kglkgl
+    </nav>
   );
 }

@@ -229,10 +229,12 @@ export default function LeaderboardPage() {
       setAllTimeTopBooks(allTimeBooks || []);
 
       // Haftalık yazarlar
-      const { data: chapterData } = await supabase
-        .from('chapters')
-        .select(`word_count, books (user_id, profiles:user_id (username, avatar_url, email))`)
-        .gte('created_at', birHaftaOnce.toISOString());
+     const { data: chapterData } = await supabase
+  .from('chapters')
+  .select(`word_count, is_draft, books!inner (user_id, is_draft, profiles:user_id (username, avatar_url, email))`)
+  .gte('created_at', birHaftaOnce.toISOString())
+  .eq('is_draft', false)
+  .eq('books.is_draft', false);
 
       const writerMap = {};
       chapterData?.forEach(item => {
@@ -260,11 +262,13 @@ export default function LeaderboardPage() {
       setTopCommenters(Object.values(commentMap).sort((a, b) => b.count - a.count).slice(0, 10));
 
       // Geçen haftanın şampiyonları
-      const { data: lastWeekChapters } = await supabase
-        .from('chapters')
-        .select(`word_count, books (user_id, profiles:user_id (username, avatar_url, email))`)
-        .gte('created_at', ikiHaftaOnce.toISOString())
-        .lt('created_at', birHaftaOnce.toISOString());
+     const { data: lastWeekChapters } = await supabase
+  .from('chapters')
+  .select(`word_count, is_draft, books!inner (user_id, is_draft, profiles:user_id (username, avatar_url, email))`)
+  .gte('created_at', ikiHaftaOnce.toISOString())
+  .lt('created_at', birHaftaOnce.toISOString())
+  .eq('is_draft', false)
+  .eq('books.is_draft', false);
 
       const lastWeekWriterMap = {};
       lastWeekChapters?.forEach(item => {
