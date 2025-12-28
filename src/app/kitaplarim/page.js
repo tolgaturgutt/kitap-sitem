@@ -175,7 +175,7 @@ export default function KitaplarimSayfasi() {
               activeTab === 'eserlerim' ? 'text-red-600 border-b-2 border-red-600' : 'text-gray-400'
             }`}
           >
-            ✍️ Eserlerim ({myBooks.length})
+            ✏️ Eserlerim ({myBooks.length})
           </button>
           <button 
             onClick={() => setActiveTab('taslaklar')} 
@@ -287,7 +287,7 @@ export default function KitaplarimSayfasi() {
                   )}
                   
                   {/* İstatistik Şeridi */}
-                  <div className="flex items-center justify-center gap-1.5 md:gap-2 mt-1 md:mt-1.5 text-[7px] md:text-[8px] font-black text-gray-400">
+                  <div className="flex items-center justify-between gap-1 mt-1 md:mt-1.5 text-[7px] md:text-[8px] font-black text-gray-400">
                     <span className="flex items-center gap-0.5">👁️ {formatNumber(k.totalViews)}</span>
                     <span className="flex items-center gap-0.5">❤️ {formatNumber(k.totalVotes)}</span>
                     <span className="flex items-center gap-0.5">💬 {formatNumber(k.totalComments)}</span>
