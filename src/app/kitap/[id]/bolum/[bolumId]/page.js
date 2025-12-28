@@ -49,14 +49,14 @@ export default function BolumDetay({ params }) {
     async function getFullData() {
       if (!bolumId || !id) return;
       try {
-        
+
         const { data: chapter } = await supabase.from('chapters').select('*').eq('id', bolumId).single();
         const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
         const { data: all } = await supabase.from('chapters').select('id, title').eq('book_id', id).order('order_no', { ascending: true });
-        
+
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         setUser(currentUser);
-        
+
         // Yazar profilini çek
         if (book?.user_email) {
           const { data: profile } = await supabase
@@ -64,19 +64,19 @@ export default function BolumDetay({ params }) {
             .select('username, avatar_url, email')
             .eq('email', book.user_email)
             .single();
-          
+
           setAuthorProfile(profile);
-          
+
           // Admin mi kontrol et
           const { data: adminData } = await supabase
             .from('announcement_admins')
             .select('user_email')
             .eq('user_email', book.user_email)
             .single();
-          
+
           setIsAdmin(!!adminData);
         }
-        
+
         if (currentUser) {
           await supabase.rpc('increment_view_count', {
             p_chapter_id: Number(bolumId),
@@ -96,7 +96,7 @@ export default function BolumDetay({ params }) {
             .eq('chapter_id', bolumId)
             .eq('user_email', currentUser.email)
             .single();
-          
+
           setHasLiked(!!vote);
         }
 
@@ -104,7 +104,7 @@ export default function BolumDetay({ params }) {
           .from('chapter_votes')
           .select('*', { count: 'exact', head: true })
           .eq('chapter_id', bolumId);
-        
+
         setLikes(likeCount || 0);
 
         const { data: counts } = await supabase.from('comments').select('paragraph_id').eq('chapter_id', bolumId).not('paragraph_id', 'is', null);
@@ -126,45 +126,45 @@ export default function BolumDetay({ params }) {
     getFullData();
   }, [id, bolumId]);
 
-const handleLike = async () => {
-  if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
+  const handleLike = async () => {
+    if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('username')
-    .eq('id', user.id)
-    .single();
-  
-  const username = profile?.username || user.email.split('@')[0];
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('id', user.id)
+      .single();
 
-  if (hasLiked) {
-    const { error } = await supabase
-      .from('chapter_votes')
-      .delete()
-      .eq('chapter_id', bolumId)
-      .eq('user_email', user.email);
-    
-    if (!error) {
-      setLikes(prev => prev - 1);
-      setHasLiked(false);
+    const username = profile?.username || user.email.split('@')[0];
+
+    if (hasLiked) {
+      const { error } = await supabase
+        .from('chapter_votes')
+        .delete()
+        .eq('chapter_id', bolumId)
+        .eq('user_email', user.email);
+
+      if (!error) {
+        setLikes(prev => prev - 1);
+        setHasLiked(false);
+      }
+    } else {
+      const { error } = await supabase
+        .from('chapter_votes')
+        .insert({
+          chapter_id: bolumId,
+          user_email: user.email
+        });
+
+      if (!error) {
+        setLikes(prev => prev + 1);
+        setHasLiked(true);
+        toast.success("Bölüm beğenildi ❤️");
+
+        await createChapterVoteNotification(username, user.email, id, bolumId);
+      }
     }
-  } else {
-    const { error } = await supabase
-      .from('chapter_votes')
-      .insert({
-        chapter_id: bolumId,
-        user_email: user.email
-      });
-    
-    if (!error) {
-      setLikes(prev => prev + 1);
-      setHasLiked(true);
-      toast.success("Bölüm beğenildi ❤️");
-      
-      await createChapterVoteNotification(username, user.email, id, bolumId);
-    }
-  }
-};
+  };
 
   const handleCommentAdded = (pId) => {
     if (pId !== null) {
@@ -179,33 +179,33 @@ const handleLike = async () => {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black opacity-10 animate-pulse text-5xl italic uppercase tracking-tighter">YUKLENIYOR</div>;
-  
+
   const currentIndex = data.allChapters.findIndex(c => Number(c.id) === Number(bolumId));
   const prevChapter = currentIndex > 0 ? data.allChapters[currentIndex - 1] : null;
   const nextChapter = (currentIndex !== -1 && currentIndex < data.allChapters.length - 1) ? data.allChapters[currentIndex + 1] : null;
-  
-  const paragraphs = data.chapter?.content 
+
+  const paragraphs = data.chapter?.content
     ? (() => {
-        const content = data.chapter.content;
-        
-        const hasHTML = /<br|<p|<\/p/i.test(content);
-        
-        if (hasHTML) {
-          return content
-            .split(/<br\s*\/?>|<\/p>/)
-            .map(p => {
-              let cleaned = p.replace(/<p[^>]*>/g, '').trim();
-              cleaned = cleaned.replace(/\s*style=""\s*/g, '');
-              return cleaned;
-            })
-            .filter(p => p !== '' && p !== '<br>' && p !== '<br/>');
-        } else {
-          return content
-            .split(/\n\n+/)
-            .map(p => p.trim())
-            .filter(p => p !== '');
-        }
-      })()
+      const content = data.chapter.content;
+
+      const hasHTML = /<br|<p|<\/p/i.test(content);
+
+      if (hasHTML) {
+        return content
+          .split(/<br\s*\/?>|<\/p>/)
+          .map(p => {
+            let cleaned = p.replace(/<p[^>]*>/g, '').trim();
+            cleaned = cleaned.replace(/\s*style=""\s*/g, '');
+            return cleaned;
+          })
+          .filter(p => p !== '' && p !== '<br>' && p !== '<br/>');
+      } else {
+        return content
+          .split(/\n\n+/)
+          .map(p => p.trim())
+          .filter(p => p !== '');
+      }
+    })()
     : [];
 
   // Profil linki - kendi kitabımızsa /profil, değilse /yazar/username
@@ -216,7 +216,7 @@ const handleLike = async () => {
   return (
     <div className="min-h-screen bg-[#fcfcfc] dark:bg-[#080808]">
       <Toaster />
-      
+
       <nav className="fixed top-20 left-1/2 -translate-x-1/2 z-40 w-[85%] max-w-2xl h-11 bg-white/60 dark:bg-black/60 backdrop-blur-3xl border dark:border-white/5 rounded-full flex items-center justify-between px-6 shadow-sm">
         <Link href={`/kitap/${id}`} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-all">
           ← Geri
@@ -246,54 +246,42 @@ const handleLike = async () => {
           <header className="mb-24 text-center">
             <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
           </header>
-          
+
           <article className={`${readerSettings.fontFamily} leading-[2.1]`} style={{ fontSize: `${readerSettings.fontSize}px` }}>
             {paragraphs.map((para, i) => {
               const paraId = i.toString();
               const count = paraCommentCounts[paraId] || 0;
-              
+
               return (
-                <div key={i} className="relative group mb-4">
+                <div key={i} className="relative group mb-4 isolate">
+
                   <div className="relative">
                     {/* YAZI KISMI - Buton için sağdan boşluk bırakıldı (pr-7) */}
-                    <div 
+                    <div
                       className={`transition-all duration-500 pr-7 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}`}
                       dangerouslySetInnerHTML={{ __html: para }}
                     />
-                    
-                    {/* BUTON KISMI - Absolute yapıldı ve satır aralığı (leading-none) sıfırlandı */}
-                 <button 
-  onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-  className={`
-    absolute right-0 top-2
-    flex items-center justify-center
-    rounded-full border font-black z-10 transition-all duration-200
 
-    /* NORMAL HAL – NOKTA GİBİ */
-    w-[6px] h-[6px] text-[0px] opacity-10
+                    <button
+                      onClick={() => setActivePara(activePara === paraId ? null : paraId)}
+                      className={`
+    absolute right-[-10px] top-1/2 -translate-y-1/2
+    w-[5px] h-[5px]
+    rounded-full
+    bg-gray-400
+    opacity-20
+    transition-all
+    pointer-events-auto
 
-    /* HOVER / GRUP */
     group-hover:w-4 group-hover:h-4
-    group-hover:text-[9px]
     group-hover:opacity-100
+    group-hover:bg-red-600
 
-    /* AKTİF veya YORUM VARSA */
-    ${count > 0 || activePara === paraId
-      ? 'w-4 h-4 text-[9px] opacity-100 scale-110'
-      : ''
-    }
-
-    ${
-      count > 0 || activePara === paraId
-        ? 'bg-red-600 border-red-600 text-white shadow-md'
-        : readerSettings.theme.includes('bg-[#0a0a0a]')
-          ? 'bg-white/20 border-white/30 text-gray-300'
-          : 'bg-gray-400 border-gray-400 text-white'
-    }
+    ${count > 0 || activePara === paraId ? 'w-4 h-4 bg-red-600 opacity-100' : ''}
   `}
->
-  {count > 0 ? count : '+'}
-</button>
+                    >
+                    </button>
+
 
                   </div>
                 </div>
@@ -322,44 +310,41 @@ const handleLike = async () => {
 
           {/* ✅ YAZAR BİLGİSİ - NAVİGASYON BUTONLARININ ALTINDA */}
           {authorProfile && (
-            <Link 
+            <Link
               href={authorLink}
               className="mt-8 flex items-center gap-4 p-5 rounded-2xl bg-current/5 hover:bg-current/10 transition-all group border border-current/10"
             >
-              <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 ${
-                readerSettings.theme.includes('bg-[#f4ecd8]')
-                  ? 'bg-[#e8d9c3]'
-                  : readerSettings.theme.includes('bg-[#0a0a0a]')
-                    ? 'bg-white/10'
-                    : 'bg-gray-200'
-              }`}>
+              <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 ${readerSettings.theme.includes('bg-[#f4ecd8]')
+                ? 'bg-[#e8d9c3]'
+                : readerSettings.theme.includes('bg-[#0a0a0a]')
+                  ? 'bg-white/10'
+                  : 'bg-gray-200'
+                }`}>
                 {authorProfile.avatar_url ? (
                   <img src={authorProfile.avatar_url} className="w-full h-full object-cover" alt="" />
                 ) : (
-                  <div className={`w-full h-full flex items-center justify-center font-black text-lg ${
-                    readerSettings.theme.includes('bg-[#f4ecd8]')
-                      ? 'text-[#8b7355]'
-                      : readerSettings.theme.includes('bg-[#0a0a0a]')
-                        ? 'text-gray-400'
-                        : 'text-gray-600'
-                  }`}>
+                  <div className={`w-full h-full flex items-center justify-center font-black text-lg ${readerSettings.theme.includes('bg-[#f4ecd8]')
+                    ? 'text-[#8b7355]'
+                    : readerSettings.theme.includes('bg-[#0a0a0a]')
+                      ? 'text-gray-400'
+                      : 'text-gray-600'
+                    }`}>
                     {authorProfile.username?.[0]?.toUpperCase() || 'Y'}
                   </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${
-                  readerSettings.theme.includes('bg-[#f4ecd8]')
-                    ? 'text-[#8b7355] opacity-60'
-                    : readerSettings.theme.includes('bg-[#0a0a0a]')
-                      ? 'text-gray-500'
-                      : 'text-gray-400'
-                }`}>
+                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${readerSettings.theme.includes('bg-[#f4ecd8]')
+                  ? 'text-[#8b7355] opacity-60'
+                  : readerSettings.theme.includes('bg-[#0a0a0a]')
+                    ? 'text-gray-500'
+                    : 'text-gray-400'
+                  }`}>
                   Yazar
                 </p>
                 <div className="text-sm font-bold group-hover:text-red-600 transition-colors">
-                  <Username 
-                    username={authorProfile.username || data.book?.username} 
+                  <Username
+                    username={authorProfile.username || data.book?.username}
                     isAdmin={isAdmin}
                   />
                 </div>
@@ -372,14 +357,13 @@ const handleLike = async () => {
         </main>
 
         {/* PARAGRAF YORUM PANELİ */}
-        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[280px] transition-all duration-500 z-[60] ${
-          activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
-        }`}>
-          <div 
+        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[280px] transition-all duration-500 z-[60] ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
+          }`}>
+          <div
             className="absolute inset-0 bg-black/50 md:hidden"
             onClick={() => setActivePara(null)}
           />
-          
+
           {/* MOBİLDEKİ KUTUYU AŞAĞI İNDİRDİM: top-16 eklendi, inset-4 yerine özel spacing kullanıldı */}
           <div className="absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
@@ -387,14 +371,14 @@ const handleLike = async () => {
               {/* Kapatma butonu alanı biraz genişletildi */}
               <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-2xl md:text-lg font-bold p-2 -mr-2">✕</button>
             </div>
-            
+
             <div className="flex-1 overflow-y-auto p-4">
-              <YorumAlani 
-                type="paragraph" 
-                targetId={bolumId} 
-                bookId={id} 
-                paraId={activePara} 
-                onCommentAdded={handleCommentAdded} 
+              <YorumAlani
+                type="paragraph"
+                targetId={bolumId}
+                bookId={id}
+                paraId={activePara}
+                onCommentAdded={handleCommentAdded}
               />
             </div>
           </div>
@@ -407,18 +391,17 @@ const handleLike = async () => {
           <div className="p-8 border-4 border-red-600 rounded-3xl bg-white/50 dark:bg-black/30">
             <div className="text-center mb-12">
               <h2 className="text-3xl md:text-4xl font-black flex items-center justify-center gap-3 dark:text-white">
-                <span className="text-red-600">📖</span> 
+                <span className="text-red-600">📖</span>
                 Bölüm Yorumları
               </h2>
-              
+
               <div className="flex justify-center mt-6">
-                <button 
+                <button
                   onClick={handleLike}
-                  className={`flex items-center gap-3 px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 ${
-                    hasLiked 
-                      ? 'bg-red-600 text-white shadow-red-600/30' 
-                      : 'bg-white dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-red-600'
-                  }`}
+                  className={`flex items-center gap-3 px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 ${hasLiked
+                    ? 'bg-red-600 text-white shadow-red-600/30'
+                    : 'bg-white dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-red-600'
+                    }`}
                 >
                   <span className="text-xl">{hasLiked ? '❤️' : '🤍'}</span>
                   <span>{hasLiked ? 'Beğendin' : 'Bölümü Beğen'} • {likes}</span>
@@ -429,12 +412,12 @@ const handleLike = async () => {
                 Bu bölüm hakkında ne düşündünüz?
               </p>
             </div>
-            
+
             {bolumId && id ? (
-              <YorumAlani 
-                type="chapter" 
-                targetId={bolumId} 
-                bookId={id} 
+              <YorumAlani
+                type="chapter"
+                targetId={bolumId}
+                bookId={id}
                 paraId={null}
                 onCommentAdded={handleCommentAdded}
                 includeParagraphs={true}
