@@ -45,7 +45,6 @@ export default function GirisSayfasi() {
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState(''); 
   const [fullName, setFullName] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [isResetMode, setIsResetMode] = useState(false);
@@ -106,148 +105,133 @@ export default function GirisSayfasi() {
   }
 
   // ANA İŞLEM (GİRİŞ veya KAYIT)
-async function handleAuth() {
-  if (isResetMode) return handleResetPassword();
+  async function handleAuth() {
+    if (isResetMode) return handleResetPassword();
 
-  const cleanLogin = sanitizeInput(loginInput);
-  const cleanPassword = password?.trim();
-  const cleanUsername = sanitizeInput(username);
-  const cleanFullName = sanitizeInput(fullName);
-  const cleanInviteCode = sanitizeInput(inviteCode);
+    const cleanLogin = sanitizeInput(loginInput);
+    const cleanPassword = password?.trim();
+    const cleanUsername = sanitizeInput(username);
+    const cleanFullName = sanitizeInput(fullName);
 
-  if (!cleanLogin || !cleanPassword) {
-    return toast.error('Lütfen tüm alanları doldurunuz.');
-  }
-
-  // KAYIT OLMA
-  if (isSignUp) {
-    if (!cleanUsername || !cleanFullName || !cleanInviteCode) {
-      return toast.error('Tüm alanlar ve Davetiye Kodu zorunludur.');
-    }
-    if (!agreed) {
-      return toast.error('Lütfen kuralları okuyup onaylayınız.');
-    }
-    if (!isEmail(cleanLogin)) {
-      return toast.error('Geçerli bir e-posta giriniz.');
+    if (!cleanLogin || !cleanPassword) {
+      return toast.error('Lütfen tüm alanları doldurunuz.');
     }
 
-    // ✅ Boşluk kontrolü ekle
-    if (cleanUsername.includes(' ') || !/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUsername)) {
-      return toast.error('Kullanıcı adı 3-20 karakter arası, boşluksuz, sadece harf, rakam, - ve _ içerebilir.');
-    }
-    setLoading(true);
-
-    try {
-      // A) DAVETİYE KODU KONTROLÜ
-      const { data: bilet, error: biletError } = await supabase
-        .from('davetiyeler')
-        .select('*')
-        .eq('kod', cleanInviteCode)
-        .eq('kullanildi', false)
-        .single();
-
-      if (biletError || !bilet) throw new Error('Geçersiz veya kullanılmış davetiye kodu!');
-
-      // B) KAYIT İŞLEMİ
-      const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: cleanLogin,
-        password: cleanPassword,
-        options: { data: { username: cleanUsername.toLowerCase(), full_name: cleanFullName } },
-      });
-
-      if (signUpError) {
-        if (signUpError.message.includes('unique')) {
-          throw new Error('Bu kullanıcı adı veya e-posta zaten kullanımda.');
-        }
-        throw signUpError;
+    // KAYIT OLMA
+    if (isSignUp) {
+      if (!cleanUsername || !cleanFullName) {
+        return toast.error('Tüm alanlar zorunludur.');
+      }
+      if (!agreed) {
+        return toast.error('Lütfen kuralları okuyup onaylayınız.');
+      }
+      if (!isEmail(cleanLogin)) {
+        return toast.error('Geçerli bir e-posta giriniz.');
       }
 
-      // 🔹 profiles tablosuna manuel insert
-      const user = authData.user;
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: user.id,
-        email: user.email,
-        username: cleanUsername.toLowerCase(),
-        full_name: cleanFullName,
-        avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername.toLowerCase()}`,
-      });
+      // ✅ Boşluk kontrolü ekle
+      if (cleanUsername.includes(' ') || !/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUsername)) {
+        return toast.error('Kullanıcı adı 3-20 karakter arası, boşluksuz, sadece harf, rakam, - ve _ içerebilir.');
+      }
+      setLoading(true);
 
-      if (profileError) throw profileError;
+      try {
+        // KAYIT İŞLEMİ
+        const { data: authData, error: signUpError } = await supabase.auth.signUp({
+          email: cleanLogin,
+          password: cleanPassword,
+          options: { data: { username: cleanUsername.toLowerCase(), full_name: cleanFullName } },
+        });
 
-      // C) BİLETİ YAK
-      await supabase.from('davetiyeler').update({ kullanildi: true }).eq('id', bilet.id);
+        if (signUpError) {
+          if (signUpError.message.includes('unique')) {
+            throw new Error('Bu kullanıcı adı veya e-posta zaten kullanımda.');
+          }
+          throw signUpError;
+        }
 
-      // D) OTOMATİK TAKİP
-      const KITAPLAB_RESMI_ID = "4990d668-2cdf-4c9d-b409-21ecf14f43ac";
-      await supabase.from('author_follows').insert({
-        follower_id: user.id,
-        followed_id: KITAPLAB_RESMI_ID,
-      });
+        // 🔹 profiles tablosuna manuel insert
+        const user = authData.user;
+        const { error: profileError } = await supabase.from('profiles').insert({
+          id: user.id,
+          email: user.email,
+          username: cleanUsername.toLowerCase(),
+          full_name: cleanFullName,
+          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername.toLowerCase()}`,
+        });
 
-      document.cookie = "site_erisim=acik; path=/; max-age=604800; SameSite=Strict";
-      toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
-      setTimeout(() => {
-        router.push('/');
-        router.refresh();
-      }, 1500);
+        if (profileError) throw profileError;
 
-    } catch (error) {
-      toast.error(error.message || 'Bir hata oluştu.');
-    } finally {
-      setLoading(false);
-    }
+        // OTOMATİK TAKİP
+        const KITAPLAB_RESMI_ID = "4990d668-2cdf-4c9d-b409-21ecf14f43ac";
+        await supabase.from('author_follows').insert({
+          follower_id: user.id,
+          followed_id: KITAPLAB_RESMI_ID,
+        });
 
-  } else {
-  // GİRİŞ YAPMA
-    setLoading(true);
-    try {
-      let finalEmail = cleanLogin;
-      if (!isEmail(cleanLogin)) {
-        // ✅ Kullanıcı adını temizle (boşluk varsa sil)
-        const cleanedUsername = cleanLogin.toLowerCase().replace(/\s+/g, '');
-        
-        const { data, error: profileError } = await supabase
+        document.cookie = "site_erisim=acik; path=/; max-age=604800; SameSite=Strict";
+        toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
+        setTimeout(() => {
+          router.push('/');
+          router.refresh();
+        }, 1500);
+
+      } catch (error) {
+        toast.error(error.message || 'Bir hata oluştu.');
+      } finally {
+        setLoading(false);
+      }
+
+    } else {
+      // GİRİŞ YAPMA
+      setLoading(true);
+      try {
+        let finalEmail = cleanLogin;
+        if (!isEmail(cleanLogin)) {
+          // ✅ Kullanıcı adını temizle (boşluk varsa sil)
+          const cleanedUsername = cleanLogin.toLowerCase().replace(/\s+/g, '');
+          
+          const { data, error: profileError } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('username', cleanedUsername)
+            .single();
+
+          if (profileError || !data) throw new Error('Hesap bulunamadı.');
+          finalEmail = data.email;
+        }
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: finalEmail,
+          password: cleanPassword,
+        });
+
+        if (error) throw new Error('Giriş bilgileri hatalı.');
+
+        const { data: profile } = await supabase
           .from('profiles')
-          .select('email')
-          .eq('username', cleanedUsername)
+          .select('is_banned')
+          .eq('id', data.user.id)
           .single();
 
-        if (profileError || !data) throw new Error('Hesap bulunamadı.');
-        finalEmail = data.email;
+        if (profile?.is_banned) {
+          await supabase.auth.signOut();
+          throw new Error('Hesabınız askıya alınmıştır.');
+        }
+
+        document.cookie = "site_erisim=acik; path=/; max-age=604800; SameSite=Strict";
+        toast.success('Giriş başarılı.');
+        setTimeout(() => {
+          router.push('/');
+          router.refresh();
+        }, 1000);
+
+      } catch (error) {
+        toast.error(error.message || 'Bir hata oluştu.');
+      } finally {
+        setLoading(false);
       }
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: finalEmail,
-        password: cleanPassword,
-      });
-
-      if (error) throw new Error('Giriş bilgileri hatalı.');
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_banned')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profile?.is_banned) {
-        await supabase.auth.signOut();
-        throw new Error('Hesabınız askıya alınmıştır.');
-      }
-
-      document.cookie = "site_erisim=acik; path=/; max-age=604800; SameSite=Strict";
-      toast.success('Giriş başarılı.');
-      setTimeout(() => {
-        router.push('/');
-        router.refresh();
-      }, 1000);
-
-    } catch (error) {
-      toast.error(error.message || 'Bir hata oluştu.');
-    } finally {
-      setLoading(false);
     }
   }
-}
-
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white p-6">
@@ -268,10 +252,10 @@ async function handleAuth() {
 
       <div className="w-full max-w-md bg-gray-50 dark:bg-gray-900 p-8 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-2xl">
         <h1 className="text-3xl font-black mb-2 text-center tracking-tight">
-          {isResetMode ? 'ŞİFREMİ UNUTTUM' : (isSignUp ? 'DAVETİYE İLE KAYIT' : 'GİRİŞ YAP')}
+          {isResetMode ? 'ŞİFREMİ UNUTTUM' : (isSignUp ? 'KAYIT OL' : 'GİRİŞ YAP')}
         </h1>
         <p className="text-gray-500 mb-8 text-sm text-center font-medium">
-          {isResetMode ? 'Bilgilerinizi girerek şifrenizi sıfırlayın.' : (isSignUp ? 'Kodu gir, aramıza katıl.' : 'Hesabınıza giriş yapın.')}
+          {isResetMode ? 'Bilgilerinizi girerek şifrenizi sıfırlayın.' : (isSignUp ? 'Aramıza katıl, yazmaya başla.' : 'Hesabınıza giriş yapın.')}
         </p>
 
         <div className="space-y-4">
@@ -289,7 +273,7 @@ async function handleAuth() {
                   placeholder="Adınız Soyadınız"
                 />
               </div>
-             <div>
+              <div>
                 <label className="block text-xs font-bold mb-1 opacity-60 uppercase">Kullanıcı Adı</label>
                 <input
                   type="text"
@@ -308,17 +292,6 @@ async function handleAuth() {
                   placeholder="kullaniciadi"
                 />
                 <p className="text-xs text-gray-500 mt-1">3-20 karakter, boşluksuz, sadece harf, rakam, - ve _</p>
-              </div>
-              <div className="relative">
-                <label className="block text-xs font-bold mb-1 text-red-600 uppercase">Davetiye Kodu (Zorunlu)</label>
-                <input
-                  type="text"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  maxLength={50}
-                  className="w-full p-3 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/30 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all font-mono tracking-widest text-center font-bold"
-                  placeholder="KODU BURAYA YAZ"
-                />
               </div>
             </>
           )}
@@ -398,10 +371,10 @@ async function handleAuth() {
               <>
                 {isSignUp ? 'Zaten hesabınız var mı?' : 'Hesabınız yok mu?'}
                 <button 
-                  onClick={() => { setIsSignUp(!isSignUp); setIsResetMode(false); setInviteCode(''); setAgreed(false); }}
+                  onClick={() => { setIsSignUp(!isSignUp); setIsResetMode(false); setAgreed(false); }}
                   className="ml-2 text-red-600 hover:underline"
                 >
-                  {isSignUp ? 'Giriş Yap' : 'Davetiye ile Kayıt Ol'}
+                  {isSignUp ? 'Giriş Yap' : 'Kayıt Ol'}
                 </button>
               </>
             )}
@@ -462,7 +435,7 @@ KVKK'nın 11. maddesi uyarınca kullanıcılar; Verilerinin işlenip işlenmedi�
 Taleplerinizi [iletisim@kitaplab.com] adresi veya Platform içi destek sistemi üzerinden iletebilirsiniz.`;
 
 const FULL_RULES_TEXT = `
-TOPLULUK SÖZLEŞMESİ VE TOPLULUK KURALLAR I
+TOPLULUK SÖZLEŞMESİ VE TOPLULUK KURALLARI
 
 Bu platform; yazarlara üretim alanı, okurlara keşif alanı sunan, yaratıcı içeriklerin paylaşıldığı bir okuma—yazma topluluğudur. Amacımız, herkesin kendini güvende hissedebileceği bir ortam oluşturmaktır.
 
@@ -507,7 +480,7 @@ Kullanıcılar birbirlerinin kişisel bilgilerini (adres, telefon vb.) paylaşam
 Yalan raporlama veya raporlama tehdidi yasaktır.
 
 13. YAPTIRIMLAR
-İhlal durumunda: İçerik uyarısı, Resmî uyarı, Geçici kısıtlama, Hesabı askıya alma veya Kalıcı kapatma uygulanabilir.
+İhlal durumunda: İçerik uyarısı, Resmi uyarı, Geçici kısıtlama, Hesabı askıya alma veya Kalıcı kapatma uygulanabilir.
 
 14. KABUL BEYANI
 Platformu kullanan herkes, bu kuralları kabul etmiş sayılır.

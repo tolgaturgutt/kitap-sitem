@@ -14,8 +14,8 @@ export function middleware(request) {
     pathname.startsWith('/_next') || 
     pathname.includes('/api/') ||
     pathname.includes('.') || 
-    pathname === '/yakinda' ||
-    pathname === '/giris'; // Giriş sayfası herkese açık olmak zorunda
+    pathname === '/yakinda' ;
+    
 
   if (isAllowedPath) return NextResponse.next();
 
