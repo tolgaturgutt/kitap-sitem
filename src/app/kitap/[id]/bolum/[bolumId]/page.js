@@ -7,6 +7,7 @@ import YorumAlani from '@/components/YorumAlani';
 import { Toaster, toast } from 'react-hot-toast';
 import { createChapterVoteNotification } from '@/lib/notifications';
 import Username from '@/components/Username';
+import Image from 'next/image';
 
 export default function BolumDetay({ params }) {
   const decodedParams = use(params);
@@ -252,24 +253,27 @@ const handleLike = async () => {
               const count = paraCommentCounts[paraId] || 0;
               
               return (
-                <div key={i} className="relative group mb-3">
-                  <div className="flex items-start justify-between gap-2 md:gap-2">
+                <div key={i} className="relative group mb-4">
+                  <div className="relative">
+                    {/* YAZI KISMI - Buton için sağdan boşluk bırakıldı (pr-7) */}
                     <div 
-                      className={`flex-1 transition-all duration-500 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2' : ''}`}
+                      className={`transition-all duration-500 pr-7 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}`}
                       dangerouslySetInnerHTML={{ __html: para }}
-                      
                     />
                     
+                    {/* BUTON KISMI - Absolute yapıldı ve satır aralığı (leading-none) sıfırlandı */}
                     <button 
                       onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                      className={`shrink-0 w-2.5 h-2.5 md:w-4 md:h-4 flex items-center justify-center rounded-full transition-all border-[0.5px] md:border text-[7px] md:text-[9px] font-black mt-0.5 md:mt-1 ${
+                      className={`absolute right-0 top-1.5 flex items-center justify-center leading-none p-0
+                        w-4 h-4 rounded-full transition-all border text-[9px] font-black z-10
+                        ${
                         count > 0 || activePara === paraId 
-                          ? 'bg-red-600 border-red-600 text-white shadow-md' 
+                          ? 'bg-red-600 border-red-600 text-white shadow-md scale-110' 
                           : readerSettings.theme.includes('bg-[#f4ecd8]')
-                            ? 'bg-[#e8d9c3] border-[#d4c4a8] text-[#8b7355] hover:bg-red-600 hover:border-red-600 hover:text-white'
+                            ? 'bg-[#e8d9c3] border-[#d4c4a8] text-[#8b7355] hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
                             : readerSettings.theme.includes('bg-[#0a0a0a]')
-                              ? 'bg-white/10 border-white/20 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white'
-                              : 'bg-gray-200 border-gray-300 text-gray-500 hover:bg-red-600 hover:border-red-600 hover:text-white'
+                              ? 'bg-white/10 border-white/20 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
+                              : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
                       }`}
                     >
                       {count > 0 ? count : '+'}
@@ -351,7 +355,7 @@ const handleLike = async () => {
         </main>
 
         {/* PARAGRAF YORUM PANELİ */}
-        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[280px] transition-all duration-500 z-50 ${
+        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[280px] transition-all duration-500 z-[60] ${
           activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
         }`}>
           <div 
@@ -359,10 +363,12 @@ const handleLike = async () => {
             onClick={() => setActivePara(null)}
           />
           
-          <div className="absolute inset-4 md:inset-0 h-[calc(100%-2rem)] md:h-full bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+          {/* MOBİLDEKİ KUTUYU AŞAĞI İNDİRDİM: top-16 eklendi, inset-4 yerine özel spacing kullanıldı */}
+          <div className="absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
             <div className="p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
               Paragraf Yorumları
-              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-2xl md:text-lg font-bold">✕</button>
+              {/* Kapatma butonu alanı biraz genişletildi */}
+              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-2xl md:text-lg font-bold p-2 -mr-2">✕</button>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4">
