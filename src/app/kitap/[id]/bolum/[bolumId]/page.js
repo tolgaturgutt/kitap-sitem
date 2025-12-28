@@ -405,7 +405,7 @@ export default function BolumDetay({ params }) {
                 Bölüm Yorumları
               </h2>
 
-              <div className="flex justify-center mt-6">
+             <div className="flex justify-center gap-3 mt-6 flex-wrap">
                 <button
                   onClick={handleLike}
                   className={`flex items-center gap-3 px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 ${hasLiked
@@ -416,6 +416,33 @@ export default function BolumDetay({ params }) {
                   <span className="text-xl">{hasLiked ? '❤️' : '🤍'}</span>
                   <span>{hasLiked ? 'Beğendin' : 'Bölümü Beğen'} • {likes}</span>
                 </button>
+
+                {user && (
+                  <button
+                    onClick={async () => {
+                      const reason = prompt("Şikayet sebebiniz nedir?");
+                      if (!reason) return;
+                      
+                      const { error } = await supabase.from('reports').insert({
+                        reporter_id: user.id,
+                        target_type: 'chapter',
+                        target_id: bolumId,
+                        reason: reason,
+                        content_snapshot: `${data.book?.title} - ${data.chapter?.title}`
+                      });
+                      
+                      if (!error) {
+                        toast.success("Bölüm raporlandı.");
+                      } else {
+                        toast.error("Hata oluştu.");
+                      }
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 rounded-full text-xs font-black uppercase tracking-widest bg-gray-100 dark:bg-white/5 text-gray-500 hover:text-red-600 transition-all hover:scale-105"
+                  >
+                    <span>🚨</span>
+                    <span>Rapor Et</span>
+                  </button>
+                )}
               </div>
 
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-6 uppercase tracking-widest">

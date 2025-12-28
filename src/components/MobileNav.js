@@ -10,10 +10,11 @@ export default function MobileNav() {
   const [showPlusMenu, setShowPlusMenu] = useState(false);
 
   const isActive = (path) => pathname === path;
-
-  const handleComingSoon = () => {
+const handleComingSoon = () => {
     toast('Yakında kullanımda! 🚀', {
       icon: '⏳',
+      duration: 3000,
+      position: 'top-center',
       style: {
         borderRadius: '10px',
         background: '#333',

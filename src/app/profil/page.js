@@ -387,7 +387,7 @@ export default function ProfilSayfasi() {
 
                   <input
                     value={profileData.username}
-                    onChange={e => setProfileData({ ...profileData, username: e.target.value })}
+                    onChange={e => setProfileData({ ...profileData, username: e.target.value.replace(/\s/g, '') })}
                     className="p-3 md:p-4 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600"
                     placeholder="Kullanıcı Adı"
                   />
@@ -434,11 +434,29 @@ export default function ProfilSayfasi() {
 
         <div className="min-h-[300px]">
           {activeTab === 'hakkında' ? (
-            <div className="p-6 md:p-8 bg-white dark:bg-white/5 rounded-2xl md:rounded-3xl border dark:border-white/5 flex flex-col items-start gap-6 animate-in fade-in slide-in-from-bottom-2">
-              <p className="italic text-gray-500 leading-relaxed w-full font-serif text-base md:text-lg">
-                {profileData.bio || "Biyografi henüz eklenmemiş."}
-              </p>
-            </div>
+  <div className="p-6 md:p-8 bg-white dark:bg-white/5 rounded-2xl md:rounded-3xl border dark:border-white/5 flex flex-col items-start gap-6 animate-in fade-in slide-in-from-bottom-2">
+    <div className="w-full">
+      <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Biyografi</h3>
+      <p className="italic text-gray-500 leading-relaxed w-full font-serif text-base md:text-lg">
+        {profileData.bio || "Biyografi henüz eklenmemiş."}
+      </p>
+    </div>
+
+    {profileData.instagram && (
+      <div className="w-full pt-6 border-t dark:border-white/10">
+        <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Instagram</h3>
+        <a 
+          href={`https://instagram.com/${profileData.instagram.replace('@', '')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold hover:scale-105 transition-transform"
+        >
+          <span>📷</span>
+          <span>@{profileData.instagram.replace('@', '')}</span>
+        </a>
+      </div>
+    )}
+  </div>
           ) : activeTab === 'panolar' ? (
             <div className="space-y-4 md:space-y-6">
               {myPanos.length === 0 ? (

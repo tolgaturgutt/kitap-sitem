@@ -223,17 +223,19 @@ export default function AdminPanel() {
   const navigateToTarget = (type, id) => {
     let url = null;
     switch(type) {
-        case 'user': url = `/profil/${id}`; break;
-        case 'book': url = `/kitap/${id}`; break;
-        case 'chapter': url = `/bolum/${id}`; break;
-        case 'comment': url = `/yorum/${id}`; break;
-        case 'review': url = `/degerlendirme/${id}`; break;
-        default: url = `/${type}/${id}`;
+        case 'book': 
+          url = `/kitap/${id}`; 
+          break;
+        case 'chapter':
+        case 'comment':
+        case 'pano_comment':
+        case 'user':
+        default:
+          // Bu tiplerde direkt link yok, sessizce geç
+          return;
     }
     if (url) window.open(url, '_blank');
-    else toast.error('Bu içerik türü için link oluşturulamadı.');
   }
-
   // YASAKLI KELİME İŞLEMLERİ
   async function addBannedWord() {
     if (!newWord.trim()) {
@@ -789,32 +791,153 @@ export default function AdminPanel() {
               </div>
 
               <div className="space-y-4">
-                {reports.map(r => (
+               {reports.map(r => (
                   <div key={r.id} className="p-6 rounded-2xl border dark:border-white/5 bg-white dark:bg-white/5 hover:shadow-xl transition-all">
-                    <div className="flex justify-between mb-4">
-                      <div className="flex gap-3 items-center">
-                        <span className="px-3 py-1 bg-gray-100 dark:bg-white/10 rounded-full text-xs font-black uppercase">{getTargetEmoji(r.target_type)} {r.target_type}</span>
-                        <span className="text-sm font-bold dark:text-white">@{r.reporter?.username || 'Anonim'}</span>
-                      </div>
-                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : r.status === 'resolved' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{r.status}</span>
-                    </div>
-                    <div className="p-4 bg-gray-50 dark:bg-black/20 rounded-xl mb-4 border-l-4 border-red-500">
-                      <p className="text-xs font-black text-gray-400 mb-1">SEBEP</p>
-                      <p className="text-sm dark:text-white">{r.reason}</p>
-                    </div>
-                    {r.content_snapshot && (
-                        <div className="mb-4 p-4 rounded-xl bg-gray-50 dark:bg-black/20 border-l-4 border-orange-500">
-                          <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Örnek:</p>
-                          <p className="text-sm dark:text-white line-clamp-2 italic">"{r.content_snapshot}"</p>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex gap-3 items-start flex-1">
+                        <span className="px-3 py-1 bg-gray-100 dark:bg-white/10 rounded-full text-xs font-black uppercase shrink-0">
+                          {getTargetEmoji(r.target_type)} {r.target_type}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-sm font-bold dark:text-white">@{r.reporter?.username || 'Anonim'}</span>
+                            <span className="text-xs text-gray-400">tarafından şikayet edildi</span>
+                          </div>
+                          <p className="text-xs text-gray-400">
+                            {new Date(r.created_at).toLocaleDateString('tr-TR', { 
+                              day: 'numeric', 
+                              month: 'long', 
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            })}
+                          </p>
                         </div>
+                      </div>
+                      <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase shrink-0 ${
+                        r.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
+                        r.status === 'resolved' ? 'bg-green-100 text-green-700' : 
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {r.status}
+                      </span>
+                    </div>
+
+                    {/* ŞİKAYET EDİLEN İÇERİK BİLGİSİ */}
+                    <div className="p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl mb-4 border-l-4 border-blue-500">
+                      <p className="text-xs font-black text-blue-600 dark:text-blue-400 mb-2 uppercase tracking-widest">
+                        📌 Şikayet Edilen İçerik
+                      </p>
+                      <div className="space-y-1">
+                        <p className="text-sm dark:text-white font-bold">
+                          Tür: <span className="text-red-600">{r.target_type}</span>
+                        </p>
+                        <p className="text-sm dark:text-white font-bold">
+                          ID: <span className="font-mono text-gray-500">#{r.target_id}</span>
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* ŞİKAYET SEBEBİ */}
+                    <div className="p-4 bg-red-50 dark:bg-red-900/10 rounded-xl mb-4 border-l-4 border-red-500">
+                      <p className="text-xs font-black text-red-600 mb-2 uppercase tracking-widest">🚨 Şikayet Sebebi</p>
+                      <p className="text-sm dark:text-white font-medium">{r.reason}</p>
+                    </div>
+
+                    {/* İÇERİK ÖRNEĞİ */}
+                    {r.content_snapshot && (
+                      <div className="mb-4 p-4 rounded-xl bg-gray-50 dark:bg-black/20 border-l-4 border-orange-500">
+                        <p className="text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">
+                          📄 İçerik Örneği:
+                        </p>
+                        <p className="text-sm dark:text-white line-clamp-3 italic">
+                          "{r.content_snapshot}"
+                        </p>
+                      </div>
                     )}
+
+                    {/* BUTONLAR */}
                     <div className="flex gap-2 flex-wrap justify-end">
-                      <button onClick={() => navigateToTarget(r.target_type, r.target_id)} className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-black shadow-sm">
+                 <button 
+                        onClick={async () => {
+                          let url = null;
+                          
+                          if (r.target_type === 'book') {
+                            url = `/kitap/${r.target_id}`;
+                          } 
+                          else if (r.target_type === 'chapter') {
+                            // Bölüm için book_id'yi bulmamız lazım
+                            const { data: chapter } = await supabase
+                              .from('chapters')
+                              .select('book_id')
+                              .eq('id', r.target_id)
+                              .single();
+                            
+                            if (chapter) {
+                              url = `/kitap/${chapter.book_id}/bolum/${r.target_id}`;
+                            }
+                          }
+                          else if (r.target_type === 'comment') {
+                            // Yorum için book_id ve chapter_id'yi bulmamız lazım
+                            const { data: comment } = await supabase
+                              .from('comments')
+                              .select('book_id, chapter_id')
+                              .eq('id', r.target_id)
+                              .single();
+                            
+                            if (comment) {
+                              if (comment.chapter_id) {
+                                url = `/kitap/${comment.book_id}/bolum/${comment.chapter_id}`;
+                              } else {
+                                url = `/kitap/${comment.book_id}`;
+                              }
+                            }
+                          }
+                         else if (r.target_type === 'pano_comment') {
+                            // Pano yorumu için pano_id'yi bul ve o panoya git
+                            const { data: panoComment } = await supabase
+                              .from('pano_comments')
+                              .select('pano_id')
+                              .eq('id', r.target_id)
+                              .single();
+                            
+                            if (panoComment) {
+                              url = `/pano/${panoComment.pano_id}`;
+                            }
+                          }
+                          
+                          if (url) {
+                            window.open(url, '_blank');
+                          } else {
+                            toast.error('İçerik bulunamadı veya silinmiş!');
+                          }
+                        }}
+                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-black shadow-sm transition-all"
+                      >
                         🔗 İNCELE
                       </button>
-                      {r.status !== 'resolved' && <button onClick={() => updateReportStatus(r.id, 'resolved')} className="px-3 py-2 bg-green-600 text-white rounded-lg text-xs font-black">✅ ÇÖZ</button>}
-                      {r.status !== 'rejected' && <button onClick={() => updateReportStatus(r.id, 'rejected')} className="px-3 py-2 bg-red-600 text-white rounded-lg text-xs font-black">❌ REDDET</button>}
-                      <button onClick={() => deleteReport(r.id)} className="px-3 py-2 bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-white rounded-lg text-xs font-black">🗑️ SİL</button>
+                      {r.status !== 'resolved' && (
+                        <button 
+                          onClick={() => updateReportStatus(r.id, 'resolved')} 
+                          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-black transition-all"
+                        >
+                          ✅ ÇÖZ
+                        </button>
+                      )}
+                      {r.status !== 'rejected' && (
+                        <button 
+                          onClick={() => updateReportStatus(r.id, 'rejected')} 
+                          className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-black transition-all"
+                        >
+                          ❌ REDDET
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => deleteReport(r.id)} 
+                        className="px-4 py-2 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 text-gray-700 dark:text-white rounded-lg text-xs font-black transition-all"
+                      >
+                        🗑️ SİL
+                      </button>
                     </div>
                   </div>
                 ))}

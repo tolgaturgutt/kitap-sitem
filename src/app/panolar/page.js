@@ -61,6 +61,7 @@ export default function TumPanolar() {
       } else {
         setPanos([]);
       }
+      
       setLoading(false);
     }
     loadData();

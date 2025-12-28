@@ -155,7 +155,27 @@ export default function PanoModal({
     setPanoComments(comments || []);
     toast.success('Yorum eklendi!');
   }
-
+async function handleReportComment(commentId, content) {
+    if (!user) return toast.error('Giriş yapmalısın!');
+    const reason = prompt("Şikayet sebebiniz nedir?");
+    if (!reason || !reason.trim()) return;
+    
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: user.id,
+      target_type: 'pano_comment',
+      target_id: commentId,
+      reason: reason.trim(),
+      content_snapshot: content,
+      status: 'pending'
+    });
+    
+    if (!error) {
+      toast.success("Yorum raporlandı.");
+    } else {
+      console.error('Report error:', error);
+      toast.error("Hata oluştu: " + error.message);
+    }
+  }
   async function handleDeleteComment(commentId) {
     if (!confirm('Silmek istiyor musun?')) return;
     const { error } = await supabase.from('pano_comments').delete().eq('id', commentId);
@@ -205,8 +225,14 @@ export default function PanoModal({
             >
               <Username username={displayUsername} isAdmin={adminEmails.includes(comment.user_email)} />
             </Link>
-            {canDelete && (
-              <button onClick={() => handleDeleteComment(comment.id)} className="opacity-0 group-hover:opacity-100 transition-opacity text-[9px] text-gray-300 hover:text-red-600 font-bold uppercase">SİL</button>
+           {user && (
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                {canDelete ? (
+                  <button onClick={() => handleDeleteComment(comment.id)} className="text-[9px] text-red-600 hover:underline font-bold uppercase">SİL</button>
+                ) : (
+                  <button onClick={() => handleReportComment(comment.id, comment.content)} className="text-[9px] text-gray-400 hover:text-red-600 font-bold uppercase">RAPOR</button>
+                )}
+              </div>
             )}
           </div>
           <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300 mt-0.5">{comment.content}</p>
