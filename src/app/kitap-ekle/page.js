@@ -70,6 +70,7 @@ export default function KitapEkle() {
           category: formData.category,
           summary: formData.summary,
           cover_url: coverUrl,
+          user_id: user.id,
           user_email: user.email,
           username: username
         }

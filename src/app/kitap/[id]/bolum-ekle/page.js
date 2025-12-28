@@ -255,6 +255,7 @@ export default function BolumEkle({ params }) {
           title: censoredTitle,
           content: censoredContent,
           order_no: sirasi,
+          word_count: wordCount // ✅ ARTIK KELİME SAYISI KAYDEDİLİYOR
         }])
         .select()
         .single();

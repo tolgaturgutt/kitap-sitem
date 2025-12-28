@@ -110,15 +110,18 @@ export default function MobileNav() {
             <div className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
           </button>
 
-          {/* ✅ SIRALAMA (YAKINDA) - EŞİT BOYUT */}
-          <button 
-            onClick={handleComingSoon}
-            className="flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
+          {/* ✅ SIRALAMA - EŞİT BOYUT */}
+          <Link 
+            href="/siralama" 
+            className={`flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all ${
+              isActive('/siralama') 
+                ? 'text-red-600' 
+                : 'text-gray-400 hover:text-red-600'
+            }`}
           >
             <div className="text-2xl leading-none flex items-center justify-center w-8 h-8">🏆</div>
             <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Sıralama</span>
-            <div className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
-          </button>
+          </Link>
 
         </div>
       </nav>

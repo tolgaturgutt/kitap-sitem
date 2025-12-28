@@ -108,10 +108,11 @@ export default function KitapDetay({ params }) {
       // --- İSTATİSTİKLER ---
       const totalViews = chapters?.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
       
-      const totalWords = chapters?.reduce((acc, curr) => {
-        const words = curr.content ? curr.content.trim().split(/\s+/).length : 0;
-        return acc + words;
-      }, 0) || 0;
+      // YENİ VE HIZLI HALİ:
+const totalWords = chapters?.reduce((acc, curr) => {
+  // Direkt veritabanındaki sayıyı al, metni analiz etme
+  return acc + (curr.word_count || 0);
+}, 0) || 0;
 
       let totalChapterVotes = 0;
       const chapterIds = chapters?.map(c => c.id) || [];

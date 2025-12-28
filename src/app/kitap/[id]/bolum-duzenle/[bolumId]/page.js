@@ -281,12 +281,13 @@ export default function BolumDuzenle({ params }) {
       const censoredTitle = censorContent(formData.title);
       const censoredContent = censorContent(htmlContent);
 
-      const { data, error } = await supabase
+     const { data, error } = await supabase
         .from('chapters')
         .update({ 
           title: censoredTitle,
           content: censoredContent,
-          updated_at: new Date() 
+          updated_at: new Date(),
+          word_count: wordCount // ✅ EKLENEN SATIR: Yeni sayıyı kaydet
         })
         .eq('id', ids.bolumId)
         .select(); 

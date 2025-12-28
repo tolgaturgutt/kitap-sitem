@@ -137,9 +137,9 @@ export default function DesktopSidebar() {
                 <Link
                   href="/kitap-ekle"
                   onClick={() => setIsOpen(false)}
-                  className="flex items-center gap-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all group/item"
+                  className="flex items-center gap-3 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-100 dark:hover:bg-red-900/30 transition-all group/item"
                 >
-                  <div className="text-xl">✍️</div>
+                  <div className="text-xl">✏️</div>
                   <div>
                     <p className="font-black text-xs text-red-600 uppercase">Kitap Yaz</p>
                     <p className="text-[8px] text-gray-500 dark:text-gray-400">Hikayeni anlat</p>
@@ -162,18 +162,22 @@ export default function DesktopSidebar() {
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse shadow-lg"></div>
           </button>
 
-          {/* 5. SIRALAMA (Yakında) */}
-          <button
-            onClick={handleComingSoon}
-            className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all group bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 relative"
+          {/* 5. SIRALAMA */}
+          <Link
+            href="/siralama"
+            onClick={() => setIsOpen(false)}
+            className={`flex items-center gap-4 p-4 rounded-2xl transition-all group ${
+              isActive('/siralama')
+                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600'
+            }`}
           >
             <div className="text-3xl">🏆</div>
-            <div className="flex-1 text-left">
+            <div className="flex-1">
               <p className="font-black text-sm uppercase tracking-wide">Sıralama</p>
               <p className="text-[9px] opacity-70 font-medium">En popüler yazarlar</p>
             </div>
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse shadow-lg"></div>
-          </button>
+          </Link>
 
         </div>
 
