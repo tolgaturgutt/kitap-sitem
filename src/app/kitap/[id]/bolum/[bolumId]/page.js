@@ -263,24 +263,38 @@ export default function BolumDetay({ params }) {
                     />
 
                     <button
-                      onClick={() => setActivePara(activePara === paraId ? null : paraId)}
-                      className={`
-    absolute right-[-10px] top-1/2 -translate-y-1/2
-    w-[5px] h-[5px]
+  onClick={() => setActivePara(activePara === paraId ? null : paraId)}
+  className={`
+    absolute right-[-12px] top-1/2 -translate-y-1/2
+    flex items-center justify-center
     rounded-full
-    bg-gray-400
-    opacity-20
-    transition-all
-    pointer-events-auto
+    transition-all duration-200
+    z-10
 
+    /* GERÇEK BOYUT */
+    w-[6px] h-[6px]
+
+    /* HİTBOX'I ZORLA KÜÇÜLT */
+    p-0 leading-none text-[8px]
+
+    /* NORMAL HAL */
+    bg-gray-400 opacity-40
+
+    /* HOVER / AKTİF */
     group-hover:w-4 group-hover:h-4
     group-hover:opacity-100
     group-hover:bg-red-600
 
     ${count > 0 || activePara === paraId ? 'w-4 h-4 bg-red-600 opacity-100' : ''}
   `}
-                    >
-                    </button>
+>
+  {count > 0 ? (
+    <span className="scale-[0.7] text-white leading-none">{count}</span>
+  ) : (
+    <span className="scale-[0.7] text-white leading-none">+</span>
+  )}
+</button>
+
 
 
                   </div>
