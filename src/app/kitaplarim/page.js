@@ -286,8 +286,8 @@ export default function KitaplarimSayfasi() {
                     </div>
                   )}
                   
-                  {/* İstatistik Şeridi */}
-                  <div className="flex items-center justify-between gap-1 mt-1 md:mt-1.5 text-[7px] md:text-[8px] font-black text-gray-400">
+                  {/* İstatistik Şeridi - 2x2 Grid Mobilde */}
+                  <div className="grid grid-cols-2 gap-0.5 mt-1 md:flex md:items-center md:justify-center md:gap-2 md:mt-1.5 text-[7px] md:text-[8px] font-black text-gray-400">
                     <span className="flex items-center gap-0.5">👁️ {formatNumber(k.totalViews)}</span>
                     <span className="flex items-center gap-0.5">❤️ {formatNumber(k.totalVotes)}</span>
                     <span className="flex items-center gap-0.5">💬 {formatNumber(k.totalComments)}</span>
