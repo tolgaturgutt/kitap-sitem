@@ -271,7 +271,8 @@ export default function BolumDetay({ params }) {
   onClick={() => setActivePara(activePara === paraId ? null : paraId)}
   className={`
     absolute right-[-12px] top-1/2 -translate-y-1/2
-    w-[6px] h-[6px]
+    w-[15px] h-[15px] md:w-[25px] md:h-[25px]
+
     rounded-full bg-gray-400 opacity-40
     z-10 cursor-pointer
     transition-all
