@@ -168,7 +168,7 @@ export default function KitaplarimSayfasi() {
         </div>
 
         {/* TABS */}
-        <div className="flex gap-2 md:gap-8 mb-6 md:mb-8 border-b dark:border-white/5 pb-2 md:pb-4 overflow-x-auto scrollbar-hide">
+        <div className="grid grid-cols-2 md:flex gap-2 md:gap-8 mb-6 md:mb-8 border-b dark:border-white/5 pb-2 md:pb-4">
           <button 
             onClick={() => setActiveTab('eserlerim')} 
             className={`text-[9px] md:text-[10px] font-black uppercase tracking-wider whitespace-nowrap transition-colors px-2 md:px-0 py-2 ${
