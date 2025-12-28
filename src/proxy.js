@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export default function proxy(request) {  // ← middleware → proxy (default export)
+export default function proxy(request) {
   const { pathname } = request.nextUrl;
   
   // Site Bakım Modunda mı?
@@ -9,11 +9,12 @@ export default function proxy(request) {  // ← middleware → proxy (default e
   // Yönetici Şifresi
   const GIZLI_ANAHTAR = "kitaplab_x99_erisim"; 
   
-  // 1. İZİNLİ GİRİŞ NOKTALARI
+  // 1. İZİNLİ GİRİŞ NOKTALARI (teknik dosyalar)
   const isAllowedPath = 
     pathname.startsWith('/_next') || 
     pathname.includes('/api/') ||
-    pathname.includes('.');
+    pathname.includes('.') ||
+    pathname === '/yakinda'; // ← Yakında sayfası herkese açık
 
   if (isAllowedPath) return NextResponse.next();
 
@@ -37,10 +38,9 @@ export default function proxy(request) {  // ← middleware → proxy (default e
     return response;
   }
 
-  // 4. KİMSE DEĞİLSE -> ANA SAYFAYA GİT (bakım modu mesajı göster)
-  if (isMaintenanceMode) {
-    // Artık /yakinda yok, ana sayfada bakım mesajı göstereceğiz
-    return NextResponse.next();
+  // 4. KİMSE DEĞİLSE VE BAKIM MODUNDAYSA -> YAKINDA SAYFASINA YÖNLENDIR
+  if (isMaintenanceMode && pathname !== '/yakinda') {
+    return NextResponse.redirect(new URL('/yakinda', request.url));
   }
 
   return NextResponse.next();
