@@ -262,22 +262,27 @@ const handleLike = async () => {
                     />
                     
                     {/* BUTON KISMI - Absolute yapıldı ve satır aralığı (leading-none) sıfırlandı */}
-                    <button 
-                      onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
-                      className={`absolute right-0 top-1.5 flex items-center justify-center leading-none p-0
-                        w-4 h-4 rounded-full transition-all border text-[9px] font-black z-10
-                        ${
-                        count > 0 || activePara === paraId 
-                          ? 'bg-red-600 border-red-600 text-white shadow-md scale-110' 
-                          : readerSettings.theme.includes('bg-[#f4ecd8]')
-                            ? 'bg-[#e8d9c3] border-[#d4c4a8] text-[#8b7355] hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
-                            : readerSettings.theme.includes('bg-[#0a0a0a]')
-                              ? 'bg-white/10 border-white/20 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
-                              : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
-                      }`}
-                    >
-                      {count > 0 ? count : '+'}
-                    </button>
+                 <button 
+  onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
+  className={`
+    absolute right-0 top-1.5 flex items-center justify-center leading-none p-0
+    w-3 h-3 text-[8px]
+    md:w-4 md:h-4 md:text-[9px]
+    rounded-full transition-all border font-black z-10
+    ${
+      count > 0 || activePara === paraId 
+        ? 'bg-red-600 border-red-600 text-white shadow-md scale-110' 
+        : readerSettings.theme.includes('bg-[#f4ecd8]')
+          ? 'bg-[#e8d9c3] border-[#d4c4a8] text-[#8b7355] hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
+          : readerSettings.theme.includes('bg-[#0a0a0a]')
+            ? 'bg-white/10 border-white/20 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
+            : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
+    }
+  `}
+>
+  {count > 0 ? count : '+'}
+</button>
+
                   </div>
                 </div>
               );
