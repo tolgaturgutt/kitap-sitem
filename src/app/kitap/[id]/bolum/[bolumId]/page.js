@@ -265,18 +265,30 @@ const handleLike = async () => {
                  <button 
   onClick={() => setActivePara(activePara === paraId ? null : paraId)} 
   className={`
-    absolute right-0 top-1.5 flex items-center justify-center leading-none p-0
-    w-3 h-3 text-[8px]
-    md:w-4 md:h-4 md:text-[9px]
-    rounded-full transition-all border font-black z-10
+    absolute right-0 top-2
+    flex items-center justify-center
+    rounded-full border font-black z-10 transition-all duration-200
+
+    /* NORMAL HAL – NOKTA GİBİ */
+    w-[6px] h-[6px] text-[0px] opacity-10
+
+    /* HOVER / GRUP */
+    group-hover:w-4 group-hover:h-4
+    group-hover:text-[9px]
+    group-hover:opacity-100
+
+    /* AKTİF veya YORUM VARSA */
+    ${count > 0 || activePara === paraId
+      ? 'w-4 h-4 text-[9px] opacity-100 scale-110'
+      : ''
+    }
+
     ${
-      count > 0 || activePara === paraId 
-        ? 'bg-red-600 border-red-600 text-white shadow-md scale-110' 
-        : readerSettings.theme.includes('bg-[#f4ecd8]')
-          ? 'bg-[#e8d9c3] border-[#d4c4a8] text-[#8b7355] hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
-          : readerSettings.theme.includes('bg-[#0a0a0a]')
-            ? 'bg-white/10 border-white/20 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
-            : 'bg-gray-100 border-gray-300 text-gray-400 hover:bg-red-600 hover:border-red-600 hover:text-white opacity-40 group-hover:opacity-100'
+      count > 0 || activePara === paraId
+        ? 'bg-red-600 border-red-600 text-white shadow-md'
+        : readerSettings.theme.includes('bg-[#0a0a0a]')
+          ? 'bg-white/20 border-white/30 text-gray-300'
+          : 'bg-gray-400 border-gray-400 text-white'
     }
   `}
 >
