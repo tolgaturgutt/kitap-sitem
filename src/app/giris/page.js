@@ -73,11 +73,14 @@ export default function GirisSayfasi() {
       let targetEmail = cleanInput;
       
       if (!isEmail(cleanInput)) {
+        // ✅ Kullanıcı adını temizle (boşluk varsa sil)
+        const cleanedUsername = cleanInput.toLowerCase().replace(/\s+/g, '');
+        
         // 🔒 GÜVENLİK: .eq() kullanarak exact match
         const { data, error } = await supabase
           .from('profiles')
           .select('email')
-          .eq('username', cleanInput.toLowerCase()) // Case-insensitive için lowercase
+          .eq('username', cleanedUsername)
           .single();
         
         if (error || !data) {
@@ -128,10 +131,10 @@ async function handleAuth() {
       return toast.error('Geçerli bir e-posta giriniz.');
     }
 
-    if (!/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUsername)) {
-      return toast.error('Kullanıcı adı 3-20 karakter arası, sadece harf, rakam, - ve _ içerebilir.');
+    // ✅ Boşluk kontrolü ekle
+    if (cleanUsername.includes(' ') || !/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUsername)) {
+      return toast.error('Kullanıcı adı 3-20 karakter arası, boşluksuz, sadece harf, rakam, - ve _ içerebilir.');
     }
-
     setLoading(true);
 
     try {
@@ -195,21 +198,23 @@ async function handleAuth() {
     }
 
   } else {
-    // GİRİŞ YAPMA
+  // GİRİŞ YAPMA
     setLoading(true);
     try {
       let finalEmail = cleanLogin;
       if (!isEmail(cleanLogin)) {
+        // ✅ Kullanıcı adını temizle (boşluk varsa sil)
+        const cleanedUsername = cleanLogin.toLowerCase().replace(/\s+/g, '');
+        
         const { data, error: profileError } = await supabase
           .from('profiles')
           .select('email')
-          .eq('username', cleanLogin.toLowerCase())
+          .eq('username', cleanedUsername)
           .single();
 
         if (profileError || !data) throw new Error('Hesap bulunamadı.');
         finalEmail = data.email;
       }
-
       const { data, error } = await supabase.auth.signInWithPassword({
         email: finalEmail,
         password: cleanPassword,
@@ -284,18 +289,25 @@ async function handleAuth() {
                   placeholder="Adınız Soyadınız"
                 />
               </div>
-              <div>
+             <div>
                 <label className="block text-xs font-bold mb-1 opacity-60 uppercase">Kullanıcı Adı</label>
                 <input
                   type="text"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    // ✅ Boşlukları otomatik sil, sadece geçerli karakterler
+                    const cleaned = e.target.value
+                      .toLowerCase()
+                      .replace(/\s+/g, '') // Boşlukları sil
+                      .replace(/[^a-z0-9_-]/g, ''); // Sadece harf, rakam, - ve _
+                    setUsername(cleaned);
+                  }}
                   maxLength={20}
                   pattern="[a-zA-Z0-9_-]+"
                   className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
                   placeholder="kullaniciadi"
                 />
-                <p className="text-xs text-gray-500 mt-1">3-20 karakter, sadece harf, rakam, - ve _</p>
+                <p className="text-xs text-gray-500 mt-1">3-20 karakter, boşluksuz, sadece harf, rakam, - ve _</p>
               </div>
               <div className="relative">
                 <label className="block text-xs font-bold mb-1 text-red-600 uppercase">Davetiye Kodu (Zorunlu)</label>

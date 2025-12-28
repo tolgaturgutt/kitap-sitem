@@ -52,11 +52,35 @@ export default function BolumDetay({ params }) {
 
         const { data: chapter } = await supabase.from('chapters').select('*').eq('id', bolumId).single();
         const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
-        const { data: all } = await supabase.from('chapters').select('id, title').eq('book_id', id).order('order_no', { ascending: true });
+        const { data: all } = await supabase.from('chapters').select('id, title, is_draft').eq('book_id', id).order('order_no', { ascending: true });
 
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         setUser(currentUser);
 
+        // ✅ TASLAK KONTROL - Yazar veya admin değilse erişimi engelle
+        const isAuthor = currentUser && book?.user_email === currentUser.email;
+        
+        let isUserAdmin = false;
+        if (currentUser) {
+          const { data: adminCheck } = await supabase
+            .from('announcement_admins')
+            .select('user_email')
+            .eq('user_email', currentUser.email)
+            .single();
+          isUserAdmin = !!adminCheck;
+        }
+
+        // Eğer bölüm taslaksa ve kullanıcı yazar/admin değilse
+        if (chapter?.is_draft && !isAuthor && !isUserAdmin) {
+          window.location.href = '/'; // Ana sayfaya yönlendir
+          return;
+        }
+
+        // Eğer kitap taslaksa ve kullanıcı yazar/admin değilse
+        if (book?.is_draft && !isAuthor && !isUserAdmin) {
+          window.location.href = '/';
+          return;
+        }
         // Yazar profilini çek
         if (book?.user_email) {
           const { data: profile } = await supabase
@@ -181,8 +205,16 @@ export default function BolumDetay({ params }) {
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black opacity-10 animate-pulse text-5xl italic uppercase tracking-tighter">YUKLENIYOR</div>;
 
   const currentIndex = data.allChapters.findIndex(c => Number(c.id) === Number(bolumId));
-  const prevChapter = currentIndex > 0 ? data.allChapters[currentIndex - 1] : null;
-  const nextChapter = (currentIndex !== -1 && currentIndex < data.allChapters.length - 1) ? data.allChapters[currentIndex + 1] : null;
+  
+  // ✅ Yazar/admin değilse sadece yayında bölümleri göster
+  const isAuthor = user && data.book?.user_email === user.email;
+  const visibleChapters = (isAuthor || isAdmin) 
+    ? data.allChapters 
+    : data.allChapters.filter(c => !c.is_draft);
+  
+  const visibleIndex = visibleChapters.findIndex(c => Number(c.id) === Number(bolumId));
+  const prevChapter = visibleIndex > 0 ? visibleChapters[visibleIndex - 1] : null;
+  const nextChapter = (visibleIndex !== -1 && visibleIndex < visibleChapters.length - 1) ? visibleChapters[visibleIndex + 1] : null;
 
   const paragraphs = data.chapter?.content
     ? (() => {

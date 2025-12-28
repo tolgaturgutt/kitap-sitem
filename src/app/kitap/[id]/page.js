@@ -38,6 +38,9 @@ export default function KitapDetay({ params }) {
     authorIsAdmin: false
   });
   const [loading, setLoading] = useState(true);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+  const [isSorting, setIsSorting] = useState(false);
 
   useEffect(() => {
     async function fetchAll() {
@@ -56,7 +59,6 @@ export default function KitapDetay({ params }) {
       }
 
       // 2. PROFİLİ BUL (GARANTİ YÖNTEM - Hibrit Sistem)
-      // Önce user_id ile dene (Yeni Sistem)
       let authorProfile = null;
 
       if (book.user_id) {
@@ -64,13 +66,11 @@ export default function KitapDetay({ params }) {
         if (pId) authorProfile = pId;
       }
 
-      // Eğer ID ile bulamazsa Username ile dene (Eski Sistem - Kurtarıcı)
       if (!authorProfile && book.username) {
         const { data: pUser } = await supabase.from('profiles').select('*').eq('username', book.username).single();
         if (pUser) authorProfile = pUser;
       }
 
-      // Hala yoksa Email ile dene (Son Çare)
       if (!authorProfile && book.user_email) {
         const { data: pEmail } = await supabase.from('profiles').select('*').eq('email', book.user_email).single();
         if (pEmail) authorProfile = pEmail;
@@ -99,28 +99,37 @@ export default function KitapDetay({ params }) {
         if (admin) adminStatus = true;
       }
       
-      // 5. BÖLÜMLERİ ÇEK
+      // 5. BÖLÜMLERI ÇEK
       const { data: chapters } = await supabase.from('chapters')
         .select('*')
         .eq('book_id', id)
         .order('order_no', { ascending: true });
       
-      // --- İSTATİSTİKLER ---
-      const totalViews = chapters?.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
+      // Kullanıcı yazar veya admin değilse, sadece yayındaki bölümleri göster
+      let filteredChapters = chapters || [];
+      const willBeAuthor = user && book.user_email === user.email;
+      const willBeAdmin = adminStatus;
       
-      // YENİ VE HIZLI HALİ:
-const totalWords = chapters?.reduce((acc, curr) => {
-  // Direkt veritabanındaki sayıyı al, metni analiz etme
-  return acc + (curr.word_count || 0);
-}, 0) || 0;
+      if (!willBeAuthor && !willBeAdmin) {
+        filteredChapters = filteredChapters.filter(c => !c.is_draft);
+      }
+      
+      // --- İSTATİSTİKLER (Sadece yayında olan bölümler) ---
+      const publishedChapters = filteredChapters.filter(c => !c.is_draft);
+      
+      const totalViews = publishedChapters.reduce((acc, curr) => acc + (Number(curr.views) || 0), 0) || 0;
+      
+      const totalWords = publishedChapters.reduce((acc, curr) => {
+        return acc + (curr.word_count || 0);
+      }, 0) || 0;
 
       let totalChapterVotes = 0;
-      const chapterIds = chapters?.map(c => c.id) || [];
-      if (chapterIds.length > 0) {
+      const publishedChapterIds = publishedChapters.map(c => c.id);
+      if (publishedChapterIds.length > 0) {
         const { count } = await supabase
           .from('chapter_votes')
           .select('*', { count: 'exact', head: true })
-          .in('chapter_id', chapterIds);
+          .in('chapter_id', publishedChapterIds);
         totalChapterVotes = count || 0;
       }
 
@@ -135,16 +144,16 @@ const totalWords = chapters?.reduce((acc, curr) => {
 
       setData({ 
         book, 
-        authorProfile, // Artık dolu gelmesi garanti
-        chapters: chapters || [], 
+        authorProfile,
+        chapters: filteredChapters, 
         stats: { 
           views: totalViews, 
           votes: totalChapterVotes, 
           follows: follows || 0,
           comments: comments || 0,
-          chapters: chapters?.length || 0,
+          chapters: publishedChapters.length, // Sadece yayında bölümler sayılır
           words: totalWords
-        }, 
+        },
         isFollowing: following, 
         user,
         isAdmin: adminStatus,
@@ -155,8 +164,99 @@ const totalWords = chapters?.reduce((acc, curr) => {
     fetchAll();
   }, [id]);
 
-  // --- FONKSİYONLAR (HEPSİ KORUNDU) ---
+  // --- YENİ: BÖLÜM TASLAĞA ATMA ---
+  async function handleToggleChapterDraft(chapterId) {
+    const chapter = data.chapters.find(c => c.id === chapterId);
+    if (!chapter) return;
 
+    const newDraftStatus = !chapter.is_draft;
+    const { error } = await supabase
+      .from('chapters')
+      .update({ is_draft: newDraftStatus })
+      .eq('id', chapterId);
+
+    if (error) {
+      toast.error("Hata: " + error.message);
+    } else {
+      setData(prev => ({
+        ...prev,
+        chapters: prev.chapters.map(c => 
+          c.id === chapterId ? { ...c, is_draft: newDraftStatus } : c
+        )
+      }));
+      
+      if (newDraftStatus) {
+        toast.success("📝 Bölüm taslağa alındı");
+      } else {
+        toast.success("🌐 Bölüm yayına alındı");
+      }
+    }
+  }
+
+  // --- YENİ: SIRALAMA FONKSİYONLARI ---
+  function handleDragStart(index) {
+    setDraggedIndex(index);
+  }
+
+  function handleDragOver(e, index) {
+    e.preventDefault();
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  }
+
+  function handleDragLeave() {
+    setDragOverIndex(null);
+  }
+
+  function handleDragEnd() {
+    setDragOverIndex(null);
+  }
+
+  async function handleDrop(dropIndex) {
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newChapters = [...data.chapters];
+    const [draggedChapter] = newChapters.splice(draggedIndex, 1);
+    newChapters.splice(dropIndex, 0, draggedChapter);
+
+    // Yeni sıra numaralarını ata
+    const updatedChapters = newChapters.map((chapter, index) => ({
+      ...chapter,
+      order_no: index + 1
+    }));
+
+    setData(prev => ({ ...prev, chapters: updatedChapters }));
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    setIsSorting(true);
+
+    // Veritabanını güncelle
+    const toastId = toast.loading('Sıralama kaydediliyor...');
+    try {
+      const updates = updatedChapters.map(chapter => 
+        supabase
+          .from('chapters')
+          .update({ order_no: chapter.order_no })
+          .eq('id', chapter.id)
+      );
+
+      await Promise.all(updates);
+      toast.dismiss(toastId);
+      toast.success('✅ Sıralama kaydedildi');
+    } catch (error) {
+      toast.dismiss(toastId);
+      toast.error('Hata: ' + error.message);
+    } finally {
+      setIsSorting(false);
+    }
+  }
+
+  // --- DİĞER FONKSİYONLAR ---
   async function handleToggleDraft() {
     const isAuthor = data.user && data.book.user_email === data.user.email;
     if (!isAuthor && !data.isAdmin) return;
@@ -169,7 +269,7 @@ const totalWords = chapters?.reduce((acc, curr) => {
     } else {
       setData(prev => ({ ...prev, book: { ...prev.book, is_draft: newStatus } }));
       if (newStatus) toast.success("Kitap TASLAĞA alındı. Artık sadece sen görebilirsin. 🔒");
-      else toast.success("Kitap YAYINA alındı. Herkes görebilir. 🌍");
+      else toast.success("Kitap YAYINA alındı. Herkes görebilir. 🌐");
     }
   }
 
@@ -263,7 +363,12 @@ const totalWords = chapters?.reduce((acc, curr) => {
   const isAuthor = data.user && data.book.user_email === data.user.email;
   const canEdit = isAuthor || data.isAdmin;
 
-  const isHidden = (data.chapters.length === 0 || data.book.is_draft) && !canEdit;
+  // Taslak olmayan bölümleri filtrele (normal kullanıcılar için)
+  const visibleChapters = canEdit 
+    ? data.chapters 
+    : data.chapters.filter(c => !c.is_draft);
+
+  const isHidden = (visibleChapters.length === 0 || data.book.is_draft) && !canEdit;
 
   if (isHidden) {
     return (
@@ -289,9 +394,6 @@ const totalWords = chapters?.reduce((acc, curr) => {
     );
   }
 
-  // --- GÖSTERİM AYARLARI (KRİTİK KISIM) ---
-  // Eğer authorProfile varsa onun verisini kullan (Günceldir)
-  // Yoksa kitabın üzerindeki eski veriyi kullan (Yedek)
   const displayAuthorName = data.authorProfile?.username || data.book.username;
   const displayAuthorAvatar = data.authorProfile?.avatar_url;
 
@@ -434,7 +536,7 @@ const totalWords = chapters?.reduce((acc, curr) => {
                          : 'bg-gray-800 text-gray-400 border border-white/10 hover:bg-gray-700 hover:text-white'
                      }`}
                    >
-                     {data.book.is_draft ? '🌍 YAYINLA (CANLIYA AL)' : '🔒 TASLAĞA ÇEK (GİZLE)'}
+                     {data.book.is_draft ? '🌐 YAYINLA (CANLIYA AL)' : '🔒 TASLAĞA ÇEK (GİZLE)'}
                    </button>
 
                    <button
@@ -477,56 +579,112 @@ const totalWords = chapters?.reduce((acc, curr) => {
           <div className="flex items-center justify-between mb-10">
             <h2 className="text-3xl font-black dark:text-white uppercase tracking-tighter italic flex items-center gap-3">
               📖 Eserin Bölümleri
-              <span className="text-sm text-gray-400 font-normal">({data.stats.chapters})</span>
+              <span className="text-sm text-gray-400 font-normal">({visibleChapters.length})</span>
             </h2>
+            {canEdit && visibleChapters.length > 0 && (
+              <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
+                🔄 Sürükle & Bırak ile sırala
+              </p>
+            )}
           </div>
           
           <div className="space-y-4">
-            {data.chapters.length === 0 ? (
+            {visibleChapters.length === 0 ? (
               <div className="text-center py-20 bg-white dark:bg-white/5 rounded-[2rem] border dark:border-white/5">
                 <span className="text-5xl block mb-4">📝</span>
                 <p className="text-xl font-black text-gray-400">Henüz bölüm eklenmemiş</p>
               </div>
             ) : (
-              data.chapters.map((c, idx) => (
-                <div key={c.id} className="group">
-                  <Link 
-                    href={`/kitap/${id}/bolum/${c.id}`} 
-                    className="flex items-center justify-between p-6 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2rem] hover:border-red-600 hover:shadow-xl transition-all"
+              visibleChapters.map((c, idx) => (
+                <div 
+                  key={c.id} 
+                  className={`group transition-all duration-300 ${
+                    draggedIndex === idx ? 'scale-105 rotate-2 z-50' : ''
+                  } ${dragOverIndex === idx ? 'scale-105' : ''}`}
+                  draggable={canEdit}
+                  onDragStart={() => handleDragStart(idx)}
+                  onDragOver={(e) => handleDragOver(e, idx)}
+                  onDragLeave={handleDragLeave}
+                  onDragEnd={handleDragEnd}
+                  onDrop={() => handleDrop(idx)}
+                >
+                  <div 
+                    className={`relative transition-all duration-300 ${
+                      dragOverIndex === idx ? 'mb-20' : ''
+                    }`}
                   >
-                    <div className="flex items-center gap-6 flex-1">
-                      <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center">
-                        <span className="text-sm font-black text-red-600">{String(c.order_no).padStart(2, '0')}</span>
+                    <Link 
+                      href={`/kitap/${id}/bolum/${c.id}`} 
+                      className={`flex items-center justify-between p-6 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2rem] transition-all duration-300 ${
+                        draggedIndex === idx 
+                          ? 'opacity-40 blur-sm shadow-2xl border-red-600' 
+                          : 'hover:border-red-600 hover:shadow-xl'
+                      } ${
+                        dragOverIndex === idx 
+                          ? 'border-dashed border-red-600 border-2 bg-red-50 dark:bg-red-950/10' 
+                          : ''
+                      } ${
+                        c.is_draft ? 'opacity-60 border-dashed' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-6 flex-1">
+                        {canEdit && (
+                          <div className="cursor-move text-gray-400 hover:text-red-600 transition-all duration-300 hover:scale-125">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                            </svg>
+                          </div>
+                        )}
+                        <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-950/20 flex items-center justify-center shrink-0">
+                          <span className="text-sm font-black text-red-600">{String(c.order_no).padStart(2, '0')}</span>
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="font-bold text-lg dark:text-white group-hover:text-red-600 transition-colors">
+                              {c.title}
+                            </h3>
+                            {c.is_draft && (
+                              <span className="text-[8px] font-black uppercase text-gray-500 bg-gray-100 dark:bg-white/5 px-2 py-0.5 rounded-full">
+                                📝 Taslak
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
+                            👁️ {c.views || 0} okuma
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="font-bold text-lg dark:text-white mb-1 group-hover:text-red-600 transition-colors">
-                          {c.title}
-                        </h3>
-                        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                          👁️ {c.views || 0} okuma
-                        </p>
+                      <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
+                        OKU →
+                      </span>
+                    </Link>
+                    {canEdit && (
+                      <div className="flex gap-2 mt-2 ml-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleToggleChapterDraft(c.id)}
+                          className={`text-[9px] font-black uppercase transition-colors px-3 py-1 rounded-full ${
+                            c.is_draft
+                              ? 'text-blue-600 hover:text-blue-700 bg-blue-50 dark:bg-blue-950/20'
+                              : 'text-gray-600 hover:text-gray-700 bg-gray-100 dark:bg-white/5'
+                          }`}
+                        >
+                          {c.is_draft ? '🌐 Yayınla' : '📝 Taslağa Al'}
+                        </button>
+                        <Link 
+                          href={`/kitap/${id}/bolum-duzenle/${c.id}`}
+                          className="text-[9px] font-black uppercase text-blue-600 hover:text-blue-700 transition-colors px-3 py-1 bg-blue-50 dark:bg-blue-950/20 rounded-full"
+                        >
+                          ✏️ Düzenle
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteChapter(c.id)}
+                          className="text-[9px] font-black uppercase text-red-600 hover:text-red-700 transition-colors px-3 py-1 bg-red-50 dark:bg-red-950/20 rounded-full"
+                        >
+                          🗑️ Sil
+                        </button>
                       </div>
-                    </div>
-                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                      OKU →
-                    </span>
-                  </Link>
-                  {canEdit && (
-                    <div className="flex gap-2 mt-2 ml-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Link 
-                        href={`/kitap/${id}/bolum-duzenle/${c.id}`}
-                        className="text-[9px] font-black uppercase text-blue-600 hover:text-blue-700 transition-colors px-3 py-1 bg-blue-50 dark:bg-blue-950/20 rounded-full"
-                      >
-                        ✏️ Düzenle
-                      </Link>
-                      <button
-                        onClick={() => handleDeleteChapter(c.id)}
-                        className="text-[9px] font-black uppercase text-red-600 hover:text-red-700 transition-colors px-3 py-1 bg-red-50 dark:bg-red-950/20 rounded-full"
-                      >
-                        🗑️ Sil
-                      </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               ))
             )}

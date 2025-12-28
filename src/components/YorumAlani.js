@@ -287,19 +287,29 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain }) {
     const canDelete = user && (isAdmin || isOwner || user.id === comment.user_id);
 
+    // ✅ Profil linki mantığı
+    const isOwnComment = user && user.id === comment.user_id;
+    const commentUsername = comment.profiles?.username || comment.username || "Anonim";
+    const profileLink = isOwnComment ? '/profil' : `/yazar/${commentUsername}`;
+
     return (
         <div className={`group relative flex gap-3 ${!isMain ? 'border-l-2 border-gray-100 dark:border-white/5 pl-4' : ''}`}>
-            <div className={`${isMain ? 'w-10 h-10' : 'w-8 h-8'} rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 flex items-center justify-center font-black text-gray-400 text-xs`}>
-                {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} className="w-full h-full object-cover" /> : (comment.profiles?.username || "?")[0].toUpperCase()}
-            </div>
+            <a 
+                href={profileLink}
+                className={`${isMain ? 'w-10 h-10' : 'w-8 h-8'} rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 flex items-center justify-center font-black text-gray-400 text-xs hover:ring-2 hover:ring-red-600 transition-all cursor-pointer`}
+            >
+                {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} className="w-full h-full object-cover" /> : (commentUsername)[0].toUpperCase()}
+            </a>
             
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
-                    <Username 
-                        username={comment.profiles?.username || comment.username || "Anonim"}
-                        isAdmin={comment.profiles?.role === 'admin'}
-                        className={`${isMain ? 'text-[11px]' : 'text-[10px]'} font-black dark:text-gray-300 mb-1 tracking-wide uppercase`}
-                    />
+                    <a href={profileLink} className="hover:text-red-600 transition-colors">
+                        <Username 
+                            username={commentUsername}
+                            isAdmin={comment.profiles?.role === 'admin'}
+                            className={`${isMain ? 'text-[11px]' : 'text-[10px]'} font-black dark:text-gray-300 mb-1 tracking-wide uppercase`}
+                        />
+                    </a>
                     {user && (
                         <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
                             <button onClick={onReply} className="text-[10px] text-blue-500 hover:underline font-bold uppercase">{isReplying ? 'Kapat' : 'Yanıtla'}</button>

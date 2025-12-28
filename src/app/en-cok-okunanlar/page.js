@@ -33,11 +33,10 @@ export default function Top100Page() {
     try {
       // 1. Kitapları Okunma Sayısına (views) göre çek
       // ✅ GÜNCELLEME: profiles:user_id ile yazarın güncel adını ve rolünü direkt alıyoruz.
+     // ✅ Tüm kitapları çek (sıralama sonra yapılacak)
       let { data: newBooks } = await supabase
         .from('books')
-        .select('*, chapters(id, views), profiles:user_id(username, role)') 
-        .order('views', { ascending: false })
-        .range(currentOffset, currentOffset + LIMIT_PER_PAGE - 1);
+        .select('*, chapters(id, views), profiles:user_id(username, role)');
 
       // ✅ HAYALET FİLTRESİ: Taslakları ve Bölümsüzleri listeden at
       if (newBooks) {
@@ -89,8 +88,10 @@ export default function Top100Page() {
         const chapterIds = book.chapters.map(c => c.id);
         const totalVotes = votesData?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
 
-        // 3. Toplam Okunma (Bölümlerin toplamı)
-        const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
+       // 3. Toplam Okunma (Sadece mevcut bölümler)
+        const totalViews = book.chapters
+          .filter(c => c.id) // Silinen bölümleri atla
+          .reduce((sum, c) => sum + (c.views || 0), 0);
 
         return { 
           ...book, 
@@ -101,6 +102,11 @@ export default function Top100Page() {
           totalViews
         };
       });
+      // ✅ Hesaplanan totalViews'e göre sırala
+      newBooks.sort((a, b) => b.totalViews - a.totalViews);
+
+      // ✅ Sayfalama uygula
+      newBooks = newBooks.slice(currentOffset, currentOffset + LIMIT_PER_PAGE);
 
       // 3. Listeyi Güncelle (Çift Kayıt Korumalı)
       setBooks(prev => {

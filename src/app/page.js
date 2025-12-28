@@ -382,8 +382,9 @@ export default function Home() {
 
       const { data: recentChaps } = await supabase
         .from('chapters')
-        .select('id, title, created_at, book_id, books!inner(title, cover_url, username, is_draft, user_email, user_id, profiles:user_id(username, avatar_url, email))')
+        .select('id, title, created_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, profiles:user_id(username, avatar_url, email))')
         .eq('books.is_draft', false)
+        .eq('is_draft', false) // ✅ Taslak bölümleri filtrele
         .order('created_at', { ascending: false })
         .limit(20);
       
@@ -401,9 +402,9 @@ export default function Home() {
 
       setLatestChapters(recentChapsWithAdmin);
 
-      let { data: allBooks, error: booksError } = await supabase
+   let { data: allBooks, error: booksError } = await supabase
         .from('books')
-        .select('*, profiles:user_id(username, avatar_url, email), chapters(id, views)');
+        .select('*, profiles:user_id(username, avatar_url, email), chapters(id, views, is_draft)');
       
       if (booksError) {
         setLoading(false);
@@ -413,12 +414,23 @@ export default function Home() {
       const { data: allComments } = await supabase.from('comments').select('book_id');
       const { data: allVotes } = await supabase.from('chapter_votes').select('chapter_id');
 
-      if (allBooks) {
-        allBooks = allBooks.filter(book => book.chapters && book.chapters.length > 0 && !book.is_draft);
+    if (allBooks) {
+        // ✅ 1. Taslak kitapları filtrele
+        // ✅ 2. Taslak olmayan bölümleri say
+        // ✅ 3. En az 1 yayında bölümü olmayan kitapları filtrele
+        allBooks = allBooks.filter(book => {
+          if (book.is_draft) return false; // Taslak kitaplar gösterilmez
+          
+          const publishedChapters = book.chapters?.filter(c => c.id && !c.is_draft) || [];
+          return publishedChapters.length > 0; // En az 1 yayında bölüm olmalı
+        });
 
         allBooks = allBooks.map(book => {
-          const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
-          const chapterIds = book.chapters.map(c => c.id);
+          // ✅ Sadece yayında olan bölümlerin views'unu topla
+          const publishedChapters = book.chapters?.filter(c => c.id && !c.is_draft) || [];
+          const totalViews = publishedChapters.reduce((sum, c) => sum + (c.views || 0), 0);
+          
+          const chapterIds = publishedChapters.map(c => c.id);
           const totalVotes = allVotes?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
           const totalComments = allComments?.filter(c => c.book_id === book.id).length || 0;
           
