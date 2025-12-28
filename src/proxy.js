@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 
-export function proxy(request) {
+export default function proxy(request) {  // ← middleware → proxy (default export)
   const { pathname } = request.nextUrl;
   
-  // Site Bakım Modunda mı? (Evet, hala true)
+  // Site Bakım Modunda mı?
   const isMaintenanceMode = true;
 
   // Yönetici Şifresi
@@ -13,9 +13,7 @@ export function proxy(request) {
   const isAllowedPath = 
     pathname.startsWith('/_next') || 
     pathname.includes('/api/') ||
-    pathname.includes('.') || 
-    pathname === '/yakinda' ;
-    
+    pathname.includes('.');
 
   if (isAllowedPath) return NextResponse.next();
 
@@ -25,7 +23,7 @@ export function proxy(request) {
   const hasAdminQuery = request.nextUrl.searchParams.get('access') === GIZLI_ANAHTAR;
   const hasAdminCookie = request.cookies.get('admin_access')?.value === GIZLI_ANAHTAR;
 
-  // B) Davetiye ile girmiş normal üye misin? (YENİ EKLENEN KISIM)
+  // B) Davetiye ile girmiş normal üye misin?
   const hasUserCookie = request.cookies.get('site_erisim')?.value === 'acik';
 
   // 3. EĞER YÖNETİCİ VEYA ÜYE İSE GEÇİŞ İZNİ VER
@@ -39,9 +37,10 @@ export function proxy(request) {
     return response;
   }
 
-  // 4. KİMSE DEĞİLSE -> YAKINDA SAYFASINA POSTALA
+  // 4. KİMSE DEĞİLSE -> ANA SAYFAYA GİT (bakım modu mesajı göster)
   if (isMaintenanceMode) {
-    return NextResponse.rewrite(new URL('/yakinda', request.url));
+    // Artık /yakinda yok, ana sayfada bakım mesajı göstereceğiz
+    return NextResponse.next();
   }
 
   return NextResponse.next();

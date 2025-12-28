@@ -8,8 +8,25 @@ export async function GET(request) {
   const next = requestUrl.searchParams.get('next'); // URL'deki ?next=/sifre-yenile kısmını yakalar
 
   if (code) {
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const cookieStore = await cookies();
+    
+    // ✅ YENİ SUPABASE SSR YAPISI
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
     
     // 1. Mailden gelen kodu kullanarak kullanıcının oturumunu aç
     await supabase.auth.exchangeCodeForSession(code);
