@@ -258,7 +258,12 @@ export default function BolumDetay({ params }) {
                   <div className="relative">
                     {/* YAZI KISMI - Buton için sağdan boşluk bırakıldı (pr-7) */}
                     <div
-                      className={`transition-all duration-500 pr-7 ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}`}
+                      className={`
+  transition-all duration-500
+  pr-0 md:pr-7
+  ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}
+`}
+
                       dangerouslySetInnerHTML={{ __html: para }}
                     />
 
