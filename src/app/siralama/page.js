@@ -138,64 +138,29 @@ export default function LeaderboardPage() {
       const ikiHaftaOnce = new Date();
       ikiHaftaOnce.setDate(bugun.getDate() - 14);
 
-      // Haftalık en çok okunan kitaplar
-      const { data: historyData, error: historyError } = await supabase
-        .from('reading_history')
-        .select(`book_id, user_id, updated_at, books!ozel_kitap_baglantisi (id, title, cover_url, view_count, user_id, profiles:user_id (username, email))`)
-        .gte('updated_at', birHaftaOnce.toISOString()); 
+      // Haftalık en çok okunan kitaplar (chapter_views'dan - AYLIK GİBİ)
+const { data: weeklyChapterViews } = await supabase
+  .from('chapter_views')
+  .select(`chapter_id, created_at, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, is_draft, profiles:user_id (username, email)))`)
+  .gte('created_at', birHaftaOnce.toISOString());
 
-      console.log('🔥 HAFTALIK OKUMA VERİSİ:');
-      console.log('  📆 Tarih:', birHaftaOnce.toISOString());
-      console.log('  📊 Toplam Kayıt (user+book kombinasyonları):', historyData?.length);
-      console.log('  ❌ Hata:', historyError);
-      if (historyData && historyData.length > 0) {
-        // Kitap başına KAÇ FARKLI KULLANICI okudu
-        const bookUniqueReaders = {};
-        historyData.forEach(item => {
-          if (!bookUniqueReaders[item.book_id]) bookUniqueReaders[item.book_id] = new Set();
-          bookUniqueReaders[item.book_id].add(item.user_id);
-        });
-        
-        const bookReadCounts = {};
-        Object.keys(bookUniqueReaders).forEach(bookId => {
-          bookReadCounts[bookId] = bookUniqueReaders[bookId].size;
-        });
-        
-        console.log('  📊 Kitap başına FARKLI OKUYUCU sayısı:', bookReadCounts);
-      }
+const weeklyBookViewCounts = {};
+weeklyChapterViews?.forEach(item => {
+  if (!item.chapters?.books || item.chapters.books.is_draft) return; // Taslak kitapları atla
+  const book = item.chapters.books;
+  const bId = book.id;
+  if (!weeklyBookViewCounts[bId]) {
+    weeklyBookViewCounts[bId] = { ...book, weekly_reads: 0 };
+  }
+  weeklyBookViewCounts[bId].weekly_reads += 1;
+});
 
-      const bookCounts = {};
-      let skippedCount = 0;
-      
-      // Her user_id + book_id kombinasyonunu 1 okuma olarak say
-      historyData?.forEach(item => {
-        if (!item.books) {
-          skippedCount++;
-          return;
-        }
-        const bId = item.book_id;
-        if (!bookCounts[bId]) {
-          bookCounts[bId] = { 
-            ...item.books, 
-            weekly_reads: item.books.view_count || 0, // Toplam view_count kullan
-            unique_readers: new Set() 
-          };
-        }
-        bookCounts[bId].unique_readers.add(item.user_id);
-      });
-      
-      console.log('  ⚠️ Atlanan (books null):', skippedCount);
-      console.log('  ✅ İşlenen kitap sayısı:', Object.keys(bookCounts).length);
-      
-      const weeklyBooks = Object.values(bookCounts)
-        .map(book => {
-          const { unique_readers, ...rest } = book;
-          return rest;
-        })
-        .sort((a, b) => b.weekly_reads - a.weekly_reads)
-        .slice(0, 10);
-      console.log('📚 HAFTALIK TOP KİTAPLAR:', weeklyBooks);
-      setWeeklyTopBooks(weeklyBooks);
+const weeklyBooks = Object.values(weeklyBookViewCounts)
+  .sort((a, b) => b.weekly_reads - a.weekly_reads)
+  .slice(0, 10);
+
+console.log('📚 HAFTALIK TOP KİTAPLAR:', weeklyBooks);
+setWeeklyTopBooks(weeklyBooks);
 
       // Aylık en çok okunan kitaplar (chapter_views'dan)
       const { data: monthlyChapterViews, error: monthlyViewsError } = await supabase
@@ -218,15 +183,27 @@ export default function LeaderboardPage() {
         .sort((a, b) => b.monthly_reads - a.monthly_reads)
         .slice(0, 10);
       setMonthlyTopBooks(monthlyBooks);
+// Tüm zamanların en çok okunan kitapları (chapter_views'dan)
+const { data: allTimeChapterViews } = await supabase
+  .from('chapter_views')
+  .select(`chapter_id, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, is_draft, profiles:user_id (username, email)))`);
 
-      // Tüm zamanların en çok okunan kitapları
-      const { data: allTimeBooks, error: allTimeError } = await supabase
-        .from('books')
-        .select('id, title, cover_url, view_count, user_id, profiles:user_id(username, email)')
-        .order('view_count', { ascending: false })
-        .limit(10);
+const allTimeBookViewCounts = {};
+allTimeChapterViews?.forEach(item => {
+  if (!item.chapters?.books || item.chapters.books.is_draft) return; // Taslak kitapları atla
+  const book = item.chapters.books;
+  const bId = book.id;
+  if (!allTimeBookViewCounts[bId]) {
+    allTimeBookViewCounts[bId] = { ...book, view_count: 0 };
+  }
+  allTimeBookViewCounts[bId].view_count += 1;
+});
 
-      setAllTimeTopBooks(allTimeBooks || []);
+const allTimeBooks = Object.values(allTimeBookViewCounts)
+  .sort((a, b) => b.view_count - a.view_count)
+  .slice(0, 10);
+
+setAllTimeTopBooks(allTimeBooks);
 
       // Haftalık yazarlar
      const { data: chapterData } = await supabase
