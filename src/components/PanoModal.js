@@ -292,13 +292,11 @@ async function handleReportComment(commentId, content) {
           
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
             {selectedPano.books?.cover_url && (
-          <div className="relative md:hidden mb-6 w-full aspect-[2/3] rounded-2xl overflow-hidden shadow-2xl">
-  <Image 
+          <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
+  <img 
     src={selectedPano.books.cover_url} 
-    alt={selectedPano.books.title || 'Kitap Kapağı'}
-    fill
-    sizes="100vw"
-    className="object-cover" // 👇 Artık kenarlık yok, resim kutuyu tamamen kaplar
+    className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl max-h-[250px] w-auto" 
+    alt="" 
   />
 </div>
             )}
