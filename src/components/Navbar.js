@@ -249,7 +249,7 @@ function getNotificationText(n) {
               <img 
                 src="/logo-gunduz.png" 
                 alt="Logo" 
-                className="w-full h-full object-contain dark:hidden md:mt-3 -mr-1 md:-mr-2" 
+                className="w-full h-full object-contain dark:hidden mt-3 md:mt-4 -mr-1 md:-mr-2" 
               />
               <img 
                 src="/logo-gece.png" 

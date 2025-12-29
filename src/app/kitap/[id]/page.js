@@ -39,6 +39,7 @@ export default function KitapDetay({ params }) {
   });
   const [loading, setLoading] = useState(true);
   const [reorderMode, setReorderMode] = useState(false);
+  const [summaryExpanded, setSummaryExpanded] = useState(false);
 
   useEffect(() => {
     async function fetchAll() {
@@ -466,11 +467,27 @@ export default function KitapDetay({ params }) {
             </div>
 
             <div className="mb-10 p-8 bg-white dark:bg-white/5 rounded-[2rem] border dark:border-white/5">
-              <p className="text-lg text-gray-600 dark:text-gray-400 font-serif italic leading-relaxed whitespace-pre-wrap">
-                {data.book.summary}
-              </p>
-            </div>
-            
+  <p 
+    className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap transition-all duration-300"
+    style={{ 
+      fontFamily: 'Aptos, system-ui, -apple-system, sans-serif',
+      maxHeight: summaryExpanded ? 'none' : '120px',
+      overflow: 'hidden',
+      position: 'relative'
+    }}
+  >
+    {data.book.summary}
+  </p>
+  
+  {data.book.summary && data.book.summary.length > 300 && (
+    <button
+      onClick={() => setSummaryExpanded(!summaryExpanded)}
+      className="mt-4 text-[10px] font-black uppercase tracking-widest text-red-600 hover:text-red-700 transition-colors"
+    >
+      {summaryExpanded ? '↑ DAHA AZ GÖR' : '↓ DEVAMINI GÖR'}
+    </button>
+  )}
+</div>
             <div className="flex flex-wrap gap-4">
                
                <button 
