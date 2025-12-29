@@ -67,7 +67,8 @@ export default function RootLayout({ children }) {
               {!hideNavbar && <Navbar />}
               <DesktopSidebar />
               
-              <main className={!hideNavbar ? "pt-20 min-h-screen" : "min-h-screen"}>
+              <main className={!hideNavbar ? "pt-20 min-h-screen pb-16 md:pb-0" : "min-h-screen"}>
+
                 {children}
               </main>
 

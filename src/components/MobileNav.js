@@ -54,11 +54,12 @@ export default function MobileNav() {
 
   /* ---------------- INSET HESAPLARI ---------------- */
   const bottomInset =
-    platform === 'ios'
-      ? 'env(safe-area-inset-bottom)'
-      : platform === 'android'
-      ? `${androidInset}px`
-      : '0px';
+  platform === 'ios'
+    ? 'env(safe-area-inset-bottom)'
+    : platform === 'android'
+    ? `${androidInset}px`
+    : '0px'; // WEB = SIFIR, ZORLA
+
 
   const plusMenuBottom =
     platform === 'ios'
