@@ -4,7 +4,7 @@ export default function proxy(request) {
   const { pathname } = request.nextUrl;
   
   // Site Bakım Modunda mı?
-  const isMaintenanceMode = true;
+  const isMaintenanceMode = false;
 
   // Yönetici Şifresi
   const GIZLI_ANAHTAR = "kitaplab_x99_erisim"; 
@@ -39,9 +39,7 @@ export default function proxy(request) {
   }
 
   // 4. KİMSE DEĞİLSE VE BAKIM MODUNDAYSA -> YAKINDA SAYFASINA YÖNLENDIR
-  if (isMaintenanceMode && pathname !== '/yakinda') {
-    return NextResponse.redirect(new URL('/yakinda', request.url));
-  }
+  
 
   return NextResponse.next();
 }

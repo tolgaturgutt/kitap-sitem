@@ -406,14 +406,43 @@ export default function Home() {
       setTopCategories(topCategoryNames);
 
       if (activeUser) {
-        const { data: history } = await supabase
-          .from('reading_history')
-          .select('*, books(*, profiles:user_id(username, avatar_url, email), chapters(id, views, chapter_votes(chapter_id))), chapters(*)')
-          .eq('user_email', activeUser.email)
-          .order('updated_at', { ascending: false })
-          .limit(5);
+  const { data: history } = await supabase
+    .from('reading_history')
+    .select(`
+id,
+book_id,
+chapter_id,
+updated_at,
+books (
+  id,
+  title,
+  cover_url,
+  profiles:user_id(username, avatar_url, email),
+  chapters (
+    id,
+    title,
+    views,
+    chapter_votes (chapter_id)
+  )
+)
+`)
+    .eq('user_id', activeUser.id)
+    .order('updated_at', { ascending: false })
+    .limit(5);
+  
+  // Chapter bilgisini book.chapters'dan bul
+  const historyWithChapters = (history || []).map((item) => {
+    const chapterData = item.books?.chapters?.find(c => c.id === item.chapter_id);
+    
+    return {
+      ...item,
+      chapters: chapterData ? { id: chapterData.id, title: chapterData.title } : null
+    };
+  });
 
-        const historyWithStats = history?.map(item => {
+  const historyWithStats = historyWithChapters?.map(item => {
+          if (!item.chapters) return null;
+
           if (!item.books) return item;
           const book = item.books;
           const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
@@ -428,10 +457,10 @@ export default function Home() {
               totalVotes, 
               totalComments: 0 
             } 
-          };
-        });
-        setContinueReading(historyWithStats || []);
-      }
+      };
+  }).filter(item => item !== null);
+  setContinueReading(historyWithStats || []);
+}
 
       const { data: recentChaps } = await supabase
         .from('chapters')
