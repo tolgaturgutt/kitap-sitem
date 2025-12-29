@@ -41,7 +41,7 @@ function findBannedWords(text) {
   if (!text || bannedWords.length === 0) return [];
   
   // Metni kelimelere ayır (noktalama işaretleri olmadan)
-  const words = text.toLowerCase().match(/\b[\wğüşıöçĞÜŞİÖÇ]+\b/g) || [];
+  const words = text.toLowerCase().match(/[a-zğüşıöçA-ZĞÜŞİÖÇ]+/g) || [];
   const found = [];
   
   bannedWords.forEach(banned => {
