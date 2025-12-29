@@ -275,13 +275,14 @@ async function handleReportComment(commentId, content) {
 
         {/* SOL TARAF: GÖRSEL */}
         {selectedPano.books?.cover_url && (
-          <div className="relative shrink-0 hidden md:flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
+         <div className="relative shrink-0 hidden md:flex items-center justify-center bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
   <Image 
     src={selectedPano.books.cover_url} 
     alt={selectedPano.books.title || 'Kitap Kapağı'}
     fill
     sizes="(min-width: 768px) 50vw"
-    className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl p-8"
+    // 👇 Buradaki 'p-8'i de sildik ve 'rounded-l-[3rem]' ekledik ki modalın köşesine otursun
+    className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain"
   />
 </div>
         )}
@@ -291,13 +292,14 @@ async function handleReportComment(commentId, content) {
           
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
             {selectedPano.books?.cover_url && (
-            <div className="relative md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 h-64 w-full">
+           <div className="relative md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 h-64 w-full">
   <Image 
     src={selectedPano.books.cover_url} 
     alt={selectedPano.books.title || 'Kitap Kapağı'}
     fill
     sizes="100vw"
-    className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl p-4"
+    // 👇 Buradaki 'p-4'ü sildik
+    className="object-contain"
   />
 </div>
             )}
