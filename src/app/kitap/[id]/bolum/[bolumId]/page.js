@@ -149,9 +149,8 @@ export default function BolumDetay({ params }) {
     }
     getFullData();
   }, [id, bolumId]);
- useEffect(() => {
+useEffect(() => {
   const handleKeyDown = (e) => {
-    // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+C, Ctrl+A
     if (
       e.key === 'F12' ||
       (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
@@ -161,15 +160,20 @@ export default function BolumDetay({ params }) {
     ) {
       e.preventDefault();
       e.stopPropagation();
-      toast.error('Bu işlem devre dışı! 🚫');
+      // ✅ Sadece desktop'ta toast göster
+      if (window.innerWidth > 768) {
+        toast.error('Bu işlem devre dışı! 🚫');
+      }
       return false;
     }
   };
 
-  // Sağ tık engelleme (tüm sayfa için)
   const handleContextMenu = (e) => {
     e.preventDefault();
-    toast.error('Sağ tık devre dışı! 🚫');
+    // ✅ Sadece desktop'ta toast göster (mobilde basılı tutma var)
+    if (window.innerWidth > 768) {
+      toast.error('Sağ tık devre dışı! 🚫');
+    }
     return false;
   };
 
