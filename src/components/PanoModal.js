@@ -1,12 +1,12 @@
 'use client';
-import Image from 'next/image';
+
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import { createPanoVoteNotification, createPanoCommentNotification, createReplyNotification } from '@/lib/notifications';
-
+import Image from 'next/image'; // 👈 BU SATIRI EKLE
 export default function PanoModal({ 
   selectedPano, 
   onClose, 
@@ -210,15 +210,12 @@ async function handleReportComment(commentId, content) {
     return (
       <div className={`flex gap-3 ${isReply ? 'ml-11' : ''}`}>
         <Link href={profileLink}>
-          <div className={`relative ${isReply ? 'w-6 h-6' : 'w-8 h-8'} rounded-full overflow-hidden bg-gray-200 cursor-pointer hover:ring-2 hover:ring-red-600 transition-all`}>
-  <Image 
-    src={displayAvatar || '/avatar-placeholder.png'} 
-    alt={displayUsername || 'User'}
-    fill
-    sizes="32px"
-    className="object-cover"
-  />
-</div>
+          <img
+            src={displayAvatar || '/avatar-placeholder.png'}
+            className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'} rounded-full object-cover bg-gray-200 cursor-pointer hover:ring-2 hover:ring-red-600 transition-all`}
+            alt=""
+            onError={(e) => { e.target.src = '/avatar-placeholder.png' }} 
+          />
         </Link>
         <div className="flex-1 group">
           <div className="flex items-center gap-2">
@@ -275,31 +272,36 @@ async function handleReportComment(commentId, content) {
 
         {/* SOL TARAF: GÖRSEL */}
         {selectedPano.books?.cover_url && (
-         <div className="relative shrink-0 hidden md:flex items-center justify-center bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
-  <Image 
-    src={selectedPano.books.cover_url} 
-    alt={selectedPano.books.title || 'Kitap Kapağı'}
-    fill
-    sizes="(min-width: 768px) 50vw"
-    // 👇 Buradaki 'p-8'i de sildik ve 'rounded-l-[3rem]' ekledik ki modalın köşesine otursun
-    className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain"
-  />
-</div>
-        )}
+  // 👇 'relative' ekledik, 'p-8'i kaldırdık (resme ekleyeceğiz)
+  <div className="relative shrink-0 hidden md:flex items-center justify-center bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
+    <Image 
+      src={selectedPano.books.cover_url} 
+      alt="Kapak"
+      fill
+      sizes="(min-width: 768px) 50vw"
+      // 👇 'p-8' buraya eklendi, böylece resim kutunun içinde küçülür, taşmaz
+      className="object-contain p-8 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
+    />
+  </div>
+)}
 
         {/* SAĞ TARAF */}
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-[#080808]">
           
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
-            {selectedPano.books?.cover_url && (
-         <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
-    <img 
+           {selectedPano.books?.cover_url && (
+  // 👇 Yüksekliği 250px'e sabitledik (h-[250px]) ve 'relative' verdik.
+  <div className="relative md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 h-[250px] w-full flex items-center justify-center">
+    <Image 
       src={selectedPano.books.cover_url} 
-      className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl max-h-[250px] w-auto" 
-      alt="" 
+      alt="Kapak"
+      fill
+      sizes="100vw"
+      // 👇 'p-4'ü buraya ekledik. Resim kutunun içinde 4 birim boşlukla duracak.
+      className="object-contain p-4 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
     />
-</div>
-            )}
+  </div>
+)}
 
             <div className="mb-8">
               <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
@@ -349,19 +351,9 @@ async function handleReportComment(commentId, content) {
 
             <div className="flex flex-col gap-3">
               <Link href={ownerProfileLink} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                 <div className="relative w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
-   {ownerAvatar ? (
-     <Image 
-       src={ownerAvatar} 
-       alt={ownerUsername || 'User'}
-       fill
-       sizes="32px"
-       className="object-cover"
-     />
-   ) : (
-     <span className="text-xs font-bold">{ownerUsername?.[0] || 'U'}</span>
-   )}
-</div>
+                 <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
+                    {ownerAvatar ? <img src={ownerAvatar} className="w-full h-full object-cover" alt="" /> : (ownerUsername?.[0] || 'U')}
+                 </div>
                  <div>
                     <p className="text-[10px] font-black uppercase"><Username username={ownerUsername} isAdmin={adminEmails.includes(ownerEmail)} /></p>
                     <span className="text-[9px] text-gray-400 font-bold">{new Date(selectedPano.created_at).toLocaleDateString('tr-TR')}</span>
