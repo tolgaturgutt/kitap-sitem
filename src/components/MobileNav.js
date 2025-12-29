@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -8,42 +8,44 @@ import toast from 'react-hot-toast';
 export default function MobileNav() {
   const pathname = usePathname();
   const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [isApp, setIsApp] = useState(false);
+
+  useEffect(() => {
+    // Sadece uygulamadaysak 'isApp' true olsun
+    if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform()) {
+      setIsApp(true);
+    }
+  }, []);
 
   const isActive = (path) => pathname === path;
   
   const handleComingSoon = () => {
-    // 1. Eğer ekranda 'coming-soon' kimlikli bir uyarı varsa onu ANINDA YOK ET.
     toast.dismiss('coming-soon');
-
-    // 2. Yenisini aç
     toast('Yakında kullanımda! 🚀', {
-      id: 'coming-soon', // 👈 BU ÇOK ÖNEMLİ: Hep aynı kimliği kullanıyoruz.
-      duration: 2000,    // 2 saniye (Kısa olsun ki çabuk gitsin)
-      position: 'top-center',
+      id: 'coming-soon',
       icon: '⏳',
-      // 👇 Mobilde takılmayı önleyen ayar:
-      // Dokunulsa bile süreyi durdurma gibi bir ayar olmadığı için,
-      // biz ID vererek üst üste binmesini engelliyoruz.
-      style: {
-        borderRadius: '10px',
-        background: '#333',
-        color: '#fff',
-        zIndex: 9999, // En üstte dursun
-      },
+      duration: 2000,
+      position: 'top-center',
+      style: { borderRadius: '10px', background: '#333', color: '#fff' },
     });
   };
+
   return (
     <>
-      {/* ARTIYA BASILINCA AÇILAN MENÜ */}
+      {/* ARTI MENÜSÜ */}
       {showPlusMenu && (
         <div 
           className="fixed inset-0 z-[90] md:hidden"
           onClick={() => setShowPlusMenu(false)}
         >
           <div 
-            // 👇 ARTI MENÜSÜ DE AKILLI OLDU
             className="absolute left-1/2 -translate-x-1/2 w-[160px] bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl border border-red-600/20 overflow-hidden animate-in slide-in-from-bottom-2 duration-200"
-            style={{ bottom: 'calc(72px + max(env(safe-area-inset-bottom), 10px))' }}
+            // 👇 ARTI MENÜSÜ DE 7px'E GÖRE AYARLANDI
+            style={{ 
+              bottom: isApp 
+                ? 'calc(72px + 7px)'  // Uygulama (7px pay)
+                : 'calc(72px + env(safe-area-inset-bottom))' // Web
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-2 space-y-1.5">
@@ -63,8 +65,10 @@ export default function MobileNav() {
       {/* MOBİL ALT ÇUBUK */}
       <nav 
         className="md:hidden fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] transition-all duration-300"
-        // 👇 İŞTE SİHİRLİ FORMÜL BURADA
-        style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 10px)' }} 
+        // 👇 İŞTE BURASI 7px
+        style={{ 
+          paddingBottom: isApp ? '7px' : 'env(safe-area-inset-bottom)' 
+        }} 
       >
         <div className="flex items-center justify-around h-16 px-2">
           
