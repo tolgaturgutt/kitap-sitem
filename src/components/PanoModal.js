@@ -1,5 +1,5 @@
 'use client';
-
+import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
@@ -210,12 +210,15 @@ async function handleReportComment(commentId, content) {
     return (
       <div className={`flex gap-3 ${isReply ? 'ml-11' : ''}`}>
         <Link href={profileLink}>
-          <img
-            src={displayAvatar || '/avatar-placeholder.png'}
-            className={`${isReply ? 'w-6 h-6' : 'w-8 h-8'} rounded-full object-cover bg-gray-200 cursor-pointer hover:ring-2 hover:ring-red-600 transition-all`}
-            alt=""
-            onError={(e) => { e.target.src = '/avatar-placeholder.png' }} 
-          />
+          <div className={`relative ${isReply ? 'w-6 h-6' : 'w-8 h-8'} rounded-full overflow-hidden bg-gray-200 cursor-pointer hover:ring-2 hover:ring-red-600 transition-all`}>
+  <Image 
+    src={displayAvatar || '/avatar-placeholder.png'} 
+    alt={displayUsername || 'User'}
+    fill
+    sizes="32px"
+    className="object-cover"
+  />
+</div>
         </Link>
         <div className="flex-1 group">
           <div className="flex items-center gap-2">
@@ -272,9 +275,15 @@ async function handleReportComment(commentId, content) {
 
         {/* SOL TARAF: GÖRSEL */}
         {selectedPano.books?.cover_url && (
-          <div className="shrink-0 hidden md:flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
-            <img src={selectedPano.books.cover_url} className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-full w-auto" alt="" />
-          </div>
+          <div className="relative shrink-0 hidden md:flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
+  <Image 
+    src={selectedPano.books.cover_url} 
+    alt={selectedPano.books.title || 'Kitap Kapağı'}
+    fill
+    sizes="(min-width: 768px) 50vw"
+    className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl p-8"
+  />
+</div>
         )}
 
         {/* SAĞ TARAF */}
@@ -282,9 +291,15 @@ async function handleReportComment(commentId, content) {
           
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
             {selectedPano.books?.cover_url && (
-              <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
-                <img src={selectedPano.books.cover_url} className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl max-h-[250px] w-auto" alt="" />
-              </div>
+            <div className="relative md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 h-64 w-full">
+  <Image 
+    src={selectedPano.books.cover_url} 
+    alt={selectedPano.books.title || 'Kitap Kapağı'}
+    fill
+    sizes="100vw"
+    className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl p-4"
+  />
+</div>
             )}
 
             <div className="mb-8">
@@ -335,9 +350,19 @@ async function handleReportComment(commentId, content) {
 
             <div className="flex flex-col gap-3">
               <Link href={ownerProfileLink} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                 <div className="w-8 h-8 rounded-full bg-gray-200 overflow-hidden">
-                    {ownerAvatar ? <img src={ownerAvatar} className="w-full h-full object-cover" alt="" /> : (ownerUsername?.[0] || 'U')}
-                 </div>
+                 <div className="relative w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+   {ownerAvatar ? (
+     <Image 
+       src={ownerAvatar} 
+       alt={ownerUsername || 'User'}
+       fill
+       sizes="32px"
+       className="object-cover"
+     />
+   ) : (
+     <span className="text-xs font-bold">{ownerUsername?.[0] || 'U'}</span>
+   )}
+</div>
                  <div>
                     <p className="text-[10px] font-black uppercase"><Username username={ownerUsername} isAdmin={adminEmails.includes(ownerEmail)} /></p>
                     <span className="text-[9px] text-gray-400 font-bold">{new Date(selectedPano.created_at).toLocaleDateString('tr-TR')}</span>

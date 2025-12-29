@@ -87,7 +87,7 @@ export default function Navbar() {
           .from('chapters')
           .select('title')
           .eq('id', notif.chapter_id)
-          .single();
+          .maybeSingle();
         
         if (chapter) {
           notif.chapter_title = chapter.title;

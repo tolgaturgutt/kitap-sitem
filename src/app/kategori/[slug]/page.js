@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import Username from '@/components/Username';
-
+import Image from 'next/image';
 function formatNumber(num) {
   if (!num) return 0;
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
@@ -192,8 +192,14 @@ export default function CategoryPage() {
                 <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="group">
                   <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
                     {kitap.cover_url ? (
-                      <img src={kitap.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={kitap.title} />
-                    ) : (
+  <Image 
+    src={kitap.cover_url} 
+    alt={kitap.title}
+    fill
+    sizes="(max-width: 768px) 150px, 200px"
+    className="object-cover group-hover:scale-110 transition-transform duration-700"
+  />
+) : (
                       <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />
                     )}
                   </div>

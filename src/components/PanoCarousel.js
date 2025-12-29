@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Username from '@/components/Username';
-
+import Image from 'next/image';
 export default function PanoCarousel({ onPanoClick, user }) {
   const [panolar, setPanolar] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -154,14 +154,17 @@ export default function PanoCarousel({ onPanoClick, user }) {
                         )
                   } transition-all group-hover/story:scale-110 duration-300`}>
                     
-                    <div className="w-20 h-20 rounded-full overflow-hidden bg-white dark:bg-gray-900 p-0.5">
-                      {pano.profiles?.avatar_url ? (
-                        <img 
-                          src={pano.profiles.avatar_url} 
-                          className="w-full h-full object-cover rounded-full" 
-                          alt={pano.profiles.username}
-                        />
-                      ) : (
+                   {/* 👇 'relative' ekledik ki resim taşmasın */}
+<div className="relative w-20 h-20 rounded-full overflow-hidden bg-white dark:bg-gray-900 p-0.5">
+  {pano.profiles?.avatar_url ? (
+    <Image 
+      src={pano.profiles.avatar_url} 
+      alt={pano.profiles.username}
+      fill
+      sizes="80px" // Küçük resim olduğu için 80px yeterli
+      className="object-cover rounded-full"
+    />
+  ) : (
                         <div className={`w-full h-full rounded-full flex items-center justify-center text-2xl font-black ${
                           isAdmin 
                             ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600' 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
@@ -91,13 +92,13 @@ function DuyuruPaneli({ isAdmin }) {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={() => setSelectedDuyuru(null)}>
           <div className="bg-white dark:bg-[#080808] w-full max-w-5xl max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col" onClick={(e) => e.stopPropagation()}>
             {/* ✅ Mobilde de gözüken modern çarpı butonu */}
-            <button 
-              onClick={() => setSelectedDuyuru(null)} 
+            <button
+              onClick={() => setSelectedDuyuru(null)}
               className="absolute top-4 right-4 md:top-8 md:right-8 z-30 w-10 h-10 md:w-12 md:h-12 bg-black/60 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-lg md:text-xl font-bold shadow-lg"
             >
               ✕
             </button>
-            
+
             <div className="overflow-y-auto flex-1">
               <div className="flex flex-col md:flex-row">
                 {selectedDuyuru.image_url && selectedDuyuru.display_type !== 'none' && (
@@ -131,21 +132,21 @@ function DuyuruPaneli({ isAdmin }) {
           {/* ✅ Desktop okları - modern tasarım */}
           {duyurular.length > 1 && (
             <>
-              <button 
-                onClick={() => setActiveIndex((prev) => (prev - 1 + duyurular.length) % duyurular.length)} 
+              <button
+                onClick={() => setActiveIndex((prev) => (prev - 1 + duyurular.length) % duyurular.length)}
                 className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-10 w-14 h-14 bg-gradient-to-br from-red-600 to-red-700 backdrop-blur-sm border-2 border-white/20 rounded-2xl items-center justify-center shadow-2xl transition-all hover:scale-110 hover:shadow-red-600/50 text-white text-2xl font-bold"
               >
                 ←
               </button>
-              <button 
-                onClick={() => setActiveIndex((prev) => (prev + 1) % duyurular.length)} 
+              <button
+                onClick={() => setActiveIndex((prev) => (prev + 1) % duyurular.length)}
                 className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-10 w-14 h-14 bg-gradient-to-br from-red-600 to-red-700 backdrop-blur-sm border-2 border-white/20 rounded-2xl items-center justify-center shadow-2xl transition-all hover:scale-110 hover:shadow-red-600/50 text-white text-2xl font-bold"
               >
                 →
               </button>
             </>
           )}
-          
+
           {/* ✅ Mobilde kaydırmalı, desktop'ta geçişli */}
           <div className="md:overflow-hidden overflow-x-auto scrollbar-hide snap-x snap-mandatory" ref={scrollRef} onScroll={handleScroll}>
             <div className="flex md:transition-transform md:duration-500 md:ease-out" style={{ transform: window.innerWidth >= 768 ? `translateX(-${activeIndex * 100}%)` : 'none' }}>
@@ -154,8 +155,15 @@ function DuyuruPaneli({ isAdmin }) {
                   <div onClick={() => setSelectedDuyuru(duyuru)} className="w-full group/card block bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5 cursor-pointer text-left relative">
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                       {duyuru.image_url && duyuru.display_type !== 'none' && (
-                        <div className="shrink-0 rounded-2xl overflow-hidden border dark:border-white/5 shadow-lg h-36 w-auto">
-                          <img src={duyuru.image_url} className="h-full w-auto object-contain group-hover/card:scale-110 transition-transform duration-500" alt="" />
+                        <div className="relative shrink-0 rounded-2xl overflow-hidden border dark:border-white/5 shadow-lg h-36 w-24 md:w-48">
+                          <Image
+                            src={duyuru.image_url}
+                            alt={duyuru.title}
+                            fill
+                            sizes="(max-width: 768px) 100px, 200px"
+                            className="object-contain p-2 group-hover/card:scale-110 transition-transform duration-500"
+                            priority={true}
+                          />
                         </div>
                       )}
                       <div className="flex-1">
@@ -171,26 +179,26 @@ function DuyuruPaneli({ isAdmin }) {
               ))}
             </div>
           </div>
-          
+
           {/* ✅ Mobilde modern progress bar, desktop'ta yuvarlaklar */}
           {duyurular.length > 1 && (
             <div className="mt-6">
               {/* Desktop indicators */}
               <div className="hidden md:flex justify-center gap-2">
                 {duyurular.map((_, idx) => (
-                  <button 
-                    key={idx} 
-                    onClick={() => setActiveIndex(idx)} 
-                    className={`h-2 rounded-full transition-all ${idx === activeIndex ? 'w-8 bg-red-600' : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`} 
+                  <button
+                    key={idx}
+                    onClick={() => setActiveIndex(idx)}
+                    className={`h-2 rounded-full transition-all ${idx === activeIndex ? 'w-8 bg-red-600' : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`}
                   />
                 ))}
               </div>
-              
+
               {/* Mobile progress bar */}
               <div className="md:hidden flex items-center justify-center gap-2">
                 <span className="text-xs font-black text-red-600">{activeIndex + 1}</span>
                 <div className="flex-1 max-w-[200px] h-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-gradient-to-r from-red-600 to-red-500 rounded-full transition-all duration-300"
                     style={{ width: `${((activeIndex + 1) / duyurular.length) * 100}%` }}
                   />
@@ -226,13 +234,20 @@ function ContinueReadingCarousel({ books }) {
               <div key={idx} className="w-full flex-shrink-0">
                 <Link href={`/kitap/${item.book_id}/bolum/${item.chapter_id}`} className="group block bg-white dark:bg-white/5 border dark:border-white/10 rounded-2xl md:rounded-[2.5rem] p-4 md:p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5">
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
-                    <div className="w-16 h-24 md:w-24 md:h-36 rounded-xl md:rounded-2xl overflow-hidden shrink-0 border dark:border-white/5 shadow-lg">
-                      <img src={item.books?.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt="" />
-                    </div>
+                    {/* 👇 className içine 'relative' ekledik */}
+<div className="relative w-16 h-24 md:w-24 md:h-36 rounded-xl md:rounded-2xl overflow-hidden shrink-0 border dark:border-white/5 shadow-lg">
+  <Image 
+    src={item.books?.cover_url || '/placeholder.png'} 
+    alt={item.books?.title || 'Kitap'}
+    fill
+    sizes="(max-width: 768px) 100px, 150px"
+    className="object-cover group-hover:scale-110 transition-transform duration-500"
+  />
+</div>
                     <div className="flex-1">
                       <h3 className="text-xl md:text-3xl font-black dark:text-white mb-2 group-hover:text-red-600 transition-colors uppercase tracking-tight line-clamp-1">{item.books?.title}</h3>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Kaldığın Bölüm: {item.chapters?.title}</p>
-                      
+
                       <div className="flex items-center gap-2 md:gap-3 mt-2 text-[9px] font-bold text-gray-400 mb-3 md:mb-4">
                         <span className="flex items-center gap-1">👁️ {formatNumber(item.books?.totalViews)}</span>
                         <span className="flex items-center gap-1">❤️ {formatNumber(item.books?.totalVotes)}</span>
@@ -251,7 +266,7 @@ function ContinueReadingCarousel({ books }) {
           <div className="flex justify-center gap-1.5 md:gap-2 mt-4 md:mt-6">
             {books.map((_, idx) => (
               <button key={idx} onClick={() => setActiveIndex(idx)} className={`h-1.5 md:h-2 rounded-full transition-all ${idx === activeIndex ? 'w-6 md:w-8 bg-red-600' : 'w-1.5 md:w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`} />
-              ))}
+            ))}
           </div>
         )}
       </div>
@@ -282,10 +297,20 @@ function CategoryRow({ title, books, isFeatured = false }) {
         {books.map(kitap => (
           <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-[38%] md:w-36 lg:w-44 snap-start group/card">
             <div className={`relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover/card:shadow-2xl group-hover/card:-translate-y-2 ${isFeatured ? 'border-orange-500/30' : ''}`}>
-              {kitap.cover_url ? <img src={kitap.cover_url} className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700" alt={kitap.title} /> : <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />}
+              {kitap.cover_url ? (
+                <Image
+                  src={kitap.cover_url}
+                  alt={kitap.title}
+                  fill
+                  sizes="(max-width: 768px) 150px, 200px"
+                  className="object-cover group-hover/card:scale-110 transition-transform duration-700"
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />
+              )}
               {isFeatured && <div className="absolute top-2 right-2 bg-orange-600 text-[8px] font-black text-white px-2 py-1 rounded-full uppercase shadow-lg">Trend</div>}
             </div>
-            
+
             <h3 className="flex items-center gap-1.5 font-bold text-[11px] md:text-[13px] dark:text-white mb-0.5 group-hover/card:text-red-600 transition-colors">
               {kitap.is_editors_choice && <div className="shrink-0" title="Editörün Seçimi"><svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-yellow-500 drop-shadow-sm"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg></div>}
               <span className="truncate line-clamp-1">{kitap.title}</span>
@@ -298,15 +323,15 @@ function CategoryRow({ title, books, isFeatured = false }) {
                 </span>
               </div>
             )}
-            
+
             <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
               <Username username={kitap.username} isAdmin={kitap.is_admin} />
             </p>
 
             <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
-               <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
-               <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
-               <span className="flex items-center gap-0.5">💬 {formatNumber(kitap.totalComments)}</span>
+              <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
+              <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
+              <span className="flex items-center gap-0.5">💬 {formatNumber(kitap.totalComments)}</span>
             </div>
           </Link>
         ))}
@@ -337,11 +362,21 @@ function TopReadRow({ books }) {
           <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-[38%] md:w-36 lg:w-44 snap-start group/card relative">
             <div className="absolute top-0 left-0 z-10 bg-red-600 text-white font-black text-xs px-2.5 py-1.5 rounded-br-xl rounded-tl-xl shadow-lg border-b-2 border-r-2 border-black/20">#{index + 1}</div>
             <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover/card:shadow-2xl group-hover/card:-translate-y-2">
-              {kitap.cover_url ? <img src={kitap.cover_url} className="w-full h-full object-cover group-hover/card:scale-110 transition-transform duration-700" alt={kitap.title} /> : <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />}
+              {kitap.cover_url ? (
+                <Image
+                  src={kitap.cover_url || '/placeholder.png'}
+                  alt={kitap.title}
+                  fill
+                  sizes="(max-width: 768px) 150px, 200px"
+                  className="object-cover group-hover/card:scale-110 transition-transform duration-700"
+                />
+              ) : (
+                <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />
+              )}
             </div>
-            
+
             <h3 className="font-bold text-[11px] md:text-[13px] dark:text-white mb-0.5 group-hover/card:text-red-600 transition-colors truncate">{kitap.title}</h3>
-            
+
             {kitap.is_completed && (
               <div className="mb-1">
                 <span className="text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-md uppercase tracking-wide">
@@ -353,11 +388,11 @@ function TopReadRow({ books }) {
             <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
               <Username username={kitap.username} isAdmin={kitap.is_admin} />
             </p>
-            
+
             <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
-               <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
-               <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
-               <span className="flex items-center gap-0.5">💬 {formatNumber(kitap.totalComments)}</span>
+              <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
+              <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
+              <span className="flex items-center gap-0.5">💬 {formatNumber(kitap.totalComments)}</span>
             </div>
           </Link>
         ))}
@@ -370,7 +405,7 @@ function TopReadRow({ books }) {
 export default function Home() {
   const [user, setUser] = useState(null);
   const [featuredBooks, setFeaturedBooks] = useState([]);
-  const [editorsChoiceBooks, setEditorsChoiceBooks] = useState([]); 
+  const [editorsChoiceBooks, setEditorsChoiceBooks] = useState([]);
   const [topReadBooks, setTopReadBooks] = useState([]);
   const [booksByCategory, setBooksByCategory] = useState({});
   const [loading, setLoading] = useState(true);
@@ -401,66 +436,66 @@ export default function Home() {
         .select('name')
         .order('priority', { ascending: false })
         .limit(5);
-      
+
       const topCategoryNames = categoriesData?.map(c => c.name) || [];
       setTopCategories(topCategoryNames);
 
       if (activeUser) {
-  const { data: history } = await supabase
-    .from('reading_history')
-    .select(`
-id,
-book_id,
-chapter_id,
-updated_at,
-books (
-  id,
-  title,
-  cover_url,
-  profiles:user_id(username, avatar_url, email),
-  chapters (
-    id,
-    title,
-    views,
-    chapter_votes (chapter_id)
-  )
-)
-`)
-    .eq('user_id', activeUser.id)
-    .order('updated_at', { ascending: false })
-    .limit(5);
-  
-  // Chapter bilgisini book.chapters'dan bul
-  const historyWithChapters = (history || []).map((item) => {
-    const chapterData = item.books?.chapters?.find(c => c.id === item.chapter_id);
-    
-    return {
-      ...item,
-      chapters: chapterData ? { id: chapterData.id, title: chapterData.title } : null
-    };
-  });
+        const { data: history } = await supabase
+          .from('reading_history')
+          .select(`
+            id,
+            book_id,
+            chapter_id,
+            updated_at,
+            books!reading_history_book_id_fkey1 (
+              id,
+              title,
+              cover_url,
+              profiles:user_id(username, avatar_url, email),
+              chapters (
+                id,
+                title,
+                views,
+                chapter_votes (chapter_id)
+              )
+            )
+          `)
+          .eq('user_id', activeUser.id)
+          .order('updated_at', { ascending: false })
+          .limit(5);
 
-  const historyWithStats = historyWithChapters?.map(item => {
+        // Chapter bilgisini book.chapters'dan bul
+        const historyWithChapters = (history || []).map((item) => {
+          const chapterData = item.books?.chapters?.find(c => c.id === item.chapter_id);
+
+          return {
+            ...item,
+            chapters: chapterData ? { id: chapterData.id, title: chapterData.title } : null
+          };
+        });
+
+        const historyWithStats = historyWithChapters?.map(item => {
           if (!item.chapters) return null;
 
           if (!item.books) return item;
           const book = item.books;
           const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
           const totalVotes = book.chapters?.reduce((sum, c) => sum + (c.chapter_votes?.length || 0), 0) || 0;
-          
+
           return {
             ...item,
-            books: { 
+            books: {
               ...book,
               username: book.profiles?.username || book.username,
-              totalViews, 
-              totalVotes, 
-              totalComments: 0 
-            } 
-      };
-  }).filter(item => item !== null);
-  setContinueReading(historyWithStats || []);
-}
+              totalViews,
+              totalVotes,
+              totalComments: 0
+            }
+          };
+        }).filter(item => item !== null);
+        setContinueReading(historyWithStats || []);
+      }
 
       const { data: recentChaps } = await supabase
         .from('chapters')
@@ -469,25 +504,25 @@ books (
         .eq('is_draft', false) // ✅ Taslak bölümleri filtrele
         .order('created_at', { ascending: false })
         .limit(20);
-      
+
       const recentChapsWithAdmin = recentChaps?.map(c => {
-         const bookOwnerEmail = c.books?.profiles?.email || c.books?.user_email;
-         return {
-            ...c,
-            books: {
-                ...c.books,
-                username: c.books.profiles?.username || c.books.username
-            },
-            is_admin: emails.includes(bookOwnerEmail)
-         };
+        const bookOwnerEmail = c.books?.profiles?.email || c.books?.user_email;
+        return {
+          ...c,
+          books: {
+            ...c.books,
+            username: c.books.profiles?.username || c.books.username
+          },
+          is_admin: emails.includes(bookOwnerEmail)
+        };
       }) || [];
 
       setLatestChapters(recentChapsWithAdmin);
 
-   let { data: allBooks, error: booksError } = await supabase
+      let { data: allBooks, error: booksError } = await supabase
         .from('books')
         .select('*, profiles:user_id(username, avatar_url, email), chapters(id, views, is_draft)');
-      
+
       if (booksError) {
         setLoading(false);
         return;
@@ -496,13 +531,13 @@ books (
       const { data: allComments } = await supabase.from('comments').select('book_id');
       const { data: allVotes } = await supabase.from('chapter_votes').select('chapter_id');
 
-    if (allBooks) {
+      if (allBooks) {
         // ✅ 1. Taslak kitapları filtrele
         // ✅ 2. Taslak olmayan bölümleri say
         // ✅ 3. En az 1 yayında bölümü olmayan kitapları filtrele
         allBooks = allBooks.filter(book => {
           if (book.is_draft) return false; // Taslak kitaplar gösterilmez
-          
+
           const publishedChapters = book.chapters?.filter(c => c.id && !c.is_draft) || [];
           return publishedChapters.length > 0; // En az 1 yayında bölüm olmalı
         });
@@ -511,15 +546,15 @@ books (
           // ✅ Sadece yayında olan bölümlerin views'unu topla
           const publishedChapters = book.chapters?.filter(c => c.id && !c.is_draft) || [];
           const totalViews = publishedChapters.reduce((sum, c) => sum + (c.views || 0), 0);
-          
+
           const chapterIds = publishedChapters.map(c => c.id);
           const totalVotes = allVotes?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
           const totalComments = allComments?.filter(c => c.book_id === book.id).length || 0;
-          
+
           const bookOwnerEmail = book.profiles?.email || book.user_email;
 
-          return { 
-            ...book, 
+          return {
+            ...book,
             username: book.profiles?.username || book.username,
             is_admin: emails.includes(bookOwnerEmail),
             totalViews,
@@ -534,7 +569,7 @@ books (
 
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
-      
+
       const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString());
       const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString());
       const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString());
@@ -544,13 +579,13 @@ books (
           const rVotesCount = recentVotes?.filter(v => b.chapters.some(c => c.id === v.chapter_id)).length || 0;
           const rCommentsCount = recentComments?.filter(c => c.book_id === b.id).length || 0;
           const rFollowsCount = recentFollows?.filter(f => f.book_id === b.id).length || 0;
-          
+
           const score = (rFollowsCount * 10) + (rCommentsCount * 2) + (rVotesCount * 5) + (b.totalViews * 1);
           return { ...b, interactionScore: score };
         });
 
         setFeaturedBooks(scored.sort((a, b) => b.interactionScore - a.interactionScore).slice(0, 15));
-        
+
         const mostRead = [...scored].sort((a, b) => b.totalViews - a.totalViews).slice(0, 20);
         setTopReadBooks(mostRead);
 
@@ -578,7 +613,7 @@ books (
     <div className="min-h-screen py-8 md:py-16 px-4 md:px-6 lg:px-16 bg-[#fafafa] dark:bg-black">
       <Toaster />
       <PanoModal selectedPano={selectedPano} onClose={() => setSelectedPano(null)} user={user} adminEmails={adminEmails} isAdmin={isAdmin} isOwner={user && selectedPano && (user.email === selectedPano.user_email)} />
-      
+
       <div className="max-w-7xl mx-auto">
         <DuyuruPaneli isAdmin={isAdmin} />
         <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} />
@@ -596,9 +631,9 @@ books (
 function RecentlyAddedChapters({ chapters, currentUser }) {
   const [selectedChapter, setSelectedChapter] = useState(null);
   const scrollRef = useRef(null);
-  
-  const scroll = (dir) => { 
-    if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' }); 
+
+  const scroll = (dir) => {
+    if (scrollRef.current) scrollRef.current.scrollBy({ left: dir === 'left' ? -300 : 300, behavior: 'smooth' });
   };
 
   if (!chapters || chapters.length === 0) return null;
@@ -615,9 +650,9 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
       {selectedChapter && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200" onClick={() => setSelectedChapter(null)}>
           <div className="bg-white dark:bg-[#1a1a1a] w-full max-w-[320px] rounded-2xl p-6 pt-10 text-center shadow-2xl border border-gray-100 dark:border-gray-800 relative flex flex-col gap-4 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
-            
-            <button 
-              onClick={() => setSelectedChapter(null)} 
+
+            <button
+              onClick={() => setSelectedChapter(null)}
               className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/10 text-gray-500 hover:text-red-600 dark:text-gray-300 rounded-full transition-colors font-bold"
             >
               ✕
@@ -636,7 +671,7 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
               <Link href={`/kitap/${selectedChapter.book_id}/bolum/${selectedChapter.id}`} className="flex items-center justify-center gap-2 w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl text-sm transition-all shadow-lg shadow-red-600/20">
                 📖 Bölüme Git
               </Link>
-              
+
               <Link href={getProfileLink(selectedChapter.books)} className="flex items-center justify-center gap-2 w-full bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-black dark:text-white font-bold py-3 rounded-xl text-sm transition-all">
                 👤 Yazarın Profili
               </Link>
@@ -648,9 +683,9 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
 
       <div className="mb-20 group relative px-1">
         <div className="flex items-end justify-between mb-5">
-           <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 italic flex items-center gap-2">
-             🆕 Son Eklenen Bölümler
-           </h2>
+          <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 italic flex items-center gap-2">
+            🆕 Son Eklenen Bölümler
+          </h2>
         </div>
 
         <button onClick={() => scroll('left')} className="absolute left-[-20px] top-[40%] z-20 bg-white dark:bg-gray-900 border dark:border-gray-800 w-10 h-10 items-center justify-center rounded-full shadow-2xl opacity-0 group-hover:opacity-100 transition-all hidden md:flex">←</button>
@@ -659,25 +694,30 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
         <div ref={scrollRef} className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide snap-x py-2 px-1">
           {chapters.map(chapter => (
             <div key={chapter.id} onClick={() => setSelectedChapter(chapter)} className="flex-none w-[38%] md:w-32 lg:w-40 snap-start group/card cursor-pointer">
-              <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
-                {chapter.books?.cover_url ? (
-                  <img src={chapter.books.cover_url} className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500" alt="" />
-                ) : (
-                  <div className="w-full h-full bg-gray-200 dark:bg-gray-900" />
-                )}
-                
-                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 pt-6">
-                  <p className="text-[10px] text-white font-black uppercase leading-tight line-clamp-2">
-                    {chapter.title}
-                  </p>
-                </div>
-              </div>
-              
+             
+
+<div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
+  {/* 👇 BURASI DÜZELDİ: kitap yerine chapter.books kullanıyoruz */}
+  <Image 
+    src={chapter.books?.cover_url || '/placeholder.png'} 
+    alt={chapter.books?.title || 'Bölüm'}
+    fill
+    sizes="(max-width: 768px) 120px, 160px"
+    className="object-cover group-hover/card:scale-105 transition-transform duration-500"
+  />
+  
+  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 pt-6 z-10">
+    <p className="text-[10px] text-white font-black uppercase leading-tight line-clamp-2">
+      {chapter.title}
+    </p>
+  </div>
+</div>
+
               <h3 className="font-bold text-[11px] dark:text-white leading-tight truncate group-hover/card:text-red-600 transition-colors">
                 {chapter.books?.title}
               </h3>
               <p className="text-[7px] md:text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">
-                 <Username username={chapter.books?.username} isAdmin={chapter.is_admin} />
+                <Username username={chapter.books?.username} isAdmin={chapter.is_admin} />
               </p>
             </div>
           ))}
@@ -710,13 +750,19 @@ function EditorsChoiceSection({ books }) {
         {books.map(kitap => (
           <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-[38%] md:w-36 lg:w-48 snap-start group">
             <div className="relative aspect-[2/3] rounded-xl overflow-hidden transition-all duration-300 border-2 border-yellow-500/40 group-hover:border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)] group-hover:shadow-[0_0_25px_rgba(234,179,8,0.5)]">
-               <img src={kitap.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={kitap.title} />
+              <Image
+                src={kitap.cover_url}
+                alt={kitap.title}
+                fill
+                sizes="(max-width: 768px) 150px, 200px"
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
+              />
             </div>
-            
+
             <div className="mt-3">
               <h3 className="text-sm font-black dark:text-white leading-tight mb-1 truncate group-hover:text-yellow-500 transition-colors flex items-center gap-1.5">
                 <div className="shrink-0" title="Editörün Seçimi">
-                   <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-500 drop-shadow-sm"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-yellow-500 drop-shadow-sm"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
                 </div>
                 <span className="truncate">{kitap.title}</span>
               </h3>
@@ -729,7 +775,7 @@ function EditorsChoiceSection({ books }) {
                 </div>
               )}
 
-              <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest pl-6 truncate"> 
+              <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest pl-6 truncate">
                 <Username username={kitap.username} isAdmin={kitap.is_admin} />
               </p>
 
@@ -742,6 +788,6 @@ function EditorsChoiceSection({ books }) {
           </Link>
         ))}
       </div>
-    </div> 
+    </div>
   );
 }
