@@ -440,3 +440,10 @@
   opacity: 0.8;
   display: block;
 }
+html, body {
+  height: 100%;
+}
+
+body {
+  min-height: 100dvh;
+}
