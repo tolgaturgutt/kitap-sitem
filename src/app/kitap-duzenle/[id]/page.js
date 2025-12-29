@@ -76,8 +76,20 @@ export default function KitapDuzenle({ params }) {
     getData();
   }, [id, router]);
 
-  async function guncelle() {
-    if (!title.trim() || !summary.trim()) return;
+ async function guncelle() {
+    // 1. Başlık ve Özet Kontrolü (Boşsa devam etme)
+    if (!title.trim() || !summary.trim()) {
+      toast.error("Başlık ve özet boş bırakılamaz.");
+      return;
+    }
+
+    // 2. KAPAK KONTROLÜ (YENİ EKLENEN KISIM) 👇
+    // Mantık: "Yeni dosya seçilmedi" VE "Ekranda eski kapak da yok" ise durdur.
+    if (!newImageFile && !currentCover) {
+      toast.error("Kitap kapağı zorunludur! Lütfen bir kapak yükleyin.");
+      return;
+    }
+    // 👆 BİTİŞ
 
     setUpdating(true);
     let finalCoverUrl = currentCover;

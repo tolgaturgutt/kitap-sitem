@@ -37,6 +37,10 @@ export default function KitapEkle() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+    if (!formData.cover_file) {
+      toast.error("Lütfen kitabına bir kapak resmi yükle!");
+      return; // Fonksiyonu burada bitir, aşağı inme.
+    }
     setLoading(true);
 
     try {
