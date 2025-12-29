@@ -136,48 +136,88 @@ export default function GirisSayfasi() {
         return toast.error('Geçerli bir e-posta giriniz.');
       }
 
-      // ✅ Boşluk kontrolü ekle
-      if (cleanUsername.includes(' ') || !/^[a-zA-Z0-9_-]{3,20}$/.test(cleanUsername)) {
+      // ✅ Boşluk ve karakter kontrolü
+      const finalUsername = cleanUsername.toLowerCase().replace(/\s+/g, '');
+      if (!/^[a-z0-9_-]{3,20}$/.test(finalUsername)) {
         return toast.error('Kullanıcı adı 3-20 karakter arası, boşluksuz, sadece harf, rakam, - ve _ içerebilir.');
       }
+
       setLoading(true);
 
       try {
-        // KAYIT İŞLEMİ
+        // ✅ 1. ADIM: USERNAME KONTROL ET (Auth'dan önce!)
+        const { data: existingUsername, error: usernameCheckError } = await supabase
+          .from('profiles')
+          .select('username')
+          .eq('username', finalUsername)
+          .maybeSingle();
+
+        if (existingUsername) {
+          throw new Error('Bu kullanıcı adı zaten kullanımda. Lütfen farklı bir tane deneyin.');
+        }
+
+        // ✅ 2. ADIM: EMAIL KONTROL ET (Profiles tablosunda)
+        const { data: existingEmail, error: emailCheckError } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('email', cleanLogin.toLowerCase())
+          .maybeSingle();
+
+        if (existingEmail) {
+          throw new Error('Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.');
+        }
+
+        // ✅ 3. ADIM: AUTH KAYIT İŞLEMİ
         const { data: authData, error: signUpError } = await supabase.auth.signUp({
-          email: cleanLogin,
+          email: cleanLogin.toLowerCase(),
           password: cleanPassword,
-          options: { data: { username: cleanUsername.toLowerCase(), full_name: cleanFullName } },
+          options: { 
+            data: { 
+              username: finalUsername, 
+              full_name: cleanFullName 
+            } 
+          },
         });
 
         if (signUpError) {
-          if (signUpError.message.includes('unique')) {
-            throw new Error('Bu kullanıcı adı veya e-posta zaten kullanımda.');
+          // Auth'da hata varsa, kullanıcıya net bilgi ver
+          if (signUpError.message.includes('already registered')) {
+            throw new Error('Bu e-posta zaten kayıtlı. Giriş yapmayı deneyin.');
           }
           throw signUpError;
         }
 
-        // 🔹 profiles tablosuna manuel insert
+        if (!authData.user) {
+          throw new Error('Kayıt oluşturulamadı. Lütfen tekrar deneyin.');
+        }
+
+        // ✅ 4. ADIM: PROFILES TABLOSUNA EKLE
         const user = authData.user;
         const { error: profileError } = await supabase.from('profiles').insert({
           id: user.id,
           email: user.email,
-          username: cleanUsername.toLowerCase(),
+          username: finalUsername,
           full_name: cleanFullName,
-          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanUsername.toLowerCase()}`,
+          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${finalUsername}`,
         });
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          // Eğer profile oluşturulamazsa, durumu logla (ama auth'daki kullanıcı kalacak)
+          console.error('Profile oluşturulamadı:', profileError);
+          throw new Error('Profil oluşturulamadı. Lütfen destek ile iletişime geçin.');
+        }
 
-        // OTOMATİK TAKİP
+        // ✅ 5. ADIM: OTOMATİK TAKİP
         const KITAPLAB_RESMI_ID = "4990d668-2cdf-4c9d-b409-21ecf14f43ac";
         await supabase.from('author_follows').insert({
           follower_id: user.id,
           followed_id: KITAPLAB_RESMI_ID,
         });
 
+        // ✅ 6. ADIM: BAŞARILI KAYIT
         document.cookie = "site_erisim=acik; path=/; max-age=604800; SameSite=Strict";
         toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
+        
         setTimeout(() => {
           router.push('/');
           router.refresh();
@@ -207,6 +247,7 @@ export default function GirisSayfasi() {
           if (profileError || !data) throw new Error('Hesap bulunamadı.');
           finalEmail = data.email;
         }
+        
         const { data, error } = await supabase.auth.signInWithPassword({
           email: finalEmail,
           password: cleanPassword,
@@ -227,6 +268,7 @@ export default function GirisSayfasi() {
 
         document.cookie = "site_erisim=acik; path=/; max-age=604800; SameSite=Strict";
         toast.success('Giriş başarılı.');
+        
         setTimeout(() => {
           router.push('/');
           router.refresh();
@@ -455,7 +497,7 @@ Yaptırım: Uyarıdan hesap kapatmaya kadar giden cezalar.
 2. TOPLULUĞUN TEMEL İLKELERİ
 Saygı, Güvenlik, Emeğe saygı, İfade özgürlüğü, Adaletli moderasyon ve Topluluk ruhu (linç kültürüne hayır) esastır.
 
-3. HESAP VE DAVRANIŞ SORUMLULUĞU
+3. HESAP VE DAVRANIM SORUMLULUĞU
 Kullanıcılar doğru bilgi vermekle yükümlüdür. Yan hesaplarla manipülasyon yapmak yasaktır. Başkasının kimliğine bürünmek yasaktır. İletişimde saygılı dil esastır.
 
 4. TACİZ VE ZORBALIGA SIFIR TOLERANS
