@@ -245,11 +245,11 @@ function getNotificationText(n) {
     <nav className="w-full border-b sticky top-0 z-[100] backdrop-blur-md bg-white/80 dark:bg-black/90 border-gray-100 dark:border-gray-800 transition-all h-16 md:h-20">
       <div className="max-w-7xl mx-auto px-3 md:px-6 h-full flex items-center justify-between gap-2 md:gap-8">
         <Link href="/" className="flex items-center gap-0.5 md:gap-1 shrink-0 group">
-          <div className="relative w-10 h-10 md:w-16 md:h-16 flex items-center justify-center">
+            <div className="relative w-10 h-10 md:w-16 md:h-16 flex items-center justify-center">
               <img 
                 src="/logo-gunduz.png" 
                 alt="Logo" 
-                className="w-full h-full object-contain dark:hidden mt-3 md:mt-4 -mr-1 md:-mr-2" 
+                className="w-full h-full object-contain dark:hidden mt-4 md:mt-4 ml-1 md:ml-1" 
               />
               <img 
                 src="/logo-gece.png" 
