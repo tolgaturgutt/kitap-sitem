@@ -130,14 +130,47 @@ export default function LeaderboardPage() {
       const admins = adminData?.map(a => a.user_email) || [];
       setAdminEmails(admins);
 
-      const bugun = new Date();
-      const birHaftaOnce = new Date();
-      birHaftaOnce.setDate(bugun.getDate() - 7);
-      const birAyOnce = new Date();
-      birAyOnce.setMonth(bugun.getMonth() - 1);
-      const ikiHaftaOnce = new Date();
-      ikiHaftaOnce.setDate(bugun.getDate() - 14);
+      // ✅ TARIH HESAPLAMA FONKSİYONLARI
+function getThisWeekMonday() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Pazar, 1=Pazartesi
+  const diff = day === 0 ? -6 : 1 - day; // Pazar ise 6 gün geriye git
+  
+  const monday = new Date(now);
+  monday.setDate(now.getDate() + diff);
+  monday.setHours(14, 0, 0, 0); // Saat 14:00
+  
+  // Eğer henüz bu haftanın Pazartesi 14:00'u gelmediyse, geçen haftayı al
+  if (now < monday) {
+    monday.setDate(monday.getDate() - 7);
+  }
+  
+  return monday;
+}
 
+function getLastWeekMonday() {
+  const thisMonday = getThisWeekMonday();
+  const lastMonday = new Date(thisMonday);
+  lastMonday.setDate(thisMonday.getDate() - 7);
+  return lastMonday;
+}
+
+function getThisMonthFirst() {
+  const now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
+  
+  // Eğer henüz ayın 1'i gelmediyse, geçen ayı al
+  if (now.getDate() === 1 && now.getHours() === 0 && now.getMinutes() === 0) {
+    first.setMonth(first.getMonth() - 1);
+  }
+  
+  return first;
+}
+
+// ✅ TARİHLERİ HESAPLA
+const birHaftaOnce = getThisWeekMonday();
+const birAyOnce = getThisMonthFirst();
+const ikiHaftaOnce = getLastWeekMonday();
       // Haftalık en çok okunan kitaplar (chapter_views'dan - AYLIK GİBİ)
 const { data: weeklyChapterViews } = await supabase
   .from('chapter_views')
