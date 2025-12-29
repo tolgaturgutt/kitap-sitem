@@ -45,9 +45,9 @@ export default function RootLayout({ children }) {
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
-        <title>KitapLab - Kendi Hikayeni Yaz</title>
-        <meta name="description" content="KitapLab ile kendi hikayeni yaz, okurlarla buluş." />
-        {/* 👇 BU ÇOK ÖNEMLİ, BURASI KALSIN */}
+        {/* 👇 Google ilk burayı okur, burayı en janti haliyle yazalım */}
+        <title>KitapLab - Kendi Hikayeni Yaz, Oku ve Paylaş</title>
+        <meta name="description" content="KitapLab ile hayal gücünü serbest bırak. Kendi hikayeni yaz, binlerce ücretsiz kitabı oku ve yazarlarla etkileşime geç." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
 
