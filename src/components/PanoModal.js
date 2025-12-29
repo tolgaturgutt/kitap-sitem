@@ -275,16 +275,15 @@ async function handleReportComment(commentId, content) {
 
         {/* SOL TARAF: GÖRSEL */}
         {selectedPano.books?.cover_url && (
-          <div className="relative shrink-0 hidden md:flex items-center justify-center bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
-  <Image 
-    src={selectedPano.books.cover_url} 
-    alt="Kapak"
-    fill
-    sizes="(min-width: 768px) 50vw"
-    // 👇 'p-8'i buraya ekledik. Görüntü bozulmaz, aynısı olur.
-    className="object-contain p-8 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
-  />
-</div>
+          <div className="shrink-0 hidden md:flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
+            <Image 
+              src={selectedPano.books.cover_url} 
+              alt="Kapak"
+              width={500}    // PC ekranı büyük olduğu için kaliteyi biraz yüksek (500px) tuttuk
+              height={750}   // 2:3 oranı
+              className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-full w-auto"
+            />
+          </div>
         )}
 
         {/* SAĞ TARAF */}
@@ -292,16 +291,15 @@ async function handleReportComment(commentId, content) {
           
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
             {selectedPano.books?.cover_url && (
-              <div className="relative md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 h-[250px] w-full flex items-center justify-center">
-  <Image 
-    src={selectedPano.books.cover_url} 
-    alt="Kapak"
-    fill
-    sizes="100vw"
-    // 👇 'p-4'ü buraya ekledik. Resim kutunun içinde 4 birim boşlukla, kenarlık varmış gibi durur.
-    className="object-contain p-4 shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
-  />
-</div>
+           <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
+                <Image 
+                  src={selectedPano.books.cover_url} 
+                  alt="Kapak"
+                  width={300}     // Standart genişlik
+                  height={450}    // Standart yükseklik (2:3 oranı)
+                  className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl h-[250px] w-auto"
+                />
+              </div>
             )}
 
             <div className="mb-8">
