@@ -45,10 +45,14 @@ export default function RootLayout({ children }) {
   return (
     <html lang="tr" suppressHydrationWarning>
       <head>
-        {/* 👇 Google ilk burayı okur, burayı en janti haliyle yazalım */}
         <title>KitapLab - Kendi Hikayeni Yaz, Oku ve Paylaş</title>
         <meta name="description" content="KitapLab ile hayal gücünü serbest bırak. Kendi hikayeni yaz, binlerce ücretsiz kitabı oku ve yazarlarla etkileşime geç." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        
+        {/* 👇 Google'ın o dünya ikonunu silmesi için gereken satırlar */}
+        <link rel="icon" href="/logo.png" sizes="any" /> 
+        <link rel="icon" href="/icon.png" type="image/png" sizes="48x48" />
+        <link rel="apple-touch-icon" href="/logo.png" />
       </head>
 
       {/* 👇 DÜZELTİLEN YER: Style içindeki paddingBottom'u kaldırdık. Artık siteyi yukarı itmeyecek. */}
