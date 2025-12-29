@@ -160,20 +160,14 @@ useEffect(() => {
     ) {
       e.preventDefault();
       e.stopPropagation();
-      // ✅ Sadece desktop'ta toast göster
-      if (window.innerWidth > 768) {
-        toast.error('Bu işlem devre dışı! 🚫');
-      }
+    
       return false;
     }
   };
 
   const handleContextMenu = (e) => {
     e.preventDefault();
-    // ✅ Sadece desktop'ta toast göster (mobilde basılı tutma var)
-    if (window.innerWidth > 768) {
-      toast.error('Sağ tık devre dışı! 🚫');
-    }
+ 
     return false;
   };
 
@@ -319,11 +313,11 @@ useEffect(() => {
   <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
 </header>
 
-         <article 
+   <article 
   className={`${readerSettings.fontFamily} leading-[2.1] select-none`} 
   style={{ fontSize: `${readerSettings.fontSize}px` }}
-  onCopy={(e) => { e.preventDefault(); toast.error('İçerik kopyalanamaz! 🚫'); }}
-  onContextMenu={(e) => { e.preventDefault(); toast.error('Sağ tık devre dışı! 🚫'); }}
+  onCopy={(e) => e.preventDefault()}
+  onContextMenu={(e) => e.preventDefault()}
 >
             {paragraphs.map((para, i) => {
               const paraId = i.toString();
