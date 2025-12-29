@@ -31,6 +31,7 @@ function DuyuruPaneli({ isAdmin }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selectedDuyuru, setSelectedDuyuru] = useState(null);
+  const scrollRef = useRef(null);
 
   useEffect(() => {
     async function getDuyurular() {
@@ -70,6 +71,18 @@ function DuyuruPaneli({ isAdmin }) {
     }
   }
 
+  // Mobilde scroll yakalamak için
+  const handleScroll = () => {
+    if (scrollRef.current && duyurular.length > 1) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const width = scrollRef.current.offsetWidth;
+      const newIndex = Math.round(scrollLeft / width);
+      if (newIndex !== activeIndex) {
+        setActiveIndex(newIndex);
+      }
+    }
+  };
+
   if (loading || duyurular.length === 0) return null;
 
   return (
@@ -77,7 +90,13 @@ function DuyuruPaneli({ isAdmin }) {
       {selectedDuyuru && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl animate-in fade-in duration-500" onClick={() => setSelectedDuyuru(null)}>
           <div className="bg-white dark:bg-[#080808] w-full max-w-5xl max-h-[90vh] rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 dark:border-white/5 relative flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setSelectedDuyuru(null)} className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-xl">✕</button>
+            {/* ✅ Mobilde de gözüken modern çarpı butonu */}
+            <button 
+              onClick={() => setSelectedDuyuru(null)} 
+              className="absolute top-4 right-4 md:top-8 md:right-8 z-30 w-10 h-10 md:w-12 md:h-12 bg-black/60 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-lg md:text-xl font-bold shadow-lg"
+            >
+              ✕
+            </button>
             
             <div className="overflow-y-auto flex-1">
               <div className="flex flex-col md:flex-row">
@@ -109,16 +128,29 @@ function DuyuruPaneli({ isAdmin }) {
       <div className="mb-20">
         <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600 mb-6 italic flex items-center gap-2">📢 Duyurular</h2>
         <div className="relative group">
+          {/* ✅ Desktop okları - modern tasarım */}
           {duyurular.length > 1 && (
             <>
-              <button onClick={() => setActiveIndex((prev) => (prev - 1 + duyurular.length) % duyurular.length)} className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110 text-lg">←</button>
-              <button onClick={() => setActiveIndex((prev) => (prev + 1) % duyurular.length)} className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 md:w-12 md:h-12 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border dark:border-gray-800 rounded-full flex items-center justify-center shadow-2xl transition-all hover:scale-110 text-lg">→</button>
+              <button 
+                onClick={() => setActiveIndex((prev) => (prev - 1 + duyurular.length) % duyurular.length)} 
+                className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2 z-10 w-14 h-14 bg-gradient-to-br from-red-600 to-red-700 backdrop-blur-sm border-2 border-white/20 rounded-2xl items-center justify-center shadow-2xl transition-all hover:scale-110 hover:shadow-red-600/50 text-white text-2xl font-bold"
+              >
+                ←
+              </button>
+              <button 
+                onClick={() => setActiveIndex((prev) => (prev + 1) % duyurular.length)} 
+                className="hidden md:flex absolute right-4 top-1/2 -translate-y-1/2 z-10 w-14 h-14 bg-gradient-to-br from-red-600 to-red-700 backdrop-blur-sm border-2 border-white/20 rounded-2xl items-center justify-center shadow-2xl transition-all hover:scale-110 hover:shadow-red-600/50 text-white text-2xl font-bold"
+              >
+                →
+              </button>
             </>
           )}
-          <div className="overflow-hidden">
-            <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${activeIndex * 100}%)` }}>
+          
+          {/* ✅ Mobilde kaydırmalı, desktop'ta geçişli */}
+          <div className="md:overflow-hidden overflow-x-auto scrollbar-hide snap-x snap-mandatory" ref={scrollRef} onScroll={handleScroll}>
+            <div className="flex md:transition-transform md:duration-500 md:ease-out" style={{ transform: window.innerWidth >= 768 ? `translateX(-${activeIndex * 100}%)` : 'none' }}>
               {duyurular.map((duyuru, idx) => (
-                <div key={idx} className="w-full flex-shrink-0">
+                <div key={idx} className="w-full flex-shrink-0 snap-center md:snap-none px-2 md:px-0">
                   <div onClick={() => setSelectedDuyuru(duyuru)} className="w-full group/card block bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5 cursor-pointer text-left relative">
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                       {duyuru.image_url && duyuru.display_type !== 'none' && (
@@ -139,11 +171,32 @@ function DuyuruPaneli({ isAdmin }) {
               ))}
             </div>
           </div>
+          
+          {/* ✅ Mobilde modern progress bar, desktop'ta yuvarlaklar */}
           {duyurular.length > 1 && (
-            <div className="flex justify-center gap-1.5 md:gap-2 mt-4 md:mt-6">
-              {duyurular.map((_, idx) => (
-                <button key={idx} onClick={() => setActiveIndex(idx)} className={`h-1.5 md:h-2 rounded-full transition-all ${idx === activeIndex ? 'w-6 md:w-8 bg-red-600' : 'w-1.5 md:w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`} />
-              ))}
+            <div className="mt-6">
+              {/* Desktop indicators */}
+              <div className="hidden md:flex justify-center gap-2">
+                {duyurular.map((_, idx) => (
+                  <button 
+                    key={idx} 
+                    onClick={() => setActiveIndex(idx)} 
+                    className={`h-2 rounded-full transition-all ${idx === activeIndex ? 'w-8 bg-red-600' : 'w-2 bg-gray-300 dark:bg-gray-700 hover:bg-gray-400'}`} 
+                  />
+                ))}
+              </div>
+              
+              {/* Mobile progress bar */}
+              <div className="md:hidden flex items-center justify-center gap-2">
+                <span className="text-xs font-black text-red-600">{activeIndex + 1}</span>
+                <div className="flex-1 max-w-[200px] h-1 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-gradient-to-r from-red-600 to-red-500 rounded-full transition-all duration-300"
+                    style={{ width: `${((activeIndex + 1) / duyurular.length) * 100}%` }}
+                  />
+                </div>
+                <span className="text-xs font-black text-gray-400">{duyurular.length}</span>
+              </div>
             </div>
           )}
         </div>
