@@ -149,6 +149,23 @@ export default function BolumDetay({ params }) {
     }
     getFullData();
   }, [id, bolumId]);
+  useEffect(() => {
+  // Klavye kısayollarını engelle
+  const handleKeyDown = (e) => {
+    // Ctrl+C, Ctrl+A, Ctrl+U, F12, Ctrl+Shift+I
+    if (
+      (e.ctrlKey && (e.key === 'c' || e.key === 'a' || e.key === 'u')) ||
+      e.key === 'F12' ||
+      (e.ctrlKey && e.shiftKey && e.key === 'I')
+    ) {
+      e.preventDefault();
+      toast.error('Bu işlem devre dışı! 🚫');
+    }
+  };
+
+  document.addEventListener('keydown', handleKeyDown);
+  return () => document.removeEventListener('keydown', handleKeyDown);
+}, []);
 
   const handleLike = async () => {
     if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
@@ -279,7 +296,12 @@ export default function BolumDetay({ params }) {
             <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
           </header>
 
-          <article className={`${readerSettings.fontFamily} leading-[2.1]`} style={{ fontSize: `${readerSettings.fontSize}px` }}>
+         <article 
+  className={`${readerSettings.fontFamily} leading-[2.1] select-none`} 
+  style={{ fontSize: `${readerSettings.fontSize}px` }}
+  onCopy={(e) => { e.preventDefault(); toast.error('İçerik kopyalanamaz! 🚫'); }}
+  onContextMenu={(e) => { e.preventDefault(); toast.error('Sağ tık devre dışı! 🚫'); }}
+>
             {paragraphs.map((para, i) => {
               const paraId = i.toString();
               const count = paraCommentCounts[paraId] || 0;

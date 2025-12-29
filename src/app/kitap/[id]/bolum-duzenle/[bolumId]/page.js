@@ -161,7 +161,7 @@ export default function BolumDuzenle({ params }) {
     
     let highlighted = text;
     bannedWords.forEach(banned => {
-      const regex = new RegExp(`(${banned})`, 'gi');
+      const regex = new RegExp(`\\b(${banned})\\b`, 'gi');
       highlighted = highlighted.replace(
         regex, 
         '<mark class="bg-red-600 text-white rounded px-1 animate-pulse">$1</mark>'
@@ -175,7 +175,7 @@ export default function BolumDuzenle({ params }) {
   function censorContent(text) {
     let censored = text;
     bannedWords.forEach(banned => {
-      const regex = new RegExp(banned, 'gi');
+      const regex = new RegExp(`\\b${banned}\\b`, 'gi');
       censored = censored.replace(regex, '***');
     });
     return censored;
