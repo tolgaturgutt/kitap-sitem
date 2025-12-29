@@ -63,7 +63,7 @@ export default function MobileNav() {
       )}
 
       {/* MOBİL ALT ÇUBUK */}
-      {/* 👇 BURAYA DİKKAT: pb-[env(...)] ekledik. Telefonun altındaki çizgi kadar dolgu (padding) veriyor. */}
+      {/* 👇 BURAYA DİKKAT: Telefonun altındaki çizgi kadar dolgu (padding) veriyor. */}
      <nav 
         className="md:hidden fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] transition-all duration-300"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} 
