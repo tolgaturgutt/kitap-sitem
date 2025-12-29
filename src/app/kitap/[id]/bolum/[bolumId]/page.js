@@ -149,22 +149,37 @@ export default function BolumDetay({ params }) {
     }
     getFullData();
   }, [id, bolumId]);
-  useEffect(() => {
-  // Klavye kısayollarını engelle
+ useEffect(() => {
   const handleKeyDown = (e) => {
-    // Ctrl+C, Ctrl+A, Ctrl+U, F12, Ctrl+Shift+I
+    // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U, Ctrl+C, Ctrl+A
     if (
-      (e.ctrlKey && (e.key === 'c' || e.key === 'a' || e.key === 'u')) ||
       e.key === 'F12' ||
-      (e.ctrlKey && e.shiftKey && e.key === 'I')
+      (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+      (e.ctrlKey && (e.key === 'u' || e.key === 'U')) ||
+      (e.ctrlKey && (e.key === 'c' || e.key === 'C')) ||
+      (e.ctrlKey && (e.key === 'a' || e.key === 'A'))
     ) {
       e.preventDefault();
+      e.stopPropagation();
       toast.error('Bu işlem devre dışı! 🚫');
+      return false;
     }
   };
 
-  document.addEventListener('keydown', handleKeyDown);
-  return () => document.removeEventListener('keydown', handleKeyDown);
+  // Sağ tık engelleme (tüm sayfa için)
+  const handleContextMenu = (e) => {
+    e.preventDefault();
+    toast.error('Sağ tık devre dışı! 🚫');
+    return false;
+  };
+
+  document.addEventListener('keydown', handleKeyDown, true);
+  document.addEventListener('contextmenu', handleContextMenu);
+  
+  return () => {
+    document.removeEventListener('keydown', handleKeyDown, true);
+    document.removeEventListener('contextmenu', handleContextMenu);
+  };
 }, []);
 
   const handleLike = async () => {
@@ -292,9 +307,13 @@ export default function BolumDetay({ params }) {
 
       <div className="flex justify-center min-h-screen relative">
         <main className={`w-full max-w-2xl pt-48 pb-20 px-6 md:px-8 shrink-0 transition-colors duration-500 ${readerSettings.theme}`}>
-          <header className="mb-24 text-center">
-            <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
-          </header>
+          <header 
+  className="mb-24 text-center select-none"
+  onCopy={(e) => e.preventDefault()}
+  onContextMenu={(e) => e.preventDefault()}
+>
+  <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
+</header>
 
          <article 
   className={`${readerSettings.fontFamily} leading-[2.1] select-none`} 
