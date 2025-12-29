@@ -91,10 +91,14 @@ export default function RootLayout({ children }) {
       <head>
         <title>KitapLab - Kendi Hikayeni Yaz</title>
         <meta name="description" content="KitapLab ile kendi hikayeni yaz, okurlarla buluş." />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
       </head>
 
-      <body className={`${inter.className} bg-[#fafafa] dark:bg-black text-black dark:text-white transition-colors duration-300`}>
+     <body 
+ 
+  style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
+  className={`${inter.className} bg-[#fafafa] dark:bg-black text-black dark:text-white transition-colors duration-300`}
+>
         
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           
