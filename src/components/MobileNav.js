@@ -11,7 +11,7 @@ export default function MobileNav() {
   const [isApp, setIsApp] = useState(false);
 
   useEffect(() => {
-    // Sadece uygulamadaysak (APK) true olur
+    // Sadece uygulamadaysak 'isApp' true olsun
     if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform()) {
       setIsApp(true);
     }
@@ -40,10 +40,11 @@ export default function MobileNav() {
         >
           <div 
             className="absolute left-1/2 -translate-x-1/2 w-[160px] bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl border border-red-600/20 overflow-hidden animate-in slide-in-from-bottom-2 duration-200"
-            // 👇 WEB İSE: 72px (Normal) | APK İSE: 72px + 7px
+            // 👇 WEB İSE: 72px (Standart)
+            // 👇 APK İSE: 72px + (Telefonun Güvenli Alanı + 7px)
             style={{ 
               bottom: isApp 
-                ? 'calc(72px + 7px)' 
+                ? 'calc(72px + env(safe-area-inset-bottom) + 7px)' 
                 : '72px' 
             }}
             onClick={(e) => e.stopPropagation()}
@@ -65,11 +66,11 @@ export default function MobileNav() {
       {/* MOBİL ALT ÇUBUK */}
       <nav 
         className="md:hidden fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] transition-all duration-300"
-        // 👇 İŞTE ÇÖZÜM:
-        // isApp (APK) -> 7px
-        // Web -> 0px (env() kullanmadık, o yüzden webde yukarı kalkmaz)
+        // 👇 İŞTE SİHİRLİ FORMÜL BURADA
         style={{ 
-          paddingBottom: isApp ? '7px' : '0px' 
+          paddingBottom: isApp 
+            ? 'calc(env(safe-area-inset-bottom) + 7px)' // APK: Güvenli Alan + 7px
+            : '0px' // Web: Sıfır (Zemine Yapış)
         }} 
       >
         <div className="flex items-center justify-around h-16 px-2">
