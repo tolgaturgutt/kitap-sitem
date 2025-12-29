@@ -155,16 +155,13 @@ function DuyuruPaneli({ isAdmin }) {
                   <div onClick={() => setSelectedDuyuru(duyuru)} className="w-full group/card block bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5 cursor-pointer text-left relative">
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
                       {duyuru.image_url && duyuru.display_type !== 'none' && (
-                        <div className="relative shrink-0 rounded-2xl overflow-hidden border dark:border-white/5 shadow-lg h-36 w-24 md:w-48">
-                          <Image
-                            src={duyuru.image_url}
-                            alt={duyuru.title}
-                            fill
-                            sizes="(max-width: 768px) 100px, 200px"
-                            className="object-contain p-2 group-hover/card:scale-110 transition-transform duration-500"
-                            priority={true}
-                          />
-                        </div>
+                        <div className="shrink-0 rounded-2xl overflow-hidden border dark:border-white/5 shadow-lg h-36 w-auto">
+  <img 
+    src={duyuru.image_url} 
+    className="h-full w-auto object-contain group-hover/card:scale-110 transition-transform duration-500" 
+    alt={duyuru.title} 
+  />
+</div>
                       )}
                       <div className="flex-1">
                         <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{getTypeLabel(duyuru.type)}</p>
@@ -235,15 +232,15 @@ function ContinueReadingCarousel({ books }) {
                 <Link href={`/kitap/${item.book_id}/bolum/${item.chapter_id}`} className="group block bg-white dark:bg-white/5 border dark:border-white/10 rounded-2xl md:rounded-[2.5rem] p-4 md:p-8 hover:border-red-600 transition-all shadow-xl shadow-black/5">
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
                     {/* 👇 className içine 'relative' ekledik */}
-<div className="relative w-16 h-24 md:w-24 md:h-36 rounded-xl md:rounded-2xl overflow-hidden shrink-0 border dark:border-white/5 shadow-lg">
-  <Image 
-    src={item.books?.cover_url || '/placeholder.png'} 
-    alt={item.books?.title || 'Kitap'}
-    fill
-    sizes="(max-width: 768px) 100px, 150px"
-    className="object-cover group-hover:scale-110 transition-transform duration-500"
-  />
-</div>
+                    <div className="relative w-16 h-24 md:w-24 md:h-36 rounded-xl md:rounded-2xl overflow-hidden shrink-0 border dark:border-white/5 shadow-lg">
+                      <Image
+                        src={item.books?.cover_url || '/placeholder.png'}
+                        alt={item.books?.title || 'Kitap'}
+                        fill
+                        sizes="(max-width: 768px) 100px, 150px"
+                        className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    </div>
                     <div className="flex-1">
                       <h3 className="text-xl md:text-3xl font-black dark:text-white mb-2 group-hover:text-red-600 transition-colors uppercase tracking-tight line-clamp-1">{item.books?.title}</h3>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3 md:mb-4">Kaldığın Bölüm: {item.chapters?.title}</p>
@@ -694,24 +691,24 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
         <div ref={scrollRef} className="flex gap-3 md:gap-4 overflow-x-auto scrollbar-hide snap-x py-2 px-1">
           {chapters.map(chapter => (
             <div key={chapter.id} onClick={() => setSelectedChapter(chapter)} className="flex-none w-[38%] md:w-32 lg:w-40 snap-start group/card cursor-pointer">
-             
 
-<div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
-  {/* 👇 BURASI DÜZELDİ: kitap yerine chapter.books kullanıyoruz */}
-  <Image 
-    src={chapter.books?.cover_url || '/placeholder.png'} 
-    alt={chapter.books?.title || 'Bölüm'}
-    fill
-    sizes="(max-width: 768px) 120px, 160px"
-    className="object-cover group-hover/card:scale-105 transition-transform duration-500"
-  />
-  
-  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 pt-6 z-10">
-    <p className="text-[10px] text-white font-black uppercase leading-tight line-clamp-2">
-      {chapter.title}
-    </p>
-  </div>
-</div>
+
+              <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
+                {/* 👇 BURASI DÜZELDİ: kitap yerine chapter.books kullanıyoruz */}
+                <Image
+                  src={chapter.books?.cover_url || '/placeholder.png'}
+                  alt={chapter.books?.title || 'Bölüm'}
+                  fill
+                  sizes="(max-width: 768px) 120px, 160px"
+                  className="object-cover group-hover/card:scale-105 transition-transform duration-500"
+                />
+
+                <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 pt-6 z-10">
+                  <p className="text-[10px] text-white font-black uppercase leading-tight line-clamp-2">
+                    {chapter.title}
+                  </p>
+                </div>
+              </div>
 
               <h3 className="font-bold text-[11px] dark:text-white leading-tight truncate group-hover/card:text-red-600 transition-colors">
                 {chapter.books?.title}

@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Username from '@/components/Username';
-
+import Image from 'next/image'; // 👈 BU SATIRI EKLE
 function AramaIcerik() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -20,18 +20,18 @@ function AramaIcerik() {
       setLoading(true);
 
      // 1. KİTAPLARI (Bölüm Bilgisiyle) VE KULLANICILARI ÇEK
-      const [booksRes, usersRes] = await Promise.all([
+     const [booksRes, usersRes] = await Promise.all([
         supabase
           .from('books')
-          // ✅ chapters(id) EKLEDİK Kİ BÖLÜM SAYISINI GÖRELİM
           .select('id, title, summary, cover_url, username, category, chapters(id)') 
-          .ilike('title', `%${query}%`),
+          .ilike('title', `%${query}%`)
+          .limit(50), // 👈 GÜVENLİK SİGORTASI: En fazla 50 kitap getir
           
-        // ✅ GÜNCELLEME BURADA: Sadece username değil, full_name de aranıyor.
         supabase
           .from('profiles')
-          .select('username, full_name, avatar_url, bio, role') // full_name'i de çektik
-          .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`) // İkisinden biri tutarsa getir
+          .select('username, full_name, avatar_url, bio, role')
+          .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+          .limit(20) // 👈 Yazar araması için de 20 limit koyduk
       ]);
 
       let booksData = booksRes.data || [];
@@ -116,9 +116,19 @@ function AramaIcerik() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {results.books.map(book => (
                     <Link key={book.id} href={`/kitap/${book.id}`} className="flex gap-6 p-4 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2.5rem] hover:scale-[1.02] transition-transform group shadow-sm">
-                      <div className="w-28 h-40 rounded-2xl overflow-hidden shrink-0 shadow-lg group-hover:shadow-red-600/20 transition-all">
-                        {book.cover_url ? <img src={book.cover_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-100 dark:bg-black/40 flex items-center justify-center text-[10px] font-black uppercase text-gray-400">Kapak Yok</div>}
-                      </div>
+                      <div className="relative w-28 h-40 rounded-2xl overflow-hidden shrink-0 shadow-lg group-hover:shadow-red-600/20 transition-all">
+  {book.cover_url ? (
+    <Image 
+      src={book.cover_url} 
+      alt={book.title}
+      fill
+      sizes="112px"
+      className="object-cover"
+    />
+  ) : (
+    <div className="w-full h-full bg-gray-100 dark:bg-black/40 flex items-center justify-center text-[10px] font-black uppercase text-gray-400">Kapak Yok</div>
+  )}
+</div>
                       <div className="flex flex-col justify-center py-2">
                         <span className="text-[9px] font-black uppercase text-red-600 mb-1">{book.category}</span>
                         <h3 className="text-xl font-bold dark:text-white mb-2 group-hover:text-red-600 transition-colors">{book.title}</h3>
@@ -144,9 +154,19 @@ function AramaIcerik() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                   {results.users.map(u => (
                     <Link key={u.username} href={`/yazar/${u.username}`} className="flex flex-col items-center p-8 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[3rem] text-center hover:border-red-600 transition-all group">
-                      <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all mb-4">
-                        {u.avatar_url ? <img src={u.avatar_url} className="w-full h-full object-cover" /> : <div className="w-full h-full bg-gray-200 dark:bg-black/50 flex items-center justify-center font-black">?</div>}
-                      </div>
+                      <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all mb-4">
+  {u.avatar_url ? (
+    <Image 
+      src={u.avatar_url} 
+      alt={u.username}
+      fill
+      sizes="80px"
+      className="object-cover"
+    />
+  ) : (
+    <div className="w-full h-full bg-gray-200 dark:bg-black/50 flex items-center justify-center font-black">?</div>
+  )}
+</div>
                       <div className="mb-1">
                         <Username
                           username={u.username}

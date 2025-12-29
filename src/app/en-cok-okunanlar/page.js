@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Username from '@/components/Username';
-
+import Image from 'next/image';
 // --- YARDIMCI: SAYI FORMATLAMA (1200 -> 1.2K) ---
 function formatNumber(num) {
   if (!num) return 0;
@@ -177,14 +177,16 @@ export default function Top100Page() {
                 </div>
 
                 {/* Kapak Resmi */}
-                <div className="aspect-[2/3] w-full rounded-2xl overflow-hidden shadow-lg group-hover:shadow-2xl transition-all relative">
-                   {book.cover_url ? (
-                      <img 
-                        src={book.cover_url} 
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                        alt={book.title} 
-                      />
-                   ) : (
+                <div className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden shadow-lg group-hover:shadow-2xl transition-all">
+   {book.cover_url ? (
+      <Image 
+        src={book.cover_url} 
+        alt={book.title}
+        fill
+        sizes="(max-width: 768px) 150px, 200px"
+        className="object-cover group-hover:scale-110 transition-transform duration-500" 
+      />
+   ) : (
                       <div className="w-full h-full bg-gray-200 dark:bg-white/10 flex items-center justify-center">
                         <span className="text-4xl">📕</span>
                       </div>
