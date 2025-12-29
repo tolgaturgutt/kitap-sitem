@@ -64,12 +64,14 @@ export default function MobileNav() {
 
       {/* MOBİL ALT ÇUBUK */}
       {/* 👇 BURAYA DİKKAT: pb-[env(...)] ekledik. Telefonun altındaki çizgi kadar dolgu (padding) veriyor. */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] pb-[env(safe-area-inset-bottom)] transition-all duration-300">
-        
-        {/* İçerik yine 16 birim (64px) yüksekliğinde ama padding sayesinde yukarıda duruyor */}
+     <nav 
+        className="md:hidden fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] transition-all duration-300"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }} 
+      >
         <div className="flex items-center justify-around h-16 px-2">
           
-         {/* ✅ KATEGORİLER */}
+         {/* ... (İçerikteki Linkler/Butonlar Aynen Kalacak) ... */}
+         
           <Link 
             href="/kategori" 
             className={`flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all ${
@@ -82,7 +84,6 @@ export default function MobileNav() {
             <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Kategori</span>
           </Link>
 
-          {/* ✅ KİTAPLARIM */}
           <Link 
             href="/kitaplarim" 
             className={`flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all ${
@@ -95,7 +96,6 @@ export default function MobileNav() {
             <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Kitaplarım</span>
           </Link>
 
-          {/* ✅ ARTIYA TIKLA (ORTADA) */}
           <button 
             onClick={() => setShowPlusMenu(!showPlusMenu)}
             className={`flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all ${
@@ -108,7 +108,6 @@ export default function MobileNav() {
             <span className="text-[8px] font-black uppercase tracking-tighter leading-tight">Oluştur</span>
           </button>
 
-          {/* ✅ ETKİNLİKLER */}
           <button 
             onClick={handleComingSoon}
             className="flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all text-gray-400 hover:text-red-600 relative"
@@ -118,7 +117,6 @@ export default function MobileNav() {
             <div className="absolute top-1 right-1 w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
           </button>
 
-          {/* ✅ SIRALAMA */}
           <Link 
             href="/siralama" 
             className={`flex flex-col items-center justify-center gap-0.5 w-[68px] h-16 rounded-xl transition-all ${
@@ -135,4 +133,4 @@ export default function MobileNav() {
       </nav>
     </>
   );
-}
+}//. .
