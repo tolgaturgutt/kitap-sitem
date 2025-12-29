@@ -22,6 +22,7 @@ export default function CategoryPage() {
   const [loading, setLoading] = useState(true);
   const [sortBy, setSortBy] = useState('popular'); // popular, newest, mostRead
   const [adminEmails, setAdminEmails] = useState([]);
+  const [displayCount, setDisplayCount] = useState(24); // İlk 24 kitap göster
 
   useEffect(() => {
     async function fetchData() {
@@ -95,6 +96,15 @@ export default function CategoryPage() {
     const scoreB = b.totalVotes * 5 + b.totalComments * 2 + b.totalViews;
     return scoreB - scoreA;
   });
+
+  // 🔴 GÖSTERILECEK KITAPLAR
+  const displayedBooks = sortedBooks.slice(0, displayCount);
+  const hasMore = sortedBooks.length > displayCount;
+
+  // 🔴 DAHA FAZLA YÜKLE
+  function loadMore() {
+    setDisplayCount(prev => prev + 24);
+  }
 
   if (loading) {
     return (
@@ -176,48 +186,62 @@ export default function CategoryPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5">
-            {sortedBooks.map(kitap => (
-              <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="group">
-                <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
-                  {kitap.cover_url ? (
-                    <img src={kitap.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={kitap.title} />
-                  ) : (
-                    <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />
-                  )}
-                </div>
-                
-                <h3 className="flex items-center gap-1.5 font-bold text-[11px] md:text-[13px] dark:text-white mb-0.5 group-hover:text-red-600 transition-colors">
-                  {kitap.is_editors_choice && (
-                    <div className="shrink-0" title="Editörün Seçimi">
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-yellow-500 drop-shadow-sm">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                      </svg>
+          <>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-5">
+              {displayedBooks.map(kitap => (
+                <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="group">
+                  <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
+                    {kitap.cover_url ? (
+                      <img src={kitap.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={kitap.title} />
+                    ) : (
+                      <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />
+                    )}
+                  </div>
+                  
+                  <h3 className="flex items-center gap-1.5 font-bold text-[11px] md:text-[13px] dark:text-white mb-0.5 group-hover:text-red-600 transition-colors">
+                    {kitap.is_editors_choice && (
+                      <div className="shrink-0" title="Editörün Seçimi">
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-3.5 h-3.5 text-yellow-500 drop-shadow-sm">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                      </div>
+                    )}
+                    <span className="truncate line-clamp-1">{kitap.title}</span>
+                  </h3>
+
+                  {kitap.is_completed && (
+                    <div className="mb-1">
+                      <span className="text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-md uppercase tracking-wide">
+                        ✅ Tamamlandı
+                      </span>
                     </div>
                   )}
-                  <span className="truncate line-clamp-1">{kitap.title}</span>
-                </h3>
+                  
+                  <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
+                    <Username username={kitap.username} isAdmin={kitap.is_admin} />
+                  </p>
 
-                {kitap.is_completed && (
-                  <div className="mb-1">
-                    <span className="text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-2 py-0.5 rounded-md uppercase tracking-wide">
-                      ✅ Tamamlandı
-                    </span>
+                  <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
+                    <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
+                    <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
+                    <span className="flex items-center gap-0.5">💬 {formatNumber(kitap.totalComments)}</span>
                   </div>
-                )}
-                
-                <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
-                  <Username username={kitap.username} isAdmin={kitap.is_admin} />
-                </p>
+                </Link>
+              ))}
+            </div>
 
-                <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
-                  <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
-                  <span className="flex items-center gap-0.5">❤️ {formatNumber(kitap.totalVotes)}</span>
-                  <span className="flex items-center gap-0.5">💬 {formatNumber(kitap.totalComments)}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
+            {/* 🔴 DAHA FAZLA GÖSTER BUTONU */}
+            {hasMore && (
+              <div className="flex justify-center mt-12">
+                <button
+                  onClick={loadMore}
+                  className="px-8 py-4 bg-red-600 hover:bg-red-700 text-white font-black text-sm uppercase tracking-widest rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
+                >
+                  📚 Daha Fazla Göster ({sortedBooks.length - displayCount} kitap kaldı)
+                </button>
+              </div>
+            )}
+          </>
         )}
 
       </div>
