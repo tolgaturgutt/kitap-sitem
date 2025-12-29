@@ -62,55 +62,43 @@ export default function GirisSayfasi() {
   };
 
   // ŞİFRE SIFIRLAMA
+ // ŞİFRE SIFIRLAMA (Sadece E-posta)
   async function handleResetPassword() {
     const cleanInput = sanitizeInput(loginInput);
-    if (!cleanInput) return toast.error('E-posta veya kullanıcı adı giriniz.');
+    
+    // 👇 Sadece E-posta formatı kontrolü yapıyoruz
+    if (!cleanInput || !isEmail(cleanInput)) {
+      return toast.error('Lütfen geçerli bir e-posta adresi giriniz.');
+    }
     
     setLoading(true);
     
     try {
-      let targetEmail = cleanInput;
-      
-      // Eğer @ yoksa, kullanıcı adıdır - email'i bul
-      if (!isEmail(cleanInput)) {
-        const cleanedUsername = cleanInput.toLowerCase().replace(/\s+/g, '');
-        
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('username', cleanedUsername)
-          .single();
-        
-        if (profileError || !profileData) {
-          toast.error('Bu kullanıcı adına kayıtlı hesap bulunamadı.');
-          setLoading(false);
-          return;
-        }
-        targetEmail = profileData.email;
-      }
-
-      // Email'e şifre sıfırlama linki gönder
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(targetEmail, {
+      // Direkt girilen e-postaya gönderiyoruz
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanInput, {
         redirectTo: `${window.location.origin}/sifre-yenile`,
       });
 
       if (resetError) {
-        toast.error('Sıfırlama linki gönderilemedi: ' + resetError.message);
-        setLoading(false);
-        return;
+        // Güvenlik için bazen hata detayını gizlemek gerekebilir ama şimdilik gösterelim
+        throw resetError;
       }
       
       toast.success('Sıfırlama bağlantısı e-postanıza gönderildi! 📧');
+      
+      // İşlem bitince giriş ekranına atıp temizleyelim
       setIsResetMode(false);
       setLoginInput('');
       
     } catch (error) {
-      toast.error(error.message || 'Bir hata oluştu.');
+      console.error(error);
+      // Kullanıcı bulunamadı hatasını çok açık vermemek güvenlik açısından daha iyidir
+      // Ama supabase genelde "rate limit" dışında hata dönmez (security through obscurity)
+      toast.success('Eğer kayıtlıysa e-postanıza bağlantı gönderildi.'); 
     } finally {
       setLoading(false);
     }
   }
-
   // ANA İŞLEM (GİRİŞ veya KAYIT)
   async function handleAuth() {
     if (isResetMode) return handleResetPassword();
@@ -345,20 +333,21 @@ export default function GirisSayfasi() {
             </>
           )}
 
-          <div>
+         <div>
             <label className="block text-xs font-bold mb-1 opacity-60 uppercase">
-              {isSignUp && !isResetMode ? 'E-posta Adresi' : 'E-posta veya Kullanıcı Adı'}
+              {/* 👇 Eğer Şifre Sıfırlama VEYA Kayıt ise "E-posta" yazsın. Sadece Giriş'te ikisi de olur. */}
+              {isResetMode || isSignUp ? 'E-posta Adresi' : 'E-posta veya Kullanıcı Adı'}
             </label>
             <input
-              type="text" 
+              type={isResetMode || isSignUp ? "email" : "text"} // Telefondaki klavye @ işaretli açılsın
               value={loginInput}
               onChange={(e) => setLoginInput(e.target.value)}
               maxLength={255}
               className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
-              placeholder={isSignUp ? "mail@ornek.com" : "Giriş bilgisi"}
+              // 👇 Placeholder'ı da duruma göre değiştirdik
+              placeholder={isResetMode || isSignUp ? "mail@ornek.com" : "Kullanıcı adı veya e-posta"}
             />
           </div>
-
           {!isResetMode && (
             <div>
               <div className="flex justify-between items-center mb-1">

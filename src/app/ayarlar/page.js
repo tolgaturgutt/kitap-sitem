@@ -86,40 +86,35 @@ export default function SettingsPage() {
   };
 
   // --- 2. SENARYO: ŞİFRE SIFIRLAMA ---
+// --- 2. SENARYO: ŞİFRE SIFIRLAMA (SADECE E-POSTA) ---
   const handleForgotPassword = async (e) => {
     e.preventDefault();
-    if (!resetInput.trim()) return toast.error('Lütfen bir şeyler yaz.');
+    const emailToSend = resetInput.trim();
+
+    // 1. Boş mu kontrolü
+    if (!emailToSend) return toast.error('Lütfen e-posta adresinizi yazın.');
+
+    // 2. E-posta formatı kontrolü (@ var mı?)
+    if (!emailToSend.includes('@')) {
+      return toast.error('Lütfen geçerli bir e-posta adresi giriniz.');
+    }
 
     setResetLoading(true);
-    let emailToSend = resetInput.trim();
 
     try {
-      if (!emailToSend.includes('@')) {
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('user_email')
-          .eq('username', emailToSend)
-          .single();
-
-        if (profileError || !profileData) {
-          toast.error('Kullanıcı bulunamadı.');
-          setResetLoading(false);
-          return;
-        }
-        emailToSend = profileData.user_email;
-      }
-
+      // 3. Direkt E-postaya gönder
       const { error } = await supabase.auth.resetPasswordForEmail(emailToSend, {
         redirectTo: `${window.location.origin}/sifre-yenile`,
       });
 
       if (error) throw error;
 
-      toast.success('Sıfırlama bağlantısı gönderildi!');
-      setShowForgotModal(false);
-      setResetInput('');
+      toast.success('Sıfırlama bağlantısı e-postana gönderildi! 📧');
+      setShowForgotModal(false); // Modalı kapat
+      setResetInput('');         // Kutuyu temizle
 
     } catch (error) {
+      // Güvenlik için detaylı hata vermek yerine genel konuşabiliriz ama şimdilik hata mesajını basalım
       toast.error('Hata: ' + error.message);
     } finally {
       setResetLoading(false);
@@ -289,15 +284,31 @@ export default function SettingsPage() {
       </div>
 
       {/* --- MODAL 1: ŞİFRE SIFIRLAMA --- */}
+ {/* --- MODAL 1: ŞİFRE SIFIRLAMA --- */}
       {showForgotModal && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
            <div className="bg-white dark:bg-[#1a1a1a] w-full max-w-md rounded-[2rem] p-8 relative shadow-2xl animate-in zoom-in-95">
               <button onClick={() => setShowForgotModal(false)} className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center bg-gray-100 dark:bg-white/5 rounded-full text-gray-500 hover:text-black font-bold">✕</button>
+              
               <h3 className="text-xl font-black dark:text-white mb-2">Şifre Sıfırlama</h3>
-              <p className="text-sm text-gray-500 mb-6">E-posta adresini veya Kullanıcı adını gir.</p>
+              {/* 👇 Yazıyı değiştirdik */}
+              <p className="text-sm text-gray-500 mb-6">Hesabına kayıtlı e-posta adresini gir.</p>
+              
               <form onSubmit={handleForgotPassword} className="space-y-4">
-                 <input type="text" value={resetInput} onChange={(e) => setResetInput(e.target.value)} placeholder="E-posta veya Kullanıcı Adı" className="w-full h-12 bg-gray-50 dark:bg-black border border-gray-200 dark:border-white/10 rounded-xl px-4 outline-none focus:border-red-500 transition-colors" />
-                 <button type="submit" disabled={resetLoading} className="w-full bg-red-600 text-white font-black py-3 rounded-xl hover:bg-red-700 transition-colors">{resetLoading ? 'Gönderiliyor...' : 'Sıfırlama Linki Gönder'}</button>
+                 <input 
+                    type="email" // 👇 Klavye @ işaretli açılsın
+                    value={resetInput} 
+                    onChange={(e) => setResetInput(e.target.value)} 
+                    placeholder="mail@ornek.com" // 👇 Placeholder değişti
+                    className="w-full h-12 bg-gray-50 dark:bg-black border border-gray-200 dark:border-white/10 rounded-xl px-4 outline-none focus:border-red-500 transition-colors" 
+                 />
+                 <button 
+                    type="submit" 
+                    disabled={resetLoading} 
+                    className="w-full bg-red-600 text-white font-black py-3 rounded-xl hover:bg-red-700 transition-colors"
+                 >
+                    {resetLoading ? 'Gönderiliyor...' : 'Sıfırlama Linki Gönder'}
+                 </button>
               </form>
            </div>
         </div>
