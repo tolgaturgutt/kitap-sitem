@@ -6,7 +6,7 @@ import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoModal from '@/components/PanoModal';
-
+import Image from 'next/image';
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
   if (!num) return 0;
@@ -20,13 +20,13 @@ export default function ProfilSayfasi() {
   const [myBooks, setMyBooks] = useState([]);
   const [myDrafts, setMyDrafts] = useState([]);
   const [myPanos, setMyPanos] = useState([]);
-  
+
   // Takip sayıları için
   const [followedAuthorsCount, setFollowedAuthorsCount] = useState(0);
   const [myFollowersCount, setMyFollowersCount] = useState(0);
-  
+
   const [loading, setLoading] = useState(true);
-  
+
   const [totalViews, setTotalViews] = useState(0);
   const [activeTab, setActiveTab] = useState('eserler');
   const [modalType, setModalType] = useState(null);
@@ -35,7 +35,7 @@ export default function ProfilSayfasi() {
   const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '' });
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
-  
+
   // Listeler (Artık detaylı veriyi direkt çekiyoruz)
   const [followersWithProfiles, setFollowersWithProfiles] = useState([]);
   const [followingWithProfiles, setFollowingWithProfiles] = useState([]);
@@ -111,7 +111,7 @@ export default function ProfilSayfasi() {
       }
 
       // --- YENİ TAKİP SİSTEMİ (Supabase Relations) ---
-      
+
       // 1. Ben kimleri takip ediyorum? (Following)
       const { data: followingData } = await supabase
         .from('author_follows')
@@ -175,47 +175,47 @@ export default function ProfilSayfasi() {
   async function handleSaveProfile() {
     // Önce kullanıcı adı dolu mu kontrolü yapalım (Kendi ismimiz değilse)
     if (profileData.username !== user.user_metadata?.username) {
-       const { data: existingUser } = await supabase
-         .from('profiles')
-         .select('id')
-         .eq('username', profileData.username)
-         .neq('id', user.id) // Kendi ID'miz hariç bak
-         .single();
+      const { data: existingUser } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('username', profileData.username)
+        .neq('id', user.id) // Kendi ID'miz hariç bak
+        .single();
 
-       if (existingUser) {
-         toast.error('Bu kullanıcı adı zaten kullanımda. Lütfen başka bir tane seçin.');
-         return;
-       }
+      if (existingUser) {
+        toast.error('Bu kullanıcı adı zaten kullanımda. Lütfen başka bir tane seçin.');
+        return;
+      }
     }
 
     // Güncelleme İşlemi
     const { error } = await supabase.from('profiles').upsert({
-      id: user.id, 
+      id: user.id,
       email: user.email,
-      full_name: profileData.full_name, 
+      full_name: profileData.full_name,
       username: profileData.username,
       // DİKKAT: Veritabanında sütun adın 'instagram' ise böyle kalmalı.
       // Eğer 'instagram_url' ise burayı düzeltmelisin.
-      instagram: profileData.instagram, 
+      instagram: profileData.instagram,
       avatar_url: profileData.avatar_url,
-      bio: profileData.bio, 
+      bio: profileData.bio,
       updated_at: new Date()
     });
 
-  if (error) { 
+    if (error) {
       console.log("HATA:", error);
-      
+
       // 🔥 KULLANICI ADI DOLU MU?
       if (error.message.includes('unique_username_case_insensitive')) {
         toast.error('Bu kullanıcı adı zaten kullanımda. Lütfen başka bir tane seçin.');
       } else {
-        toast.error("Kaydedilemedi: " + error.message); 
+        toast.error("Kaydedilemedi: " + error.message);
       }
     } else {
-      toast.success("Güncellendi ✅"); 
-      setIsEditing(false); 
+      toast.success("Güncellendi ✅");
+      setIsEditing(false);
       // Sayfayı yenilemeye gerek kalmadan state güncellensin diye:
-      setUser(prev => ({...prev, user_metadata: {...prev.user_metadata, username: profileData.username}}));
+      setUser(prev => ({ ...prev, user_metadata: { ...prev.user_metadata, username: profileData.username } }));
     }
   }
 
@@ -242,12 +242,12 @@ export default function ProfilSayfasi() {
       .delete()
       .eq('follower_id', user.id)   // Benim ID'm
       .eq('followed_id', targetId); // Silinecek kişinin ID'si
-    
-    if (!error) { 
+
+    if (!error) {
       // Listeden çıkar
       setFollowingWithProfiles(prev => prev.filter(a => a.followed_id !== targetId));
       setFollowedAuthorsCount(prev => prev - 1);
-      toast.success("Bırakıldı"); 
+      toast.success("Bırakıldı");
     } else {
       toast.error("Hata oluştu");
     }
@@ -281,9 +281,9 @@ export default function ProfilSayfasi() {
     <div className="min-h-screen py-6 md:py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black transition-colors">
       <Toaster />
 
-      <PanoModal 
-        selectedPano={selectedPano} 
-        onClose={() => setSelectedPano(null)} 
+      <PanoModal
+        selectedPano={selectedPano}
+        onClose={() => setSelectedPano(null)}
         user={user}
         adminEmails={adminEmails}
         isAdmin={isAdmin}
@@ -434,65 +434,65 @@ export default function ProfilSayfasi() {
 
         <div className="min-h-[300px]">
           {activeTab === 'hakkında' ? (
-  <div className="p-6 md:p-8 bg-white dark:bg-white/5 rounded-2xl md:rounded-3xl border dark:border-white/5 flex flex-col items-start gap-6 animate-in fade-in slide-in-from-bottom-2">
-    <div className="w-full">
-      <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Biyografi</h3>
-      <p className="italic text-gray-500 leading-relaxed w-full font-serif text-base md:text-lg">
-        {profileData.bio || "Biyografi henüz eklenmemiş."}
-      </p>
-    </div>
+            <div className="p-6 md:p-8 bg-white dark:bg-white/5 rounded-2xl md:rounded-3xl border dark:border-white/5 flex flex-col items-start gap-6 animate-in fade-in slide-in-from-bottom-2">
+              <div className="w-full">
+                <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Biyografi</h3>
+                <p className="italic text-gray-500 leading-relaxed w-full font-serif text-base md:text-lg">
+                  {profileData.bio || "Biyografi henüz eklenmemiş."}
+                </p>
+              </div>
 
-    {profileData.instagram && (
-      <div className="w-full pt-6 border-t dark:border-white/10">
-        <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Instagram</h3>
-        <a 
-          href={`https://instagram.com/${profileData.instagram.replace('@', '')}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold hover:scale-105 transition-transform"
-        >
-          <span>📷</span>
-          <span>@{profileData.instagram.replace('@', '')}</span>
-        </a>
-      </div>
-    )}
-  </div>
+              {profileData.instagram && (
+                <div className="w-full pt-6 border-t dark:border-white/10">
+                  <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Instagram</h3>
+                  <a
+                    href={`https://instagram.com/${profileData.instagram.replace('@', '')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 md:px-6 py-2 md:py-3 bg-gradient-to-br from-purple-600 via-pink-600 to-orange-500 text-white rounded-xl md:rounded-2xl text-xs md:text-sm font-bold hover:scale-105 transition-transform"
+                  >
+                    <span>📷</span>
+                    <span>@{profileData.instagram.replace('@', '')}</span>
+                  </a>
+                </div>
+              )}
+            </div>
           ) : activeTab === 'panolar' ? (
             <div className="space-y-4 md:space-y-6">
               {myPanos.length === 0 ? (
                 <div className="text-center py-8 md:py-10 text-sm text-gray-500">Henüz hiç pano oluşturmamışsın.</div>
               ) : (
                 myPanos.map(pano => (
-                  <div 
-                    key={pano.id} 
+                  <div
+                    key={pano.id}
                     onClick={() => setSelectedPano(pano)}
                     className="bg-white dark:bg-white/5 p-4 md:p-6 rounded-xl md:rounded-[2rem] border dark:border-white/10 flex gap-4 md:gap-6 relative group hover:border-red-600/30 transition-all cursor-pointer"
                   >
                     <div className="w-16 h-24 md:w-20 md:h-28 shrink-0 rounded-lg md:rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
                       {pano.books?.cover_url ? <img src={pano.books.cover_url} className="w-full h-full object-cover" alt="" /> : null}
                     </div>
-                    
+
                     <div className="flex-1">
-                       <h3 className="text-base md:text-xl font-black dark:text-white mb-1 md:mb-2 line-clamp-1 group-hover:text-red-600 transition-colors">{pano.title}</h3>
-                       <p className="text-[9px] md:text-[10px] text-red-600 font-bold uppercase mb-2 tracking-widest">
-                         📖 {pano.books?.title} {pano.chapter_id && '• ' + (pano.chapters?.title || 'Bölüm')}
-                       </p>
-                       <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{pano.content}</p>
-                       
-                       <div className="inline-flex items-center gap-2 text-[8px] md:text-[9px] font-black uppercase bg-black dark:bg-white text-white dark:text-black px-4 md:px-6 py-2 md:py-3 rounded-full tracking-tighter mt-3 md:mt-4">
-                          Detayları Gör →
-                       </div>
+                      <h3 className="text-base md:text-xl font-black dark:text-white mb-1 md:mb-2 line-clamp-1 group-hover:text-red-600 transition-colors">{pano.title}</h3>
+                      <p className="text-[9px] md:text-[10px] text-red-600 font-bold uppercase mb-2 tracking-widest">
+                        📖 {pano.books?.title} {pano.chapter_id && '• ' + (pano.chapters?.title || 'Bölüm')}
+                      </p>
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{pano.content}</p>
+
+                      <div className="inline-flex items-center gap-2 text-[8px] md:text-[9px] font-black uppercase bg-black dark:bg-white text-white dark:text-black px-4 md:px-6 py-2 md:py-3 rounded-full tracking-tighter mt-3 md:mt-4">
+                        Detayları Gör →
+                      </div>
                     </div>
 
                     <div className="flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity absolute top-4 right-4 md:top-6 md:right-6">
-                      <Link 
+                      <Link
                         href={`/pano-duzenle/${pano.id}`}
                         onClick={(e) => e.stopPropagation()}
                         className="px-3 md:px-4 py-1.5 md:py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 rounded-full text-[8px] md:text-[10px] font-black uppercase text-center hover:bg-blue-100 transition-colors"
                       >
                         DÜZENLE
                       </Link>
-                      <button 
+                      <button
                         onClick={(e) => handleDeletePano(pano.id, e)}
                         className="px-3 md:px-4 py-1.5 md:py-2 bg-red-50 dark:bg-red-900/20 text-red-600 rounded-full text-[8px] md:text-[10px] font-black uppercase hover:bg-red-100 transition-colors"
                       >
@@ -509,7 +509,7 @@ export default function ProfilSayfasi() {
                 <Link key={k.id} href={`/kitap/${k.id}`} className="group relative">
                   <div className="aspect-[2/3] rounded-xl md:rounded-[2rem] overflow-hidden border dark:border-white/5 mb-2 md:mb-3 shadow-md group-hover:-translate-y-1 transition-all relative">
                     {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full bg-gray-200 dark:bg-white/10" />}
-                    
+
                     {/* Taslak Rozeti */}
                     {k.is_draft && (
                       <div className="absolute top-2 right-2 bg-gray-500 text-white text-[7px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-lg z-10 uppercase tracking-wider">
@@ -517,9 +517,9 @@ export default function ProfilSayfasi() {
                       </div>
                     )}
                   </div>
-                  
+
                   <h3 className="text-[9px] md:text-[10px] font-black text-center uppercase truncate italic dark:text-white group-hover:text-red-600 transition-colors">{k.title}</h3>
-                  
+
                   {/* ✅ TAMAMLANDI ROZETİ */}
                   {k.is_completed && (
                     <div className="flex justify-center mt-1">
@@ -528,7 +528,7 @@ export default function ProfilSayfasi() {
                       </span>
                     </div>
                   )}
-                  
+
                   {/* ✅ İSTATİSTİK ŞERİDİ */}
                   <div className="flex items-center justify-center gap-1.5 md:gap-2 mt-1 md:mt-1.5 text-[7px] md:text-[8px] font-black text-gray-400">
                     <span className="flex items-center gap-0.5">👁️ {formatNumber(k.totalViews)}</span>
@@ -542,80 +542,87 @@ export default function ProfilSayfasi() {
         </div>
       </div>
 
-     {modalType && (
-  <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setModalType(null)}>
-    <div className="bg-white dark:bg-black w-full max-w-md rounded-2xl md:rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+      {modalType && (
+        <div className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200" onClick={() => setModalType(null)}>
+          <div className="bg-white dark:bg-black w-full max-w-md rounded-2xl md:rounded-[2.5rem] border dark:border-white/10 shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
 
-      {/* BAŞLIK VE KAPAT */}
-      <div className="p-4 md:p-6 border-b dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
-        <span className="text-[9px] md:text-[10px] font-black uppercase opacity-40 tracking-widest">
-          {modalType === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}
-        </span>
-        <button onClick={() => setModalType(null)} className="text-[9px] md:text-[10px] font-black text-red-600 uppercase">
-          Kapat
-        </button>
-      </div>
+            {/* BAŞLIK VE KAPAT */}
+            <div className="p-4 md:p-6 border-b dark:border-white/5 flex justify-between items-center bg-gray-50 dark:bg-white/5">
+              <span className="text-[9px] md:text-[10px] font-black uppercase opacity-40 tracking-widest">
+                {modalType === 'followers' ? 'Takipçiler' : 'Takip Edilenler'}
+              </span>
+              <button onClick={() => setModalType(null)} className="text-[9px] md:text-[10px] font-black text-red-600 uppercase">
+                Kapat
+              </button>
+            </div>
 
-      {/* İÇERİK */}
-      <div className="max-h-[400px] md:max-h-[500px] overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 scrollbar-thin scrollbar-thumb-red-600/20 scrollbar-track-transparent">
-        {(modalType === 'followers' ? followersWithProfiles : followingWithProfiles).length === 0 ? (
-          <p className="text-center py-8 md:py-10 text-[9px] md:text-[10px] text-gray-500 italic uppercase">Henüz kimse yok.</p>
-        ) : (
-          (modalType === 'followers' ? followersWithProfiles : followingWithProfiles).map((p, i) => {
-            
-            // Veri artık direkt burada (Supabase join sayesinde)
-            const displayName = p.username || 'Kullanıcı';
-            const displayAvatar = p.avatar_url;
-            const targetId = modalType === 'followers' ? p.follower_id : p.followed_id;
+            {/* İÇERİK */}
+            <div className="max-h-[400px] md:max-h-[500px] overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3 scrollbar-thin scrollbar-thumb-red-600/20 scrollbar-track-transparent">
+              {(modalType === 'followers' ? followersWithProfiles : followingWithProfiles).length === 0 ? (
+                <p className="text-center py-8 md:py-10 text-[9px] md:text-[10px] text-gray-500 italic uppercase">Henüz kimse yok.</p>
+              ) : (
+                (modalType === 'followers' ? followersWithProfiles : followingWithProfiles).map((p, i) => {
 
-            return (
-              <div
-                key={i}
-                className="flex items-center justify-between p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 hover:border-red-600/30 transition-all"
-              >
-                <Link
-                  href={`/yazar/${displayName}`}
-                  onClick={() => setModalType(null)}
-                  className="flex items-center gap-2 md:gap-3"
-                >
-                  <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-red-600/10 overflow-hidden flex items-center justify-center font-black text-red-600 text-[10px] md:text-xs">
-                    {displayAvatar ? (
-                      <img src={displayAvatar} className="w-full h-full object-cover" alt="" />
-                    ) : (
-                      (displayName[0] || 'U').toUpperCase()
-                    )}
-                  </div>
+                  // Veri artık direkt burada (Supabase join sayesinde)
+                  const displayName = p.username || 'Kullanıcı';
+                  const displayAvatar = p.avatar_url;
+                  const targetId = modalType === 'followers' ? p.follower_id : p.followed_id;
 
-                  <div>
-                    <Username
-                      username={displayName}
-                      isAdmin={p.is_admin}
-                      className="text-[10px] md:text-xs font-bold"
-                    />
-                    {p.full_name && (
-                      <p className="text-[8px] md:text-[9px] text-gray-400">
-                        {p.full_name}
-                      </p>
-                    )}
-                  </div>
-                </Link>
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 hover:border-red-600/30 transition-all"
+                    >
+                      <Link
+                        href={`/yazar/${displayName}`}
+                        onClick={() => setModalType(null)}
+                        className="flex items-center gap-2 md:gap-3"
+                      >
+                        <div className="relative w-8 h-8 md:w-9 md:h-9 rounded-full bg-red-600/10 overflow-hidden flex items-center justify-center font-black text-red-600 text-[10px] md:text-xs">
+                          {displayAvatar ? (
+                            // 👇 Next.js Image: Resmi 80x80 piksele küçültüp indirir.
+                            <Image
+                              src={displayAvatar}
+                              alt={displayName || 'Avatar'}
+                              width={80}
+                              height={80}
+                              className="object-cover w-full h-full"
+                            />
+                          ) : (
+                            (displayName[0] || 'U').toUpperCase()
+                          )}
+                        </div>
 
-                {modalType === 'following' && (
-                  <button
-                    onClick={() => handleUnfollow(targetId)}
-                    className="text-[9px] font-black uppercase bg-red-600 text-white px-4 py-1.5 rounded-full hover:bg-red-700 transition-colors"
-                  >
-                    Bırak
-                  </button>
-                )}
-              </div>
-            );
-          })
-        )}
-      </div>
-    </div>
-  </div>
-)}
+                        <div>
+                          <Username
+                            username={displayName}
+                            isAdmin={p.is_admin}
+                            className="text-[10px] md:text-xs font-bold"
+                          />
+                          {p.full_name && (
+                            <p className="text-[8px] md:text-[9px] text-gray-400">
+                              {p.full_name}
+                            </p>
+                          )}
+                        </div>
+                      </Link>
+
+                      {modalType === 'following' && (
+                        <button
+                          onClick={() => handleUnfollow(targetId)}
+                          className="text-[9px] font-black uppercase bg-red-600 text-white px-4 py-1.5 rounded-full hover:bg-red-700 transition-colors"
+                        >
+                          Bırak
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
