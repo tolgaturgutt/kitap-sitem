@@ -12,9 +12,26 @@ export default function MobileNav() {
   const isActive = (path) => pathname === path;
   
   const handleComingSoon = () => {
-    toast('Yakında kullanımda! 🚀', { icon: '⏳', duration: 3000, position: 'top-center', style: { borderRadius: '10px', background: '#333', color: '#fff' } });
-  };
+    // 1. Eğer ekranda 'coming-soon' kimlikli bir uyarı varsa onu ANINDA YOK ET.
+    toast.dismiss('coming-soon');
 
+    // 2. Yenisini aç
+    toast('Yakında kullanımda! 🚀', {
+      id: 'coming-soon', // 👈 BU ÇOK ÖNEMLİ: Hep aynı kimliği kullanıyoruz.
+      duration: 2000,    // 2 saniye (Kısa olsun ki çabuk gitsin)
+      position: 'top-center',
+      icon: '⏳',
+      // 👇 Mobilde takılmayı önleyen ayar:
+      // Dokunulsa bile süreyi durdurma gibi bir ayar olmadığı için,
+      // biz ID vererek üst üste binmesini engelliyoruz.
+      style: {
+        borderRadius: '10px',
+        background: '#333',
+        color: '#fff',
+        zIndex: 9999, // En üstte dursun
+      },
+    });
+  };
   return (
     <>
       {/* ARTIYA BASILINCA AÇILAN MENÜ */}
