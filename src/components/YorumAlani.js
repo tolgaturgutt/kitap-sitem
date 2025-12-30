@@ -272,21 +272,24 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   // --- ANA RENDER ---
   
   // Eğer PARAGRAF moduysa: SOHBET DÜZENİ (Liste üstte, Input altta sabit)
-  if (type === 'paragraph') {
-    return (
-        <div className="flex flex-col h-full relative">
-            {/* ÜST KISIM: Yorum Listesi (Kayar) */}
-            <div className="flex-1 overflow-y-auto px-4 pt-4 custom-scrollbar">
-                {ListArea}
-            </div>
+ if (type === 'paragraph') {
+  return (
+      <div className="flex flex-col h-full relative">
+          {/* ÜST KISIM: Yorum Listesi (Kayar) */}
+          <div className="flex-1 overflow-y-auto px-4 pt-4 custom-scrollbar">
+              {ListArea}
+          </div>
 
-            {/* ALT KISIM: Input Alanı (Sabit) */}
-            <div className="shrink-0 p-3 bg-white dark:bg-[#0f0f0f] border-t dark:border-white/5 z-20">
-                {InputArea}
-            </div>
-        </div>
-    );
-  }
+          {/* ALT KISIM: Input Alanı (Sabit) */}
+          {/* DEĞİŞİKLİK BURADA: 'p-3' yerine 'px-3 pt-3 pb-10 md:pb-3' yazdık. */}
+          {/* pb-10: Mobilde alttan bayağı boşluk bırakır, input yukarı çıkar. */}
+          {/* md:pb-3: PC'de (md) o kadar boşluğa gerek yok, normal dursun. */}
+          <div className="shrink-0 px-3 pt-3 pb-10 md:pb-3 bg-white dark:bg-[#0f0f0f] border-t dark:border-white/5 z-20">
+              {InputArea}
+          </div>
+      </div>
+  );
+}
 
   // Eğer NORMAL modsa: KLASİK DÜZEN (Input üstte, Liste altta)
   return (
