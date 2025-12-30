@@ -438,32 +438,36 @@ useEffect(() => {
         </main>
 
         {/* PARAGRAF YORUM PANELİ */}
-        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[280px] transition-all duration-500 z-[60] ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
-          }`}>
-          <div
-            className="absolute inset-0 bg-black/50 md:hidden"
-            onClick={() => setActivePara(null)}
-          />
+       {/* PARAGRAF YORUM PANELİ */}
+<aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[400px] transition-all duration-500 z-[60] ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
+  }`}>
+  <div
+    className="absolute inset-0 bg-black/50 md:hidden"
+    onClick={() => setActivePara(null)}
+  />
 
-          {/* MOBİLDEKİ KUTUYU AŞAĞI İNDİRDİM: top-16 eklendi, inset-4 yerine özel spacing kullanıldı */}
-          <div className="absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
-            <div className="p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
-              Paragraf Yorumları
-              {/* Kapatma butonu alanı biraz genişletildi */}
-              <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-2xl md:text-lg font-bold p-2 -mr-2">✕</button>
-            </div>
+  {/* MOBİLDEKİ KUTU */}
+  <div className="absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+    
+    {/* Üst Başlık Kısmı (Sabit) */}
+    <div className="shrink-0 p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
+      Paragraf Yorumları
+      <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-2xl md:text-lg font-bold p-2 -mr-2">✕</button>
+    </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
-              <YorumAlani
-                type="paragraph"
-                targetId={bolumId}
-                bookId={id}
-                paraId={activePara}
-                onCommentAdded={handleCommentAdded}
-              />
-            </div>
-          </div>
-        </aside>
+    {/* Yorumların Olduğu Kısım (Kaydırılabilir) */}
+    {/* EKLENEN: min-h-0 ve overscroll-contain */}
+    <div className="flex-1 overflow-y-auto p-4 min-h-0 overscroll-contain">
+      <YorumAlani
+        type="paragraph"
+        targetId={bolumId}
+        bookId={id}
+        paraId={activePara}
+        onCommentAdded={handleCommentAdded}
+      />
+    </div>
+  </div>
+</aside>
       </div>
 
       {/* BÖLÜM YORUMLARI */}
