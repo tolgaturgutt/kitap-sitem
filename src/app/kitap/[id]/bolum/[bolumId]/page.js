@@ -457,15 +457,19 @@ useEffect(() => {
 
     {/* Yorumların Olduğu Kısım (Kaydırılabilir) */}
     {/* EKLENEN: min-h-0 ve overscroll-contain */}
-    <div className="flex-1 overflow-y-auto p-4 min-h-0 overscroll-contain">
-      <YorumAlani
-        type="paragraph"
-        targetId={bolumId}
-        bookId={id}
-        paraId={activePara}
-        onCommentAdded={handleCommentAdded}
-      />
-    </div>
+   
+
+{/* Yorumların Olduğu Kısım (Sabit Çerçeve) */}
+{/* Scroll ve padding'i buradan kaldırdık, overflow-hidden yaptık */}
+<div className="flex-1 overflow-hidden relative bg-gray-50 dark:bg-black/20">
+  <YorumAlani
+    type="paragraph"
+    targetId={bolumId}
+    bookId={id}
+    paraId={activePara}
+    onCommentAdded={handleCommentAdded}
+  />
+</div>
   </div>
 </aside>
       </div>

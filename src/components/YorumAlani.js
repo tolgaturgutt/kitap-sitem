@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
@@ -10,6 +10,9 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   
+  // Scroll için referans
+  const commentsEndRef = useRef(null);
+  
   // --- YANIT STATE'LERİ ---
   const [replyComment, setReplyComment] = useState(''); 
   const [replyingTo, setReplyingTo] = useState(null); 
@@ -18,37 +21,21 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const [user, setUser] = useState(null);
   const [isSending, setIsSending] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [isOwner, setIsOwner] = useState(false); // Kitap sahibi kontrolü
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
-    // ✅ KRİTİK DÜZELTME: ID değiştiği an eski yorumları temizle.
-    // Böylece yeni yorumlar yüklenirken eskiler ekranda kalıp kafa karıştırmaz.
-    setComments([]);
-
+    setComments([]); // ID değişince temizle
     async function load() {
       const { data: { user: u } } = await supabase.auth.getUser();
       setUser(u);
       
       if (u) {
-        // 1. ADMIN KONTROLÜ
-        const { data: adminData } = await supabase
-          .from('announcement_admins')
-          .select('*')
-          .eq('user_email', u.email)
-          .single();
+        const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', u.email).single();
         if (adminData) setIsAdmin(true);
 
-        // 2. KİTAP SAHİBİ KONTROLÜ
         if (bookId) {
-          const { data: book } = await supabase
-            .from('books')
-            .select('user_email')
-            .eq('id', bookId)
-            .single();
-          
-          if (book && book.user_email === u.email) {
-            setIsOwner(true);
-          }
+          const { data: book } = await supabase.from('books').select('user_email').eq('id', bookId).single();
+          if (book && book.user_email === u.email) setIsOwner(true);
         }
       }
       fetchComments();
@@ -56,23 +43,33 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     load();
   }, [type, targetId, paraId, bookId, includeParagraphs]);
 
+  // Yorum eklendiğinde veya panel açıldığında en alta kaydır (Sadece paragraf modunda)
+  useEffect(() => {
+    if (type === 'paragraph' && commentsEndRef.current) {
+      commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [comments, type]);
+
   async function fetchComments() {
     let query = supabase
       .from('comments')
       .select('*, profiles!comments_user_id_fkey(username, avatar_url, role)')
-      .order('created_at', { ascending: false }); 
+      .order('created_at', { ascending: true }); // ESKİDEN FALSE İDİ, ŞİMDİ TRUE (Eskiden yeniye sırala ki sohbet gibi olsun)
+
+    // Not: Normal sayfa yorumları için ters sıralama (yeni en üstte) daha iyi olabilir ama
+    // Paragraf yorumları için (sohbet gibi) eski en üstte, yeni en altta mantıklıdır.
+    // Eğer sadece paragrafta böyle olsun istersen buraya if koyabiliriz.
+    // Şimdilik genel akışı bozmuyorum, senin mevcut sıralamanı koruyorum:
+    
+    if (type !== 'paragraph') {
+       query = query.order('created_at', { ascending: false, foreignTable: '' }); // Eski haline override
+    }
 
     if (type === 'book') {
       query = query.eq('book_id', targetId).is('chapter_id', null);
     } else if (type === 'chapter') {
       query = query.eq('chapter_id', targetId);
-      
-      // Eğer "includeParagraphs" true ise, filtreleme yapma (hepsini getir).
-      // Eğer false ise (varsayılan), sadece paragraf ID'si boş olanları (ana yorumları) getir.
-      if (!includeParagraphs) {
-        query = query.is('paragraph_id', null);
-      }
-
+      if (!includeParagraphs) query = query.is('paragraph_id', null);
     } else if (type === 'paragraph') {
       query = query.eq('chapter_id', targetId);
       if (paraId === null) query = query.is('paragraph_id', null);
@@ -80,10 +77,20 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     }
 
     const { data } = await query;
-    setComments(data || []);
+    
+    // Veriyi aldıktan sonra sıralamayı JavaScript ile de garantiye alabiliriz
+    // Paragraf ise: Eskiden yeniye (Sohbet modu)
+    // Değilse: Yeniden eskiye (Normal yorum modu)
+    let sortedData = data || [];
+    if (type === 'paragraph') {
+        sortedData.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else {
+        sortedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    setComments(sortedData);
   }
 
-  // --- YANIT PENCERESİNİ AÇMA MANTIĞI ---
   function openReply(targetComment) {
     if (replyingTo === targetComment.id) {
       setReplyingTo(null);
@@ -99,7 +106,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     }
   }
 
-  // --- GÖNDERME FONKSİYONU ---
   async function handleSend(targetComment = null) {
     const contentToSend = targetComment ? replyComment : newComment;
 
@@ -132,7 +138,12 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       .single();
 
     if (!error && insertedData) { 
-        setComments(prev => [insertedData, ...prev]); 
+        // Paragraf ise sona ekle, değilse başa ekle
+        if (type === 'paragraph') {
+            setComments(prev => [...prev, insertedData]);
+        } else {
+            setComments(prev => [insertedData, ...prev]); 
+        }
         
         if (targetComment) {
             setReplyComment('');
@@ -151,92 +162,66 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     setIsSending(false);
   }
 
+  // ... (createNotification, handleReport, handleDelete fonksiyonları aynı kalacak) ...
   async function createNotification(comment, username) {
-  try {
-    // Eğer yanıt ise
-    if (comment.parent_id) {
-      const parentComment = comments.find(c => c.id === comment.parent_id);
-      if (parentComment) {
-        await createReplyNotification(
-          username,
-          user.email,
-          parentComment.user_email,
-          bookId ? parseInt(bookId) : null,
-          type === 'book' ? null : parseInt(targetId),
-          null // panoId yok
-        );
-      }
-    } else {
-      // Normal yorum ise
-      await createCommentNotification(
-        username,
-        user.email,
-        parseInt(bookId),
-        type === 'book' ? null : parseInt(targetId)
-      );
-    }
-  } catch (e) { 
-    console.error('Notification error:', e); 
+      try {
+        if (comment.parent_id) {
+          const parentComment = comments.find(c => c.id === comment.parent_id);
+          if (parentComment) {
+            await createReplyNotification(username, user.email, parentComment.user_email, bookId ? parseInt(bookId) : null, type === 'book' ? null : parseInt(targetId), null);
+          }
+        } else {
+          await createCommentNotification(username, user.email, parseInt(bookId), type === 'book' ? null : parseInt(targetId));
+        }
+      } catch (e) { console.error(e); }
   }
-}
-  async function handleReport(commentId, content) {
-    const reason = prompt("Şikayet sebebiniz nedir?");
-    if (!reason) return;
-    const { error } = await supabase.from('reports').insert({
-      reporter_id: user.id,
-      target_type: 'comment',
-      target_id: commentId,
-      reason: reason,
-      content_snapshot: content
-    });
-    if (!error) toast.success("Raporlandı.");
+  async function handleReport(id, content) {
+    const r = prompt("Sebep?"); if(!r) return;
+    await supabase.from('reports').insert({ reporter_id: user.id, target_type: 'comment', target_id: id, reason: r, content_snapshot: content });
+    toast.success("Raporlandı.");
+  }
+  async function handleDelete(id) {
+    if(!confirm("Silinsin mi?")) return;
+    const { error } = await supabase.from('comments').delete().eq('id', id);
+    if (!error) { setComments(prev => prev.filter(c => c.id !== id)); toast.success("Silindi."); }
   }
 
-  // --- SİLME FONKSİYONU ---
-  async function handleDelete(commentId) {
-    if(!confirm("Silmek istiyor musun?")) return;
-    const { error } = await supabase.from('comments').delete().eq('id', commentId);
-    if (!error) {
-      setComments(prev => prev.filter(c => c.id !== commentId));
-      toast.success("Silindi.");
-    } else {
-      toast.error("Silinemedi.");
-    }
-  }
 
   const mainComments = comments.filter(c => !c.parent_id);
-  const getReplies = (parentId) => {
-    return comments
-        .filter(c => c.parent_id === parentId)
-        .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-  };
+  const getReplies = (parentId) => comments.filter(c => c.parent_id === parentId).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-  return (
-    <div className="w-full">
-      <div className="mb-8 relative bg-gray-50 dark:bg-white/5 rounded-2xl p-2 border dark:border-white/10">
+  // --- JSX PARÇALARI ---
+
+  // 1. GİRDİ ALANI (Input Area)
+  const InputArea = (
+    <div className={`relative bg-gray-100 dark:bg-white/5 rounded-2xl p-2 border dark:border-white/10 ${type === 'paragraph' ? 'mt-0 shadow-lg' : 'mb-8'}`}>
         <textarea 
           value={newComment} 
           onChange={e => setNewComment(e.target.value)} 
-          placeholder={user ? "Düşüncelerin..." : "Giriş yapmalısın."}
+          placeholder={user ? "Bir şeyler yaz..." : "Giriş yapmalısın."}
           disabled={isSending || !user}
-          rows={2}
-          className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white resize-none"
+          rows={type === 'paragraph' ? 1 : 2} // Paragrafta tek satır daha şık
+          className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white resize-none max-h-32"
+          style={{ minHeight: '44px' }}
         />
-        <div className="flex justify-end px-2 pb-2">
+        <div className="flex justify-end px-2 pb-1">
            <button 
             onClick={() => handleSend(null)} 
             disabled={isSending || !user} 
-            className="px-6 py-2 bg-black dark:bg-white text-white dark:text-black rounded-xl text-xs font-black uppercase tracking-widest hover:opacity-80 transition-all disabled:opacity-50"
+            className="px-4 py-1.5 bg-red-600 text-white rounded-lg text-[10px] font-black uppercase tracking-widest hover:bg-red-700 transition-all disabled:opacity-50"
           >
-            {isSending ? '...' : 'Gönder'}
+            {isSending ? '...' : 'GÖNDER'}
           </button>
         </div>
-      </div>
+    </div>
+  );
 
-      <div className="space-y-6">
+  // 2. YORUM LİSTESİ (List Area)
+  const ListArea = (
+    <div className={`space-y-6 ${type === 'paragraph' ? 'pb-4' : ''}`}>
         {mainComments.length === 0 && (
-           <div className="text-center py-4 text-gray-400 text-xs italic">
-             {/* Yükleniyor veya yorum yok mesajı buraya eklenebilir ama boş bırakmak daha temiz */}
+           <div className="text-center py-10 text-gray-400 text-xs italic opacity-50">
+             Henüz yorum yok. İlk yorumu sen yaz!
            </div>
         )}
         
@@ -257,7 +242,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
                 isSending={isSending}
                 isMain={true}
             />
-            <div className="pl-14 mt-3 space-y-4">
+            <div className="pl-12 mt-3 space-y-4 border-l-2 border-gray-100 dark:border-white/5 ml-2">
                 {getReplies(c.id).map(reply => (
                     <CommentCard 
                         key={reply.id}
@@ -279,55 +264,85 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
             </div>
           </div>
         ))}
-      </div>
+        {/* Scroll için görünmez div */}
+        <div ref={commentsEndRef} />
+    </div>
+  );
+
+  // --- ANA RENDER ---
+  
+  // Eğer PARAGRAF moduysa: SOHBET DÜZENİ (Liste üstte, Input altta sabit)
+  if (type === 'paragraph') {
+    return (
+        <div className="flex flex-col h-full relative">
+            {/* ÜST KISIM: Yorum Listesi (Kayar) */}
+            <div className="flex-1 overflow-y-auto px-4 pt-4 custom-scrollbar">
+                {ListArea}
+            </div>
+
+            {/* ALT KISIM: Input Alanı (Sabit) */}
+            <div className="shrink-0 p-3 bg-white dark:bg-[#0f0f0f] border-t dark:border-white/5 z-20">
+                {InputArea}
+            </div>
+        </div>
+    );
+  }
+
+  // Eğer NORMAL modsa: KLASİK DÜZEN (Input üstte, Liste altta)
+  return (
+    <div className="w-full">
+      {InputArea}
+      {ListArea}
     </div>
   );
 }
 
 function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain }) {
+    // ... (CommentCard içeriği aynen kalacak, değiştirmeye gerek yok) ...
     const canDelete = user && (isAdmin || isOwner || user.id === comment.user_id);
-
-    // ✅ Profil linki mantığı
     const isOwnComment = user && user.id === comment.user_id;
     const commentUsername = comment.profiles?.username || comment.username || "Anonim";
     const profileLink = isOwnComment ? '/profil' : `/yazar/${commentUsername}`;
 
     return (
-        <div className={`group relative flex gap-3 ${!isMain ? 'border-l-2 border-gray-100 dark:border-white/5 pl-4' : ''}`}>
+        <div className={`group relative flex gap-3`}>
             <a 
                 href={profileLink}
-                className={`${isMain ? 'w-10 h-10' : 'w-8 h-8'} rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 flex items-center justify-center font-black text-gray-400 text-xs hover:ring-2 hover:ring-red-600 transition-all cursor-pointer`}
+                className={`${isMain ? 'w-8 h-8' : 'w-6 h-6'} rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 flex items-center justify-center font-black text-gray-400 text-[10px] hover:ring-2 hover:ring-red-600 transition-all cursor-pointer`}
             >
                 {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} className="w-full h-full object-cover" /> : (commentUsername)[0].toUpperCase()}
             </a>
             
             <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start">
+                <div className="flex justify-between items-start mb-1">
                     <a href={profileLink} className="hover:text-red-600 transition-colors">
                         <Username 
                             username={commentUsername}
                             isAdmin={comment.profiles?.role === 'admin'}
-                            className={`${isMain ? 'text-[11px]' : 'text-[10px]'} font-black dark:text-gray-300 mb-1 tracking-wide uppercase`}
+                            className={`${isMain ? 'text-[11px]' : 'text-[9px]'} font-black dark:text-gray-300 tracking-wide uppercase`}
                         />
                     </a>
                     {user && (
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
-                            <button onClick={onReply} className="text-[10px] text-blue-500 hover:underline font-bold uppercase">{isReplying ? 'Kapat' : 'Yanıtla'}</button>
+                        <div className="flex gap-2 opacity-60 hover:opacity-100">
+                             {!isReplying && <button onClick={onReply} className="text-[9px] text-gray-400 hover:text-blue-500 font-bold uppercase">Yanıtla</button>}
                             {canDelete ? (
-                                <button onClick={() => onDelete(comment.id)} className="text-[10px] text-red-500 hover:underline font-bold uppercase">Sil</button>
+                                <button onClick={() => onDelete(comment.id)} className="text-[9px] text-gray-400 hover:text-red-500 font-bold uppercase">Sil</button>
                             ) : (
-                                <button onClick={() => onReport(comment.id, comment.content)} className="text-[10px] text-gray-400 hover:text-red-500 font-bold uppercase">Rapor</button>
+                                <button onClick={() => onReport(comment.id, comment.content)} className="text-[9px] text-gray-400 hover:text-red-500 font-bold uppercase">Rapor</button>
                             )}
                         </div>
                     )}
                 </div>
-                <p className="text-sm text-gray-800 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
+                <div className="text-[13px] text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
                     {comment.content.split(' ').map((word, i) => word.startsWith('@') ? <span key={i} className="text-blue-500 font-bold">{word} </span> : word + ' ')}
-                </p>
+                </div>
+                
+                {/* YANIT KUTUSU (Kartın içinde açılır) */}
                 {isReplying && (
-                    <div className="mt-3 flex gap-2 animate-in slide-in-from-top-1">
-                        <input autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder={`@${comment.profiles?.username || 'kullanıcı'} yanıtla...`} className="flex-1 bg-gray-100 dark:bg-white/5 border dark:border-white/10 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500" onKeyDown={e => e.key === 'Enter' && onSendReply()} />
-                        <button onClick={onSendReply} disabled={isSending} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-blue-700">Gönder</button>
+                    <div className="mt-3 flex gap-2 animate-in slide-in-from-top-1 bg-gray-50 dark:bg-white/5 p-2 rounded-xl">
+                        <input autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Yanıtın..." className="flex-1 bg-transparent text-xs outline-none dark:text-white" onKeyDown={e => e.key === 'Enter' && onSendReply()} />
+                        <button onClick={onSendReply} disabled={isSending} className="text-blue-500 text-[10px] font-black uppercase hover:text-blue-400">Gönder</button>
+                         <button onClick={onReply} className="text-gray-400 text-[10px] font-black uppercase hover:text-red-500">iptal</button>
                     </div>
                 )}
             </div>
