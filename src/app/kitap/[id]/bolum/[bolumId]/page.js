@@ -447,7 +447,7 @@ useEffect(() => {
   />
 
   {/* MOBİLDEKİ KUTU */}
-  <div className="absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+ <div className="absolute left-4 right-4 top-4 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
     
     {/* Üst Başlık Kısmı (Sabit) */}
     <div className="shrink-0 p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
