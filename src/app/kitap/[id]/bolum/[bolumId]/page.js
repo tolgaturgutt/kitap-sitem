@@ -447,14 +447,20 @@ useEffect(() => {
   />
 
   {/* MOBİLDEKİ KUTU */}
- <div className="absolute left-4 right-4 top-4 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+  <div className="absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
     
     {/* Üst Başlık Kısmı (Sabit) */}
-    <div className="shrink-0 p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase opacity-40 tracking-widest">
-      Paragraf Yorumları
-      <button onClick={() => setActivePara(null)} className="text-gray-400 hover:text-red-600 text-2xl md:text-lg font-bold p-2 -mr-2">✕</button>
-    </div>
-
+  <div className="shrink-0 p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase tracking-widest bg-white dark:bg-[#0f0f0f] z-50 relative rounded-t-[2rem]">
+  <span className="opacity-40">Paragraf Yorumları</span>
+  
+  {/* Çarpı Butonu: Rengini koyulaştırdım ve tıklama alanını büyüttüm */}
+  <button 
+    onClick={() => setActivePara(null)} 
+    className="text-black dark:text-white hover:text-red-600 text-xl font-bold p-4 -mr-4 flex items-center justify-center"
+  >
+    ✕
+  </button>
+</div>
     {/* Yorumların Olduğu Kısım (Kaydırılabilir) */}
     {/* EKLENEN: min-h-0 ve overscroll-contain */}
    
