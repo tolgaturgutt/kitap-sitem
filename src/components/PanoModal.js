@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import { createPanoVoteNotification, createPanoCommentNotification, createReplyNotification } from '@/lib/notifications';
 import Image from 'next/image';
+
 export default function PanoModal({ 
   selectedPano, 
   onClose, 
@@ -26,92 +27,115 @@ export default function PanoModal({
   // Pano sahibinin güncel profilini tutacak state
   const [panoOwnerProfile, setPanoOwnerProfile] = useState(null);
 
-  // --- 1. VERİLERİ YÜKLE ---
+  // --- 1. VERİLERİ YÜKLE (OPTİMİZE EDİLDİ) ---
   useEffect(() => {
     if (!selectedPano) return;
 
+    // State sıfırlama
     setPanoLikes(0);
     setHasLiked(false);
     setPanoComments([]);
-    setPanoOwnerProfile(null);
     setChapterTitle(null);
 
+    // 🚀 1. OPTİMİZASYON: Profil verisini tekrar çekme! 
+    // Carousel'den zaten 'profiles' objesi dolu geliyor. Direkt onu kullan.
+    if (selectedPano.profiles) {
+      setPanoOwnerProfile(selectedPano.profiles);
+    } else {
+      // Çok nadir durumda (mesela direkt linkten geldiyse) çekelim
+      fetchOwnerProfile(); 
+    }
+
+    // 🚀 2. OPTİMİZASYON: Her şeyi aynı anda (Paralel) çek
     async function loadPanoData() {
-      // A) Pano Sahibinin GÜNCEL Bilgilerini Çek
-      let ownerQuery = supabase.from('profiles').select('username, avatar_url, email');
-      
-      if (selectedPano.user_id) {
-        ownerQuery = ownerQuery.eq('id', selectedPano.user_id);
-      } else {
-        ownerQuery = ownerQuery.eq('email', selectedPano.user_email);
-      }
-      
-      const { data: ownerData } = await ownerQuery.single();
-      if (ownerData) setPanoOwnerProfile(ownerData);
+      const promises = [];
 
-      // B) Bölüm bilgisini çek (eğer varsa)
+      // A) Bölüm Başlığı (Eğer varsa)
       if (selectedPano.chapter_id) {
-        const { data: chapterData } = await supabase
-          .from('chapters')
-          .select('title')
-          .eq('id', selectedPano.chapter_id)
-          .single();
-        
-        if (chapterData) setChapterTitle(chapterData.title);
+        promises.push(
+          supabase.from('chapters').select('title').eq('id', selectedPano.chapter_id).single()
+            .then(({ data }) => ({ type: 'chapter', data }))
+        );
       }
 
-      // C) Beğeni Sayısı
-      const { count } = await supabase
-        .from('pano_votes')
-        .select('*', { count: 'exact', head: true })
-        .eq('pano_id', selectedPano.id);
-      
-      setPanoLikes(count || 0);
+      // B) Beğeni Sayısı
+      promises.push(
+        supabase.from('pano_votes').select('*', { count: 'exact', head: true }).eq('pano_id', selectedPano.id)
+          .then(({ count }) => ({ type: 'likes', count }))
+      );
 
-      // D) Kullanıcı beğenmiş mi?
+      // C) Kullanıcı Beğenmiş mi?
       if (user) {
-        const { data } = await supabase
-          .from('pano_votes')
-          .select('*')
-          .eq('pano_id', selectedPano.id)
-          .eq('user_email', user.email)
-          .single();
-        setHasLiked(!!data);
+        promises.push(
+          supabase.from('pano_votes').select('id').eq('pano_id', selectedPano.id).eq('user_email', user.email).single()
+            .then(({ data }) => ({ type: 'hasLiked', data }))
+        );
       }
 
-      // E) Yorumları Çek
-      const { data: comments } = await supabase
-        .from('pano_comments')
-        .select(`
-          *,
-          profiles:user_id ( username, avatar_url )
-        `)
-        .eq('pano_id', selectedPano.id)
-        .order('created_at', { ascending: true });
+      // D) Yorumlar
+      promises.push(
+        supabase
+          .from('pano_comments')
+          .select(`*, profiles:user_id ( username, avatar_url )`)
+          .eq('pano_id', selectedPano.id)
+          .order('created_at', { ascending: true })
+          .then(({ data }) => ({ type: 'comments', data }))
+      );
 
-      setPanoComments(comments || []);
+      // HEPSİNİ BEKLE VE DAĞIT
+      const results = await Promise.all(promises);
+
+      results.forEach(res => {
+        if (res.type === 'chapter' && res.data) setChapterTitle(res.data.title);
+        if (res.type === 'likes') setPanoLikes(res.count || 0);
+        if (res.type === 'hasLiked') setHasLiked(!!res.data);
+        if (res.type === 'comments') setPanoComments(res.data || []);
+      });
     }
 
     loadPanoData();
   }, [selectedPano, user]);
 
+  // Yedek fonksiyon: Eğer Carousel'den profil gelmediyse
+  async function fetchOwnerProfile() {
+    let ownerQuery = supabase.from('profiles').select('username, avatar_url, email');
+    if (selectedPano.user_id) {
+      ownerQuery = ownerQuery.eq('id', selectedPano.user_id);
+    } else {
+      ownerQuery = ownerQuery.eq('email', selectedPano.user_email);
+    }
+    const { data } = await ownerQuery.single();
+    if (data) setPanoOwnerProfile(data);
+  }
+
   // --- 2. FONKSİYONLAR ---
   async function handleLike() {
     if (!user) return toast.error('Giriş yapmalısın!');
     
+    // Optimistik Update (Kullanıcıya anında tepki ver)
+    const originalHasLiked = hasLiked;
+    const originalLikes = panoLikes;
+    
+    setHasLiked(!hasLiked);
+    setPanoLikes(prev => hasLiked ? prev - 1 : prev + 1);
+
     const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
     const username = profile?.username || user.email.split('@')[0];
     
-    if (hasLiked) {
-      await supabase.from('pano_votes').delete().eq('pano_id', selectedPano.id).eq('user_email', user.email);
-      setHasLiked(false);
-      setPanoLikes(prev => prev - 1);
+    if (originalHasLiked) {
+      const { error } = await supabase.from('pano_votes').delete().eq('pano_id', selectedPano.id).eq('user_email', user.email);
+      if (error) { // Hata olursa geri al
+         setHasLiked(true);
+         setPanoLikes(originalLikes);
+      }
     } else {
-      await supabase.from('pano_votes').insert({ pano_id: selectedPano.id, user_email: user.email });
-      setHasLiked(true);
-      setPanoLikes(prev => prev + 1);
-      
-      await createPanoVoteNotification(username, user.email, selectedPano.id, selectedPano.user_email);
+      const { error } = await supabase.from('pano_votes').insert({ pano_id: selectedPano.id, user_email: user.email });
+      if (error) { // Hata olursa geri al
+         setHasLiked(false);
+         setPanoLikes(originalLikes);
+      } else {
+         await createPanoVoteNotification(username, user.email, selectedPano.id, selectedPano.user_email);
+      }
     }
   }
 
@@ -133,7 +157,6 @@ export default function PanoModal({
 
     if (error) { toast.error('Hata oluştu!'); return; }
 
-    // Bildirimler
     if (replyTo) {
       const parentComment = panoComments.find(c => c.id === replyTo);
       if (parentComment) {
@@ -146,6 +169,7 @@ export default function PanoModal({
     setNewComment('');
     setReplyTo(null);
 
+    // Yorumları tekrar çek
     const { data: comments } = await supabase
       .from('pano_comments')
       .select(`*, profiles:user_id ( username, avatar_url )`)
@@ -155,7 +179,8 @@ export default function PanoModal({
     setPanoComments(comments || []);
     toast.success('Yorum eklendi!');
   }
-async function handleReportComment(commentId, content) {
+
+  async function handleReportComment(commentId, content) {
     if (!user) return toast.error('Giriş yapmalısın!');
     const reason = prompt("Şikayet sebebiniz nedir?");
     if (!reason || !reason.trim()) return;
@@ -176,6 +201,7 @@ async function handleReportComment(commentId, content) {
       toast.error("Hata oluştu: " + error.message);
     }
   }
+
   async function handleDeleteComment(commentId) {
     if (!confirm('Silmek istiyor musun?')) return;
     const { error } = await supabase.from('pano_comments').delete().eq('id', commentId);
@@ -202,7 +228,6 @@ async function handleReportComment(commentId, content) {
     const displayAvatar = comment.profiles?.avatar_url;
     const displayUsername = comment.profiles?.username || comment.username;
     
-    // ✅ Kendi yorumumuzsa /profil, değilse /yazar/username
     const profileLink = user && comment.user_email === user.email 
       ? '/profil' 
       : `/yazar/${displayUsername}`;
@@ -211,14 +236,14 @@ async function handleReportComment(commentId, content) {
       <div className={`flex gap-3 ${isReply ? 'ml-11' : ''}`}>
         <Link href={profileLink}>
          <div className={`relative ${isReply ? 'w-6 h-6' : 'w-8 h-8'} shrink-0 rounded-full overflow-hidden bg-gray-200`}>
-  <Image 
-    src={displayAvatar || '/avatar-placeholder.png'} 
-    alt="User"
-    fill
-    sizes="32px"
-    className="object-cover"
-  />
-</div>
+            <Image 
+              src={displayAvatar || '/avatar-placeholder.png'} 
+              alt="User"
+              fill
+              sizes="32px"
+              className="object-cover"
+            />
+          </div>
         </Link>
         <div className="flex-1 group">
           <div className="flex items-center gap-2">
@@ -249,17 +274,16 @@ async function handleReportComment(commentId, content) {
 
   if (!selectedPano) return null;
 
-  // Pano sahibi bilgileri
-  const ownerUsername = panoOwnerProfile?.username || selectedPano.profiles?.username || selectedPano.username;
-  const ownerAvatar = panoOwnerProfile?.avatar_url || selectedPano.profiles?.avatar_url;
-  const ownerEmail = panoOwnerProfile?.email || selectedPano.user_email;
+  // Pano sahibi bilgileri (Öncelik: State > Props > Pano İçeriği)
+  const ownerProfile = panoOwnerProfile || selectedPano.profiles;
+  const ownerUsername = ownerProfile?.username || selectedPano.username;
+  const ownerAvatar = ownerProfile?.avatar_url;
+  const ownerEmail = ownerProfile?.email || selectedPano.user_email;
   
-  // ✅ Pano sahibi biziz mi kontrol et
   const ownerProfileLink = user && ownerEmail === user.email 
     ? '/profil' 
     : `/yazar/${ownerUsername}`;
   
-  // ✅ Buton linki ve metni
   const buttonLink = selectedPano.chapter_id 
     ? `/kitap/${selectedPano.book_id}/bolum/${selectedPano.chapter_id}`
     : `/kitap/${selectedPano.book_id}`;
@@ -279,8 +303,8 @@ async function handleReportComment(commentId, content) {
             <Image 
               src={selectedPano.books.cover_url} 
               alt="Kapak"
-              width={500}    // PC ekranı büyük olduğu için kaliteyi biraz yüksek (500px) tuttuk
-              height={750}   // 2:3 oranı
+              width={500}
+              height={750}
               className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-full w-auto"
             />
           </div>
@@ -295,8 +319,8 @@ async function handleReportComment(commentId, content) {
                 <Image 
                   src={selectedPano.books.cover_url} 
                   alt="Kapak"
-                  width={300}     // Standart genişlik
-                  height={450}    // Standart yükseklik (2:3 oranı)
+                  width={300}
+                  height={450}
                   className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl h-[250px] w-auto"
                 />
               </div>
@@ -351,12 +375,12 @@ async function handleReportComment(commentId, content) {
             <div className="flex flex-col gap-3">
               <Link href={ownerProfileLink} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                  <div className="relative w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
-   {ownerAvatar ? (
-     <Image src={ownerAvatar} alt="User" fill sizes="32px" className="object-cover" />
-   ) : (
-     <span className="text-xs font-bold">{ownerUsername?.[0] || 'U'}</span>
-   )}
-</div>
+                   {ownerAvatar ? (
+                     <Image src={ownerAvatar} alt="User" fill sizes="32px" className="object-cover" />
+                   ) : (
+                     <span className="text-xs font-bold">{ownerUsername?.[0] || 'U'}</span>
+                   )}
+                </div>
                  <div>
                     <p className="text-[10px] font-black uppercase"><Username username={ownerUsername} isAdmin={adminEmails.includes(ownerEmail)} /></p>
                     <span className="text-[9px] text-gray-400 font-bold">{new Date(selectedPano.created_at).toLocaleDateString('tr-TR')}</span>
