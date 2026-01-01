@@ -8,7 +8,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
 import { useRouter } from 'next/navigation';
 import PanoModal from '@/components/PanoModal'; 
-
+import Image from 'next/image';
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
   if (!num) return 0;
@@ -49,6 +49,9 @@ export default function YazarProfili() {
   const [selectedChapterForPano, setSelectedChapterForPano] = useState(null);
   const [panoChapters, setPanoChapters] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // ... diğer statelerin altına
+const [showWarningModal, setShowWarningModal] = useState(false);
+const [warningReason, setWarningReason] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -286,6 +289,25 @@ export default function YazarProfili() {
       toast.success(author.is_banned ? "Yasak kaldırıldı" : "Kullanıcı BANLANDI");
     }
   }
+  // --- UYARI GÖNDERME FONKSİYONU ---
+async function handleSendWarning() {
+  if (!warningReason.trim()) return toast.error("Bir sebep yazmalısın!");
+  
+  // 1. Veritabanına kaydet
+  const { error } = await supabase.from('warnings').insert({
+    user_id: author.id,      // Kime? (Yazarın ID'si)
+    admin_id: currentUser.id, // Kimden? (Senin ID'n)
+    reason: warningReason.trim()
+  });
+
+  if (!error) {
+    toast.success("⚠️ Uyarı gönderildi! Kullanıcı anında görecek.");
+    setShowWarningModal(false);
+    setWarningReason('');
+  } else {
+    toast.error("Hata: " + error.message);
+  }
+}
 
   // Listeden Silme
   const removePanoFromList = (panoId) => {
@@ -348,7 +370,7 @@ export default function YazarProfili() {
                   </div>
                 </div>
               
-              <div className="flex flex-wrap gap-2 justify-center md:justify-end">
+            <div className="flex flex-wrap gap-2 justify-center md:justify-end">
                 {currentUser && currentUser.id !== author.id && (
                   <button 
                     onClick={isFollowing ? handleUnfollow : handleFollow}
@@ -363,18 +385,67 @@ export default function YazarProfili() {
                 )}
 
                 {isAdmin && (
-                  <button 
-                    onClick={handleBan}
-                    className={`px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
-                      author.is_banned 
-                      ? 'bg-green-600 text-white' 
-                      : 'bg-black dark:bg-white text-white dark:text-black hover:bg-red-600 hover:text-white'
-                    }`}
-                  >
-                    {author.is_banned ? 'Yasağı Kaldır' : 'Banla 🔨'}
-                  </button>
+                  <>
+                    {/* 👇 YENİ EKLENEN UYARI BUTONU */}
+                    <button 
+                      onClick={() => setShowWarningModal(true)}
+                      className="px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all shadow-lg bg-yellow-500 text-black hover:bg-yellow-400 hover:scale-105 active:scale-95"
+                    >
+                      ⚠️ UYAR
+                    </button>
+
+                    {/* MEVCUT BAN BUTONU */}
+                    <button 
+                      onClick={handleBan}
+                      className={`px-4 md:px-6 py-2 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all shadow-lg ${
+                        author.is_banned 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-black dark:bg-white text-white dark:text-black hover:bg-red-600 hover:text-white'
+                      }`}
+                    >
+                      {author.is_banned ? 'Yasağı Kaldır' : 'Banla 🔨'}
+                    </button>
+
+                    {/* 👇 UYARI MODALI (PENCERESİ) */}
+                    {showWarningModal && (
+                      <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+                        <div className="bg-white dark:bg-[#111] w-full max-w-sm rounded-3xl p-6 border border-yellow-500/30 shadow-2xl relative">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-10 h-10 bg-yellow-500/20 rounded-full flex items-center justify-center text-xl">⚠️</div>
+                            <div>
+                              <h3 className="text-sm font-black uppercase dark:text-white">Kullanıcıyı Uyar</h3>
+                              <p className="text-[10px] text-gray-500">Bu mesaj kullanıcının ekranını kilitleyecek.</p>
+                            </div>
+                          </div>
+
+                          <textarea 
+                            value={warningReason}
+                            onChange={e => setWarningReason(e.target.value)}
+                            placeholder="Neden uyarıyorsun? (Örn: Küfürlü yorum yapma!)"
+                            className="w-full h-24 p-4 bg-gray-50 dark:bg-black border dark:border-white/10 rounded-xl text-xs outline-none focus:border-yellow-500 resize-none mb-4"
+                            autoFocus
+                          />
+
+                          <div className="flex gap-3">
+                            <button 
+                              onClick={() => setShowWarningModal(false)}
+                              className="flex-1 py-3 bg-gray-100 dark:bg-white/5 text-gray-500 rounded-xl text-[10px] font-black uppercase hover:bg-gray-200 dark:hover:bg-white/10 transition-colors"
+                            >
+                              İptal
+                            </button>
+                            <button 
+                              onClick={handleSendWarning}
+                              className="flex-1 py-3 bg-yellow-500 text-black rounded-xl text-[10px] font-black uppercase hover:bg-yellow-400 shadow-lg shadow-yellow-500/20 transition-all active:scale-95"
+                            >
+                              GÖNDER 🚀
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
-              </div>
+            </div>
             </div>
 
             <div className="flex justify-center md:justify-start gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6 w-full">
@@ -552,13 +623,20 @@ export default function YazarProfili() {
                       className="flex items-center justify-between p-2.5 md:p-3 rounded-xl md:rounded-2xl bg-gray-50 dark:bg-white/5 border dark:border-white/5 transition-all hover:border-red-600/30"
                     >
                       <div className="flex items-center gap-2 md:gap-3">
-                        <div className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-red-600/10 overflow-hidden flex items-center justify-center font-black text-red-600 text-[10px] md:text-xs">
-                          {p.avatar_url ? (
-                            <img src={p.avatar_url} className="w-full h-full object-cover" alt="" />
-                          ) : (
-                            (p.username || 'U')[0].toUpperCase()
-                          )}
-                        </div>
+                       <div className="relative w-8 h-8 md:w-9 md:h-9 rounded-full bg-red-600/10 overflow-hidden flex items-center justify-center font-black text-red-600 text-[10px] md:text-xs">
+  {p.avatar_url ? (
+    // 👇 Next.js Image bileşeni: Resmi 80x80'e küçültüp gönderir
+    <Image 
+      src={p.avatar_url} 
+      alt={p.username || 'Profil'} 
+      width={80} 
+      height={80}
+      className="object-cover w-full h-full"
+    />
+  ) : (
+    (p.username || 'U')[0].toUpperCase()
+  )}
+</div>
                         <div>
                           <Username
                             username={p.username}

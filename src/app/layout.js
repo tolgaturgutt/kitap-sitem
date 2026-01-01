@@ -10,6 +10,7 @@ import { ThemeProvider } from "next-themes";
 import MobileNav from "@/components/MobileNav";
 import DesktopSidebar from "@/components/DesktopSidebar";
 import BanKontrol from '@/components/BanKontrol';
+import WarningSystem from '@/components/WarningSystem'; // 👈 1. EKLEME BURASI
 import { Toaster } from 'react-hot-toast';
 
 const inter = Inter({ subsets: ["latin"] });
@@ -61,6 +62,7 @@ export default function RootLayout({ children }) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Toaster position="top-center" /> 
           <BanKontrol /> 
+          <WarningSystem /> {/* 👈 2. VE EN ÖNEMLİ EKLEME BURASI: Hayalet Katman Devrede */}
 
           {mounted ? (
             <>
@@ -68,8 +70,6 @@ export default function RootLayout({ children }) {
               <DesktopSidebar />
               
               <main className={!hideNavbar ? "pt-20 min-h-[100dvh] pb-16 md:pb-0" : "min-h-[100dvh]"}>
-
-
                 {children}
               </main>
 

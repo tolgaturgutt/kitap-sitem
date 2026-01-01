@@ -92,7 +92,7 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
                 <p className="text-[10px] text-gray-500 mt-1">
                   {book.weekly_reads ? `${formatNumber(book.weekly_reads)} okuma (bu hafta)` : 
                    book.monthly_reads ? `${formatNumber(book.monthly_reads)} okuma (bu ay)` : 
-                   `${formatNumber(book.view_count)} okuma (toplam)`}
+                   `${formatNumber(book.totalViews || book.view_count || 0)} okuma (toplam)`}
                 </p>
               </div>
             );
@@ -217,26 +217,47 @@ setWeeklyTopBooks(weeklyBooks);
         .slice(0, 10);
       setMonthlyTopBooks(monthlyBooks);
 // Tüm zamanların en çok okunan kitapları (chapter_views'dan)
-const { data: allTimeChapterViews } = await supabase
-  .from('chapter_views')
-  .select(`chapter_id, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, is_draft, profiles:user_id (username, email)))`);
+// ✅ 1. TÜM ZAMANLAR (GARANTİ YÖNTEM: Top100 Mantığı)
+      // Kitapları ve bölümlerin izlenme sayılarını çekiyoruz
+      const { data: allBooksRaw } = await supabase
+        .from('books')
+        .select(`
+          id, 
+          title, 
+          cover_url, 
+          is_completed, 
+          user_id, 
+          username,
+          is_draft,
+          chapters (views), 
+          profiles:user_id (username, email)
+        `)
+        .eq('is_draft', false); // Taslakları gizle
 
-const allTimeBookViewCounts = {};
-allTimeChapterViews?.forEach(item => {
-  if (!item.chapters?.books || item.chapters.books.is_draft) return; // Taslak kitapları atla
-  const book = item.chapters.books;
-  const bId = book.id;
-  if (!allTimeBookViewCounts[bId]) {
-    allTimeBookViewCounts[bId] = { ...book, view_count: 0 };
-  }
-  allTimeBookViewCounts[bId].view_count += 1;
-});
+      if (allBooksRaw) {
+        // Javascript ile bölümleri toplayıp 'totalViews' hesaplıyoruz
+        const calculatedBooks = allBooksRaw.map(book => {
+           // Bölüm izlenmelerini topla
+           const totalViews = book.chapters 
+              ? book.chapters.reduce((sum, c) => sum + (c.views || 0), 0) 
+              : 0;
+           
+           // Profil eşleştirmesi (Yazar adı düzgün görünsün)
+           const displayUsername = book.profiles?.username || book.username;
+           
+           return { 
+             ...book, 
+             totalViews,
+             username: displayUsername 
+           };
+        });
 
-const allTimeBooks = Object.values(allTimeBookViewCounts)
-  .sort((a, b) => b.view_count - a.view_count)
-  .slice(0, 10);
+        // En çok okunana göre sırala (Büyükten küçüğe)
+        calculatedBooks.sort((a, b) => b.totalViews - a.totalViews);
 
-setAllTimeTopBooks(allTimeBooks);
+        // İlk 10 tanesini al ve state'e at
+        setAllTimeTopBooks(calculatedBooks.slice(0, 10));
+      }
 
       // Haftalık yazarlar
      const { data: chapterData } = await supabase

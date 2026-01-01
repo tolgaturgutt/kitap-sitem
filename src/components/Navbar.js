@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import { useRouter, usePathname } from 'next/navigation'; 
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
@@ -14,14 +14,14 @@ export default function Navbar() {
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
-  const pathname = usePathname(); 
+  const pathname = usePathname();
 
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState({ books: [], users: [] });
   const [showSearch, setShowSearch] = useState(false);
-  
-  const searchRef = useRef(null);       
-  const mobileSearchRef = useRef(null); 
+
+  const searchRef = useRef(null);
+  const mobileSearchRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -44,27 +44,27 @@ export default function Navbar() {
 
         // 🚀 HIZLI BAŞLANGIÇ: Veritabanını bekleme, session'da varsa hemen göster
         if (session.user.user_metadata?.avatar_url) {
-            setUserProfile({
-                avatar_url: session.user.user_metadata.avatar_url,
-                username: session.user.user_metadata.username || session.user.email.split('@')[0]
-            });
+          setUserProfile({
+            avatar_url: session.user.user_metadata.avatar_url,
+            username: session.user.user_metadata.username || session.user.email.split('@')[0]
+          });
         }
 
         // ⚡ PARALEL YÜKLEME: İkisi birbirini beklemesin, aynı anda saldırsın
         // 1. Gerçek Profil Verisini Çek (Arka planda günceller)
         const fetchProfile = async () => {
-            const { data: profile } = await supabase
+          const { data: profile } = await supabase
             .from('profiles')
             .select('avatar_url, username')
             .eq('id', session.user.id)
             .single();
-            
-            if (profile) setUserProfile(profile);
+
+          if (profile) setUserProfile(profile);
         };
 
         // 2. Bildirimleri Çek
         const fetchNotifs = async () => {
-            await loadNotifications(session.user.email);
+          await loadNotifications(session.user.email);
         };
 
         // İkisini de ateşle
@@ -90,46 +90,46 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
- // 🚀 OPTİMİZE EDİLMİŞ BİLDİRİM FONKSİYONU
- async function loadNotifications(email) {
-  const { data: n } = await supabase
-    .from('notifications')
-    .select('*')
-    .eq('recipient_email', email)
-    .order('created_at', { ascending: false })
-    .limit(50);
-  
-  if (n && n.length > 0) {
-    // N+1 PROBLEMİNİ ÇÖZÜYORUZ: Tek tek sormak yerine toplu soruyoruz.
-    // Bölüm ID'lerini topla
-    const chapterIds = n
+  // 🚀 OPTİMİZE EDİLMİŞ BİLDİRİM FONKSİYONU
+  async function loadNotifications(email) {
+    const { data: n } = await supabase
+      .from('notifications')
+      .select('*')
+      .eq('recipient_email', email)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (n && n.length > 0) {
+      // N+1 PROBLEMİNİ ÇÖZÜYORUZ: Tek tek sormak yerine toplu soruyoruz.
+      // Bölüm ID'lerini topla
+      const chapterIds = n
         .filter(notif => notif.chapter_id && !notif.chapter_title)
         .map(notif => notif.chapter_id);
-    
-    // Eğer ID varsa, tek seferde hepsini çek
-    if (chapterIds.length > 0) {
+
+      // Eğer ID varsa, tek seferde hepsini çek
+      if (chapterIds.length > 0) {
         // Unique ID'leri al (Aynı bölüme 5 yorum geldiyse 5 kere sorma)
         const uniqueIds = [...new Set(chapterIds)];
-        
+
         const { data: chapters } = await supabase
-            .from('chapters')
-            .select('id, title')
-            .in('id', uniqueIds);
+          .from('chapters')
+          .select('id, title')
+          .in('id', uniqueIds);
 
         // Hafızada eşleştir
         if (chapters) {
-            n.forEach(notif => {
-                const foundChapter = chapters.find(c => c.id === notif.chapter_id);
-                if (foundChapter) {
-                    notif.chapter_title = foundChapter.title;
-                }
-            });
+          n.forEach(notif => {
+            const foundChapter = chapters.find(c => c.id === notif.chapter_id);
+            if (foundChapter) {
+              notif.chapter_title = foundChapter.title;
+            }
+          });
         }
+      }
     }
+
+    setNotifications(n || []);
   }
-  
-  setNotifications(n || []);
-}
 
   useEffect(() => {
     const timer = setTimeout(async () => {
@@ -139,28 +139,28 @@ export default function Navbar() {
           .select('*, chapters(id)')
           .ilike('title', `%${query}%`)
           .limit(10);
-        
+
         if (b) {
           b = b.filter(kitap => kitap.chapters && kitap.chapters.length > 0).slice(0, 5);
         }
-        
+
         const { data: u } = await supabase
           .from('profiles')
           .select('*')
           .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
           .limit(5);
-        
+
         if (b && b.length > 0) {
-            const authorNames = [...new Set(b.map(book => book.username))];
-            const { data: roles } = await supabase
-              .from('profiles')
-              .select('username, role')
-              .in('username', authorNames);
-            
-            b.forEach(book => {
-                const author = roles?.find(r => r.username === book.username);
-                book.author_role = author?.role; 
-            });
+          const authorNames = [...new Set(b.map(book => book.username))];
+          const { data: roles } = await supabase
+            .from('profiles')
+            .select('username, role')
+            .in('username', authorNames);
+
+          b.forEach(book => {
+            const author = roles?.find(r => r.username === book.username);
+            book.author_role = author?.role;
+          });
         }
 
         setSearchResults({ books: b || [], users: u || [] });
@@ -181,14 +181,14 @@ export default function Navbar() {
   async function toggleNotifications() {
     const newState = !showNotifs;
     setShowNotifs(newState);
-    
+
     if (newState && user && notifications.some(n => !n.is_read)) {
       await supabase
         .from('notifications')
         .update({ is_read: true })
         .eq('recipient_email', user.email)
         .eq('is_read', false);
-      
+
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     }
   }
@@ -203,18 +203,18 @@ export default function Navbar() {
   if (!mounted) return null;
 
   const socialNotifs = notifications.filter(n => n.type === 'follow' || n.type === 'reply');
-  const activityNotifs = notifications.filter(n => 
-    n.type === 'vote' || 
-    n.type === 'chapter_vote' || 
-    n.type === 'comment' || 
-    n.type === 'new_chapter' || 
-    n.type === 'pano_vote' || 
+  const activityNotifs = notifications.filter(n =>
+    n.type === 'vote' ||
+    n.type === 'chapter_vote' ||
+    n.type === 'comment' ||
+    n.type === 'new_chapter' ||
+    n.type === 'pano_vote' ||
     n.type === 'pano_comment'
   );
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   function getNotificationLink(n) {
-    switch(n.type) {
+    switch (n.type) {
       case 'vote':
         return n.book_id ? `/kitap/${n.book_id}` : '#';
       case 'chapter_vote':
@@ -247,23 +247,23 @@ export default function Navbar() {
     }
   }
 
-function getNotificationText(n) {
-  switch(n.type) {
-    case 'vote': return 'eserini beğendi';
-    case 'chapter_vote': return 'bölümünü beğendi';
-    case 'comment': 
-      return n.chapter_id ? 'bölümüne yorum yaptı' : 'eserine yorum yaptı';
-    case 'new_chapter': return 'yeni bölüm yayınladı';
-    case 'pano_vote': return 'panonuzu beğendi';
-    case 'pano_comment': return 'panonuza yorum yaptı';
-    case 'reply': return 'yorumunuza yanıt verdi';
-    case 'follow': return 'seni takip etti';
-    default: return 'bir aktivite gerçekleştirdi';
+  function getNotificationText(n) {
+    switch (n.type) {
+      case 'vote': return 'eserini beğendi';
+      case 'chapter_vote': return 'bölümünü beğendi';
+      case 'comment':
+        return n.chapter_id ? 'bölümüne yorum yaptı' : 'eserine yorum yaptı';
+      case 'new_chapter': return 'yeni bölüm yayınladı';
+      case 'pano_vote': return 'panonuzu beğendi';
+      case 'pano_comment': return 'panonuza yorum yaptı';
+      case 'reply': return 'yorumunuza yanıt verdi';
+      case 'follow': return 'seni takip etti';
+      default: return 'bir aktivite gerçekleştirdi';
+    }
   }
-}
 
   function getNotificationIcon(n) {
-    switch(n.type) {
+    switch (n.type) {
       case 'vote': case 'chapter_vote': case 'pano_vote': return '⭐';
       case 'comment': case 'pano_comment': return '💬';
       case 'new_chapter': return '🆕';
@@ -277,19 +277,19 @@ function getNotificationText(n) {
     <nav className="w-full border-b sticky top-0 z-[100] backdrop-blur-md bg-white/80 dark:bg-black/90 border-gray-100 dark:border-gray-800 transition-all h-16 md:h-20">
       <div className="max-w-7xl mx-auto px-3 md:px-6 h-full flex items-center justify-between gap-2 md:gap-8">
         <Link href="/" className="flex items-center gap-0.5 md:gap-1 shrink-0 group">
-            <div className="relative w-10 h-10 md:w-16 md:h-16 flex items-center justify-center">
-              <img 
-                src="/logo-gunduz.png" 
-                alt="Logo" 
-                className="w-full h-full object-contain dark:hidden mt-4 md:mt-4 ml-1 md:ml-1" 
-              />
-              <img 
-                src="/logo-gece.png" 
-                alt="Logo" 
-                className="w-full h-full object-contain hidden dark:block" 
-              />
+          <div className="relative w-10 h-10 md:w-16 md:h-16 flex items-center justify-center">
+            <img
+              src="/logo-gunduz.png"
+              alt="Logo"
+              className="w-full h-full object-contain dark:hidden mt-4 md:mt-4 ml-1 md:ml-1"
+            />
+            <img
+              src="/logo-gece.png"
+              alt="Logo"
+              className="w-full h-full object-contain hidden dark:block"
+            />
           </div>
-          
+
           <div className="text-xl md:text-3xl font-black tracking-tight leading-none flex flex-col justify-center">
             <div className="flex items-center">
               <span className="text-black dark:text-white">Kitap</span>
@@ -301,22 +301,22 @@ function getNotificationText(n) {
         {/* ARAMA BARI - Desktop */}
         <div className="hidden md:flex flex-1 max-w-md relative" ref={searchRef}>
           <div className="relative w-full">
-            <input 
-              type="text" 
-              value={query} 
-              onChange={(e) => setQuery(e.target.value)} 
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearchTrigger()}
-              placeholder="Eser veya yazar ara..." 
-              className="w-full h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full pl-6 pr-12 text-sm outline-none transition-all focus:ring-2 focus:ring-red-600/20" 
+              placeholder="Eser veya yazar ara..."
+              className="w-full h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full pl-6 pr-12 text-sm outline-none transition-all focus:ring-2 focus:ring-red-600/20"
             />
-            <button 
+            <button
               onClick={handleSearchTrigger}
               className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600 transition-colors z-10"
             >
               🔍
             </button>
           </div>
-          
+
           {showSearch && (
             <div className="absolute top-14 left-0 w-full bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-[2rem] shadow-2xl overflow-hidden z-[110] animate-in fade-in slide-in-from-top-2 duration-200">
               {searchResults.books.length === 0 && searchResults.users.length === 0 ? (
@@ -330,15 +330,21 @@ function getNotificationText(n) {
                     <div className="p-3">
                       <p className="text-[8px] font-black uppercase text-gray-400 mb-2 px-3 tracking-widest">Eserler</p>
                       {searchResults.books.map(b => (
-                        <Link 
-                          key={b.id} 
-                          href={`/kitap/${b.id}`} 
-                          onClick={() => setShowSearch(false)} 
+                        <Link
+                          key={b.id}
+                          href={`/kitap/${b.id}`}
+                          onClick={() => setShowSearch(false)}
                           className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                         >
-                          <div className="relative w-full h-full">
-  <Image src={b.cover_url} alt={b.title} fill className="object-cover" sizes="40px" />
-</div>
+                          <div className="relative w-8 h-12 shrink-0 rounded overflow-hidden shadow-sm border dark:border-white/10">
+                            <Image
+                              src={b.cover_url}
+                              alt={b.title}
+                              fill
+                              className="object-cover"
+                              sizes="32px"
+                            />
+                          </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
                             <Username
@@ -351,32 +357,32 @@ function getNotificationText(n) {
                       ))}
                     </div>
                   )}
-                  
+
                   {searchResults.users.length > 0 && (
                     <div className="p-3 border-t dark:border-white/5">
                       <p className="text-[8px] font-black uppercase text-gray-400 mb-2 px-3 tracking-widest">Yazarlar</p>
                       {searchResults.users.map(u => (
-                        <Link 
-                          key={u.id} 
-                          href={`/yazar/${u.username}`} 
-                          onClick={() => setShowSearch(false)} 
+                        <Link
+                          key={u.id}
+                          href={`/yazar/${u.username}`}
+                          onClick={() => setShowSearch(false)}
                           className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                         >
                           {/* w-10 h-10 olan div'e 'relative' ekledik 👇 */}
-<div className="relative w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
-  {u.avatar_url && u.avatar_url.includes('http') ? (
-    <Image 
-      src={u.avatar_url} 
-      alt={u.username}
-      fill // Kutuyu doldur
-      sizes="40px"
-      className="object-cover"
-    />
-  ) : (
-    u.username[0].toUpperCase()
-  )}
-</div>
-                         <div className="flex-1">
+                          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
+                            {u.avatar_url && u.avatar_url.includes('http') ? (
+                              <Image
+                                src={u.avatar_url}
+                                alt={u.username}
+                                fill // Kutuyu doldur
+                                sizes="40px"
+                                className="object-cover"
+                              />
+                            ) : (
+                              u.username[0].toUpperCase()
+                            )}
+                          </div>
+                          <div className="flex-1">
                             <Username
                               username={u.username}
                               isAdmin={u.role === 'admin'}
@@ -396,7 +402,7 @@ function getNotificationText(n) {
 
         {/* SAĞ MENÜ */}
         <div className="flex items-center gap-2 md:gap-4">
-          <button 
+          <button
             onClick={() => setShowMobileSearch(!showMobileSearch)}
             className="md:hidden w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 hover:scale-105 transition-transform"
           >
@@ -407,7 +413,7 @@ function getNotificationText(n) {
             <>
               {/* BİLDİRİM BUTONU */}
               <div className="relative" ref={notifRef}>
-                <button 
+                <button
                   onClick={toggleNotifications}
                   className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full relative transition-all ${showNotifs ? 'bg-red-600 text-white scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:scale-105'}`}
                 >
@@ -418,7 +424,7 @@ function getNotificationText(n) {
                     </span>
                   )}
                 </button>
-                
+
                 {showNotifs && (
                   <div className="fixed md:absolute top-[72px] md:top-14 right-2 md:right-0 w-[calc(100vw-16px)] max-w-[340px] md:w-[500px] md:max-w-none bg-white dark:bg-[#0a0a0a] border dark:border-white/10 rounded-2xl md:rounded-[2.5rem] shadow-2xl overflow-hidden z-[120] animate-in fade-in slide-in-from-top-2 duration-200">
                     <div className="p-4 md:p-5 border-b dark:border-white/5 bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-950/20 dark:to-orange-950/20 flex justify-between items-center">
@@ -428,65 +434,65 @@ function getNotificationText(n) {
                           {notifications.length} bildirim
                         </p>
                       </div>
-                      <button 
-                        onClick={() => setShowNotifs(false)} 
+                      <button
+                        onClick={() => setShowNotifs(false)}
                         className="text-[10px] font-black text-gray-400 hover:text-red-600 transition-colors"
                       >
                         ✕
                       </button>
                     </div>
-                    
-                   <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 h-[65vh] md:h-[400px]">
-                     <div className="flex-1 overflow-y-auto no-scrollbar h-1/2 md:h-auto">
+
+                    <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 h-[65vh] md:h-[400px]">
+                      <div className="flex-1 overflow-y-auto no-scrollbar h-1/2 md:h-auto">
                         <div className="p-3 md:p-4 bg-gray-50/50 dark:bg-white/[0.02] sticky top-0 backdrop-blur-sm z-10">
                           <p className="text-[8px] font-black uppercase text-red-600 tracking-[0.2em] flex items-center gap-2">
                             🔔 Aktiviteler
                           </p>
                         </div>
                         <div className="p-2 md:p-3 space-y-2">
-  {activityNotifs.length === 0 ? (
-    <div className="text-center py-8 md:py-12">
-      <span className="text-2xl md:text-3xl block mb-2 opacity-20">😴</span>
-      <p className="text-[8px] md:text-[9px] text-gray-400 italic">Henüz aktivite yok</p>
-    </div>
-  ) : activityNotifs.map(n => (
-    <Link
-      key={n.id}
-      href={getNotificationLink(n)}
-      onClick={() => setShowNotifs(false)}
-      className="block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/20"
-    >
-      <div className="flex items-start gap-2 md:gap-3">
-        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-600/10 flex items-center justify-center shrink-0">
-          <span className="text-xs">{getNotificationIcon(n)}</span>
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[9px] md:text-[10px] font-bold leading-relaxed">
-            <span className="text-red-600 font-black">@{n.actor_username}</span>
-            {' '}
-            {getNotificationText(n)}
-          </p>
-          
-          {n.book_title && (
-            <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">
-              "{n.book_title}
-              {n.chapter_title && ` - ${n.chapter_title}`}"
-            </p>
-          )}
-          
-          <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
-            {new Date(n.created_at).toLocaleDateString('tr-TR', { 
-              day: 'numeric', 
-              month: 'short', 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            })}
-          </p>
-        </div>
-      </div>
-    </Link>
-  ))}
-</div>
+                          {activityNotifs.length === 0 ? (
+                            <div className="text-center py-8 md:py-12">
+                              <span className="text-2xl md:text-3xl block mb-2 opacity-20">😴</span>
+                              <p className="text-[8px] md:text-[9px] text-gray-400 italic">Henüz aktivite yok</p>
+                            </div>
+                          ) : activityNotifs.map(n => (
+                            <Link
+                              key={n.id}
+                              href={getNotificationLink(n)}
+                              onClick={() => setShowNotifs(false)}
+                              className="block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/20"
+                            >
+                              <div className="flex items-start gap-2 md:gap-3">
+                                <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-600/10 flex items-center justify-center shrink-0">
+                                  <span className="text-xs">{getNotificationIcon(n)}</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[9px] md:text-[10px] font-bold leading-relaxed">
+                                    <span className="text-red-600 font-black">@{n.actor_username}</span>
+                                    {' '}
+                                    {getNotificationText(n)}
+                                  </p>
+
+                                  {n.book_title && (
+                                    <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">
+                                      "{n.book_title}
+                                      {n.chapter_title && ` - ${n.chapter_title}`}"
+                                    </p>
+                                  )}
+
+                                  <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
+                                    {new Date(n.created_at).toLocaleDateString('tr-TR', {
+                                      day: 'numeric',
+                                      month: 'short',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+                          ))}
+                        </div>
                       </div>
 
                       <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50/30 dark:bg-white/[0.01] border-t md:border-t-0 dark:border-white/5 h-1/2 md:h-auto">
@@ -534,22 +540,22 @@ function getNotificationText(n) {
 
               {/* PROFİL MENÜSÜ */}
               <div className="relative" ref={profileMenuRef}>
-                <button 
+                <button
                   onClick={() => setShowProfileMenu(!showProfileMenu)}
                   className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-[10px] md:text-xs uppercase hover:scale-110 transition-transform overflow-hidden shadow-lg border-2 border-transparent hover:border-red-400"
                 >
                   {userProfile?.avatar_url && userProfile.avatar_url.includes('http') ? (
-  <Image 
-    src={userProfile.avatar_url} 
-    alt="Profil"
-    width={44}  // Ekranda görüneceği boyut (2x retina için biraz büyük verdim)
-    height={44}
-    className="w-full h-full object-cover"
-    priority // 👈 Bu resim çok önemli, hemen yükle demek
-  />
-) : (
-  user.email[0].toUpperCase()
-)}
+                    <Image
+                      src={userProfile.avatar_url}
+                      alt="Profil"
+                      width={44}  // Ekranda görüneceği boyut (2x retina için biraz büyük verdim)
+                      height={44}
+                      className="w-full h-full object-cover"
+                      priority // 👈 Bu resim çok önemli, hemen yükle demek
+                    />
+                  ) : (
+                    user.email[0].toUpperCase()
+                  )}
                 </button>
 
                 {showProfileMenu && (
@@ -562,40 +568,40 @@ function getNotificationText(n) {
                     </div>
 
                     <div className="p-2 space-y-1">
-                      <Link 
-                        href="/profil" 
+                      <Link
+                        href="/profil"
                         onClick={() => setShowProfileMenu(false)}
                         className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
                       >
                         <span>👤</span> Profil
                       </Link>
 
-                      <Link 
-                        href="/ayarlar" 
+                      <Link
+                        href="/ayarlar"
                         onClick={() => setShowProfileMenu(false)}
                         className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
                       >
                         <span>⚙️</span> Ayarlar
                       </Link>
 
-                      <Link 
-                        href="/kurallar" 
+                      <Link
+                        href="/kurallar"
                         onClick={() => setShowProfileMenu(false)}
                         className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
                       >
                         <span>📜</span> Topluluk Kuralları
                       </Link>
 
-                      <Link 
-                        href="/kvkk" 
+                      <Link
+                        href="/kvkk"
                         onClick={() => setShowProfileMenu(false)}
                         className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
                       >
                         <span>🔒</span> KVKK Metni
                       </Link>
 
-                      <Link 
-                        href="/iletisim" 
+                      <Link
+                        href="/iletisim"
                         onClick={() => setShowProfileMenu(false)}
                         className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"
                       >
@@ -604,7 +610,7 @@ function getNotificationText(n) {
 
                       <div className="h-px bg-gray-100 dark:bg-white/5 my-1" />
 
-                      <button 
+                      <button
                         onClick={() => {
                           setShowProfileMenu(false);
                           handleLogout();
@@ -623,9 +629,9 @@ function getNotificationText(n) {
               Giriş
             </Link>
           )}
-          
-          <button 
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
+
+          <button
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/5 hover:scale-110 transition-transform text-base md:text-xl"
           >
             {theme === 'dark' ? '☀️' : '🌙'}
@@ -634,26 +640,26 @@ function getNotificationText(n) {
       </div>
 
       {showMobileSearch && (
-       <div ref={mobileSearchRef} className="md:hidden fixed top-16 left-0 w-full bg-white dark:bg-black border-b dark:border-white/10 p-3 z-[200] animate-in slide-in-from-top-2 duration-200">
+        <div ref={mobileSearchRef} className="md:hidden fixed top-16 left-0 w-full bg-white dark:bg-black border-b dark:border-white/10 p-3 z-[200] animate-in slide-in-from-top-2 duration-200">
           <div className="max-w-7xl mx-auto">
             <div className="relative">
-              <input 
-                type="text" 
-                value={query} 
-                onChange={(e) => setQuery(e.target.value)} 
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearchTrigger()}
-                placeholder="Eser veya yazar ara..." 
-                className="w-full h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full pl-6 pr-12 text-sm outline-none transition-all focus:ring-2 focus:ring-red-600/20" 
+                placeholder="Eser veya yazar ara..."
+                className="w-full h-11 bg-gray-50 dark:bg-white/5 border dark:border-white/5 rounded-full pl-6 pr-12 text-sm outline-none transition-all focus:ring-2 focus:ring-red-600/20"
                 autoFocus
               />
-              <button 
+              <button
                 onClick={handleSearchTrigger}
                 className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-red-600 transition-colors z-10"
               >
                 🔍
               </button>
             </div>
-            
+
             {showSearch && (
               <div className="mt-3 bg-white dark:bg-[#0f0f0f] border dark:border-white/10 rounded-2xl shadow-2xl overflow-hidden relative z-[210]">
                 {searchResults.books.length === 0 && searchResults.users.length === 0 ? (
@@ -667,15 +673,21 @@ function getNotificationText(n) {
                       <div className="p-3">
                         <p className="text-[8px] font-black uppercase text-gray-400 mb-2 px-3 tracking-widest">Eserler</p>
                         {searchResults.books.map(b => (
-                          <Link 
-                            key={b.id} 
-                            href={`/kitap/${b.id}`} 
+                          <Link
+                            key={b.id}
+                            href={`/kitap/${b.id}`}
                             onClick={() => { setShowSearch(false); setShowMobileSearch(false); setQuery(''); }}
                             className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                           >
-                            <div className="relative w-full h-full">
-  <Image src={b.cover_url} alt={b.title} fill className="object-cover" sizes="40px" />
-</div>
+                            <div className="relative w-8 h-12 shrink-0 rounded overflow-hidden shadow-sm border dark:border-white/10">
+                              <Image
+                                src={b.cover_url}
+                                alt={b.title}
+                                fill
+                                className="object-cover"
+                                sizes="32px"
+                              />
+                            </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
                               <Username
@@ -688,31 +700,31 @@ function getNotificationText(n) {
                         ))}
                       </div>
                     )}
-                    
+
                     {searchResults.users.length > 0 && (
                       <div className="p-3 border-t dark:border-white/5">
                         <p className="text-[8px] font-black uppercase text-gray-400 mb-2 px-3 tracking-widest">Yazarlar</p>
                         {searchResults.users.map(u => (
-                         <Link 
-                            key={u.id} 
-                            href={`/yazar/${u.username}`} 
+                          <Link
+                            key={u.id}
+                            href={`/yazar/${u.username}`}
                             onClick={() => { setShowSearch(false); setShowMobileSearch(false); setQuery(''); }}
                             className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                           >
                             {/* w-10 h-10 olan div'e 'relative' ekledik 👇 */}
-<div className="relative w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
-  {u.avatar_url && u.avatar_url.includes('http') ? (
-    <Image 
-      src={u.avatar_url} 
-      alt={u.username}
-      fill // Kutuyu doldur
-      sizes="40px"
-      className="object-cover"
-    />
-  ) : (
-    u.username[0].toUpperCase()
-  )}
-</div>
+                            <div className="relative w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
+                              {u.avatar_url && u.avatar_url.includes('http') ? (
+                                <Image
+                                  src={u.avatar_url}
+                                  alt={u.username}
+                                  fill // Kutuyu doldur
+                                  sizes="40px"
+                                  className="object-cover"
+                                />
+                              ) : (
+                                u.username[0].toUpperCase()
+                              )}
+                            </div>
                             <div className="flex-1">
                               <Username
                                 username={u.username}
