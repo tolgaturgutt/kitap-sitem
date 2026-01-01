@@ -113,7 +113,7 @@ export default function WarningSystem() {
           <p className="text-xs text-gray-400 mb-8 px-4 leading-relaxed">
             KitapLab topluluk kurallarına aykırı davranışlar tespit edilmiştir. 
             Bu bir resmi uyarıdır. İhlallerin devam etmesi durumunda hesabınız 
-            <span className="text-red-600 font-bold"> süresiz olarak kapatılacaktır.</span>
+            <span className="text-red-600 font-bold"> kısıtlanacaktır.</span>
           </p>
 
           <button
