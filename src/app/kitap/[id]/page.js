@@ -133,7 +133,7 @@ export default function KitapDetay({ params }) {
       }
 
       const { count: follows } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('book_id', id);
-      const { count: comments } = await supabase.from('comments').select('*', { count: 'exact', head: true }).eq('book_id', id);
+     
       
       let following = false;
       if (user) {
@@ -149,7 +149,8 @@ export default function KitapDetay({ params }) {
           views: totalViews, 
           votes: totalChapterVotes, 
           follows: follows || 0,
-          comments: comments || 0,
+          // ✅ Doğrudan books tablosundaki 'total_comment_count' verisini alıyoruz:
+          comments: book.total_comment_count || 0, 
           chapters: publishedChapters.length,
           words: totalWords
         },

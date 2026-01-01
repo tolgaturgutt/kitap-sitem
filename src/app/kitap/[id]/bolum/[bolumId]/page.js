@@ -24,6 +24,7 @@ export default function BolumDetay({ params }) {
 
   const [likes, setLikes] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
+  const [notFound, setNotFound] = useState(false); // 👈 YENİ EKLENEN
 
   const [readerSettings, setReaderSettings] = useState({
     fontSize: 20,
@@ -49,8 +50,17 @@ export default function BolumDetay({ params }) {
     async function getFullData() {
       if (!bolumId || !id) return;
       try {
+        // 👇 error değişkenini de alıyoruz
+        const { data: chapter, error: chapterError } = await supabase.from('chapters').select('*').eq('id', bolumId).single();
 
-        const { data: chapter } = await supabase.from('chapters').select('*').eq('id', bolumId).single();
+        // 👇 YENİ EKLENEN KONTROL BLOKU
+        if (chapterError || !chapter) {
+          setNotFound(true);
+          setLoading(false);
+          return;
+        }
+        // 👆 BURAYA KADAR
+        
         const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
         const { data: all } = await supabase.from('chapters').select('id, title, is_draft').eq('book_id', id).order('order_no', { ascending: true });
 
@@ -233,6 +243,40 @@ useEffect(() => {
   };
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black opacity-10 animate-pulse text-5xl italic uppercase tracking-tighter">YUKLENIYOR</div>;
+
+  // 👇 YENİ EKLENEN TASARIM
+  if (notFound) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] dark:bg-[#080808] px-6 text-center">
+        <div className="text-8xl mb-6 animate-bounce select-none">
+          👻
+        </div>
+        <h1 className="text-3xl md:text-5xl font-black text-gray-900 dark:text-white mb-4 tracking-tight">
+          Bölüm Uçmuş!
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400 mb-10 max-w-md text-sm md:text-base font-medium">
+          Aradığın bu bölüm yazar tarafından silinmiş veya yayından kaldırılmış olabilir.
+        </p>
+        
+        <div className="flex gap-4">
+           <Link 
+             href={`/kitap/${id}`} 
+             className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-2xl transition-all shadow-xl shadow-red-600/20 text-xs uppercase tracking-widest"
+           >
+             Kitaba Dön
+           </Link>
+           
+           <Link 
+             href="/"
+             className="bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-900 dark:text-white font-bold py-4 px-8 rounded-2xl transition-all text-xs uppercase tracking-widest"
+           >
+             Ana Sayfa
+           </Link>
+        </div>
+      </div>
+    );
+  }
+  // 👆 BURAYA KADAR
 
   const currentIndex = data.allChapters.findIndex(c => Number(c.id) === Number(bolumId));
   

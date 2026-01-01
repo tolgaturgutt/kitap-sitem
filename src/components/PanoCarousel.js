@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Username from '@/components/Username';
 import Image from 'next/image';
+
 export default function PanoCarousel({ onPanoClick, user }) {
   const [panolar, setPanolar] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,8 +17,8 @@ export default function PanoCarousel({ onPanoClick, user }) {
     async function getPanolar() {
       // 1. Admin Listesini Çek
       const { data: admins } = await supabase.from('announcement_admins').select('user_email');
-      const emails = admins?.map(a => a.user_email) || [];
-      setAdminEmails(emails);
+      const emailsList = admins?.map(a => a.user_email) || [];
+      setAdminEmails(emailsList);
 
       // 2. Panoları Çek (Son 24 saat)
       const yesterday = new Date();
@@ -41,23 +42,31 @@ export default function PanoCarousel({ onPanoClick, user }) {
         .order('created_at', { ascending: false })
         .limit(30);
       
-      if (rawPanolar) {
-        const panoWithProfiles = await Promise.all(
-          rawPanolar.map(async (pano) => {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('username, avatar_url')
-              .eq('email', pano.user_email)
-              .single();
+      if (rawPanolar && rawPanolar.length > 0) {
+        // 🔥🔥🔥 OPTİMİZASYON BURADA 🔥🔥🔥
+        // Hamallık bitti! Tek tek sormak yerine, e-postaları toplayıp toplu soruyoruz.
+        
+        // 1. Panolardaki tüm e-postaları al (Tekrar edenleri temizle)
+        const userEmails = [...new Set(rawPanolar.map(p => p.user_email))];
 
-            return {
-              ...pano,
-              profiles: profile
-            };
-          })
-        );
+        // 2. Bu e-postalara ait profilleri TEK SEFERDE çek
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('email, username, avatar_url')
+          .in('email', userEmails);
+
+        // 3. Profilleri panolarla eşleştir (Hafızada birleştirme)
+        const panoWithProfiles = rawPanolar.map(pano => {
+          const profile = profiles?.find(p => p.email === pano.user_email);
+          return {
+            ...pano,
+            profiles: profile // Eşleşen profili buraya gömüyoruz
+          };
+        });
 
         setPanolar(panoWithProfiles);
+      } else {
+        setPanolar([]);
       }
       
       setLoading(false);
@@ -155,22 +164,22 @@ export default function PanoCarousel({ onPanoClick, user }) {
                   } transition-all group-hover/story:scale-110 duration-300`}>
                     
                    {/* 👇 'relative' ekledik ki resim taşmasın */}
-<div className="relative w-20 h-20 rounded-full overflow-hidden bg-white dark:bg-gray-900 p-0.5">
-  {pano.profiles?.avatar_url ? (
-    <Image 
-      src={pano.profiles.avatar_url} 
-      alt={pano.profiles.username}
-      fill
-      sizes="80px" // Küçük resim olduğu için 80px yeterli
-      className="object-cover rounded-full"
-    />
-  ) : (
+                    <div className="relative w-20 h-20 rounded-full overflow-hidden bg-white dark:bg-gray-900 p-0.5">
+                      {pano.profiles?.avatar_url ? (
+                        <Image 
+                          src={pano.profiles.avatar_url} 
+                          alt={pano.profiles.username || 'User'}
+                          fill
+                          sizes="80px"
+                          className="object-cover rounded-full"
+                        />
+                      ) : (
                         <div className={`w-full h-full rounded-full flex items-center justify-center text-2xl font-black ${
                           isAdmin 
                             ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600' 
                             : 'bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900 dark:to-blue-800 text-blue-600 dark:text-blue-300'
                         }`}>
-                          {pano.user_email[0].toUpperCase()}
+                          {(pano.profiles?.username || pano.user_email)[0].toUpperCase()}
                         </div>
                       )}
                     </div>

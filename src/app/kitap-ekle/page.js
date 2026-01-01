@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
+import imageCompression from 'browser-image-compression';
 
 export default function KitapEkle() {
   const router = useRouter();
@@ -34,7 +35,27 @@ export default function KitapEkle() {
     }
     fetchCategories();
   }, []);
+// Resim Sıkıştırma Fonksiyonu
+  async function handleImageChange(event) {
+    const file = event.target.files[0];
+    if (!file) return;
 
+    const options = {
+      maxSizeMB: 0.2,          // 200KB'a indir
+      maxWidthOrHeight: 1000, 
+      useWebWorker: true,
+      fileType: 'image/jpeg'
+    };
+
+    try {
+      const compressedFile = await imageCompression(file, options);
+      setFormData(prev => ({ ...prev, cover_file: compressedFile }));
+      toast.success("Resim boyutu küçültüldü 👍");
+    } catch (error) {
+      console.log("Hata:", error);
+      toast.error("Resim işlenemedi");
+    }
+  }
   async function handleSubmit(e) {
     e.preventDefault();
     if (!formData.cover_file) {
@@ -151,12 +172,12 @@ export default function KitapEkle() {
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Kapak Resmi</label>
             <div className="relative w-full h-32 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-red-600 transition-colors group overflow-hidden">
-              <input 
-                type="file" 
-                accept="image/*"
-                onChange={(e) => setFormData({...formData, cover_file: e.target.files[0]})}
-                className="absolute inset-0 opacity-0 cursor-pointer z-10"
-              />
+            <input 
+  type="file" 
+  accept="image/*"
+  onChange={handleImageChange} // Sadece burası değişti
+  className="absolute inset-0 opacity-0 cursor-pointer z-10"
+/>
               {formData.cover_file ? (
                 <div className="text-center">
                   <span className="text-2xl">✅</span>

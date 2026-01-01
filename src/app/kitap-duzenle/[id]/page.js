@@ -4,6 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
+import imageCompression from 'browser-image-compression';
 
 export default function KitapDuzenle({ params }) {
   const { id } = use(params);
@@ -76,35 +77,46 @@ export default function KitapDuzenle({ params }) {
     getData();
   }, [id, router]);
 
- async function guncelle() {
-    // 1. Başlık ve Özet Kontrolü (Boşsa devam etme)
+async function guncelle() {
+    // 1. Başlık ve Özet Kontrolü
     if (!title.trim() || !summary.trim()) {
       toast.error("Başlık ve özet boş bırakılamaz.");
       return;
     }
 
-    // 2. KAPAK KONTROLÜ (YENİ EKLENEN KISIM) 👇
-    // Mantık: "Yeni dosya seçilmedi" VE "Ekranda eski kapak da yok" ise durdur.
+    // 2. KAPAK KONTROLÜ
     if (!newImageFile && !currentCover) {
       toast.error("Kitap kapağı zorunludur! Lütfen bir kapak yükleyin.");
       return;
     }
-    // 👆 BİTİŞ
 
     setUpdating(true);
     let finalCoverUrl = currentCover;
 
     try {
-      // Eğer yeni bir resim seçildiyse yükleyelim
+      // ✅✅✅ DEĞİŞEN KISIM BURASI KRAL ✅✅✅
+      // Eğer yeni bir resim seçildiyse: SIKIŞTIR VE YÜKLE
       if (newImageFile) {
         const { data: { user } } = await supabase.auth.getUser();
-        const fileExt = newImageFile.name.split('.').pop();
-        const fileName = `${Math.random()}.${fileExt}`;
+        
+        // Sıkıştırma Ayarları (Kitap kapağı net olmalı ama devasa olmamalı)
+        const options = {
+          maxSizeMB: 0.2,          // 200KB (Kalite/Boyut dengesi için ideal)
+          maxWidthOrHeight: 800,   // Max 800px yükseklik/genişlik
+          useWebWorker: true,
+          fileType: 'image/jpeg'
+        };
+
+        const compressedFile = await imageCompression(newImageFile, options);
+
+        // Dosya adı oluştur (Hepsi JPG olacak)
+        const fileName = `${Math.random()}.jpg`;
         const filePath = `${user.id}/${fileName}`;
 
+        // Sıkıştırılmış dosyayı (compressedFile) yükle
         const { error: uploadError } = await supabase.storage
           .from('book-covers')
-          .upload(filePath, newImageFile);
+          .upload(filePath, compressedFile);
 
         if (uploadError) throw uploadError;
 
@@ -114,6 +126,7 @@ export default function KitapDuzenle({ params }) {
         
         finalCoverUrl = publicUrl;
       }
+      // ✅✅✅ BİTİŞ ✅✅✅
 
       const { error } = await supabase
         .from('books')

@@ -7,6 +7,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoModal from '@/components/PanoModal';
 import Image from 'next/image';
+import imageCompression from 'browser-image-compression';
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
   if (!num) return 0;
@@ -340,29 +341,50 @@ export default function ProfilSayfasi() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 animate-in fade-in zoom-in-95 duration-200">
                   <div className="md:col-span-2 mb-2 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl md:rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 text-center relative group cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={async (e) => {
-                        const file = e.target.files[0];
-                        if (!file) return;
+                  
+<input
+  type="file"
+  accept="image/*"
+  onChange={async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-                        const toastId = toast.loading('Fotoğraf yükleniyor...');
+    const toastId = toast.loading('Fotoğraf optimize ediliyor ve yükleniyor... ⚡');
 
-                        const fileExt = file.name.split('.').pop();
-                        const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-                        const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file);
+    try {
+      // 1. SIKIŞTIRMA AYARLARI (Avatar küçük olur, 500px yeter)
+      const options = {
+        maxSizeMB: 0.1,          // 100KB (Profil fotosu için ideal)
+        maxWidthOrHeight: 500,   // Max 500px (Kapak gibi 1000 olmasına gerek yok)
+        useWebWorker: true,
+        fileType: 'image/jpeg'
+      };
 
-                        if (!uploadError) {
-                          const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
-                          setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
-                          toast.success("Fotoğraf yüklendi! Kaydetmeyi unutma.", { id: toastId });
-                        } else {
-                          toast.error("Yükleme hatası!", { id: toastId });
-                        }
-                      }}
-                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                    />
+      // 2. SIKIŞTIRMA İŞLEMİ
+      const compressedFile = await imageCompression(file, options);
+
+      // 3. YÜKLEME İŞLEMİ (Artık compressedFile gidiyor)
+      const fileExt = "jpg"; 
+      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, compressedFile);
+
+      if (!uploadError) {
+        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+        setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
+        toast.success("Fotoğraf yüklendi! Kaydetmeyi unutma.", { id: toastId });
+      } else {
+        console.error(uploadError);
+        toast.error("Yükleme hatası!", { id: toastId });
+      }
+
+    } catch (error) {
+      console.error("Sıkıştırma hatası:", error);
+      toast.error("Resim işlenirken hata oluştu", { id: toastId });
+    }
+  }}
+  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+/>
                     <span className="text-xl md:text-2xl mb-1 block">📸</span>
                     <p className="text-[9px] md:text-[10px] font-black uppercase text-gray-400 group-hover:text-red-600">Profil Fotoğrafını Değiştir</p>
                   </div>

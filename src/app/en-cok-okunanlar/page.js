@@ -29,16 +29,14 @@ export default function Top100Page() {
     fetchBooks(0);
   }, []);
 
-  async function fetchBooks(currentOffset) {
+async function fetchBooks(currentOffset) {
     try {
-      // 1. Kitapları Okunma Sayısına (views) göre çek
-      // ✅ GÜNCELLEME: profiles:user_id ile yazarın güncel adını ve rolünü direkt alıyoruz.
-     // ✅ Tüm kitapları çek (sıralama sonra yapılacak)
+      // ✅ 1. Kitapları çek (total_comment_count zaten '*' içinde geliyor)
       let { data: newBooks } = await supabase
         .from('books')
-        .select('*, chapters(id, views), profiles:user_id(username, role)');
+        .select('*, total_comment_count, chapters(id, views), profiles:user_id(username, role)');
 
-      // ✅ HAYALET FİLTRESİ: Taslakları ve Bölümsüzleri listeden at
+      // ✅ HAYALET FİLTRESİ
       if (newBooks) {
         newBooks = newBooks.filter(book => 
           book.chapters && 
@@ -54,69 +52,55 @@ export default function Top100Page() {
         return;
       }
 
-      // --- EKSTRA İSTATİSTİKLERİ ÇEK (Canlı Hesaplama) ---
-      
-      // A. Bu sayfadaki kitapların ID'lerini ve Bölüm ID'lerini topla
-      const bookIds = newBooks.map(b => b.id);
+      // --- EKSTRA İSTATİSTİKLER ---
       const allChapterIds = newBooks.flatMap(b => b.chapters.map(c => c.id));
 
-      // B. Toplu Yorum Sayılarını Çek (Sadece bu kitaplar için)
-      const { data: commentsData } = await supabase
-        .from('comments')
-        .select('book_id')
-        .in('book_id', bookIds);
+      // ❌ YORUM ÇEKME KODU SİLİNDİ (Artık gerek yok)
 
-      // C. Toplu Beğeni (Oy) Sayılarını Çek (Sadece bu bölümler için)
+      // C. Toplu Beğeni (Oy) Sayılarını Çek
       const { data: votesData } = await supabase
         .from('chapter_votes')
         .select('chapter_id')
         .in('chapter_id', allChapterIds);
 
-      // (NOT: Artık ayrı bir profiles sorgusuna gerek yok, veri yukarıda geldi)
-
       // --- VERİLERİ BİRLEŞTİR ---
       newBooks = newBooks.map(book => {
-        // İlişkisel veriden gelen güncel profil (Yoksa eski veriyi kullan - Hibrit)
         const profile = book.profiles;
         const displayUsername = profile?.username || book.username;
         const displayRole = profile?.role;
         
-        // 1. Toplam Yorum
-        const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
+        // ✅ 1. Toplam Yorum (ARTIK BURASI HIZLI VE DOĞRU)
+        const totalComments = book.total_comment_count || 0;
 
         // 2. Toplam Beğeni
         const chapterIds = book.chapters.map(c => c.id);
         const totalVotes = votesData?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
 
-       // 3. Toplam Okunma (Sadece mevcut bölümler)
+       // 3. Toplam Okunma
         const totalViews = book.chapters
-          .filter(c => c.id) // Silinen bölümleri atla
+          .filter(c => c.id)
           .reduce((sum, c) => sum + (c.views || 0), 0);
 
         return { 
           ...book, 
-          username: displayUsername, // Güncel isim
-          author_role: displayRole,  // Güncel rol
-          totalComments,
+          username: displayUsername,
+          author_role: displayRole,
+          totalComments, // Doğru sayı
           totalVotes,
           totalViews
         };
       });
-      // ✅ Hesaplanan totalViews'e göre sırala
-      newBooks.sort((a, b) => b.totalViews - a.totalViews);
 
-      // ✅ Sayfalama uygula
+      // ... (Sıralama ve sayfalama kodları aynı kalacak) ...
+      
+      newBooks.sort((a, b) => b.totalViews - a.totalViews);
       newBooks = newBooks.slice(currentOffset, currentOffset + LIMIT_PER_PAGE);
 
-      // 3. Listeyi Güncelle (Çift Kayıt Korumalı)
       setBooks(prev => {
         if (currentOffset === 0) return newBooks;
-
         const existingIds = new Set(prev.map(b => b.id));
         const uniqueNewBooks = newBooks.filter(b => !existingIds.has(b.id));
-        
         const combined = [...prev, ...uniqueNewBooks];
-
         if (combined.length >= MAX_BOOKS) {
           setHasMore(false);
           return combined.slice(0, MAX_BOOKS);

@@ -516,38 +516,36 @@ export default function Home() {
 
       setLatestChapters(recentChapsWithAdmin);
 
+    // --- YAPIŞTIRILACAK KISIM ---
       let { data: allBooks, error: booksError } = await supabase
         .from('books')
-        .select('*, profiles:user_id(username, avatar_url, email), chapters(id, views, is_draft)');
+        .select('*, total_comment_count, profiles:user_id(username, avatar_url, email), chapters(id, views, is_draft)');
 
       if (booksError) {
         setLoading(false);
         return;
       }
 
-      const { data: allComments } = await supabase.from('comments').select('book_id');
+      // comments tablosunu çekme satırı silindi
       const { data: allVotes } = await supabase.from('chapter_votes').select('chapter_id');
 
       if (allBooks) {
-        // ✅ 1. Taslak kitapları filtrele
-        // ✅ 2. Taslak olmayan bölümleri say
-        // ✅ 3. En az 1 yayında bölümü olmayan kitapları filtrele
         allBooks = allBooks.filter(book => {
-          if (book.is_draft) return false; // Taslak kitaplar gösterilmez
-
+          if (book.is_draft) return false;
           const publishedChapters = book.chapters?.filter(c => c.id && !c.is_draft) || [];
-          return publishedChapters.length > 0; // En az 1 yayında bölüm olmalı
+          return publishedChapters.length > 0;
         });
 
         allBooks = allBooks.map(book => {
-          // ✅ Sadece yayında olan bölümlerin views'unu topla
           const publishedChapters = book.chapters?.filter(c => c.id && !c.is_draft) || [];
           const totalViews = publishedChapters.reduce((sum, c) => sum + (c.views || 0), 0);
 
           const chapterIds = publishedChapters.map(c => c.id);
           const totalVotes = allVotes?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
-          const totalComments = allComments?.filter(c => c.book_id === book.id).length || 0;
-
+          
+          // DOĞRUDAN VERİTABANINDAN GELEN SAYIYI KULLAN
+          const totalComments = book.total_comment_count || 0;
+// --- YAPIŞTIRILACAK KISIM SONU ---
           const bookOwnerEmail = book.profiles?.email || book.user_email;
 
           return {

@@ -35,41 +35,42 @@ export default function KitaplarimSayfasi() {
       const emails = adminList?.map(a => a.user_email) || [];
       setAdminEmails(emails);
 
-      // --- KİTAPLARI VE İSTATİSTİK VERİLERİNİ ÇEK ---
+      // --- 1. KİTAPLARI VE İSTATİSTİKLERİ ÇEK (total_comment_count EKLENDİ) ---
       const { data: written } = await supabase
         .from('books')
-        .select('*, chapters(id, views)')
+        .select('*, total_comment_count, chapters(id, views)') // 👈 Burası güncellendi
         .eq('user_email', activeUser.email)
         .order('created_at', { ascending: false });
 
-      // --- KÜTÜPHANE KİTAPLARINI ÇEK ---
+      // --- 2. KÜTÜPHANE KİTAPLARINI ÇEK ---
       const { data: follows } = await supabase
         .from('follows')
         .select(`
           *, 
           books!inner(
             *, 
+            total_comment_count, 
             chapters(id, views, chapter_votes(chapter_id)),
             profiles:user_id(username, role, email)
           )
-        `)
+        `) // 👈 books içine total_comment_count eklendi
         .eq('user_email', activeUser.email)
         .eq('books.is_draft', false)
         .order('created_at', { ascending: false });
 
-      // --- EKSTRA İSTATİSTİKLER (Yorumlar ve Beğeniler) ---
-      const allBooksList = written || [];
-      const allBookIds = allBooksList.map(b => b.id);
-      const allChapterIds = allBooksList.flatMap(b => b.chapters?.map(c => c.id) || []);
-
-      const { data: commentsData } = await supabase.from('comments').select('book_id');
+      // --- EKSTRA İSTATİSTİKLER (Sadece Oylar kaldı, Yorumları sildik) ---
+      // ❌ SİLİNDİ: const { data: commentsData } = ... (Artık gerek yok)
+      
       const { data: votesData } = await supabase.from('chapter_votes').select('chapter_id');
 
       // Verileri birleştirme fonksiyonu
       const mergeStats = (list) => {
         return list.map(book => {
           const totalBookViews = book.chapters?.reduce((acc, c) => acc + (c.views || 0), 0) || 0;
-          const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
+          
+          // 👇 DEĞİŞİKLİK 1: Doğrudan veritabanındaki sayıyı al
+          const totalComments = book.total_comment_count || 0;
+          
           const chIds = book.chapters?.map(c => c.id) || [];
           const totalVotes = votesData?.filter(v => chIds.includes(v.chapter_id)).length || 0;
 
@@ -95,9 +96,10 @@ export default function KitaplarimSayfasi() {
           const ownerEmail = profile?.email || book.user_email;
 
           const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
-          const chapterIds = book.chapters?.map(c => c.id) || [];
           const totalVotes = book.chapters?.reduce((sum, c) => sum + (c.chapter_votes?.length || 0), 0) || 0;
-          const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
+          
+          // 👇 DEĞİŞİKLİK 2: Kütüphane için de hazır sayıyı kullan
+          const totalComments = book.total_comment_count || 0;
 
           return {
             ...book,

@@ -2,19 +2,18 @@
 
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-// 👇 1. usePathname EKLENDİ
 import { useRouter, usePathname } from 'next/navigation'; 
 import { useEffect, useState, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
 import Username from '@/components/Username';
+import Image from 'next/image';
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
   const [mounted, setMounted] = useState(false);
   const { theme, setTheme } = useTheme();
   const router = useRouter();
-  // 👇 2. MEVCUT SAYFAYI ALIYORUZ
   const pathname = usePathname(); 
 
   const [query, setQuery] = useState('');
@@ -32,8 +31,6 @@ export default function Navbar() {
   const profileMenuRef = useRef(null);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
 
-  // 👇 3. KRİTİK NOKTA: ŞİFRE YENİLEME SAYFASINDAYSAK NAVBAR'I İPTAL ET
-  // Eğer başka sayfalarda da gizlemek istersen: if (['/sifre-yenile', '/giris'].includes(pathname))
   if (pathname === '/sifre-yenile') {
     return null;
   }
@@ -44,14 +41,35 @@ export default function Navbar() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
-        await loadNotifications(session.user.email);
-        
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('avatar_url, username')
-          .eq('id', session.user.id)
-          .single();
-        setUserProfile(profile);
+
+        // 🚀 HIZLI BAŞLANGIÇ: Veritabanını bekleme, session'da varsa hemen göster
+        if (session.user.user_metadata?.avatar_url) {
+            setUserProfile({
+                avatar_url: session.user.user_metadata.avatar_url,
+                username: session.user.user_metadata.username || session.user.email.split('@')[0]
+            });
+        }
+
+        // ⚡ PARALEL YÜKLEME: İkisi birbirini beklemesin, aynı anda saldırsın
+        // 1. Gerçek Profil Verisini Çek (Arka planda günceller)
+        const fetchProfile = async () => {
+            const { data: profile } = await supabase
+            .from('profiles')
+            .select('avatar_url, username')
+            .eq('id', session.user.id)
+            .single();
+            
+            if (profile) setUserProfile(profile);
+        };
+
+        // 2. Bildirimleri Çek
+        const fetchNotifs = async () => {
+            await loadNotifications(session.user.email);
+        };
+
+        // İkisini de ateşle
+        fetchProfile();
+        fetchNotifs();
       }
     };
     loadSession();
@@ -72,6 +90,7 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+ // 🚀 OPTİMİZE EDİLMİŞ BİLDİRİM FONKSİYONU
  async function loadNotifications(email) {
   const { data: n } = await supabase
     .from('notifications')
@@ -81,18 +100,31 @@ export default function Navbar() {
     .limit(50);
   
   if (n && n.length > 0) {
-    for (let notif of n) {
-      if (notif.chapter_id && !notif.chapter_title) {
-        const { data: chapter } = await supabase
-          .from('chapters')
-          .select('title')
-          .eq('id', notif.chapter_id)
-          .maybeSingle();
+    // N+1 PROBLEMİNİ ÇÖZÜYORUZ: Tek tek sormak yerine toplu soruyoruz.
+    // Bölüm ID'lerini topla
+    const chapterIds = n
+        .filter(notif => notif.chapter_id && !notif.chapter_title)
+        .map(notif => notif.chapter_id);
+    
+    // Eğer ID varsa, tek seferde hepsini çek
+    if (chapterIds.length > 0) {
+        // Unique ID'leri al (Aynı bölüme 5 yorum geldiyse 5 kere sorma)
+        const uniqueIds = [...new Set(chapterIds)];
         
-        if (chapter) {
-          notif.chapter_title = chapter.title;
+        const { data: chapters } = await supabase
+            .from('chapters')
+            .select('id, title')
+            .in('id', uniqueIds);
+
+        // Hafızada eşleştir
+        if (chapters) {
+            n.forEach(notif => {
+                const foundChapter = chapters.find(c => c.id === notif.chapter_id);
+                if (foundChapter) {
+                    notif.chapter_title = foundChapter.title;
+                }
+            });
         }
-      }
     }
   }
   
@@ -304,9 +336,9 @@ function getNotificationText(n) {
                           onClick={() => setShowSearch(false)} 
                           className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                         >
-                          <div className="w-10 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0">
-                            {b.cover_url && <img src={b.cover_url} className="w-full h-full object-cover" alt="" />}
-                          </div>
+                          <div className="relative w-full h-full">
+  <Image src={b.cover_url} alt={b.title} fill className="object-cover" sizes="40px" />
+</div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
                             <Username
@@ -330,13 +362,20 @@ function getNotificationText(n) {
                           onClick={() => setShowSearch(false)} 
                           className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                         >
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
-                            {u.avatar_url && u.avatar_url.includes('http') ? (
-                              <img src={u.avatar_url} className="w-full h-full object-cover" alt="" />
-                            ) : (
-                              u.username[0].toUpperCase()
-                            )}
-                          </div>
+                          {/* w-10 h-10 olan div'e 'relative' ekledik 👇 */}
+<div className="relative w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
+  {u.avatar_url && u.avatar_url.includes('http') ? (
+    <Image 
+      src={u.avatar_url} 
+      alt={u.username}
+      fill // Kutuyu doldur
+      sizes="40px"
+      className="object-cover"
+    />
+  ) : (
+    u.username[0].toUpperCase()
+  )}
+</div>
                          <div className="flex-1">
                             <Username
                               username={u.username}
@@ -500,10 +539,17 @@ function getNotificationText(n) {
                   className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-red-600 flex items-center justify-center text-white font-black text-[10px] md:text-xs uppercase hover:scale-110 transition-transform overflow-hidden shadow-lg border-2 border-transparent hover:border-red-400"
                 >
                   {userProfile?.avatar_url && userProfile.avatar_url.includes('http') ? (
-                    <img src={userProfile.avatar_url} className="w-full h-full object-cover" alt="Profil" />
-                  ) : (
-                    user.email[0].toUpperCase()
-                  )}
+  <Image 
+    src={userProfile.avatar_url} 
+    alt="Profil"
+    width={44}  // Ekranda görüneceği boyut (2x retina için biraz büyük verdim)
+    height={44}
+    className="w-full h-full object-cover"
+    priority // 👈 Bu resim çok önemli, hemen yükle demek
+  />
+) : (
+  user.email[0].toUpperCase()
+)}
                 </button>
 
                 {showProfileMenu && (
@@ -627,9 +673,9 @@ function getNotificationText(n) {
                             onClick={() => { setShowSearch(false); setShowMobileSearch(false); setQuery(''); }}
                             className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                           >
-                            <div className="w-10 h-14 rounded-lg overflow-hidden bg-gray-100 dark:bg-white/5 shrink-0">
-                              {b.cover_url && <img src={b.cover_url} className="w-full h-full object-cover" alt="" />}
-                            </div>
+                            <div className="relative w-full h-full">
+  <Image src={b.cover_url} alt={b.title} fill className="object-cover" sizes="40px" />
+</div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
                               <Username
@@ -653,13 +699,20 @@ function getNotificationText(n) {
                             onClick={() => { setShowSearch(false); setShowMobileSearch(false); setQuery(''); }}
                             className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                           >
-                            <div className="w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
-                              {u.avatar_url && u.avatar_url.includes('http') ? (
-                                <img src={u.avatar_url} className="w-full h-full object-cover" alt="" />
-                              ) : (
-                                u.username[0].toUpperCase()
-                              )}
-                            </div>
+                            {/* w-10 h-10 olan div'e 'relative' ekledik 👇 */}
+<div className="relative w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
+  {u.avatar_url && u.avatar_url.includes('http') ? (
+    <Image 
+      src={u.avatar_url} 
+      alt={u.username}
+      fill // Kutuyu doldur
+      sizes="40px"
+      className="object-cover"
+    />
+  ) : (
+    u.username[0].toUpperCase()
+  )}
+</div>
                             <div className="flex-1">
                               <Username
                                 username={u.username}
