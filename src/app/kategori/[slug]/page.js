@@ -46,11 +46,10 @@ export default function CategoryPage() {
       setAdminEmails(emails);
 
       // 3️⃣ Bu kategorideki kitapları çek
- // 3️⃣ Bu kategorideki kitapları çek
       let { data: allBooks } = await supabase
         .from('books')
-        // 👇 BURAYA total_comment_count EKLENDİ
-        .select('*, total_comment_count, profiles:user_id(username, avatar_url, email), chapters(id, views)')
+        // 👇 DİKKAT: Buraya 'total_votes' ekledim, eskiden yoktu.
+        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email), chapters(id, views)')
         .eq('category', categoryData.name)
         .eq('is_draft', false);
 
@@ -63,13 +62,14 @@ export default function CategoryPage() {
       allBooks = allBooks.filter(book => book.chapters && book.chapters.length > 0);
 
       // 4️⃣ İstatistikleri hesapla
-      // ❌ ESKİ YORUM ÇEKME KODU SİLİNDİ
-      const { data: allVotes } = await supabase.from('chapter_votes').select('chapter_id');
+      
+      // ❌ SİLİNDİ: const { data: allVotes }... (Artık siteyi yavaşlatmıyoruz)
 
       const booksWithStats = allBooks.map(book => {
         const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
-        const chapterIds = book.chapters.map(c => c.id);
-        const totalVotes = allVotes?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
+        
+        // 👇 ARTIK HESAPLAMA YOK, DİREKT ALIYORUZ
+        const totalVotes = book.total_votes || 0;
         
         // 👇 ARTIK DOĞRUDAN VERİTABANINDAN GELEN SAYIYI ALIYORUZ
         const totalComments = book.total_comment_count || 0;
@@ -201,6 +201,7 @@ export default function CategoryPage() {
     src={kitap.cover_url} 
     alt={kitap.title}
     fill
+    unoptimized
     sizes="(max-width: 768px) 150px, 200px"
     className="object-cover group-hover:scale-110 transition-transform duration-700"
   />

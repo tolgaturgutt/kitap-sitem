@@ -53,7 +53,7 @@ export default function YazarProfili() {
 const [showWarningModal, setShowWarningModal] = useState(false);
 const [warningReason, setWarningReason] = useState('');
 
-  useEffect(() => {
+ useEffect(() => {
     async function load() {
       const { data: { session } } = await supabase.auth.getSession();
       const user = session?.user || null;
@@ -86,10 +86,11 @@ const [warningReason, setWarningReason] = useState('');
         setIsOwner(user && (user.id === p.id || user.email === p.email));
         setAuthor(p);
 
-        // --- KİTAPLARI ÇEK ---
+        // --- KİTAPLARI ÇEK (HIZLANDIRILMIŞ VERSİYON) ---
         let { data: b } = await supabase
           .from('books')
-          .select('*, chapters(id, views)')
+          // 👇 BURASI KRİTİK: total_comment_count ve total_votes EKLENDİ
+          .select('*, total_comment_count, total_votes, chapters(id, views)')
           .eq('user_email', p.email || p.id) // Eski veriler için email fallback
           .order('created_at', { ascending: false });
 
@@ -100,17 +101,15 @@ const [warningReason, setWarningReason] = useState('');
             !book.is_draft
           );
 
-          // İSTATİSTİKLERİ HESAPLA
-          const bookIds = b.map(book => book.id);
-          const allChapterIds = b.flatMap(book => book.chapters.map(c => c.id));
-          
-          const { data: commentsData } = await supabase.from('comments').select('book_id').in('book_id', bookIds);
-          const { data: votesData } = await supabase.from('chapter_votes').select('chapter_id').in('chapter_id', allChapterIds);
+          // ❌ SİLİNDİ: commentsData ve votesData sorguları (Artık gerek yok)
 
+          // İSTATİSTİKLERİ HESAPLA
           b = b.map(book => {
-            const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
-            const chapterIds = book.chapters.map(c => c.id);
-            const totalVotes = votesData?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
+            // ✅ YENİ: Direkt veritabanındaki hazır sayıları kullanıyoruz
+            const totalComments = book.total_comment_count || 0;
+            const totalVotes = book.total_votes || 0;
+            
+            // Okunma sayısı bölüm toplamlarından gelmeye devam edebilir (performansı etkilemez)
             const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
             
             return { ...book, totalComments, totalVotes, totalViews };
@@ -122,7 +121,7 @@ const [warningReason, setWarningReason] = useState('');
         const { data: authorPanos } = await supabase
           .from('panolar')
           .select('*, books(title, cover_url), chapters(id, title)')
-          .eq('user_email', p.email) // Panolar hala email ile çalışıyorsa burası kalabilir
+          .eq('user_email', p.email) 
           .order('created_at', { ascending: false });
 
         const panosWithProfile = authorPanos?.map(pano => ({
@@ -140,7 +139,7 @@ const [warningReason, setWarningReason] = useState('');
             follower_id,
             profiles:follower_id ( username, full_name, avatar_url, email )
           `)
-          .eq('followed_id', p.id); // Yazarın ID'sine göre
+          .eq('followed_id', p.id);
 
         // 2. Bu yazar kimleri takip ediyor? (Following)
         const { data: followingData } = await supabase
@@ -149,7 +148,7 @@ const [warningReason, setWarningReason] = useState('');
             followed_id,
             profiles:followed_id ( username, full_name, avatar_url, email )
           `)
-          .eq('follower_id', p.id); // Yazarın ID'sine göre
+          .eq('follower_id', p.id);
 
         // Veriyi işle ve state'e at
         const cleanFollowers = followersData?.map(item => ({
@@ -173,7 +172,6 @@ const [warningReason, setWarningReason] = useState('');
 
         // Ben takip ediyor muyum?
         if (user) {
-          // Listede benim ID'm var mı?
           const amIFollowing = followersData?.some(f => f.follower_id === user.id);
           setIsFollowing(amIFollowing);
         }
@@ -631,6 +629,7 @@ async function handleSendWarning() {
       alt={p.username || 'Profil'} 
       width={80} 
       height={80}
+      unoptimized
       className="object-cover w-full h-full"
     />
   ) : (

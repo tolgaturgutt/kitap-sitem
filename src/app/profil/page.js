@@ -42,7 +42,7 @@ export default function ProfilSayfasi() {
   const [followingWithProfiles, setFollowingWithProfiles] = useState([]);
 
   useEffect(() => {
-    async function getData() {
+   async function getData() {
       // Admin listesini çek
       const { data: admins } = await supabase
         .from('announcement_admins')
@@ -74,28 +74,24 @@ export default function ProfilSayfasi() {
 
       if (adminData) setIsAdmin(true);
 
-      // --- KİTAPLARI VE İSTATİSTİK VERİLERİNİ ÇEK ---
+      // --- KİTAPLARI VE İSTATİSTİK VERİLERİNİ ÇEK (GÜNCELLENDİ) ---
+      // 👇 ARTIK 'total_votes' ve 'total_comment_count' SÜTUNLARINI İSTİYORUZ
       const { data: written } = await supabase
         .from('books')
-        .select('*, chapters(id, views)')
+        .select('*, total_comment_count, total_votes, chapters(id, views)')
         .eq('user_email', activeUser.email)
         .order('created_at', { ascending: false });
 
-      // --- EKSTRA İSTATİSTİKLER (Yorumlar ve Beğeniler) ---
-      const allBooksList = written || [];
-      const allBookIds = allBooksList.map(b => b.id);
-      const allChapterIds = allBooksList.flatMap(b => b.chapters?.map(c => c.id) || []);
-
-      const { data: commentsData } = await supabase.from('comments').select('book_id').in('book_id', allBookIds);
-      const { data: votesData } = await supabase.from('chapter_votes').select('chapter_id').in('chapter_id', allChapterIds);
+      // ❌ SİLİNDİ: commentsData ve votesData (Artık ihtiyacımız yok)
 
       // Verileri birleştirme fonksiyonu
       const mergeStats = (list) => {
         return list.map(book => {
           const totalBookViews = book.chapters?.reduce((acc, c) => acc + (c.views || 0), 0) || 0;
-          const totalComments = commentsData?.filter(c => c.book_id === book.id).length || 0;
-          const chIds = book.chapters?.map(c => c.id) || [];
-          const totalVotes = votesData?.filter(v => chIds.includes(v.chapter_id)).length || 0;
+          
+          // ✅ ARTIK DİREKT HAZIR SAYILARI ALIYORUZ (HIZLI)
+          const totalComments = book.total_comment_count || 0;
+          const totalVotes = book.total_votes || 0;
 
           return { ...book, totalViews: totalBookViews, totalComments, totalVotes };
         });
@@ -133,7 +129,7 @@ export default function ProfilSayfasi() {
 
       // Verileri Frontend'in anlayacağı düz formata çeviriyoruz
       const cleanFollowing = followingData?.map(item => ({
-        followed_id: item.followed_id, // Silme işlemi için ID lazım
+        followed_id: item.followed_id, 
         username: item.profiles?.username || 'Bilinmeyen',
         full_name: item.profiles?.full_name,
         avatar_url: item.profiles?.avatar_url,
@@ -608,6 +604,7 @@ export default function ProfilSayfasi() {
                               alt={displayName || 'Avatar'}
                               width={80}
                               height={80}
+                              unoptimized
                               className="object-cover w-full h-full"
                             />
                           ) : (

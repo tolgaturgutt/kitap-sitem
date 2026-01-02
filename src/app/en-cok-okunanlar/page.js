@@ -31,10 +31,10 @@ export default function Top100Page() {
 
 async function fetchBooks(currentOffset) {
     try {
-      // ✅ 1. Kitapları çek (total_comment_count zaten '*' içinde geliyor)
+      // ✅ 1. 'total_votes' SÜTUNUNU EKLEDİM (DİKKAT)
       let { data: newBooks } = await supabase
         .from('books')
-        .select('*, total_comment_count, chapters(id, views), profiles:user_id(username, role)');
+        .select('*, total_comment_count, total_votes, chapters(id, views), profiles:user_id(username, role)');
 
       // ✅ HAYALET FİLTRESİ
       if (newBooks) {
@@ -52,16 +52,7 @@ async function fetchBooks(currentOffset) {
         return;
       }
 
-      // --- EKSTRA İSTATİSTİKLER ---
-      const allChapterIds = newBooks.flatMap(b => b.chapters.map(c => c.id));
-
-      // ❌ YORUM ÇEKME KODU SİLİNDİ (Artık gerek yok)
-
-      // C. Toplu Beğeni (Oy) Sayılarını Çek
-      const { data: votesData } = await supabase
-        .from('chapter_votes')
-        .select('chapter_id')
-        .in('chapter_id', allChapterIds);
+      // ❌ ESKİ 'chapter_votes' ÇEKME KODU SİLİNDİ (Siteyi yavaşlatıyordu)
 
       // --- VERİLERİ BİRLEŞTİR ---
       newBooks = newBooks.map(book => {
@@ -69,14 +60,13 @@ async function fetchBooks(currentOffset) {
         const displayUsername = profile?.username || book.username;
         const displayRole = profile?.role;
         
-        // ✅ 1. Toplam Yorum (ARTIK BURASI HIZLI VE DOĞRU)
+        // ✅ 1. Toplam Yorum
         const totalComments = book.total_comment_count || 0;
 
-        // 2. Toplam Beğeni
-        const chapterIds = book.chapters.map(c => c.id);
-        const totalVotes = votesData?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
+        // ✅ 2. Toplam Beğeni (ARTIK VERİTABANINDAN GELİYOR - HIZLI)
+        const totalVotes = book.total_votes || 0;
 
-       // 3. Toplam Okunma
+        // 3. Toplam Okunma
         const totalViews = book.chapters
           .filter(c => c.id)
           .reduce((sum, c) => sum + (c.views || 0), 0);
@@ -85,13 +75,13 @@ async function fetchBooks(currentOffset) {
           ...book, 
           username: displayUsername,
           author_role: displayRole,
-          totalComments, // Doğru sayı
+          totalComments,
           totalVotes,
           totalViews
         };
       });
 
-      // ... (Sıralama ve sayfalama kodları aynı kalacak) ...
+      // ... (Sıralama ve sayfalama kodları aynı) ...
       
       newBooks.sort((a, b) => b.totalViews - a.totalViews);
       newBooks = newBooks.slice(currentOffset, currentOffset + LIMIT_PER_PAGE);
@@ -119,7 +109,6 @@ async function fetchBooks(currentOffset) {
       setLoadingMore(false);
     }
   }
-
   const loadMore = () => {
     setLoadingMore(true);
     const newOffset = offset + LIMIT_PER_PAGE;
@@ -167,6 +156,7 @@ async function fetchBooks(currentOffset) {
         src={book.cover_url} 
         alt={book.title}
         fill
+        unoptimized
         sizes="(max-width: 768px) 150px, 200px"
         className="object-cover group-hover:scale-110 transition-transform duration-500" 
       />
