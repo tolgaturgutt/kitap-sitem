@@ -171,29 +171,30 @@ function getThisMonthFirst() {
 const birHaftaOnce = getThisWeekMonday();
 const birAyOnce = getThisMonthFirst();
 const ikiHaftaOnce = getLastWeekMonday();
-      // Haftalık en çok okunan kitaplar (chapter_views'dan - AYLIK GİBİ)
-const { data: weeklyChapterViews } = await supabase
-  .from('chapter_views')
-  .select(`chapter_id, created_at, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, is_draft, profiles:user_id (username, email)))`)
-  .gte('created_at', birHaftaOnce.toISOString());
+// --- YENİ SİSTEM: HAFTALIK EN ÇOK OKUNANLAR (SQL RPC) ---
+      // Veritabanındaki fonksiyonu çağırıyoruz. Hızlı ve net.
+      const { data: rpcData, error } = await supabase
+        .rpc('get_weekly_most_read_books', { 
+          start_date: birHaftaOnce.toISOString() 
+        });
 
-const weeklyBookViewCounts = {};
-weeklyChapterViews?.forEach(item => {
-  if (!item.chapters?.books || item.chapters.books.is_draft) return; // Taslak kitapları atla
-  const book = item.chapters.books;
-  const bId = book.id;
-  if (!weeklyBookViewCounts[bId]) {
-    weeklyBookViewCounts[bId] = { ...book, weekly_reads: 0 };
-  }
-  weeklyBookViewCounts[bId].weekly_reads += 1;
-});
+      if (error) console.error('Haftalık veri hatası:', JSON.stringify(error, null, 2));
 
-const weeklyBooks = Object.values(weeklyBookViewCounts)
-  .sort((a, b) => b.weekly_reads - a.weekly_reads)
-  .slice(0, 10);
+      // Gelen veriyi senin kullandığın yapıya uyduruyoruz (Formatlama)
+      const weeklyBooks = rpcData?.map(item => ({
+        id: item.id,
+        title: item.title,
+        cover_url: item.cover_url,
+        weekly_reads: item.weekly_reads,
+        profiles: { // Profil yapısını senin koduna uydurdum
+          username: item.username,
+          email: item.user_email,
+          avatar_url: item.user_avatar
+        }
+      })) || [];
 
-console.log('📚 HAFTALIK TOP KİTAPLAR:', weeklyBooks);
-setWeeklyTopBooks(weeklyBooks);
+      console.log('📚 HAFTALIK TOP 10 (SQL):', weeklyBooks);
+      setWeeklyTopBooks(weeklyBooks);
 
       // Aylık en çok okunan kitaplar (chapter_views'dan)
       const { data: monthlyChapterViews, error: monthlyViewsError } = await supabase
