@@ -113,7 +113,7 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
     </div>
   );
 }
-// --- GÜNCELLENMİŞ PODYUM TASARIMI (KESİN ÇÖZÜM: TAŞMA YOK, ESTETİK VAR) ---
+// --- GÜNCELLENMİŞ PODYUM TASARIMI (ORTALAMA SORUNU FİXLENDİ) ---
 function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }) {
   if (!data || data.length === 0) return <p className="text-gray-500 italic text-center py-10">Veri yok.</p>;
 
@@ -131,27 +131,27 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       border: "border-yellow-500", 
       text: "text-yellow-600 dark:text-yellow-400", 
       crown: "👑",
-      height: "h-full",
+      scale: "scale-100 md:scale-110 z-10", 
       avatarSize: "w-16 h-16 md:w-24 md:h-24",
-      scale: "scale-100 md:scale-110 z-10" // Mobilde scale kapalı
+      marginBottom: "mb-0" 
     },
     1: { // 2. SIRA (GÜMÜŞ)
       gradient: "from-gray-400/20 to-gray-400/5", 
       border: "border-gray-400", 
       text: "text-gray-500 dark:text-gray-300", 
       crown: "🥈",
-      height: "h-5/6",
+      scale: "scale-100 z-0",
       avatarSize: "w-12 h-12 md:w-16 md:h-16",
-      scale: "scale-100 z-0"
+      marginBottom: "mb-4 md:mb-8"
     },
     2: { // 3. SIRA (BRONZ)
       gradient: "from-amber-700/20 to-amber-700/5", 
       border: "border-amber-700", 
       text: "text-amber-700 dark:text-amber-500", 
       crown: "🥉",
-      height: "h-4/6",
+      scale: "scale-100 z-0",
       avatarSize: "w-12 h-12 md:w-16 md:h-16",
-      scale: "scale-100 z-0"
+      marginBottom: "mb-8 md:mb-12"
     }
   };
 
@@ -165,9 +165,9 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
        </h2>
 
        {/* --- PODYUM ALANI --- */}
-       <div className="flex items-end justify-center gap-2 md:gap-4 mb-6 md:mb-8 min-h-[190px] md:min-h-[220px]">
+       <div className="flex items-end justify-center gap-2 md:gap-4 mb-6 md:mb-8 min-h-[200px]">
           {podiumData.map((item, visualIndex) => {
-             if (!item && visualIndex !== 1) return <div key={visualIndex} className="w-1/3 opacity-0"></div>; 
+             if (!item && visualIndex !== 1) return <div key={visualIndex} className="flex-1 opacity-0"></div>; 
              if (!item) return null;
 
              const realIndex = visualIndex === 1 ? 0 : visualIndex === 0 ? 1 : 2;
@@ -175,12 +175,11 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
              const isUserAdmin = adminEmails.includes(item.email);
 
              return (
-                // min-w-0 ÇOK ÖNEMLİ: Flex kutusunun taşmasını engeller
                 <div key={item.userId} className={`flex-1 flex flex-col items-center text-center transition-all duration-300 min-w-0 ${style.scale}`}>
                    
                    {/* Avatar */}
                    <div className="relative mb-2 md:mb-3">
-                      <div className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-1.5 py-0.5 rounded-full shadow-md text-xs md:text-base z-20 whitespace-nowrap">
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-1.5 py-0.5 rounded-full shadow-md text-xs z-20 whitespace-nowrap">
                          {style.crown}
                       </div>
                       <div className={`rounded-full overflow-hidden border-2 bg-gray-200 dark:bg-gray-800 shadow-lg ${style.border} ${style.avatarSize}`}>
@@ -188,29 +187,24 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
                       </div>
                    </div>
 
-                   {/* İsim Kutusu */}
-                   <div className={`w-full rounded-t-xl md:rounded-t-2xl p-2 md:p-4 bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-start items-center shadow-lg backdrop-blur-sm min-h-[90px] md:min-h-[110px]`}>
+                   {/* İsim Kutusu - SABİT YÜKSEKLİK */}
+                   <div className={`w-full h-[85px] md:h-[110px] rounded-t-xl md:rounded-t-2xl bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-center items-center shadow-lg backdrop-blur-sm px-1`}>
                       
-                      {/* 1. w-[90%] -> Kutunun tamamını kaplama, biraz boşluk bırak.
-                          2. mx-auto -> Ortala.
-                          3. break-words -> Uzun kelimeyi zorla kır.
-                          4. whitespace-normal -> Alt satıra geçmesine izin ver.
-                          5. leading-tight -> Satır arasını sıkılaştır.
-                      */}
-                      <div className="w-[95%] mx-auto">
-                        <Link href={`/yazar/${item.username}`} className="block">
+                      <div className="w-full flex items-center justify-center flex-1 overflow-hidden">
+                        <Link href={`/yazar/${item.username}`} className="block w-full">
                            <Username 
                               username={item.username} 
                               isAdmin={isUserAdmin} 
+                              // DEĞİŞİKLİK BURADA: flex justify-center mx-auto eklendi.
                               className={`
-                                block w-full text-center break-words whitespace-normal font-black hover:underline leading-[1.1]
+                                flex justify-center items-center mx-auto w-full text-center break-words font-black hover:underline leading-[1.1]
                                 ${realIndex === 0 ? 'text-[11px] md:text-lg' : 'text-[10px] md:text-sm'}
                               `} 
                            />
                         </Link>
                       </div>
 
-                      <div className={`font-bold text-[9px] md:text-xs mt-1.5 leading-none ${style.text}`}>
+                      <div className={`font-bold text-[9px] md:text-xs mb-2 leading-none ${style.text}`}>
                          {type === 'writer' ? formatNumber(item.totalWords) : item.count} {type === 'writer' ? 'kelime' : 'yorum'}
                       </div>
                    </div>
