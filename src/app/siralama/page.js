@@ -113,7 +113,7 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
     </div>
   );
 }
-// --- GÜNCELLENMİŞ PODYUM TASARIMI (MOBİL DOSTU & SIKIŞMA YOK) ---
+// --- GÜNCELLENMİŞ PODYUM TASARIMI (KESİN ÇÖZÜM: TAŞMA YOK, ESTETİK VAR) ---
 function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }) {
   if (!data || data.length === 0) return <p className="text-gray-500 italic text-center py-10">Veri yok.</p>;
 
@@ -132,9 +132,8 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-yellow-600 dark:text-yellow-400", 
       crown: "👑",
       height: "h-full",
-      avatarSize: "w-16 h-16 md:w-24 md:h-24", // Mobilde avatarı biraz küçülttüm
-      // DİKKAT: scale-110 sadece md (masaüstü) ekranlarda çalışacak. Mobilde scale yok.
-      scale: "scale-100 md:scale-110 z-10" 
+      avatarSize: "w-16 h-16 md:w-24 md:h-24",
+      scale: "scale-100 md:scale-110 z-10" // Mobilde scale kapalı
     },
     1: { // 2. SIRA (GÜMÜŞ)
       gradient: "from-gray-400/20 to-gray-400/5", 
@@ -158,17 +157,15 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
 
   return (
     <div className="bg-white dark:bg-[#0a0a0a] rounded-[2rem] p-4 md:p-6 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden flex flex-col h-full">
-       {/* Arka plan süsü */}
        <div className={`absolute top-0 right-0 p-32 ${colorClass} rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none opacity-20`}></div>
        
-       {/* Başlık */}
        <h2 className="text-lg md:text-xl font-black uppercase tracking-tight mb-6 md:mb-8 flex items-center gap-2 relative z-10">
           <span className="text-2xl md:text-3xl">{icon}</span>
           <div className="leading-tight">{title}</div>
        </h2>
 
        {/* --- PODYUM ALANI --- */}
-       <div className="flex items-end justify-center gap-1 md:gap-4 mb-6 md:mb-8 min-h-[180px] md:min-h-[220px]">
+       <div className="flex items-end justify-center gap-2 md:gap-4 mb-6 md:mb-8 min-h-[190px] md:min-h-[220px]">
           {podiumData.map((item, visualIndex) => {
              if (!item && visualIndex !== 1) return <div key={visualIndex} className="w-1/3 opacity-0"></div>; 
              if (!item) return null;
@@ -178,9 +175,10 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
              const isUserAdmin = adminEmails.includes(item.email);
 
              return (
-                <div key={item.userId} className={`flex-1 flex flex-col items-center text-center transition-all duration-300 ${style.scale} min-w-0`}>
+                // min-w-0 ÇOK ÖNEMLİ: Flex kutusunun taşmasını engeller
+                <div key={item.userId} className={`flex-1 flex flex-col items-center text-center transition-all duration-300 min-w-0 ${style.scale}`}>
                    
-                   {/* Avatar ve Taç */}
+                   {/* Avatar */}
                    <div className="relative mb-2 md:mb-3">
                       <div className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-1.5 py-0.5 rounded-full shadow-md text-xs md:text-base z-20 whitespace-nowrap">
                          {style.crown}
@@ -190,21 +188,29 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
                       </div>
                    </div>
 
-                   {/* Podyum Kutusu */}
-                   <div className={`w-full rounded-t-xl md:rounded-t-2xl p-1.5 md:p-4 bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-start items-center shadow-lg backdrop-blur-sm min-h-[90px] md:min-h-[100px]`}>
+                   {/* İsim Kutusu */}
+                   <div className={`w-full rounded-t-xl md:rounded-t-2xl p-2 md:p-4 bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-start items-center shadow-lg backdrop-blur-sm min-h-[90px] md:min-h-[110px]`}>
                       
-                      {/* İSİM DÜZELTMESİ: Fontlar küçültüldü, satır aralığı kısıldı */}
-                      <Link href={`/yazar/${item.username}`} className="w-full break-words hyphens-auto px-0.5">
-                         <Username 
-                            username={item.username} 
-                            isAdmin={isUserAdmin} 
-                            // BURASI KRİTİK: Mobilde text-[10px] (çok küçük) yapıyoruz ki sığsın.
-                            className={`block font-black hover:underline leading-[1.1] ${realIndex === 0 ? 'text-xs md:text-lg' : 'text-[10px] md:text-sm'}`} 
-                         />
-                      </Link>
+                      {/* 1. w-[90%] -> Kutunun tamamını kaplama, biraz boşluk bırak.
+                          2. mx-auto -> Ortala.
+                          3. break-words -> Uzun kelimeyi zorla kır.
+                          4. whitespace-normal -> Alt satıra geçmesine izin ver.
+                          5. leading-tight -> Satır arasını sıkılaştır.
+                      */}
+                      <div className="w-[95%] mx-auto">
+                        <Link href={`/yazar/${item.username}`} className="block">
+                           <Username 
+                              username={item.username} 
+                              isAdmin={isUserAdmin} 
+                              className={`
+                                block w-full text-center break-words whitespace-normal font-black hover:underline leading-[1.1]
+                                ${realIndex === 0 ? 'text-[11px] md:text-lg' : 'text-[10px] md:text-sm'}
+                              `} 
+                           />
+                        </Link>
+                      </div>
 
-                      {/* İstatistik */}
-                      <div className={`font-bold text-[9px] md:text-xs mt-1 leading-tight ${style.text}`}>
+                      <div className={`font-bold text-[9px] md:text-xs mt-1.5 leading-none ${style.text}`}>
                          {type === 'writer' ? formatNumber(item.totalWords) : item.count} {type === 'writer' ? 'kelime' : 'yorum'}
                       </div>
                    </div>
@@ -225,7 +231,7 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
                       {item.avatar && <img src={item.avatar} className="w-full h-full object-cover" alt="" />}
                    </div>
                    <div className="flex-1 min-w-0">
-                      <Username username={item.username} isAdmin={isUserAdmin} className="font-bold text-xs md:text-sm block" />
+                      <Username username={item.username} isAdmin={isUserAdmin} className="font-bold text-xs md:text-sm block truncate" />
                    </div>
                    <div className="text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
                       {type === 'writer' ? formatNumber(item.totalWords) : item.count}
