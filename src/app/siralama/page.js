@@ -113,7 +113,7 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
     </div>
   );
 }
-// --- GÜNCELLENMİŞ PODYUM TASARIMI (MİKRO / ULTRA COMPACT MOD) ---
+// --- GÜNCELLENMİŞ PODYUM TASARIMI (NANO MOD - DAHA UFAĞI YOK) ---
 function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }) {
   if (!data || data.length === 0) return <p className="text-gray-500 italic text-center py-10">Veri yok.</p>;
 
@@ -132,8 +132,8 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-yellow-600 dark:text-yellow-400", 
       crown: "👑",
       scale: "scale-100 md:scale-110 z-10", 
-      // Avatar: w-12 (48px) - İyice küçüldü
-      avatarSize: "w-12 h-12 md:w-24 md:h-24",
+      // Avatar: w-10 (40px) - Boncuk kadar
+      avatarSize: "w-10 h-10 md:w-24 md:h-24",
       marginBottom: "mb-0" 
     },
     1: { // 2. SIRA (GÜMÜŞ)
@@ -142,8 +142,8 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-gray-500 dark:text-gray-300", 
       crown: "🥈",
       scale: "scale-100 z-0",
-      // Avatar: w-9 (36px) - Minik
-      avatarSize: "w-9 h-9 md:w-16 md:h-16",
+      // Avatar: w-8 (32px) - İyice ufak
+      avatarSize: "w-8 h-8 md:w-16 md:h-16",
       marginBottom: "mb-4 md:mb-8"
     },
     2: { // 3. SIRA (BRONZ)
@@ -152,22 +152,22 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-amber-700 dark:text-amber-500", 
       crown: "🥉",
       scale: "scale-100 z-0",
-      avatarSize: "w-9 h-9 md:w-16 md:h-16",
+      avatarSize: "w-8 h-8 md:w-16 md:h-16",
       marginBottom: "mb-8 md:mb-12"
     }
   };
 
   return (
-    <div className="bg-white dark:bg-[#0a0a0a] rounded-[1.5rem] p-3 md:p-6 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden flex flex-col h-full">
+    <div className="bg-white dark:bg-[#0a0a0a] rounded-[1rem] p-2 md:p-6 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden flex flex-col h-full">
        <div className={`absolute top-0 right-0 p-32 ${colorClass} rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none opacity-20`}></div>
        
-       <h2 className="text-base md:text-xl font-black uppercase tracking-tight mb-4 md:mb-8 flex items-center gap-2 relative z-10">
-          <span className="text-xl md:text-3xl">{icon}</span>
-          <div className="leading-tight text-xs md:text-xl">{title}</div>
+       <h2 className="text-sm md:text-xl font-black uppercase tracking-tight mb-3 md:mb-8 flex items-center gap-1.5 relative z-10">
+          <span className="text-lg md:text-3xl">{icon}</span>
+          <div className="leading-tight text-[10px] md:text-xl">{title}</div>
        </h2>
 
        {/* --- PODYUM ALANI --- */}
-       <div className="flex items-end justify-center gap-1 md:gap-4 mb-4 md:mb-8 min-h-[140px] md:min-h-[200px]">
+       <div className="flex items-end justify-center gap-1 md:gap-4 mb-3 md:mb-8 min-h-[120px] md:min-h-[200px]">
           {podiumData.map((item, visualIndex) => {
              if (!item && visualIndex !== 1) return <div key={visualIndex} className="flex-1 opacity-0"></div>; 
              if (!item) return null;
@@ -181,7 +181,7 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
                    
                    {/* Avatar */}
                    <div className="relative mb-1 md:mb-3">
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-1 py-0 rounded-full shadow-md text-[8px] z-20 whitespace-nowrap">
+                      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-1 py-0 rounded-full shadow-md text-[7px] z-20 whitespace-nowrap">
                          {style.crown}
                       </div>
                       <div className={`rounded-full overflow-hidden border-2 bg-gray-200 dark:bg-gray-800 shadow-lg ${style.border} ${style.avatarSize}`}>
@@ -189,24 +189,24 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
                       </div>
                    </div>
 
-                   {/* İsim Kutusu - ULTRA KISA BOY (h-60px) */}
-                   <div className={`w-full h-[65px] md:h-[110px] rounded-t-lg md:rounded-t-2xl bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-center items-center shadow-lg backdrop-blur-sm px-0.5`}>
+                   {/* İsim Kutusu - NANO BOY (h-55px) */}
+                   <div className={`w-full h-[55px] md:h-[110px] rounded-t-lg md:rounded-t-2xl bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-center items-center shadow-lg backdrop-blur-sm px-0.5`}>
                       
                       <div className="w-full flex items-center justify-center flex-1 overflow-hidden px-0.5">
                         <Link href={`/yazar/${item.username}`} className="block w-full">
                            <Username 
                               username={item.username} 
                               isAdmin={isUserAdmin} 
-                              // Fontlar: Mobilde 9px (Gold) ve 8px (Diğerleri)
+                              // Fontlar: Mobilde 8px (Gold) ve 7px (Diğerleri)
                               className={`
                                 flex justify-center items-center mx-auto w-full text-center break-words font-black hover:underline leading-none
-                                ${realIndex === 0 ? 'text-[9px] md:text-base' : 'text-[8px] md:text-xs'} 
+                                ${realIndex === 0 ? 'text-[8px] md:text-base' : 'text-[7px] md:text-xs'} 
                               `} 
                            />
                         </Link>
                       </div>
 
-                      <div className={`font-bold text-[7px] md:text-[10px] mb-1 leading-none ${style.text}`}>
+                      <div className={`font-bold text-[6px] md:text-[10px] mb-1 leading-none ${style.text}`}>
                          {type === 'writer' ? formatNumber(item.totalWords) : item.count} {type === 'writer' ? 'k' : 'y'}
                       </div>
                    </div>
@@ -216,20 +216,20 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
        </div>
 
        {/* --- LİSTE ALANI --- */}
-       <div className="space-y-1.5 relative z-10 w-full">
+       <div className="space-y-1 relative z-10 w-full">
           {others.map((item, idx) => {
              const realRank = idx + 4;
              const isUserAdmin = adminEmails.includes(item.email);
              return (
-                <Link href={`/yazar/${item.username}`} key={item.userId} className="flex items-center gap-2 md:gap-3 group p-1.5 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition-all border border-transparent hover:border-gray-200 dark:hover:border-white/10">
-                   <div className="w-4 h-4 md:w-6 md:h-6 flex items-center justify-center font-bold text-gray-400 bg-gray-100 dark:bg-white/5 rounded text-[9px] md:text-xs">#{realRank}</div>
+                <Link href={`/yazar/${item.username}`} key={item.userId} className="flex items-center gap-1.5 md:gap-3 group p-1 md:p-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition-all border border-transparent hover:border-gray-200 dark:hover:border-white/10">
+                   <div className="w-4 h-4 md:w-6 md:h-6 flex items-center justify-center font-bold text-gray-400 bg-gray-100 dark:bg-white/5 rounded text-[8px] md:text-xs">#{realRank}</div>
                    <div className="w-5 h-5 md:w-8 md:h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 shrink-0">
                       {item.avatar && <img src={item.avatar} className="w-full h-full object-cover" alt="" />}
                    </div>
                    <div className="flex-1 min-w-0">
-                      <Username username={item.username} isAdmin={isUserAdmin} className="font-bold text-[9px] md:text-sm block truncate" />
+                      <Username username={item.username} isAdmin={isUserAdmin} className="font-bold text-[8px] md:text-sm block truncate" />
                    </div>
-                   <div className="text-[9px] md:text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                   <div className="text-[8px] md:text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
                       {type === 'writer' ? formatNumber(item.totalWords) : item.count}
                    </div>
                 </Link>
