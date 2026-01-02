@@ -193,7 +193,7 @@ const ikiHaftaOnce = getLastWeekMonday();
         }
       })) || [];
 
-      console.log('📚 HAFTALIK TOP 10 (SQL):', weeklyBooks);
+      
       setWeeklyTopBooks(weeklyBooks);
 
       // Aylık en çok okunan kitaplar (chapter_views'dan)
@@ -261,94 +261,82 @@ const ikiHaftaOnce = getLastWeekMonday();
       }
 
       // Haftalık yazarlar
-     const { data: chapterData } = await supabase
-  .from('chapters')
-  .select(`word_count, is_draft, books!inner (user_id, is_draft, profiles:user_id (username, avatar_url, email))`)
-  .gte('created_at', birHaftaOnce.toISOString())
-  .eq('is_draft', false)
-  .eq('books.is_draft', false);
+ // --- HAFTALIK EN ÇOK YAZANLAR (SQL - LİMİTSİZ) ---
+      const { data: rpcWriters, error: writerError } = await supabase
+        .rpc('get_weekly_top_writers', { 
+          start_date: birHaftaOnce.toISOString() 
+        });
 
-      const writerMap = {};
-      chapterData?.forEach(item => {
-        if (!item.books || !item.books.profiles) return;
-        const userId = item.books.user_id;
-        const profile = item.books.profiles;
-        if (!writerMap[userId]) writerMap[userId] = { userId, username: profile.username, email: profile.email, avatar: profile.avatar_url, totalWords: 0 };
-        writerMap[userId].totalWords += (item.word_count || 0);
-      });
-      setTopWriters(Object.values(writerMap).sort((a, b) => b.totalWords - a.totalWords).slice(0, 10));
+      if (writerError) console.error('Yazar verisi hatası:', writerError);
+
+      const formattedWriters = rpcWriters?.map(writer => ({
+        userId: writer.username, // Key niyetine username
+        username: writer.username,
+        email: writer.email,
+        avatar: writer.avatar_url,
+        totalWords: writer.total_words
+      })) || [];
+
+      setTopWriters(formattedWriters);
 
       // Haftalık yorumcular
-      const { data: commentData } = await supabase
-        .from('comments')
-        .select(`user_id, profiles:user_id (username, avatar_url, email)`)
-        .gte('created_at', birHaftaOnce.toISOString());
+     // --- EN ÇOK KONUŞANLAR (YENİ SİSTEM - LİMİTSİZ) ---
+      const { data: topCommentersData, error: commentError } = await supabase
+        .rpc('get_top_commenters');
 
-      const commentMap = {};
-      commentData?.forEach(item => {
-        if (!item.profiles) return;
-        const userId = item.user_id;
-        if (!commentMap[userId]) commentMap[userId] = { userId, username: item.profiles.username, email: item.profiles.email, avatar: item.profiles.avatar_url, count: 0 };
-        commentMap[userId].count += 1;
-      });
-      setTopCommenters(Object.values(commentMap).sort((a, b) => b.count - a.count).slice(0, 10));
+      if (commentError) console.error('Yorum verisi hatası:', commentError);
 
-      // Geçen haftanın şampiyonları
-     const { data: lastWeekChapters } = await supabase
-  .from('chapters')
-  .select(`word_count, is_draft, books!inner (user_id, is_draft, profiles:user_id (username, avatar_url, email))`)
-  .gte('created_at', ikiHaftaOnce.toISOString())
-  .lt('created_at', birHaftaOnce.toISOString())
-  .eq('is_draft', false)
-  .eq('books.is_draft', false);
-
-      const lastWeekWriterMap = {};
-      lastWeekChapters?.forEach(item => {
-        if (!item.books || !item.books.profiles) return;
-        const userId = item.books.user_id;
-        const profile = item.books.profiles;
-        if (!lastWeekWriterMap[userId]) lastWeekWriterMap[userId] = { userId, username: profile.username, email: profile.email, avatar: profile.avatar_url, totalWords: 0 };
-        lastWeekWriterMap[userId].totalWords += (item.word_count || 0);
-      });
-      const lastWeekTopWriter = Object.values(lastWeekWriterMap).sort((a, b) => b.totalWords - a.totalWords)[0];
-
-      const { data: lastWeekComments } = await supabase
-        .from('comments')
-        .select(`user_id, profiles:user_id (username, avatar_url, email)`)
-        .gte('created_at', ikiHaftaOnce.toISOString())
-        .lt('created_at', birHaftaOnce.toISOString());
-
-      const lastWeekCommentMap = {};
-      lastWeekComments?.forEach(item => {
-        if (!item.profiles) return;
-        const userId = item.user_id;
-        if (!lastWeekCommentMap[userId]) lastWeekCommentMap[userId] = { userId, username: item.profiles.username, email: item.profiles.email, avatar: item.profiles.avatar_url, count: 0 };
-        lastWeekCommentMap[userId].count += 1;
-      });
-      const lastWeekTopCommenter = Object.values(lastWeekCommentMap).sort((a, b) => b.count - a.count)[0];
-
-      // Geçen haftanın en çok okunan kitabı (chapter_views'dan)
-      const { data: lastWeekChapterViews } = await supabase
-        .from('chapter_views')
-        .select(`chapter_id, created_at, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, profiles:user_id (username, email)))`)
-        .gte('created_at', ikiHaftaOnce.toISOString())
-        .lt('created_at', birHaftaOnce.toISOString());
-
-      const lastWeekBookViewCounts = {};
-      lastWeekChapterViews?.forEach(item => {
-        if (!item.chapters?.books) return;
-        const book = item.chapters.books;
-        const bId = book.id;
-        if (!lastWeekBookViewCounts[bId]) {
-          lastWeekBookViewCounts[bId] = { ...book, weekly_reads: 0 };
-        }
-        lastWeekBookViewCounts[bId].weekly_reads += 1;
-      });
+      const formattedCommenters = topCommentersData?.map(user => ({
+        userId: user.username, 
+        username: user.username,
+        email: user.email,
+        avatar: user.avatar_url,
+        count: user.comment_count
+      })) || [];
       
-      const lastWeekTopBook = Object.values(lastWeekBookViewCounts)
-        .sort((a, b) => (b.weekly_reads || 0) - (a.weekly_reads || 0))[0];
+      setTopCommenters(formattedCommenters);
+// --- GEÇEN HAFTANIN ŞAMPİYONLARI (SQL - LİMİTSİZ SİSTEM) ---
+      
+      // 1. En Çok Yazan (Geçen Hafta)
+      const { data: rpcChampionWriter } = await supabase.rpc('get_period_top_writer', {
+         start_date: ikiHaftaOnce.toISOString(),
+         end_date: birHaftaOnce.toISOString()
+      });
 
-      setLastWeekChampions({ writer: lastWeekTopWriter, commenter: lastWeekTopCommenter, book: lastWeekTopBook });
+      // 2. En Çok Yorum Yapan (Geçen Hafta)
+      const { data: rpcChampionCommenter } = await supabase.rpc('get_period_top_commenter', {
+         start_date: ikiHaftaOnce.toISOString(),
+         end_date: birHaftaOnce.toISOString()
+      });
+
+      // 3. En Çok Okunan Kitap (Geçen Hafta)
+      const { data: rpcChampionBook } = await supabase.rpc('get_period_top_book', {
+         start_date: ikiHaftaOnce.toISOString(),
+         end_date: birHaftaOnce.toISOString()
+      });
+
+      setLastWeekChampions({
+        writer: rpcChampionWriter?.[0] ? {
+           username: rpcChampionWriter[0].username,
+           email: rpcChampionWriter[0].email,
+           avatar: rpcChampionWriter[0].avatar_url,
+           totalWords: rpcChampionWriter[0].total_words
+        } : null,
+        
+        commenter: rpcChampionCommenter?.[0] ? {
+           username: rpcChampionCommenter[0].username,
+           email: rpcChampionCommenter[0].email,
+           avatar: rpcChampionCommenter[0].avatar_url,
+           count: rpcChampionCommenter[0].count
+        } : null,
+        
+        book: rpcChampionBook?.[0] ? {
+           id: rpcChampionBook[0].id,
+           title: rpcChampionBook[0].title,
+           cover_url: rpcChampionBook[0].cover_url,
+           weekly_reads: rpcChampionBook[0].weekly_reads
+        } : null
+      });
       setLoading(false);
     }
 
