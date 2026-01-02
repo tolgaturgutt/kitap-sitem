@@ -113,14 +113,13 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
     </div>
   );
 }
-// --- GÜNCELLENMİŞ PODYUM TASARIMI (İSİMLER TAM GÖRÜNÜR & LİSTE UZAR) ---
+// --- GÜNCELLENMİŞ PODYUM TASARIMI (MOBİL DOSTU & SIKIŞMA YOK) ---
 function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }) {
   if (!data || data.length === 0) return <p className="text-gray-500 italic text-center py-10">Veri yok.</p>;
 
   const top3 = data.slice(0, 3);
   const others = data.slice(3);
 
-  // Görsel sıralamayı ayarla: 2. (Sol) - 1. (Orta) - 3. (Sağ)
   let podiumData = [];
   if (top3.length === 1) podiumData = [null, top3[0], null];
   else if (top3.length === 2) podiumData = [top3[1], top3[0], null];
@@ -133,8 +132,9 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-yellow-600 dark:text-yellow-400", 
       crown: "👑",
       height: "h-full",
-      avatarSize: "w-20 h-20 md:w-24 md:h-24",
-      scale: "scale-110 z-10"
+      avatarSize: "w-16 h-16 md:w-24 md:h-24", // Mobilde avatarı biraz küçülttüm
+      // DİKKAT: scale-110 sadece md (masaüstü) ekranlarda çalışacak. Mobilde scale yok.
+      scale: "scale-100 md:scale-110 z-10" 
     },
     1: { // 2. SIRA (GÜMÜŞ)
       gradient: "from-gray-400/20 to-gray-400/5", 
@@ -142,7 +142,7 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-gray-500 dark:text-gray-300", 
       crown: "🥈",
       height: "h-5/6",
-      avatarSize: "w-14 h-14 md:w-16 md:h-16",
+      avatarSize: "w-12 h-12 md:w-16 md:h-16",
       scale: "scale-100 z-0"
     },
     2: { // 3. SIRA (BRONZ)
@@ -151,24 +151,24 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-amber-700 dark:text-amber-500", 
       crown: "🥉",
       height: "h-4/6",
-      avatarSize: "w-14 h-14 md:w-16 md:h-16",
+      avatarSize: "w-12 h-12 md:w-16 md:h-16",
       scale: "scale-100 z-0"
     }
   };
 
   return (
-    <div className="bg-white dark:bg-[#0a0a0a] rounded-[2rem] p-6 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden flex flex-col h-full">
+    <div className="bg-white dark:bg-[#0a0a0a] rounded-[2rem] p-4 md:p-6 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden flex flex-col h-full">
        {/* Arka plan süsü */}
        <div className={`absolute top-0 right-0 p-32 ${colorClass} rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none opacity-20`}></div>
        
        {/* Başlık */}
-       <h2 className="text-xl font-black uppercase tracking-tight mb-8 flex items-center gap-2 relative z-10">
-          <span className="text-3xl">{icon}</span>
+       <h2 className="text-lg md:text-xl font-black uppercase tracking-tight mb-6 md:mb-8 flex items-center gap-2 relative z-10">
+          <span className="text-2xl md:text-3xl">{icon}</span>
           <div className="leading-tight">{title}</div>
        </h2>
 
        {/* --- PODYUM ALANI --- */}
-       <div className="flex items-end justify-center gap-2 md:gap-4 mb-8 min-h-[220px]">
+       <div className="flex items-end justify-center gap-1 md:gap-4 mb-6 md:mb-8 min-h-[180px] md:min-h-[220px]">
           {podiumData.map((item, visualIndex) => {
              if (!item && visualIndex !== 1) return <div key={visualIndex} className="w-1/3 opacity-0"></div>; 
              if (!item) return null;
@@ -178,11 +178,11 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
              const isUserAdmin = adminEmails.includes(item.email);
 
              return (
-                <div key={item.userId} className={`flex-1 flex flex-col items-center text-center transition-all duration-300 ${style.scale}`}>
+                <div key={item.userId} className={`flex-1 flex flex-col items-center text-center transition-all duration-300 ${style.scale} min-w-0`}>
                    
                    {/* Avatar ve Taç */}
-                   <div className="relative mb-3">
-                      <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-2 py-0.5 rounded-full shadow-md text-base z-20 whitespace-nowrap">
+                   <div className="relative mb-2 md:mb-3">
+                      <div className="absolute -top-3 md:-top-4 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-1.5 py-0.5 rounded-full shadow-md text-xs md:text-base z-20 whitespace-nowrap">
                          {style.crown}
                       </div>
                       <div className={`rounded-full overflow-hidden border-2 bg-gray-200 dark:bg-gray-800 shadow-lg ${style.border} ${style.avatarSize}`}>
@@ -191,15 +191,20 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
                    </div>
 
                    {/* Podyum Kutusu */}
-                   <div className={`w-full rounded-t-2xl p-2 md:p-4 bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-start items-center shadow-lg backdrop-blur-sm min-h-[100px]`}>
+                   <div className={`w-full rounded-t-xl md:rounded-t-2xl p-1.5 md:p-4 bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-start items-center shadow-lg backdrop-blur-sm min-h-[90px] md:min-h-[100px]`}>
                       
-                      {/* İsim Düzeltmesi: truncate kaldırıldı, whitespace-normal eklendi */}
-                      <Link href={`/yazar/${item.username}`} className="w-full break-words whitespace-normal">
-                         <Username username={item.username} isAdmin={isUserAdmin} className={`block font-black hover:underline leading-tight ${realIndex === 0 ? 'text-sm md:text-lg' : 'text-xs md:text-sm'}`} />
+                      {/* İSİM DÜZELTMESİ: Fontlar küçültüldü, satır aralığı kısıldı */}
+                      <Link href={`/yazar/${item.username}`} className="w-full break-words hyphens-auto px-0.5">
+                         <Username 
+                            username={item.username} 
+                            isAdmin={isUserAdmin} 
+                            // BURASI KRİTİK: Mobilde text-[10px] (çok küçük) yapıyoruz ki sığsın.
+                            className={`block font-black hover:underline leading-[1.1] ${realIndex === 0 ? 'text-xs md:text-lg' : 'text-[10px] md:text-sm'}`} 
+                         />
                       </Link>
 
                       {/* İstatistik */}
-                      <div className={`font-bold text-[10px] md:text-xs mt-1 ${style.text}`}>
+                      <div className={`font-bold text-[9px] md:text-xs mt-1 leading-tight ${style.text}`}>
                          {type === 'writer' ? formatNumber(item.totalWords) : item.count} {type === 'writer' ? 'kelime' : 'yorum'}
                       </div>
                    </div>
@@ -208,13 +213,13 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
           })}
        </div>
 
-       {/* --- LİSTE ALANI Düzeltmesi: max-h ve overflow kaldırıldı --- */}
+       {/* --- LİSTE ALANI --- */}
        <div className="space-y-2 relative z-10 w-full">
           {others.map((item, idx) => {
              const realRank = idx + 4;
              const isUserAdmin = adminEmails.includes(item.email);
              return (
-                <Link href={`/yazar/${item.username}`} key={item.userId} className="flex items-center gap-3 group p-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-white/10">
+                <Link href={`/yazar/${item.username}`} key={item.userId} className="flex items-center gap-2 md:gap-3 group p-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-white/10">
                    <div className="w-6 h-6 flex items-center justify-center font-bold text-gray-400 bg-gray-100 dark:bg-white/5 rounded-md text-xs">#{realRank}</div>
                    <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 shrink-0">
                       {item.avatar && <img src={item.avatar} className="w-full h-full object-cover" alt="" />}
