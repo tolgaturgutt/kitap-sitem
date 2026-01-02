@@ -170,6 +170,7 @@ export default function PanoCarousel({ onPanoClick, user }) {
                           src={pano.profiles.avatar_url} 
                           alt={pano.profiles.username || 'User'}
                           fill
+                          unoptimized
                           sizes="80px"
                           className="object-cover rounded-full"
                         />

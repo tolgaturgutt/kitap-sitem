@@ -240,6 +240,7 @@ export default function PanoModal({
               src={displayAvatar || '/avatar-placeholder.png'} 
               alt="User"
               fill
+              unoptimized
               sizes="32px"
               className="object-cover"
             />
