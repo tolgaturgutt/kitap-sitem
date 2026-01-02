@@ -299,15 +299,13 @@ export default function PanoModal({
         <button onClick={onClose} className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-xl">✕</button>
 
         {/* SOL TARAF: GÖRSEL */}
+       {/* SOL TARAF: GÖRSEL (SAF HTML VERSİYONU - GARANTİ) */}
         {selectedPano.books?.cover_url && (
           <div className="shrink-0 hidden md:flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
-            <Image 
+            <img 
               src={selectedPano.books.cover_url} 
               alt="Kapak"
-              width={500}
-              height={750}
-              unoptimized
-              className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-full w-auto"
+              className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-full w-auto h-auto max-w-full"
             />
           </div>
         )}
@@ -316,14 +314,11 @@ export default function PanoModal({
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-[#080808]">
           
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
-            {selectedPano.books?.cover_url && (
-           <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
-                <Image 
+           {selectedPano.books?.cover_url && (
+               <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
+                <img 
                   src={selectedPano.books.cover_url} 
                   alt="Kapak"
-                  width={300}
-                  height={450}
-                  unoptimized
                   className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl h-[250px] w-auto"
                 />
               </div>
