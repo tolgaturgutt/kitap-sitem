@@ -417,7 +417,8 @@ export default function Home() {
   const [topCategories, setTopCategories] = useState([]);
 
   useEffect(() => {
-    async function fetchData() {
+ async function fetchData() {
+      // 1. Kullanıcıyı ve Adminlik durumunu çek
       const { data: { user: activeUser } } = await supabase.auth.getUser();
       setUser(activeUser);
 
@@ -430,7 +431,7 @@ export default function Home() {
       const emails = adminList?.map(a => a.user_email) || [];
       setAdminEmails(emails);
 
-      // Priority'si en yüksek 5 kategoriyi çek
+      // 2. Kategorileri çek
       const { data: categoriesData } = await supabase
         .from('categories')
         .select('name')
@@ -440,6 +441,7 @@ export default function Home() {
       const topCategoryNames = categoriesData?.map(c => c.name) || [];
       setTopCategories(topCategoryNames);
 
+      // 3. Okuma Geçmişini çek
       if (activeUser) {
         const { data: history } = await supabase
           .from('reading_history')
@@ -465,10 +467,8 @@ export default function Home() {
           .order('updated_at', { ascending: false })
           .limit(5);
 
-        // Chapter bilgisini book.chapters'dan bul
         const historyWithChapters = (history || []).map((item) => {
           const chapterData = item.books?.chapters?.find(c => c.id === item.chapter_id);
-
           return {
             ...item,
             chapters: chapterData ? { id: chapterData.id, title: chapterData.title } : null
@@ -477,10 +477,11 @@ export default function Home() {
 
         const historyWithStats = historyWithChapters?.map(item => {
           if (!item.chapters) return null;
-
           if (!item.books) return item;
+          
           const book = item.books;
           const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
+          // Burada hala eski yöntem kalabilir çünkü history az sayıda veri çekiyor, sorun olmaz.
           const totalVotes = book.chapters?.reduce((sum, c) => sum + (c.chapter_votes?.length || 0), 0) || 0;
 
           return {
@@ -489,7 +490,7 @@ export default function Home() {
               ...book,
               username: book.profiles?.username || book.username,
               totalViews,
-              totalVotes,
+              totalVotes, 
               totalComments: 0
             }
           };
@@ -497,11 +498,12 @@ export default function Home() {
         setContinueReading(historyWithStats || []);
       }
 
+      // 4. Son Eklenen Bölümleri Çek
       const { data: recentChaps } = await supabase
         .from('chapters')
         .select('id, title, created_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, profiles:user_id(username, avatar_url, email))')
         .eq('books.is_draft', false)
-        .eq('is_draft', false) // ✅ Taslak bölümleri filtrele
+        .eq('is_draft', false)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -519,18 +521,19 @@ export default function Home() {
 
       setLatestChapters(recentChapsWithAdmin);
 
-    // --- YAPIŞTIRILACAK KISIM ---
+      // --- 5. KİTAPLARI ÇEKME VE HESAPLAMA (GÜNCELLENEN KISIM) ---
+      
+      // total_votes sütununu da istiyoruz
       let { data: allBooks, error: booksError } = await supabase
         .from('books')
-        .select('*, total_comment_count, profiles:user_id(username, avatar_url, email), chapters(id, views, is_draft)');
+        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email), chapters(id, views, is_draft)');
 
       if (booksError) {
         setLoading(false);
         return;
       }
 
-      // comments tablosunu çekme satırı silindi
-      const { data: allVotes } = await supabase.from('chapter_votes').select('chapter_id');
+      // ❌ ESKİ 'allVotes' ÇEKME KODU BURADAN SİLİNDİ (Siteyi hızlandıran hamle)
 
       if (allBooks) {
         allBooks = allBooks.filter(book => {
@@ -543,12 +546,12 @@ export default function Home() {
           const publishedChapters = book.chapters?.filter(c => c.id && !c.is_draft) || [];
           const totalViews = publishedChapters.reduce((sum, c) => sum + (c.views || 0), 0);
 
-          const chapterIds = publishedChapters.map(c => c.id);
-          const totalVotes = allVotes?.filter(v => chapterIds.includes(v.chapter_id)).length || 0;
+          // ✅ YENİ: Veritabanındaki hazır sayıyı kullan
+          const totalVotes = book.total_votes || 0;
           
-          // DOĞRUDAN VERİTABANINDAN GELEN SAYIYI KULLAN
+          // ✅ YENİ: Veritabanındaki hazır sayıyı kullan
           const totalComments = book.total_comment_count || 0;
-// --- YAPIŞTIRILACAK KISIM SONU ---
+
           const bookOwnerEmail = book.profiles?.email || book.user_email;
 
           return {
@@ -562,6 +565,7 @@ export default function Home() {
         });
       }
 
+      // 6. İstatistikler (Trend Hesaplama - Son 10 gün)
       const editorsPicks = allBooks?.filter(b => b.is_editors_choice).slice(0, 10);
       setEditorsChoiceBooks(editorsPicks || []);
 
@@ -570,15 +574,18 @@ export default function Home() {
 
       const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString());
       const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString());
+      // Bu sadece son 10 gündeki trendi hesaplamak için gerekli, kalabilir.
       const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString());
 
       if (allBooks) {
         const scored = allBooks.map(b => {
+          // Trend algoritması (Sadece son 10 günün verisiyle puanlama)
           const rVotesCount = recentVotes?.filter(v => b.chapters.some(c => c.id === v.chapter_id)).length || 0;
           const rCommentsCount = recentComments?.filter(c => c.book_id === b.id).length || 0;
           const rFollowsCount = recentFollows?.filter(f => f.book_id === b.id).length || 0;
 
           const score = (rFollowsCount * 10) + (rCommentsCount * 2) + (rVotesCount * 5) + (b.totalViews * 1);
+          // Not: interactionScore sadece sıralama için kullanılıyor, ekranda gösterilmiyor.
           return { ...b, interactionScore: score };
         });
 
@@ -587,7 +594,6 @@ export default function Home() {
         const mostRead = [...scored].sort((a, b) => b.totalViews - a.totalViews).slice(0, 20);
         setTopReadBooks(mostRead);
 
-        // Sadece priority'si yüksek kategoriler için kitapları grupla
         const grouped = {};
         topCategoryNames.forEach(cat => {
           const categoryBooks = scored.filter(b => b.category === cat);
