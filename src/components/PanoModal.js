@@ -306,6 +306,7 @@ export default function PanoModal({
               alt="Kapak"
               width={500}
               height={750}
+              unoptimized
               className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-full w-auto"
             />
           </div>
@@ -322,6 +323,7 @@ export default function PanoModal({
                   alt="Kapak"
                   width={300}
                   height={450}
+                  unoptimized
                   className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl h-[250px] w-auto"
                 />
               </div>
@@ -377,7 +379,7 @@ export default function PanoModal({
               <Link href={ownerProfileLink} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
                  <div className="relative w-8 h-8 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
                    {ownerAvatar ? (
-                     <Image src={ownerAvatar} alt="User" fill sizes="32px" className="object-cover" />
+                     <Image src={ownerAvatar} alt="User" fill unoptimized sizes="32px" className="object-cover" />
                    ) : (
                      <span className="text-xs font-bold">{ownerUsername?.[0] || 'U'}</span>
                    )}
