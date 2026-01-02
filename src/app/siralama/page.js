@@ -113,7 +113,7 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
     </div>
   );
 }
-// --- GÜNCELLENMİŞ PODYUM TASARIMI (FONT KÜÇÜLTÜLDÜ - GARANTİ SIĞAR) ---
+// --- GÜNCELLENMİŞ PODYUM TASARIMI (COMPACT / MİNYATÜR MOD) ---
 function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }) {
   if (!data || data.length === 0) return <p className="text-gray-500 italic text-center py-10">Veri yok.</p>;
 
@@ -132,7 +132,8 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-yellow-600 dark:text-yellow-400", 
       crown: "👑",
       scale: "scale-100 md:scale-110 z-10", 
-      avatarSize: "w-16 h-16 md:w-24 md:h-24",
+      // Avatar küçüldü (w-16 idi, w-14 oldu)
+      avatarSize: "w-14 h-14 md:w-24 md:h-24",
       marginBottom: "mb-0" 
     },
     1: { // 2. SIRA (GÜMÜŞ)
@@ -141,7 +142,8 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-gray-500 dark:text-gray-300", 
       crown: "🥈",
       scale: "scale-100 z-0",
-      avatarSize: "w-12 h-12 md:w-16 md:h-16",
+      // Avatar küçüldü (w-12 idi, w-10 oldu)
+      avatarSize: "w-10 h-10 md:w-16 md:h-16",
       marginBottom: "mb-4 md:mb-8"
     },
     2: { // 3. SIRA (BRONZ)
@@ -150,7 +152,7 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
       text: "text-amber-700 dark:text-amber-500", 
       crown: "🥉",
       scale: "scale-100 z-0",
-      avatarSize: "w-12 h-12 md:w-16 md:h-16",
+      avatarSize: "w-10 h-10 md:w-16 md:h-16",
       marginBottom: "mb-8 md:mb-12"
     }
   };
@@ -159,13 +161,13 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
     <div className="bg-white dark:bg-[#0a0a0a] rounded-[2rem] p-4 md:p-6 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden flex flex-col h-full">
        <div className={`absolute top-0 right-0 p-32 ${colorClass} rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none opacity-20`}></div>
        
-       <h2 className="text-lg md:text-xl font-black uppercase tracking-tight mb-6 md:mb-8 flex items-center gap-2 relative z-10">
+       <h2 className="text-lg md:text-xl font-black uppercase tracking-tight mb-4 md:mb-8 flex items-center gap-2 relative z-10">
           <span className="text-2xl md:text-3xl">{icon}</span>
           <div className="leading-tight">{title}</div>
        </h2>
 
        {/* --- PODYUM ALANI --- */}
-       <div className="flex items-end justify-center gap-2 md:gap-4 mb-6 md:mb-8 min-h-[200px]">
+       <div className="flex items-end justify-center gap-1.5 md:gap-4 mb-4 md:mb-8 min-h-[160px] md:min-h-[200px]">
           {podiumData.map((item, visualIndex) => {
              if (!item && visualIndex !== 1) return <div key={visualIndex} className="flex-1 opacity-0"></div>; 
              if (!item) return null;
@@ -178,8 +180,8 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
                 <div key={item.userId} className={`flex-1 flex flex-col items-center text-center transition-all duration-300 min-w-0 ${style.scale}`}>
                    
                    {/* Avatar */}
-                   <div className="relative mb-2 md:mb-3">
-                      <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-1.5 py-0.5 rounded-full shadow-md text-xs z-20 whitespace-nowrap">
+                   <div className="relative mb-1.5 md:mb-3">
+                      <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-1 py-0 rounded-full shadow-md text-[10px] z-20 whitespace-nowrap">
                          {style.crown}
                       </div>
                       <div className={`rounded-full overflow-hidden border-2 bg-gray-200 dark:bg-gray-800 shadow-lg ${style.border} ${style.avatarSize}`}>
@@ -187,23 +189,24 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
                       </div>
                    </div>
 
-                   {/* İsim Kutusu - SABİT YÜKSEKLİK */}
-                   <div className={`w-full h-[85px] md:h-[110px] rounded-t-xl md:rounded-t-2xl bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-center items-center shadow-lg backdrop-blur-sm px-1`}>
+                   {/* İsim Kutusu - DAHA KISA SABİT BOY (h-70px) */}
+                   <div className={`w-full h-[75px] md:h-[110px] rounded-t-xl md:rounded-t-2xl bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-center items-center shadow-lg backdrop-blur-sm px-0.5`}>
                       
-                      <div className="w-full flex items-center justify-center flex-1 overflow-hidden">
+                      <div className="w-full flex items-center justify-center flex-1 overflow-hidden px-1">
                         <Link href={`/yazar/${item.username}`} className="block w-full">
                            <Username 
                               username={item.username} 
                               isAdmin={isUserAdmin} 
+                              // Fontlar: Mobilde 10px (Gold) ve 9px (Diğerleri)
                               className={`
-                                flex justify-center items-center mx-auto w-full text-center break-words font-black hover:underline leading-[1.1]
+                                flex justify-center items-center mx-auto w-full text-center break-words font-black hover:underline leading-none
                                 ${realIndex === 0 ? 'text-[10px] md:text-base' : 'text-[9px] md:text-xs'} 
                               `} 
                            />
                         </Link>
                       </div>
 
-                      <div className={`font-bold text-[8px] md:text-[10px] mb-2 leading-none ${style.text}`}>
+                      <div className={`font-bold text-[8px] md:text-[10px] mb-1.5 leading-none ${style.text}`}>
                          {type === 'writer' ? formatNumber(item.totalWords) : item.count} {type === 'writer' ? 'kelime' : 'yorum'}
                       </div>
                    </div>
@@ -219,14 +222,14 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
              const isUserAdmin = adminEmails.includes(item.email);
              return (
                 <Link href={`/yazar/${item.username}`} key={item.userId} className="flex items-center gap-2 md:gap-3 group p-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all border border-transparent hover:border-gray-200 dark:hover:border-white/10">
-                   <div className="w-6 h-6 flex items-center justify-center font-bold text-gray-400 bg-gray-100 dark:bg-white/5 rounded-md text-xs">#{realRank}</div>
-                   <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 shrink-0">
+                   <div className="w-5 h-5 md:w-6 md:h-6 flex items-center justify-center font-bold text-gray-400 bg-gray-100 dark:bg-white/5 rounded-md text-[10px] md:text-xs">#{realRank}</div>
+                   <div className="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 shrink-0">
                       {item.avatar && <img src={item.avatar} className="w-full h-full object-cover" alt="" />}
                    </div>
                    <div className="flex-1 min-w-0">
-                      <Username username={item.username} isAdmin={isUserAdmin} className="font-bold text-xs md:text-sm block truncate" />
+                      <Username username={item.username} isAdmin={isUserAdmin} className="font-bold text-[10px] md:text-sm block truncate" />
                    </div>
-                   <div className="text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
+                   <div className="text-[10px] md:text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
                       {type === 'writer' ? formatNumber(item.totalWords) : item.count}
                    </div>
                 </Link>
