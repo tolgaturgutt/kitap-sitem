@@ -237,6 +237,7 @@ function ContinueReadingCarousel({ books }) {
                         src={item.books?.cover_url || '/placeholder.png'}
                         alt={item.books?.title || 'Kitap'}
                         fill
+                        unoptimized
                         sizes="(max-width: 768px) 100px, 150px"
                         className="object-cover group-hover:scale-110 transition-transform duration-500"
                       />
@@ -299,6 +300,7 @@ function CategoryRow({ title, books, isFeatured = false }) {
                   src={kitap.cover_url}
                   alt={kitap.title}
                   fill
+                  unoptimized
                   sizes="(max-width: 768px) 150px, 200px"
                   className="object-cover group-hover/card:scale-110 transition-transform duration-700"
                 />
@@ -364,6 +366,7 @@ function TopReadRow({ books }) {
                   src={kitap.cover_url || '/placeholder.png'}
                   alt={kitap.title}
                   fill
+                  unoptimized
                   sizes="(max-width: 768px) 150px, 200px"
                   className="object-cover group-hover/card:scale-110 transition-transform duration-700"
                 />
@@ -697,6 +700,7 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
                   src={chapter.books?.cover_url || '/placeholder.png'}
                   alt={chapter.books?.title || 'Bölüm'}
                   fill
+                  unoptimized
                   sizes="(max-width: 768px) 120px, 160px"
                   className="object-cover group-hover/card:scale-105 transition-transform duration-500"
                 />
@@ -749,6 +753,7 @@ function EditorsChoiceSection({ books }) {
                 src={kitap.cover_url}
                 alt={kitap.title}
                 fill
+                unoptimized
                 sizes="(max-width: 768px) 150px, 200px"
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
