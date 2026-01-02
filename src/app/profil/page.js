@@ -356,7 +356,7 @@ export default function ProfilSayfasi() {
       const options = {
         maxSizeMB: 0.1,          // 100KB (Profil fotosu için ideal)
         maxWidthOrHeight: 500,   // Max 500px (Kapak gibi 1000 olmasına gerek yok)
-        useWebWorker: true,
+        useWebWorker: false,
         fileType: 'image/jpeg'
       };
 

@@ -184,7 +184,7 @@ export default function DesktopSidebar() {
         {/* FOOTER */}
         <div className="p-6 border-t dark:border-gray-800">
           <p className="text-[9px] text-gray-400 text-center font-black uppercase tracking-widest">
-            KitapLab © 2025
+            KitapLab © 2026
           </p>
         </div>
       </div>

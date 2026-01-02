@@ -86,3 +86,4 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
+// Cache temizliği için güncelleme - Kral geri döndü
