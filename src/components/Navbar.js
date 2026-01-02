@@ -341,6 +341,7 @@ export default function Navbar() {
                               src={b.cover_url}
                               alt={b.title}
                               fill
+                              unoptimized
                               className="object-cover"
                               sizes="32px"
                             />
@@ -375,6 +376,7 @@ export default function Navbar() {
                                 src={u.avatar_url}
                                 alt={u.username}
                                 fill // Kutuyu doldur
+                                unoptimized
                                 sizes="40px"
                                 className="object-cover"
                               />
@@ -550,6 +552,7 @@ export default function Navbar() {
                       alt="Profil"
                       width={44}  // Ekranda görüneceği boyut (2x retina için biraz büyük verdim)
                       height={44}
+                      unoptimized
                       className="w-full h-full object-cover"
                       priority // 👈 Bu resim çok önemli, hemen yükle demek
                     />
@@ -684,6 +687,7 @@ export default function Navbar() {
                                 src={b.cover_url}
                                 alt={b.title}
                                 fill
+                                unoptimized
                                 className="object-cover"
                                 sizes="32px"
                               />
@@ -718,6 +722,7 @@ export default function Navbar() {
                                   src={u.avatar_url}
                                   alt={u.username}
                                   fill // Kutuyu doldur
+                                  unoptimized
                                   sizes="40px"
                                   className="object-cover"
                                 />

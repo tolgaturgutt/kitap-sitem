@@ -14,19 +14,19 @@ function AramaIcerik() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'books', 'users'
 
- useEffect(() => {
+  useEffect(() => {
     async function performDeepSearch() {
       if (!query) return;
       setLoading(true);
 
-     // 1. KİTAPLARI (Bölüm Bilgisiyle) VE KULLANICILARI ÇEK
-     const [booksRes, usersRes] = await Promise.all([
+      // 1. KİTAPLARI (Bölüm Bilgisiyle) VE KULLANICILARI ÇEK
+      const [booksRes, usersRes] = await Promise.all([
         supabase
           .from('books')
-          .select('id, title, summary, cover_url, username, category, chapters(id)') 
+          .select('id, title, summary, cover_url, username, category, chapters(id)')
           .ilike('title', `%${query}%`)
           .limit(50), // 👈 GÜVENLİK SİGORTASI: En fazla 50 kitap getir
-          
+
         supabase
           .from('profiles')
           .select('username, full_name, avatar_url, bio, role')
@@ -46,7 +46,7 @@ function AramaIcerik() {
       if (booksData.length > 0) {
         // Kitapların yazarlarının isim listesini çıkar
         const authorNames = [...new Set(booksData.map(b => b.username))];
-        
+
         // Bu isimlerin rollerini sor
         const { data: roles } = await supabase
           .from('profiles')
@@ -55,17 +55,17 @@ function AramaIcerik() {
 
         // Kitap verisine bu rolü yapıştır (Sanki join yapmışız gibi)
         booksData = booksData.map(book => {
-            const yazarProfili = roles?.find(r => r.username === book.username);
-            return { 
-                ...book, 
-                profiles: { role: yazarProfili?.role } // Username bileşeni bu formatı bekliyor
-            };
+          const yazarProfili = roles?.find(r => r.username === book.username);
+          return {
+            ...book,
+            profiles: { role: yazarProfili?.role } // Username bileşeni bu formatı bekliyor
+          };
         });
       }
 
-      setResults({ 
-        books: booksData, 
-        users: usersData 
+      setResults({
+        books: booksData,
+        users: usersData
       });
       setLoading(false);
     }
@@ -117,18 +117,19 @@ function AramaIcerik() {
                   {results.books.map(book => (
                     <Link key={book.id} href={`/kitap/${book.id}`} className="flex gap-6 p-4 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2.5rem] hover:scale-[1.02] transition-transform group shadow-sm">
                       <div className="relative w-28 h-40 rounded-2xl overflow-hidden shrink-0 shadow-lg group-hover:shadow-red-600/20 transition-all">
-  {book.cover_url ? (
-    <Image 
-      src={book.cover_url} 
-      alt={book.title}
-      fill
-      sizes="112px"
-      className="object-cover"
-    />
-  ) : (
-    <div className="w-full h-full bg-gray-100 dark:bg-black/40 flex items-center justify-center text-[10px] font-black uppercase text-gray-400">Kapak Yok</div>
-  )}
-</div>
+                        {book.cover_url ? (
+                          <Image
+                            src={book.cover_url}
+                            alt={book.title}
+                            fill
+                            unoptimized
+                            sizes="112px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-100 dark:bg-black/40 flex items-center justify-center text-[10px] font-black uppercase text-gray-400">Kapak Yok</div>
+                        )}
+                      </div>
                       <div className="flex flex-col justify-center py-2">
                         <span className="text-[9px] font-black uppercase text-red-600 mb-1">{book.category}</span>
                         <h3 className="text-xl font-bold dark:text-white mb-2 group-hover:text-red-600 transition-colors">{book.title}</h3>
@@ -155,18 +156,19 @@ function AramaIcerik() {
                   {results.users.map(u => (
                     <Link key={u.username} href={`/yazar/${u.username}`} className="flex flex-col items-center p-8 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[3rem] text-center hover:border-red-600 transition-all group">
                       <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all mb-4">
-  {u.avatar_url ? (
-    <Image 
-      src={u.avatar_url} 
-      alt={u.username}
-      fill
-      sizes="80px"
-      className="object-cover"
-    />
-  ) : (
-    <div className="w-full h-full bg-gray-200 dark:bg-black/50 flex items-center justify-center font-black">?</div>
-  )}
-</div>
+                        {u.avatar_url ? (
+                          <Image
+                            src={u.avatar_url}
+                            alt={u.username}
+                            fill
+                            unoptimized
+                            sizes="80px"
+                            className="object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-200 dark:bg-black/50 flex items-center justify-center font-black">?</div>
+                        )}
+                      </div>
                       <div className="mb-1">
                         <Username
                           username={u.username}
