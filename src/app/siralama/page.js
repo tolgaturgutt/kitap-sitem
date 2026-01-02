@@ -113,7 +113,7 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
     </div>
   );
 }
-// --- GÜNCELLENMİŞ PODYUM TASARIMI (ORTALAMA SORUNU FİXLENDİ) ---
+// --- GÜNCELLENMİŞ PODYUM TASARIMI (FONT KÜÇÜLTÜLDÜ - GARANTİ SIĞAR) ---
 function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }) {
   if (!data || data.length === 0) return <p className="text-gray-500 italic text-center py-10">Veri yok.</p>;
 
@@ -195,16 +195,15 @@ function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }
                            <Username 
                               username={item.username} 
                               isAdmin={isUserAdmin} 
-                              // DEĞİŞİKLİK BURADA: flex justify-center mx-auto eklendi.
                               className={`
                                 flex justify-center items-center mx-auto w-full text-center break-words font-black hover:underline leading-[1.1]
-                                ${realIndex === 0 ? 'text-[11px] md:text-lg' : 'text-[10px] md:text-sm'}
+                                ${realIndex === 0 ? 'text-[10px] md:text-base' : 'text-[9px] md:text-xs'} 
                               `} 
                            />
                         </Link>
                       </div>
 
-                      <div className={`font-bold text-[9px] md:text-xs mb-2 leading-none ${style.text}`}>
+                      <div className={`font-bold text-[8px] md:text-[10px] mb-2 leading-none ${style.text}`}>
                          {type === 'writer' ? formatNumber(item.totalWords) : item.count} {type === 'writer' ? 'kelime' : 'yorum'}
                       </div>
                    </div>
