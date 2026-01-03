@@ -113,136 +113,7 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
     </div>
   );
 }
-// --- GÜNCELLENMİŞ PODYUM TASARIMI (BALANSLI COMPACT - TAM ORTASI) ---
-function LeaderboardSection({ title, icon, colorClass, data, type, adminEmails }) {
-  if (!data || data.length === 0) return <p className="text-gray-500 italic text-center py-10">Veri yok.</p>;
 
-  const top3 = data.slice(0, 3);
-  const others = data.slice(3);
-
-  let podiumData = [];
-  if (top3.length === 1) podiumData = [null, top3[0], null];
-  else if (top3.length === 2) podiumData = [top3[1], top3[0], null];
-  else podiumData = [top3[1], top3[0], top3[2]];
-
-  const rankStyles = {
-    0: { // 1. SIRA (ALTIN)
-      gradient: "from-yellow-500/20 to-yellow-500/5", 
-      border: "border-yellow-500", 
-      text: "text-yellow-600 dark:text-yellow-400", 
-      crown: "👑",
-      // MOBİLDE SCALE YOK, SADECE PC'DE HAFİF VAR
-      scale: "scale-100 md:scale-105 z-10", 
-      // Avatar: w-12 (48px) - Ne çok büyük ne çok küçük
-      avatarSize: "w-12 h-12 md:w-20 md:h-20",
-      marginBottom: "mb-0" 
-    },
-    1: { // 2. SIRA (GÜMÜŞ)
-      gradient: "from-gray-400/20 to-gray-400/5", 
-      border: "border-gray-400", 
-      text: "text-gray-500 dark:text-gray-300", 
-      crown: "🥈",
-      scale: "scale-100 z-0",
-      // Avatar: w-10 (40px) - Altına yakın boyutta
-      avatarSize: "w-10 h-10 md:w-16 md:h-16",
-      marginBottom: "mb-3 md:mb-6"
-    },
-    2: { // 3. SIRA (BRONZ)
-      gradient: "from-amber-700/20 to-amber-700/5", 
-      border: "border-amber-700", 
-      text: "text-amber-700 dark:text-amber-500", 
-      crown: "🥉",
-      scale: "scale-100 z-0",
-      avatarSize: "w-10 h-10 md:w-16 md:h-16",
-      marginBottom: "mb-6 md:mb-10"
-    }
-  };
-
-  return (
-    <div className="bg-white dark:bg-[#0a0a0a] rounded-[1.5rem] p-3 md:p-6 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden flex flex-col h-full">
-       <div className={`absolute top-0 right-0 p-32 ${colorClass} rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none opacity-20`}></div>
-       
-       <h2 className="text-sm md:text-xl font-black uppercase tracking-tight mb-4 md:mb-8 flex items-center gap-2 relative z-10">
-          <span className="text-xl md:text-3xl">{icon}</span>
-          <div className="leading-tight text-xs md:text-xl">{title}</div>
-       </h2>
-
-       {/* --- PODYUM ALANI --- */}
-       {/* min-h düşürüldü, boşluklar kısıldı */}
-       <div className="flex items-end justify-center gap-1.5 md:gap-4 mb-4 md:mb-8 min-h-[150px] md:min-h-[200px]">
-          {podiumData.map((item, visualIndex) => {
-             if (!item && visualIndex !== 1) return <div key={visualIndex} className="flex-1 opacity-0"></div>; 
-             if (!item) return null;
-
-             const realIndex = visualIndex === 1 ? 0 : visualIndex === 0 ? 1 : 2;
-             const style = rankStyles[realIndex];
-             const isUserAdmin = adminEmails.includes(item.email);
-
-             return (
-                <div key={item.userId} className={`flex-1 flex flex-col items-center text-center transition-all duration-300 min-w-0 ${style.scale}`}>
-                   
-                   {/* Avatar */}
-                   <div className="relative mb-1.5 md:mb-3">
-                      <div className="absolute -top-2 left-1/2 -translate-x-1/2 bg-white dark:bg-black border border-gray-100 dark:border-white/10 px-1.5 py-0 rounded-full shadow-md text-[9px] z-20 whitespace-nowrap">
-                         {style.crown}
-                      </div>
-                      <div className={`rounded-full overflow-hidden border-2 bg-gray-200 dark:bg-gray-800 shadow-lg ${style.border} ${style.avatarSize}`}>
-                         {item.avatar && <img src={item.avatar} className="w-full h-full object-cover" alt={item.username} />}
-                      </div>
-                   </div>
-
-                   {/* İsim Kutusu - SABİT BOY (h-70px) */}
-                   {/* Ne çok basık ne çok uzun, tam ideal */}
-                   <div className={`w-full h-[70px] md:h-[110px] rounded-t-lg md:rounded-t-2xl bg-gradient-to-b ${style.gradient} border-t-2 ${style.border} flex flex-col justify-center items-center shadow-lg backdrop-blur-sm px-0.5`}>
-                      
-                      <div className="w-full flex items-center justify-center flex-1 overflow-hidden px-1">
-                        <Link href={`/yazar/${item.username}`} className="block w-full">
-                           <Username 
-                              username={item.username} 
-                              isAdmin={isUserAdmin} 
-                              // Fontlar: Mobilde 10px (Okunur) ve 9px (Diğerleri)
-                              // justify-center mx-auto eklendi (Ortalama garantisi)
-                              className={`
-                                flex justify-center items-center mx-auto w-full text-center break-words font-black hover:underline leading-none
-                                ${realIndex === 0 ? 'text-[10px] md:text-base' : 'text-[9px] md:text-xs'} 
-                              `} 
-                           />
-                        </Link>
-                      </div>
-
-                      <div className={`font-bold text-[8px] md:text-[10px] mb-1.5 leading-none ${style.text}`}>
-                         {type === 'writer' ? formatNumber(item.totalWords) : item.count} {type === 'writer' ? 'k' : 'y'}
-                      </div>
-                   </div>
-                </div>
-             );
-          })}
-       </div>
-
-       {/* --- LİSTE ALANI --- */}
-       <div className="space-y-1.5 relative z-10 w-full">
-          {others.map((item, idx) => {
-             const realRank = idx + 4;
-             const isUserAdmin = adminEmails.includes(item.email);
-             return (
-                <Link href={`/yazar/${item.username}`} key={item.userId} className="flex items-center gap-2 md:gap-3 group p-1.5 hover:bg-gray-50 dark:hover:bg-white/5 rounded-lg transition-all border border-transparent hover:border-gray-200 dark:hover:border-white/10">
-                   <div className="w-5 h-5 md:w-6 md:h-6 flex items-center justify-center font-bold text-gray-400 bg-gray-100 dark:bg-white/5 rounded text-[9px] md:text-xs">#{realRank}</div>
-                   <div className="w-6 h-6 md:w-8 md:h-8 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-800 shrink-0">
-                      {item.avatar && <img src={item.avatar} className="w-full h-full object-cover" alt="" />}
-                   </div>
-                   <div className="flex-1 min-w-0">
-                      <Username username={item.username} isAdmin={isUserAdmin} className="font-bold text-[10px] md:text-sm block truncate" />
-                   </div>
-                   <div className="text-[9px] md:text-xs font-bold text-gray-500 dark:text-gray-400 shrink-0">
-                      {type === 'writer' ? formatNumber(item.totalWords) : item.count}
-                   </div>
-                </Link>
-             );
-          })}
-       </div>
-    </div>
-  );
-}
 export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [topWriters, setTopWriters] = useState([]);
@@ -558,27 +429,61 @@ const ikiHaftaOnce = getLastWeekMonday();
         )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12 mb-12 md:mb-20">
-          
-          {/* 1. KUTU: EN ÇOK YAZANLAR */}
-          <LeaderboardSection 
-            title={<><span className="block text-[10px] md:text-xs text-red-600 tracking-widest mb-1 font-bold">HAFTANIN</span>EN ÇOK YAZANLARI</>}
-            icon="✍️"
-            colorClass="bg-red-600/10"
-            data={topWriters}
-            type="writer"
-            adminEmails={adminEmails}
-          />
+          <div className="bg-white dark:bg-[#0a0a0a] rounded-2xl md:rounded-[2.5rem] p-4 md:p-10 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-32 bg-red-600/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+            <h2 className="text-lg md:text-2xl font-black uppercase tracking-tight mb-6 md:mb-8 flex items-center gap-2 md:gap-3">
+              <span className="text-2xl md:text-4xl">✍️</span>
+              <div><span className="block text-[10px] md:text-xs text-red-600 tracking-widest mb-1 font-bold">HAFTANIN</span>EN ÇOK YAZANLARI</div>
+            </h2>
+            <div className="space-y-4">
+              {topWriters.length === 0 ? <p className="text-gray-500 italic text-center py-10">Veri yok.</p> : (
+                topWriters.map((writer, idx) => {
+                  const style = getRankStyle(idx);
+                  const isUserAdmin = adminEmails.includes(writer.email);
+                  return (
+                    <Link href={`/yazar/${writer.username}`} key={writer.userId} className="flex items-center gap-4 group p-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-2xl transition-all">
+                      <div className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl font-black text-lg ${style.bg} ${style.color}`}>{style.icon}</div>
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all bg-gray-200 dark:bg-gray-800">
+                        {writer.avatar && <img src={writer.avatar} className="w-full h-full object-cover" alt="" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2"><Username username={writer.username} isAdmin={isUserAdmin} className="font-bold text-sm md:text-base" /></div>
+                        <p className="text-xs text-gray-400 font-medium">{formatNumber(writer.totalWords)} kelime yazdı</p>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </div>
 
-          {/* 2. KUTU: EN ÇOK KONUŞANLAR */}
-          <LeaderboardSection 
-            title={<><span className="block text-[10px] md:text-xs text-blue-500 tracking-widest mb-1 font-bold">HAFTANIN</span>EN ÇOK KONUŞANLARI</>}
-            icon="💬"
-            colorClass="bg-blue-600/10"
-            data={topCommenters}
-            type="commenter"
-            adminEmails={adminEmails}
-          />
-
+          <div className="bg-white dark:bg-[#0a0a0a] rounded-[2.5rem] p-6 md:p-10 border border-gray-100 dark:border-white/5 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-32 bg-blue-600/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+            <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-8 flex items-center gap-3">
+              <span className="text-4xl">💬</span>
+              <div><span className="block text-xs text-blue-500 tracking-widest mb-1 font-bold">HAFTANIN</span>EN ÇOK KONUŞANLARI</div>
+            </h2>
+            <div className="space-y-4">
+              {topCommenters.length === 0 ? <p className="text-gray-500 italic text-center py-10">Veri yok.</p> : (
+                topCommenters.map((user, idx) => {
+                  const style = getRankStyle(idx);
+                  const isUserAdmin = adminEmails.includes(user.email);
+                  return (
+                    <Link href={`/yazar/${user.username}`} key={user.userId} className="flex items-center gap-4 group p-2 hover:bg-gray-50 dark:hover:bg-white/5 rounded-2xl transition-all">
+                      <div className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded-xl font-black text-lg ${style.bg} ${style.color}`}>{style.icon}</div>
+                      <div className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-transparent group-hover:border-blue-500 transition-all bg-gray-200 dark:bg-gray-800">
+                        {user.avatar && <img src={user.avatar} className="w-full h-full object-cover" alt="" />}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2"><Username username={user.username} isAdmin={isUserAdmin} className="font-bold text-sm md:text-base" /></div>
+                        <p className="text-xs text-gray-400 font-medium">{user.count} yorum yaptı</p>
+                      </div>
+                    </Link>
+                  );
+                })
+              )}
+            </div>
+          </div>
         </div>
 
         <div>
