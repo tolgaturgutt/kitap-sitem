@@ -565,17 +565,17 @@ export default function Home() {
         });
       }
 
-      // 6. İstatistikler (Trend Hesaplama - Son 10 gün)
+     // 6. İstatistikler (Trend Hesaplama - Son 10 gün)
       const editorsPicks = allBooks?.filter(b => b.is_editors_choice).slice(0, 10);
       setEditorsChoiceBooks(editorsPicks || []);
 
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
-      const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString());
-      const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString());
-      // Bu sadece son 10 gündeki trendi hesaplamak için gerekli, kalabilir.
-      const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString());
+      // --- DÜZELTME 1: Veri çekme limitini artırdık (Garanti olsun diye 5000 yaptık) ---
+      const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(5000);
+      const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(5000);
+      const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString()).limit(5000);
 
       if (allBooks) {
         const scored = allBooks.map(b => {
@@ -584,11 +584,15 @@ export default function Home() {
           const rCommentsCount = recentComments?.filter(c => c.book_id === b.id).length || 0;
           const rFollowsCount = recentFollows?.filter(f => f.book_id === b.id).length || 0;
 
-          const score = (rFollowsCount * 10) + (rCommentsCount * 2) + (rVotesCount * 5) + (b.totalViews * 1);
-          // Not: interactionScore sadece sıralama için kullanılıyor, ekranda gösterilmiyor.
+          // --- DÜZELTME 2: (b.totalViews) KISMINI SİLDİK ---
+          // Artık eski popüler kitaplar değil, son 10 günde etkileşim alanlar üste çıkacak.
+          // Takip etmek: 20 puan, Oy: 5 puan, Yorum: 3 puan
+          const score = (rFollowsCount * 20) + (rCommentsCount * 3) + (rVotesCount * 5);
+
           return { ...b, interactionScore: score };
         });
 
+        // Puanı 0 olanları listeden eleyebiliriz (İsteğe bağlı, şimdilik kalsın)
         setFeaturedBooks(scored.sort((a, b) => b.interactionScore - a.interactionScore).slice(0, 15));
 
         const mostRead = [...scored].sort((a, b) => b.totalViews - a.totalViews).slice(0, 20);
