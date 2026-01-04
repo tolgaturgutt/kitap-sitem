@@ -29,6 +29,7 @@ export default function PanoModal({
   const [panoOwnerProfile, setPanoOwnerProfile] = useState(null);
 
   // --- 1. VERİLERİ YÜKLE (OPTİMİZE EDİLDİ) ---
+// --- 1. VERİLERİ YÜKLE (OPTİMİZE EDİLDİ) ---
   useEffect(() => {
     if (!selectedPano) return;
 
@@ -97,6 +98,36 @@ export default function PanoModal({
     }
 
     loadPanoData();
+
+    // 🔥 REAL-TIME: Bölüm adı değiştiğinde otomatik güncelle
+    let chapterSubscription = null;
+    
+    if (selectedPano.chapter_id) {
+      chapterSubscription = supabase
+        .channel(`chapter-${selectedPano.chapter_id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'chapters',
+            filter: `id=eq.${selectedPano.chapter_id}`
+          },
+          (payload) => {
+            if (payload.new.title) {
+              setChapterTitle(payload.new.title);
+            }
+          }
+        )
+        .subscribe();
+    }
+
+    // Cleanup
+    return () => {
+      if (chapterSubscription) {
+        supabase.removeChannel(chapterSubscription);
+      }
+    };
   }, [selectedPano, user]);
 
   // Yedek fonksiyon: Eğer Carousel'den profil gelmediyse

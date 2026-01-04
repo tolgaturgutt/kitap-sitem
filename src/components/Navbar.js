@@ -42,7 +42,6 @@ export default function Navbar() {
       if (session?.user) {
         setUser(session.user);
 
-        // 🚀 HIZLI BAŞLANGIÇ: Veritabanını bekleme, session'da varsa hemen göster
         if (session.user.user_metadata?.avatar_url) {
           setUserProfile({
             avatar_url: session.user.user_metadata.avatar_url,
@@ -50,8 +49,6 @@ export default function Navbar() {
           });
         }
 
-        // ⚡ PARALEL YÜKLEME: İkisi birbirini beklemesin, aynı anda saldırsın
-        // 1. Gerçek Profil Verisini Çek (Arka planda günceller)
         const fetchProfile = async () => {
           const { data: profile } = await supabase
             .from('profiles')
@@ -62,12 +59,10 @@ export default function Navbar() {
           if (profile) setUserProfile(profile);
         };
 
-        // 2. Bildirimleri Çek
         const fetchNotifs = async () => {
           await loadNotifications(session.user.email);
         };
 
-        // İkisini de ateşle
         fetchProfile();
         fetchNotifs();
       }
@@ -90,7 +85,6 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 🚀 OPTİMİZE EDİLMİŞ BİLDİRİM FONKSİYONU
   async function loadNotifications(email) {
     const { data: n } = await supabase
       .from('notifications')
@@ -100,15 +94,11 @@ export default function Navbar() {
       .limit(50);
 
     if (n && n.length > 0) {
-      // N+1 PROBLEMİNİ ÇÖZÜYORUZ: Tek tek sormak yerine toplu soruyoruz.
-      // Bölüm ID'lerini topla
       const chapterIds = n
         .filter(notif => notif.chapter_id && !notif.chapter_title)
         .map(notif => notif.chapter_id);
 
-      // Eğer ID varsa, tek seferde hepsini çek
       if (chapterIds.length > 0) {
-        // Unique ID'leri al (Aynı bölüme 5 yorum geldiyse 5 kere sorma)
         const uniqueIds = [...new Set(chapterIds)];
 
         const { data: chapters } = await supabase
@@ -116,12 +106,34 @@ export default function Navbar() {
           .select('id, title')
           .in('id', uniqueIds);
 
-        // Hafızada eşleştir
         if (chapters) {
           n.forEach(notif => {
             const foundChapter = chapters.find(c => c.id === notif.chapter_id);
             if (foundChapter) {
               notif.chapter_title = foundChapter.title;
+            }
+          });
+        }
+      }
+
+      // 🆕 PANO BAŞLIKLARINI DA ÇEK
+      const panoIds = n
+        .filter(notif => notif.pano_id && !notif.pano_title)
+        .map(notif => notif.pano_id);
+
+      if (panoIds.length > 0) {
+        const uniquePanoIds = [...new Set(panoIds)];
+
+        const { data: panos } = await supabase
+          .from('panolar')
+          .select('id, title')
+          .in('id', uniquePanoIds);
+
+        if (panos) {
+          n.forEach(notif => {
+            const foundPano = panos.find(p => p.id === notif.pano_id);
+            if (foundPano) {
+              notif.pano_title = foundPano.title;
             }
           });
         }
@@ -202,14 +214,15 @@ export default function Navbar() {
 
   if (!mounted) return null;
 
-  const socialNotifs = notifications.filter(n => n.type === 'follow' || n.type === 'reply');
+  const socialNotifs = notifications.filter(n => n.type === 'follow' || (n.type === 'reply' && n.pano_id));
   const activityNotifs = notifications.filter(n =>
     n.type === 'vote' ||
     n.type === 'chapter_vote' ||
     n.type === 'comment' ||
     n.type === 'new_chapter' ||
     n.type === 'pano_vote' ||
-    n.type === 'pano_comment'
+    n.type === 'pano_comment' ||
+    (n.type === 'reply' && !n.pano_id)
   );
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
@@ -232,12 +245,12 @@ export default function Navbar() {
       case 'pano_comment':
         return n.pano_id ? `/pano/${n.pano_id}` : '#';
       case 'reply':
-        if (n.chapter_id && n.book_id) {
+        if (n.pano_id) {
+          return `/pano/${n.pano_id}`;
+        } else if (n.chapter_id && n.book_id) {
           return `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
         } else if (n.book_id) {
           return `/kitap/${n.book_id}`;
-        } else if (n.pano_id) {
-          return `/pano/${n.pano_id}`;
         }
         return '#';
       case 'follow':
@@ -369,13 +382,12 @@ export default function Navbar() {
                           onClick={() => setShowSearch(false)}
                           className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                         >
-                          {/* w-10 h-10 olan div'e 'relative' ekledik 👇 */}
                           <div className="relative w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
                             {u.avatar_url && u.avatar_url.includes('http') ? (
                               <Image
                                 src={u.avatar_url}
                                 alt={u.username}
-                                fill // Kutuyu doldur
+                                fill
                                 unoptimized
                                 sizes="40px"
                                 className="object-cover"
@@ -526,6 +538,13 @@ export default function Navbar() {
                                     {' '}
                                     {getNotificationText(n)}
                                   </p>
+                                  
+                                  {n.pano_title && (
+                                    <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">
+                                      "{n.pano_title}"
+                                    </p>
+                                  )}
+                                  
                                   <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
                                     {new Date(n.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                   </p>
@@ -550,11 +569,11 @@ export default function Navbar() {
                     <Image
                       src={userProfile.avatar_url}
                       alt="Profil"
-                      width={44}  // Ekranda görüneceği boyut (2x retina için biraz büyük verdim)
+                      width={44}
                       height={44}
                       unoptimized
                       className="w-full h-full object-cover"
-                      priority // 👈 Bu resim çok önemli, hemen yükle demek
+                      priority
                     />
                   ) : (
                     user.email[0].toUpperCase()
@@ -715,13 +734,12 @@ export default function Navbar() {
                             onClick={() => { setShowSearch(false); setShowMobileSearch(false); setQuery(''); }}
                             className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                           >
-                            {/* w-10 h-10 olan div'e 'relative' ekledik 👇 */}
                             <div className="relative w-10 h-10 rounded-full overflow-hidden bg-red-600/10 flex items-center justify-center font-black text-red-600 text-sm shrink-0">
                               {u.avatar_url && u.avatar_url.includes('http') ? (
                                 <Image
                                   src={u.avatar_url}
                                   alt={u.username}
-                                  fill // Kutuyu doldur
+                                  fill
                                   unoptimized
                                   sizes="40px"
                                   className="object-cover"

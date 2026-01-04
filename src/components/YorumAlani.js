@@ -10,13 +10,11 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   
-  // Scroll için referans
   const commentsEndRef = useRef(null);
   
-  // --- YANIT STATE'LERİ ---
   const [replyComment, setReplyComment] = useState(''); 
   const [replyingTo, setReplyingTo] = useState(null); 
-  // ------------------------
+  const [replyingToUser, setReplyingToUser] = useState(null); // 🆕 KİME YANITLADIĞIMIZI TUTACAĞIZ
 
   const [user, setUser] = useState(null);
   const [isSending, setIsSending] = useState(false);
@@ -24,7 +22,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
-    setComments([]); // ID değişince temizle
+    setComments([]);
     async function load() {
       const { data: { user: u } } = await supabase.auth.getUser();
       setUser(u);
@@ -43,7 +41,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     load();
   }, [type, targetId, paraId, bookId, includeParagraphs]);
 
-  // Yorum eklendiğinde veya panel açıldığında en alta kaydır (Sadece paragraf modunda)
   useEffect(() => {
     if (type === 'paragraph' && commentsEndRef.current) {
       commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -54,15 +51,10 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     let query = supabase
       .from('comments')
       .select('*, profiles!comments_user_id_fkey(username, avatar_url, role)')
-      .order('created_at', { ascending: true }); // ESKİDEN FALSE İDİ, ŞİMDİ TRUE (Eskiden yeniye sırala ki sohbet gibi olsun)
-
-    // Not: Normal sayfa yorumları için ters sıralama (yeni en üstte) daha iyi olabilir ama
-    // Paragraf yorumları için (sohbet gibi) eski en üstte, yeni en altta mantıklıdır.
-    // Eğer sadece paragrafta böyle olsun istersen buraya if koyabiliriz.
-    // Şimdilik genel akışı bozmuyorum, senin mevcut sıralamanı koruyorum:
+      .order('created_at', { ascending: true });
     
     if (type !== 'paragraph') {
-       query = query.order('created_at', { ascending: false, foreignTable: '' }); // Eski haline override
+       query = query.order('created_at', { ascending: false, foreignTable: '' });
     }
 
     if (type === 'book') {
@@ -78,9 +70,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 
     const { data } = await query;
     
-    // Veriyi aldıktan sonra sıralamayı JavaScript ile de garantiye alabiliriz
-    // Paragraf ise: Eskiden yeniye (Sohbet modu)
-    // Değilse: Yeniden eskiye (Normal yorum modu)
     let sortedData = data || [];
     if (type === 'paragraph') {
         sortedData.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -95,14 +84,12 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     if (replyingTo === targetComment.id) {
       setReplyingTo(null);
       setReplyComment('');
+      setReplyingToUser(null); // 🆕 SIFIRLA
     } else {
       setReplyingTo(targetComment.id);
-      if (targetComment.parent_id) {
-        const username = targetComment.profiles?.username || targetComment.username;
-        setReplyComment(`@${username} `);
-      } else {
-        setReplyComment('');
-      }
+      setReplyingToUser(targetComment.user_email); // 🆕 KİME YANITLADIĞIMIZI KAYDET
+      const username = targetComment.profiles?.username || targetComment.username;
+      setReplyComment(`@${username} `);
     }
   }
 
@@ -138,7 +125,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       .single();
 
     if (!error && insertedData) { 
-        // Paragraf ise sona ekle, değilse başa ekle
         if (type === 'paragraph') {
             setComments(prev => [...prev, insertedData]);
         } else {
@@ -148,6 +134,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         if (targetComment) {
             setReplyComment('');
             setReplyingTo(null);
+            setReplyingToUser(null); // 🆕 SIFIRLA
             toast.success("Yanıt gönderildi");
         } else {
             setNewComment(''); 
@@ -155,9 +142,8 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         }
 
         if (type === 'paragraph' && onCommentAdded) onCommentAdded(paraId);
-        createNotification(insertedData, username);
+        createNotification(insertedData, username, targetComment); // 🆕 targetComment'i de gönder
 
-        // ✅ YENİ: Kitabın güncel sayaçlarını çek ve parent'a bildir
         if (bookId && onStatsUpdate) {
           const { data: updatedBook } = await supabase
             .from('books')
@@ -178,24 +164,42 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     setIsSending(false);
 }
 
-  // ... (createNotification, handleReport, handleDelete fonksiyonları aynı kalacak) ...
-  async function createNotification(comment, username) {
+  // 🔥 FİX: Bildirim doğru kişiye gitsin
+  async function createNotification(comment, username, targetComment) {
       try {
         if (comment.parent_id) {
-          const parentComment = comments.find(c => c.id === comment.parent_id);
-          if (parentComment) {
-            await createReplyNotification(username, user.email, parentComment.user_email, bookId ? parseInt(bookId) : null, type === 'book' ? null : parseInt(targetId), null);
+          // Yanıt ise: targetComment'e (yani yanıtladığımız yoruma) bildirim gönder
+          const recipientEmail = replyingToUser || targetComment?.user_email;
+          
+          if (recipientEmail && recipientEmail !== user.email) {
+            await createReplyNotification(
+              username, 
+              user.email, 
+              recipientEmail, // 🔥 Direkt yanıtladığımız kişiye gönder
+              bookId ? parseInt(bookId) : null, 
+              type === 'book' ? null : parseInt(targetId), 
+              null
+            );
           }
         } else {
-          await createCommentNotification(username, user.email, parseInt(bookId), type === 'book' ? null : parseInt(targetId));
+          await createCommentNotification(
+            username, 
+            user.email, 
+            parseInt(bookId), 
+            type === 'book' ? null : parseInt(targetId)
+          );
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { 
+        console.error(e); 
+      }
   }
+
   async function handleReport(id, content) {
     const r = prompt("Sebep?"); if(!r) return;
     await supabase.from('reports').insert({ reporter_id: user.id, target_type: 'comment', target_id: id, reason: r, content_snapshot: content });
     toast.success("Raporlandı.");
   }
+
  async function handleDelete(id) {
     if(!confirm("Silinsin mi?")) return;
     const { error } = await supabase.from('comments').delete().eq('id', id);
@@ -203,7 +207,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         setComments(prev => prev.filter(c => c.id !== id)); 
         toast.success("Silindi."); 
 
-        // ✅ YENİ: Silme sonrası da güncelle
         if (bookId && onStatsUpdate) {
           const { data: updatedBook } = await supabase
             .from('books')
@@ -224,9 +227,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const mainComments = comments.filter(c => !c.parent_id);
   const getReplies = (parentId) => comments.filter(c => c.parent_id === parentId).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
-  // --- JSX PARÇALARI ---
-
-  // 1. GİRDİ ALANI (Input Area)
   const InputArea = (
     <div className={`relative bg-gray-100 dark:bg-white/5 rounded-2xl p-2 border dark:border-white/10 ${type === 'paragraph' ? 'mt-0 shadow-lg' : 'mb-8'}`}>
         <textarea 
@@ -234,7 +234,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
           onChange={e => setNewComment(e.target.value)} 
           placeholder={user ? "Bir şeyler yaz..." : "Giriş yapmalısın."}
           disabled={isSending || !user}
-          rows={type === 'paragraph' ? 1 : 2} // Paragrafta tek satır daha şık
+          rows={type === 'paragraph' ? 1 : 2}
           className="w-full bg-transparent px-4 py-3 text-sm outline-none dark:text-white resize-none max-h-32"
           style={{ minHeight: '44px' }}
         />
@@ -250,7 +250,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     </div>
   );
 
-  // 2. YORUM LİSTESİ (List Area)
   const ListArea = (
     <div className={`space-y-6 ${type === 'paragraph' ? 'pb-4' : ''}`}>
         {mainComments.length === 0 && (
@@ -298,26 +297,17 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
             </div>
           </div>
         ))}
-        {/* Scroll için görünmez div */}
         <div ref={commentsEndRef} />
     </div>
   );
-
-  // --- ANA RENDER ---
   
-  // Eğer PARAGRAF moduysa: SOHBET DÜZENİ (Liste üstte, Input altta sabit)
  if (type === 'paragraph') {
   return (
       <div className="flex flex-col h-full relative">
-          {/* ÜST KISIM: Yorum Listesi (Kayar) */}
           <div className="flex-1 overflow-y-auto px-4 pt-4 custom-scrollbar">
               {ListArea}
           </div>
 
-          {/* ALT KISIM: Input Alanı (Sabit) */}
-          {/* DEĞİŞİKLİK BURADA: 'p-3' yerine 'px-3 pt-3 pb-10 md:pb-3' yazdık. */}
-          {/* pb-10: Mobilde alttan bayağı boşluk bırakır, input yukarı çıkar. */}
-          {/* md:pb-3: PC'de (md) o kadar boşluğa gerek yok, normal dursun. */}
           <div className="shrink-0 px-3 pt-3 pb-10 md:pb-3 bg-white dark:bg-[#0f0f0f] border-t dark:border-white/5 z-20">
               {InputArea}
           </div>
@@ -325,7 +315,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   );
 }
 
-  // Eğer NORMAL modsa: KLASİK DÜZEN (Input üstte, Liste altta)
   return (
     <div className="w-full">
       {InputArea}
@@ -335,7 +324,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 }
 
 function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain }) {
-    // ... (CommentCard içeriği aynen kalacak, değiştirmeye gerek yok) ...
     const canDelete = user && (isAdmin || isOwner || user.id === comment.user_id);
     const isOwnComment = user && user.id === comment.user_id;
     const commentUsername = comment.profiles?.username || comment.username || "Anonim";
@@ -374,7 +362,6 @@ function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onD
                     {comment.content.split(' ').map((word, i) => word.startsWith('@') ? <span key={i} className="text-blue-500 font-bold">{word} </span> : word + ' ')}
                 </div>
                 
-                {/* YANIT KUTUSU (Kartın içinde açılır) */}
                 {isReplying && (
                     <div className="mt-3 flex gap-2 animate-in slide-in-from-top-1 bg-gray-50 dark:bg-white/5 p-2 rounded-xl">
                         <input autoFocus value={replyText} onChange={e => setReplyText(e.target.value)} placeholder="Yanıtın..." className="flex-1 bg-transparent text-xs outline-none dark:text-white" onKeyDown={e => e.key === 'Enter' && onSendReply()} />
