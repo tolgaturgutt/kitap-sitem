@@ -470,9 +470,9 @@ async function handleSendWarning() {
   <div className="p-6 md:p-8 bg-white dark:bg-white/5 rounded-2xl md:rounded-3xl border dark:border-white/5 flex flex-col items-start gap-6 animate-in fade-in slide-in-from-bottom-2">
     <div className="w-full">
       <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Biyografi</h3>
-      <p className="italic text-gray-500 leading-relaxed w-full font-serif text-base md:text-lg whitespace-pre-line">
-        {author.bio || "Biyografi henüz eklenmemiş."}
-      </p>
+   <p className="italic text-gray-500 leading-relaxed w-full font-serif text-base md:text-lg whitespace-pre-wrap">
+  {author.bio || "Biyografi henüz eklenmemiş."}
+</p>
     </div>
 
     {author.instagram && (
