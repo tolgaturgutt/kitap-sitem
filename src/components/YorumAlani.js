@@ -103,8 +103,17 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     const username = profile?.username || user.email.split('@')[0];
 
     let finalParentId = null;
+    
+    // 👇 BURASI KRİTİK DEĞİŞİKLİK 👇
+    // Varsayılan olarak mevcut paraId'yi al
+    let finalParaId = paraId || null; 
+
     if (targetComment) {
         finalParentId = targetComment.parent_id ? targetComment.parent_id : targetComment.id;
+        
+        // EĞER BİR YORUMA YANIT VERİYORSAK, ONUN PARAGRAF ID'SİNİ KOPYALA
+        // Böylece bölüm sonundan yazsak bile paragrafın içine düşer.
+        finalParaId = targetComment.paragraph_id; 
     }
 
     const payload = { 
