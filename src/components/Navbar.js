@@ -204,7 +204,43 @@ export default function Navbar() {
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     }
   }
+// 🔥 REALTIME BİLDİRİM DİNLEYİCİSİ (Bunu eklemen yeterli)
+  useEffect(() => {
+    if (!user) return;
 
+    // Kanalı oluşturuyoruz
+    const channel = supabase
+      .channel('bildirim-dinleyici')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT', // Yeni veri eklendiğinde
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_email=eq.${user.email}` // Sadece BANA gelenleri dinle
+        },
+        async (payload) => {
+          console.log("🔔 Anlık bildirim geldi:", payload);
+          
+          // Mevcut fonksiyonu çağırıp listeyi yeniliyoruz
+          await loadNotifications(user.email);
+          
+          // Ufak bir uyarı (Toast) gösteriyoruz
+          toast('Yeni bir bildiriminiz var! 🔔', {
+            style: {
+              background: '#333',
+              color: '#fff',
+            },
+          });
+        }
+      )
+      .subscribe();
+
+    // Temizlik: Sayfadan çıkınca dinlemeyi bırak
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user]);
   function handleSearchTrigger() {
     if (!query.trim()) return;
     setShowSearch(false);
