@@ -268,7 +268,23 @@ export default function PanoModal({
               </div>
             )}
           </div>
-          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300 mt-0.5">{comment.content}</p>
+          <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300 mt-0.5">
+            {comment.content.split(' ').map((word, i) => {
+              if (word.startsWith('@')) {
+                const username = word.substring(1);
+                return (
+                  <Link 
+                    key={i} 
+                    href={`/yazar/${username}`}
+                    className="text-blue-600 hover:underline font-bold"
+                  >
+                    {word}
+                  </Link>
+                );
+              }
+              return <span key={i}>{word} </span>;
+            })}
+          </p>
           <button 
             onClick={() => {
               setReplyTo(comment.parent_id || comment.id);
@@ -384,7 +400,20 @@ export default function PanoModal({
                   </div>
                 )}
                 <div className="flex gap-2">
-                  <input value={newComment} onChange={e => setNewComment(e.target.value)} placeholder="Yorum yaz..." className="flex-1 bg-transparent px-4 py-2 text-sm outline-none dark:text-white" />
+                  <div className="flex-1 relative">
+                    <input 
+                      value={newComment} 
+                      onChange={e => setNewComment(e.target.value)} 
+                      placeholder="Yorum yaz..." 
+                      className="w-full bg-transparent px-4 py-2 text-sm outline-none dark:text-white"
+                    />
+                    {newComment.startsWith('@') && (
+                      <div className="absolute inset-0 px-4 py-2 text-sm pointer-events-none overflow-hidden whitespace-nowrap">
+                        <span className="text-blue-600 font-bold">{newComment.split(' ')[0]}</span>
+                        <span className="opacity-0">{newComment.substring(newComment.split(' ')[0].length)}</span>
+                      </div>
+                    )}
+                  </div>
                   <button onClick={handleComment} className="px-6 py-2 bg-red-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all">GÖNDER</button>
                 </div>
               </div>
