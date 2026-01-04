@@ -512,13 +512,18 @@ useEffect(() => {
 {/* Yorumların Olduğu Kısım (Sabit Çerçeve) */}
 {/* Scroll ve padding'i buradan kaldırdık, overflow-hidden yaptık */}
 <div className="flex-1 overflow-hidden relative bg-gray-50 dark:bg-black/20">
-  <YorumAlani
-    type="paragraph"
-    targetId={bolumId}
-    bookId={id}
-    paraId={activePara}
-    onCommentAdded={handleCommentAdded}
-  />
+ <YorumAlani
+  type="paragraph"
+  targetId={bolumId}
+  bookId={id}
+  paraId={activePara}
+  onCommentAdded={handleCommentAdded}
+  onStatsUpdate={(newStats) => {
+    // Paragraf yorumu eklendi, kitap istatistikleri güncellendi
+    console.log('Kitap stats güncellendi (paragraf):', newStats);
+    // İsterseniz buraya bir state güncellemesi ekleyebilirsiniz
+  }}
+/>
 </div>
   </div>
 </aside>
@@ -581,13 +586,18 @@ useEffect(() => {
 
             {bolumId && id ? (
               <YorumAlani
-                type="chapter"
-                targetId={bolumId}
-                bookId={id}
-                paraId={null}
-                onCommentAdded={handleCommentAdded}
-                includeParagraphs={true}
-              />
+  type="chapter"
+  targetId={bolumId}
+  bookId={id}
+  paraId={null}
+  onCommentAdded={handleCommentAdded}
+  includeParagraphs={true}
+  onStatsUpdate={(newStats) => {
+    // Bölüm yorumu eklendi, kitap istatistikleri güncellendi
+    console.log('Kitap stats güncellendi (bölüm):', newStats);
+    // İsterseniz buraya da state güncellemesi ekleyebilirsiniz
+  }}
+/>
             ) : (
               <p className="text-center text-red-500">ID'ler yüklenemedi</p>
             )}

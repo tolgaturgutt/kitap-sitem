@@ -6,7 +6,7 @@ import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import { createCommentNotification, createReplyNotification } from '@/lib/notifications';
 
-export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded, includeParagraphs = false }) {
+export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded, includeParagraphs = false, onStatsUpdate }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   
@@ -106,7 +106,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     }
   }
 
-  async function handleSend(targetComment = null) {
+ async function handleSend(targetComment = null) {
     const contentToSend = targetComment ? replyComment : newComment;
 
     if (!contentToSend.trim() || !user || isSending) return;
@@ -156,11 +156,27 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 
         if (type === 'paragraph' && onCommentAdded) onCommentAdded(paraId);
         createNotification(insertedData, username);
+
+        // ✅ YENİ: Kitabın güncel sayaçlarını çek ve parent'a bildir
+        if (bookId && onStatsUpdate) {
+          const { data: updatedBook } = await supabase
+            .from('books')
+            .select('total_comment_count, total_votes')
+            .eq('id', bookId)
+            .single();
+          
+          if (updatedBook) {
+            onStatsUpdate({
+              comments: updatedBook.total_comment_count,
+              votes: updatedBook.total_votes
+            });
+          }
+        }
     } else {
         toast.error("Hata oluştu.");
     }
     setIsSending(false);
-  }
+}
 
   // ... (createNotification, handleReport, handleDelete fonksiyonları aynı kalacak) ...
   async function createNotification(comment, username) {
@@ -180,12 +196,30 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     await supabase.from('reports').insert({ reporter_id: user.id, target_type: 'comment', target_id: id, reason: r, content_snapshot: content });
     toast.success("Raporlandı.");
   }
-  async function handleDelete(id) {
+ async function handleDelete(id) {
     if(!confirm("Silinsin mi?")) return;
     const { error } = await supabase.from('comments').delete().eq('id', id);
-    if (!error) { setComments(prev => prev.filter(c => c.id !== id)); toast.success("Silindi."); }
-  }
+    if (!error) { 
+        setComments(prev => prev.filter(c => c.id !== id)); 
+        toast.success("Silindi."); 
 
+        // ✅ YENİ: Silme sonrası da güncelle
+        if (bookId && onStatsUpdate) {
+          const { data: updatedBook } = await supabase
+            .from('books')
+            .select('total_comment_count, total_votes')
+            .eq('id', bookId)
+            .single();
+          
+          if (updatedBook) {
+            onStatsUpdate({
+              comments: updatedBook.total_comment_count,
+              votes: updatedBook.total_votes
+            });
+          }
+        }
+    }
+}
 
   const mainComments = comments.filter(c => !c.parent_id);
   const getReplies = (parentId) => comments.filter(c => c.parent_id === parentId).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
