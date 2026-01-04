@@ -273,6 +273,7 @@ export default function PanoModal({
             onClick={() => {
               setReplyTo(comment.parent_id || comment.id);
               setReplyToUsername(displayUsername);
+              setNewComment(`@${displayUsername} `);
             }} 
             className="text-[9px] text-gray-400 hover:text-red-600 font-bold mt-1 uppercase"
           >
