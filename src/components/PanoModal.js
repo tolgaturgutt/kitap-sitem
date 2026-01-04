@@ -320,7 +320,7 @@ export default function PanoModal({
             onClick={() => {
               setReplyTo(comment.parent_id || comment.id);
               setReplyToUsername(displayUsername);
-              setNewComment(`@${displayUsername} `);
+              setNewComment(`@${displayUsername}  `);
             }} 
             className="text-[9px] text-gray-400 hover:text-red-600 font-bold mt-1 uppercase"
           >
@@ -430,21 +430,13 @@ export default function PanoModal({
                     </button>
                   </div>
                 )}
-                <div className="flex gap-2">
-                  <div className="flex-1 relative">
-                    <input 
-                      value={newComment} 
-                      onChange={e => setNewComment(e.target.value)} 
-                      placeholder="Yorum yaz..." 
-                      className="w-full bg-transparent px-4 py-2 text-sm outline-none dark:text-white"
-                    />
-                    {newComment.startsWith('@') && (
-                      <div className="absolute inset-0 px-4 py-2 text-sm pointer-events-none overflow-hidden whitespace-nowrap">
-                        <span className="text-blue-600 font-bold">{newComment.split(' ')[0]}</span>
-                        <span className="opacity-0">{newComment.substring(newComment.split(' ')[0].length)}</span>
-                      </div>
-                    )}
-                  </div>
+               <div className="flex gap-2">
+                  <input 
+                    value={newComment} 
+                    onChange={e => setNewComment(e.target.value)} 
+                    placeholder="Yorum yaz..." 
+                    className="flex-1 bg-transparent px-4 py-2 text-sm outline-none dark:text-white"
+                  />
                   <button onClick={handleComment} className="px-6 py-2 bg-red-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all">GÖNDER</button>
                 </div>
               </div>
