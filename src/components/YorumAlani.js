@@ -123,7 +123,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       username: username,
       book_id: bookId, 
       chapter_id: type === 'book' ? null : targetId,
-      paragraph_id: paraId || null,
+      paragraph_id: finalParaId,
       parent_id: finalParentId
     };
 
