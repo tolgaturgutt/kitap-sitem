@@ -22,6 +22,7 @@ export default function PanoModal({
   const [panoComments, setPanoComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState(null);
+  const [replyToUsername, setReplyToUsername] = useState(null);
   const [chapterTitle, setChapterTitle] = useState(null);
   
   // Pano sahibinin güncel profilini tutacak state
@@ -36,6 +37,8 @@ export default function PanoModal({
     setHasLiked(false);
     setPanoComments([]);
     setChapterTitle(null);
+    setReplyTo(null);
+    setReplyToUsername(null);
 
     // 🚀 1. OPTİMİZASYON: Profil verisini tekrar çekme! 
     // Carousel'den zaten 'profiles' objesi dolu geliyor. Direkt onu kullan.
@@ -168,6 +171,7 @@ export default function PanoModal({
 
     setNewComment('');
     setReplyTo(null);
+    setReplyToUsername(null);
 
     // Yorumları tekrar çek
     const { data: comments } = await supabase
@@ -265,9 +269,15 @@ export default function PanoModal({
             )}
           </div>
           <p className="text-xs md:text-sm text-gray-600 dark:text-gray-300 mt-0.5">{comment.content}</p>
-          {!isReply && (
-            <button onClick={() => setReplyTo(comment.id)} className="text-[9px] text-gray-400 hover:text-red-600 font-bold mt-1 uppercase">Yanıtla</button>
-          )}
+          <button 
+            onClick={() => {
+              setReplyTo(comment.parent_id || comment.id);
+              setReplyToUsername(displayUsername);
+            }} 
+            className="text-[9px] text-gray-400 hover:text-red-600 font-bold mt-1 uppercase"
+          >
+            Yanıtla
+          </button>
         </div>
       </div>
     );
@@ -299,7 +309,6 @@ export default function PanoModal({
         <button onClick={onClose} className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-xl">✕</button>
 
         {/* SOL TARAF: GÖRSEL */}
-       {/* SOL TARAF: GÖRSEL (SAF HTML VERSİYONU - GARANTİ) */}
         {selectedPano.books?.cover_url && (
           <div className="shrink-0 hidden md:flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
             <img 
@@ -357,10 +366,20 @@ export default function PanoModal({
           <div className="shrink-0 p-6 md:p-8 border-t dark:border-white/5 bg-white dark:bg-[#080808] z-20">
             {user && (
               <div className="bg-gray-50 dark:bg-white/5 p-2 rounded-[2rem] border dark:border-white/5 mb-4">
-                {replyTo && (
+                {replyTo && replyToUsername && (
                   <div className="flex items-center justify-between px-4 py-2 border-b dark:border-white/5 mb-2">
-                    <p className="text-[10px] text-red-600 font-black uppercase">Yanıtlanıyor...</p>
-                    <button onClick={() => setReplyTo(null)} className="text-[10px] font-black text-gray-400 hover:text-red-600">İPTAL</button>
+                    <p className="text-[10px] text-red-600 font-black uppercase">
+                      <span className="text-gray-400">Yanıtlanıyor:</span> @{replyToUsername}
+                    </p>
+                    <button 
+                      onClick={() => {
+                        setReplyTo(null);
+                        setReplyToUsername(null);
+                      }} 
+                      className="text-[10px] font-black text-gray-400 hover:text-red-600"
+                    >
+                      İPTAL
+                    </button>
                   </div>
                 )}
                 <div className="flex gap-2">
