@@ -281,8 +281,10 @@ const ikiHaftaOnce = getLastWeekMonday();
 
       // Haftalık yorumcular
      // --- EN ÇOK KONUŞANLAR (YENİ SİSTEM - LİMİTSİZ) ---
-      const { data: topCommentersData, error: commentError } = await supabase
-        .rpc('get_top_commenters');
+const { data: topCommentersData, error: commentError } = await supabase
+  .rpc('get_top_commenters', { 
+    start_date: birHaftaOnce.toISOString() 
+  });
 
       if (commentError) console.error('Yorum verisi hatası:', commentError);
 
