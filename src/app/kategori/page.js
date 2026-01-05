@@ -62,6 +62,7 @@ export default function KategoriPage() {
                   src={category.image_url} 
                   alt={category.name}
                   fill // Resmi kutuya tam sığdırır
+                  unoptimized
                   className="object-cover group-hover:scale-110 transition-transform duration-700"
                   sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw" // Telefondaysa küçük, PC'de büyük yükle emri
                 />
