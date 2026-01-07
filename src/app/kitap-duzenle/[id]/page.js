@@ -94,17 +94,18 @@ async function guncelle() {
     let finalCoverUrl = currentCover;
 
     try {
-      // ✅✅✅ DEĞİŞEN KISIM BURASI KRAL ✅✅✅
+      
       // Eğer yeni bir resim seçildiyse: SIKIŞTIR VE YÜKLE
       if (newImageFile) {
         const { data: { user } } = await supabase.auth.getUser();
         
-        // Sıkıştırma Ayarları (Kitap kapağı net olmalı ama devasa olmamalı)
+        // YENİ KALİTELİ AYARLAR (Burayı değiştiriyorsun)
         const options = {
-          maxSizeMB: 0.2,          // 200KB (Kalite/Boyut dengesi için ideal)
-          maxWidthOrHeight: 800,   // Max 800px yükseklik/genişlik
+          maxSizeMB: 1,           
+          maxWidthOrHeight: 1920, 
           useWebWorker: true,
-          fileType: 'image/jpeg'
+          fileType: 'image/jpeg',
+          initialQuality: 0.8    
         };
 
         const compressedFile = await imageCompression(newImageFile, options);

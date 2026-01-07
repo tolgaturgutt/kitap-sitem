@@ -41,10 +41,11 @@ export default function KitapEkle() {
     if (!file) return;
 
     const options = {
-      maxSizeMB: 0.2,          // 200KB'a indir
-      maxWidthOrHeight: 1000, 
+      maxSizeMB: 1,          // 200KB'a indir
+      maxWidthOrHeight: 1920, 
       useWebWorker: true,
-      fileType: 'image/jpeg'
+      fileType: 'image/jpeg',
+      initialQuality: 0.8
     };
 
     try {
