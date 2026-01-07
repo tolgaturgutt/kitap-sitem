@@ -533,3 +533,4 @@ Yalan raporlama veya raporlama tehdidi yasaktır.
 14. KABUL BEYANI
 Platformu kullanan herkes, bu kuralları kabul etmiş sayılır.
 `;
+// deneme
