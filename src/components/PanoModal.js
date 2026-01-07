@@ -29,7 +29,6 @@ export default function PanoModal({
   const [panoOwnerProfile, setPanoOwnerProfile] = useState(null);
 
   // --- 1. VERİLERİ YÜKLE (OPTİMİZE EDİLDİ) ---
-// --- 1. VERİLERİ YÜKLE (OPTİMİZE EDİLDİ) ---
   useEffect(() => {
     if (!selectedPano) return;
 
@@ -191,13 +190,17 @@ export default function PanoModal({
 
     if (error) { toast.error('Hata oluştu!'); return; }
 
+    // 🎯 DÜZELTME: Yanıt verilen yorumun sahibine bildirim gönder
     if (replyTo) {
       const parentComment = panoComments.find(c => c.id === replyTo);
-      if (parentComment) {
+      if (parentComment && parentComment.user_email !== user.email) {
         await createReplyNotification(username, user.email, parentComment.user_email, null, null, selectedPano.id);
       }
     } else {
-      await createPanoCommentNotification(username, user.email, selectedPano.id, selectedPano.user_email);
+      // Ana yorum ise pano sahibine bildir
+      if (selectedPano.user_email !== user.email) {
+        await createPanoCommentNotification(username, user.email, selectedPano.id, selectedPano.user_email);
+      }
     }
 
     setNewComment('');
@@ -318,7 +321,8 @@ export default function PanoModal({
           </p>
           <button 
             onClick={() => {
-              setReplyTo(comment.parent_id || comment.id);
+              // 🎯 DÜZELTME: Her zaman direkt yanıt verilen yorumun ID'sini kaydet
+              setReplyTo(comment.id);
               setReplyToUsername(displayUsername);
               setNewComment(`@${displayUsername}  `);
             }} 
