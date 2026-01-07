@@ -195,12 +195,7 @@ export default function GirisSayfasi() {
           throw new Error('Profil oluşturulamadı. Lütfen destek ile iletişime geçin.');
         }
 
-        // ✅ 5. ADIM: OTOMATİK TAKİP
-        const KITAPLAB_RESMI_ID = "4990d668-2cdf-4c9d-b409-21ecf14f43ac";
-        await supabase.from('author_follows').insert({
-          follower_id: user.id,
-          followed_id: KITAPLAB_RESMI_ID,
-        });
+        
 
        // ✅ 6. ADIM: BAŞARILI KAYIT - MAIL ONAYI BEKLEME MODU
 // Kullanıcıyı hemen içeri almıyoruz, cookie basmıyoruz.
@@ -251,7 +246,17 @@ setAgreed(false);
           password: cleanPassword,
         });
 
-        if (error) throw new Error('Giriş bilgileri hatalı.');
+        if (error) {
+          console.log(error.message); // Hata mesajını konsolda görmek için (geliştirirken kalsın)
+          
+          // Eğer Supabase "Email not confirmed" derse özel mesaj ver
+          if (error.message.includes("Email not confirmed")) {
+            throw new Error('Giriş yapabilmek için lütfen mailinize gelen onay linkine tıklayınız. 📧');
+          }
+
+          // Diğer durumlarda (şifre yanlışsa vs.)
+          throw new Error('Giriş bilgileri hatalı.');
+        }
 
         const { data: profile } = await supabase
           .from('profiles')
