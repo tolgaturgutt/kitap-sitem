@@ -447,3 +447,54 @@ html, body {
 body {
   min-height: 100dvh;
 }
+/* globals.css veya tailwind.config.js'e ekle */
+
+/* Yorum highlight animasyonu */
+@keyframes highlight-pulse {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.1);
+    transform: scale(1);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.2);
+    transform: scale(1.02);
+  }
+}
+
+.highlight-comment {
+  animation: highlight-pulse 1s ease-in-out 3;
+  border-left: 4px solid #ef4444;
+  padding-left: 1rem;
+  transition: all 0.3s ease;
+}
+
+/* Dark mode için */
+.dark .highlight-comment {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+
+/* Yorum highlight animasyonu */
+@keyframes highlight-pulse {
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.1);
+    transform: scale(1);
+  }
+  50% {
+    background-color: rgba(239, 68, 68, 0.2);
+    transform: scale(1.02);
+  }
+}
+
+.highlight-comment {
+  animation: highlight-pulse 1s ease-in-out 3;
+  border-left: 4px solid #ef4444;
+  padding-left: 1rem;
+  border-radius: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+/* Dark mode için */
+.dark .highlight-comment {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}

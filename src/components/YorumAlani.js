@@ -9,12 +9,13 @@ import { createCommentNotification, createReplyNotification } from '@/lib/notifi
 export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded, includeParagraphs = false, onStatsUpdate }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
   
   const commentsEndRef = useRef(null);
   
   const [replyComment, setReplyComment] = useState(''); 
   const [replyingTo, setReplyingTo] = useState(null); 
-  const [replyingToUser, setReplyingToUser] = useState(null); // 🆕 KİME YANITLADIĞIMIZI TUTACAĞIZ
+  const [replyingToUser, setReplyingToUser] = useState(null);
 
   const [user, setUser] = useState(null);
   const [isSending, setIsSending] = useState(false);
@@ -40,14 +41,25 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     }
     load();
   }, [type, targetId, paraId, bookId, includeParagraphs]);
+  
+  // 🔥 YENİ: paraId değiştiğinde yorumları yenile
+  useEffect(() => {
+    if (type === 'paragraph') {
+      fetchComments();
+    }
+  }, [paraId]);
 
   useEffect(() => {
-    if (type === 'paragraph' && commentsEndRef.current) {
+    // Sadece yeni yorum eklendiğinde scroll yap
+    if (type === 'paragraph' && shouldScrollToBottom && commentsEndRef.current) {
       commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
+      setShouldScrollToBottom(false);
     }
-  }, [comments, type]);
+  }, [comments, type, shouldScrollToBottom]);
 
   async function fetchComments() {
+    console.log('🔍 Yorumlar yükleniyor:', { type, targetId, paraId, includeParagraphs });
+    
     let query = supabase
       .from('comments')
       .select('*, profiles!comments_user_id_fkey(username, avatar_url, role)')
@@ -61,14 +73,27 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       query = query.eq('book_id', targetId).is('chapter_id', null);
     } else if (type === 'chapter') {
       query = query.eq('chapter_id', targetId);
-      if (!includeParagraphs) query = query.is('paragraph_id', null);
+      if (!includeParagraphs) {
+        query = query.is('paragraph_id', null);
+      }
     } else if (type === 'paragraph') {
+      // 🔥 PARAGRAF YORUMLARI - Sadece bu paragrafa ait olanları getir
       query = query.eq('chapter_id', targetId);
-      if (paraId === null) query = query.is('paragraph_id', null);
-      else query = query.eq('paragraph_id', paraId);
+      
+      if (paraId === null || paraId === undefined) {
+        // paraId yoksa null olanları getir
+        query = query.is('paragraph_id', null);
+      } else {
+        // paraId varsa sadece o paragrafa ait olanları getir
+        query = query.eq('paragraph_id', paraId);
+      }
+      
+      console.log('📍 Paragraf filtrelendi:', paraId);
     }
 
     const { data } = await query;
+    
+    console.log(`✅ ${data?.length || 0} yorum getirildi`);
     
     let sortedData = data || [];
     if (type === 'paragraph') {
@@ -84,16 +109,16 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     if (replyingTo === targetComment.id) {
       setReplyingTo(null);
       setReplyComment('');
-      setReplyingToUser(null); // 🆕 SIFIRLA
+      setReplyingToUser(null);
     } else {
       setReplyingTo(targetComment.id);
-      setReplyingToUser(targetComment.user_email); // 🆕 KİME YANITLADIĞIMIZI KAYDET
+      setReplyingToUser(targetComment.user_email);
       const username = targetComment.profiles?.username || targetComment.username;
       setReplyComment(`@${username} `);
     }
   }
 
- async function handleSend(targetComment = null) {
+  async function handleSend(targetComment = null) {
     const contentToSend = targetComment ? replyComment : newComment;
 
     if (!contentToSend.trim() || !user || isSending) return;
@@ -104,16 +129,26 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 
     let finalParentId = null;
     
-    // 👇 BURASI KRİTİK DEĞİŞİKLİK 👇
-    // Varsayılan olarak mevcut paraId'yi al
-    let finalParaId = paraId || null; 
+    // 🔥 ÖNEMLİ: paragraph_id mantığını düzelt
+    let finalParaId = null;
+    
+    if (type === 'paragraph') {
+        // Paragraf yorumu modundaysak
+        if (targetComment) {
+            // Yanıt ise, hedef yorumun paragraph_id'sini al
+            finalParaId = targetComment.paragraph_id;
+        } else {
+            // Yeni yorum ise, mevcut paraId'yi al
+            finalParaId = paraId;
+        }
+    } else if (type === 'chapter' && includeParagraphs && targetComment) {
+        // Bölüm sayfasında paragraf yorumuna yanıt veriyorsak
+        finalParaId = targetComment.paragraph_id;
+    }
+    // type === 'chapter' veya 'book' ve yeni yorum ise finalParaId = null kalır
 
     if (targetComment) {
         finalParentId = targetComment.parent_id ? targetComment.parent_id : targetComment.id;
-        
-        // EĞER BİR YORUMA YANIT VERİYORSAK, ONUN PARAGRAF ID'SİNİ KOPYALA
-        // Böylece bölüm sonundan yazsak bile paragrafın içine düşer.
-        finalParaId = targetComment.paragraph_id; 
     }
 
     const payload = { 
@@ -136,6 +171,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     if (!error && insertedData) { 
         if (type === 'paragraph') {
             setComments(prev => [...prev, insertedData]);
+            setShouldScrollToBottom(true);
         } else {
             setComments(prev => [insertedData, ...prev]); 
         }
@@ -143,7 +179,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         if (targetComment) {
             setReplyComment('');
             setReplyingTo(null);
-            setReplyingToUser(null); // 🆕 SIFIRLA
+            setReplyingToUser(null);
             toast.success("Yanıt gönderildi");
         } else {
             setNewComment(''); 
@@ -151,7 +187,8 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         }
 
         if (type === 'paragraph' && onCommentAdded) onCommentAdded(paraId);
-        createNotification(insertedData, username, targetComment); // 🆕 targetComment'i de gönder
+        
+        await createNotification(insertedData, username, targetComment);
 
         if (bookId && onStatsUpdate) {
           const { data: updatedBook } = await supabase
@@ -171,36 +208,58 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         toast.error("Hata oluştu.");
     }
     setIsSending(false);
-}
+  }
 
-  // 🔥 FİX: Bildirim doğru kişiye gitsin
   async function createNotification(comment, username, targetComment) {
-      try {
-        if (comment.parent_id) {
-          // Yanıt ise: targetComment'e (yani yanıtladığımız yoruma) bildirim gönder
-          const recipientEmail = replyingToUser || targetComment?.user_email;
-          
-          if (recipientEmail && recipientEmail !== user.email) {
-            await createReplyNotification(
-              username, 
-              user.email, 
-              recipientEmail, // 🔥 Direkt yanıtladığımız kişiye gönder
-              bookId ? parseInt(bookId) : null, 
-              type === 'book' ? null : parseInt(targetId), 
-              null
-            );
-          }
-        } else {
-          await createCommentNotification(
+    try {
+      console.log('🔔 Bildirim oluşturuluyor:', {
+        comment_id: comment.id,
+        paragraph_id: comment.paragraph_id,
+        parent_id: comment.parent_id,
+        targetComment: targetComment?.user_email
+      });
+
+      if (comment.parent_id) {
+        // YANIT İSE
+        const recipientEmail = replyingToUser || targetComment?.user_email;
+        
+        if (recipientEmail && recipientEmail !== user.email) {
+          console.log('✅ Reply bildirimi gönderiliyor:', {
+            to: recipientEmail,
+            paragraph_id: comment.paragraph_id,
+            comment_id: comment.id
+          });
+
+          await createReplyNotification(
             username, 
             user.email, 
-            parseInt(bookId), 
-            type === 'book' ? null : parseInt(targetId)
+            recipientEmail,
+            bookId ? parseInt(bookId) : null, 
+            type === 'book' ? null : parseInt(targetId), 
+            null,
+            comment.paragraph_id,
+            comment.id
           );
         }
-      } catch (e) { 
-        console.error(e); 
+      } else {
+        // YENİ YORUM İSE
+        console.log('✅ Comment bildirimi gönderiliyor:', {
+          paragraph_id: comment.paragraph_id,
+          comment_id: comment.id
+        });
+
+        await createCommentNotification(
+          username, 
+          user.email, 
+          parseInt(bookId), 
+          type === 'book' ? null : parseInt(targetId),
+          comment.paragraph_id,
+          comment.id
+        );
       }
+    } catch (e) { 
+      console.error('❌ Bildirim hatası:', e); 
+    }
   }
 
   async function handleReport(id, content) {
@@ -209,7 +268,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     toast.success("Raporlandı.");
   }
 
- async function handleDelete(id) {
+  async function handleDelete(id) {
     if(!confirm("Silinsin mi?")) return;
     const { error } = await supabase.from('comments').delete().eq('id', id);
     if (!error) { 
@@ -231,7 +290,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
           }
         }
     }
-}
+  }
 
   const mainComments = comments.filter(c => !c.parent_id);
   const getReplies = (parentId) => comments.filter(c => c.parent_id === parentId).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
@@ -310,19 +369,19 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     </div>
   );
   
- if (type === 'paragraph') {
-  return (
-      <div className="flex flex-col h-full relative">
-          <div className="flex-1 overflow-y-auto px-4 pt-4 custom-scrollbar">
-              {ListArea}
-          </div>
+  if (type === 'paragraph') {
+    return (
+        <div className="flex flex-col h-full relative">
+            <div className="flex-1 overflow-y-auto px-4 pt-4 custom-scrollbar">
+                {ListArea}
+            </div>
 
-          <div className="shrink-0 px-3 pt-3 pb-10 md:pb-3 bg-white dark:bg-[#0f0f0f] border-t dark:border-white/5 z-20">
-              {InputArea}
-          </div>
-      </div>
-  );
-}
+            <div className="shrink-0 px-3 pt-3 pb-10 md:pb-3 bg-white dark:bg-[#0f0f0f] border-t dark:border-white/5 z-20">
+                {InputArea}
+            </div>
+        </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -339,7 +398,10 @@ function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onD
     const profileLink = isOwnComment ? '/profil' : `/yazar/${commentUsername}`;
 
     return (
-        <div className={`group relative flex gap-3`}>
+        <div 
+            className={`group relative flex gap-3`}
+            data-comment-id={comment.id}
+        >
             <a 
                 href={profileLink}
                 className={`${isMain ? 'w-8 h-8' : 'w-6 h-6'} rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 flex items-center justify-center font-black text-gray-400 text-[10px] hover:ring-2 hover:ring-red-600 transition-all cursor-pointer`}

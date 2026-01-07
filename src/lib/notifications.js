@@ -9,14 +9,13 @@ import { supabase } from '@/lib/supabase';
  */
 export async function createChapterVoteNotification(actorUsername, actorEmail, bookId, chapterId) {
   try {
-    // Kitap sahibini bul
     const { data: book } = await supabase
       .from('books')
       .select('user_email, title')
       .eq('id', bookId)
       .single();
     
-    if (!book || book.user_email === actorEmail) return; // Kendi kitabına beğeni atmışsa bildirim gönderme
+    if (!book || book.user_email === actorEmail) return;
 
     await supabase.from('notifications').insert({
       recipient_email: book.user_email,
@@ -33,22 +32,23 @@ export async function createChapterVoteNotification(actorUsername, actorEmail, b
 }
 
 /**
- * YORUM BİLDİRİMİ (Kitap/Bölüm)
+ * YORUM BİLDİRİMİ (Kitap/Bölüm/Paragraf)
  * @param {string} actorUsername - Yorum yapan kişinin kullanıcı adı
  * @param {string} actorEmail - Yorum yapan kişinin email'i
  * @param {number} bookId - Kitap ID
  * @param {number} chapterId - Bölüm ID (opsiyonel)
+ * @param {string} paragraphId - Paragraf ID (opsiyonel) 👈 YENİ EKLENEN
+ * @param {number} commentId - Yorum ID (opsiyonel) 👈 YENİ EKLENEN
  */
-export async function createCommentNotification(actorUsername, actorEmail, bookId, chapterId = null) {
+export async function createCommentNotification(actorUsername, actorEmail, bookId, chapterId = null, paragraphId = null, commentId = null) {
   try {
-    // Kitap sahibini bul
     const { data: book } = await supabase
       .from('books')
       .select('user_email, title')
       .eq('id', bookId)
       .single();
     
-    if (!book || book.user_email === actorEmail) return; // Kendi kitabına yorum yapmışsa bildirim gönderme
+    if (!book || book.user_email === actorEmail) return;
 
     await supabase.from('notifications').insert({
       recipient_email: book.user_email,
@@ -57,6 +57,8 @@ export async function createCommentNotification(actorUsername, actorEmail, bookI
       book_title: book.title,
       book_id: bookId,
       chapter_id: chapterId,
+      paragraph_id: paragraphId, // 👈 YENİ EKLENEN
+      comment_id: commentId,     // 👈 YENİ EKLENEN
       is_read: false
     });
   } catch (error) {
@@ -72,10 +74,12 @@ export async function createCommentNotification(actorUsername, actorEmail, bookI
  * @param {number} bookId - Kitap ID
  * @param {number} chapterId - Bölüm ID (opsiyonel)
  * @param {string} panoId - Pano ID (opsiyonel)
+ * @param {string} paragraphId - Paragraf ID (opsiyonel) 👈 YENİ EKLENEN
+ * @param {number} commentId - Yorum ID (opsiyonel) 👈 YENİ EKLENEN
  */
-export async function createReplyNotification(actorUsername, actorEmail, recipientEmail, bookId = null, chapterId = null, panoId = null) {
+export async function createReplyNotification(actorUsername, actorEmail, recipientEmail, bookId = null, chapterId = null, panoId = null, paragraphId = null, commentId = null) {
   try {
-    if (recipientEmail === actorEmail) return; // Kendine yanıt vermişse bildirim gönderme
+    if (recipientEmail === actorEmail) return;
 
     let bookTitle = null;
     if (bookId) {
@@ -95,6 +99,8 @@ export async function createReplyNotification(actorUsername, actorEmail, recipie
       book_id: bookId,
       chapter_id: chapterId,
       pano_id: panoId,
+      paragraph_id: paragraphId, // 👈 YENİ EKLENEN
+      comment_id: commentId,     // 👈 YENİ EKLENEN
       is_read: false
     });
   } catch (error) {
@@ -111,7 +117,7 @@ export async function createReplyNotification(actorUsername, actorEmail, recipie
  */
 export async function createPanoVoteNotification(actorUsername, actorEmail, panoId, recipientEmail) {
   try {
-    if (recipientEmail === actorEmail) return; // Kendi panosunu beğenmişse bildirim gönderme
+    if (recipientEmail === actorEmail) return;
 
     await supabase.from('notifications').insert({
       recipient_email: recipientEmail,
@@ -134,7 +140,7 @@ export async function createPanoVoteNotification(actorUsername, actorEmail, pano
  */
 export async function createPanoCommentNotification(actorUsername, actorEmail, panoId, recipientEmail) {
   try {
-    if (recipientEmail === actorEmail) return; // Kendi panosuna yorum yapmışsa bildirim gönderme
+    if (recipientEmail === actorEmail) return;
 
     await supabase.from('notifications').insert({
       recipient_email: recipientEmail,
@@ -157,7 +163,6 @@ export async function createPanoCommentNotification(actorUsername, actorEmail, p
  */
 export async function createNewChapterNotifications(actorUsername, bookId, chapterId, bookTitle) {
   try {
-    // Bu kitabı kütüphanesine ekleyen kullanıcıları bul
     const { data: libraryUsers } = await supabase
       .from('reading_history')
       .select('user_email')
@@ -165,7 +170,6 @@ export async function createNewChapterNotifications(actorUsername, bookId, chapt
     
     if (!libraryUsers || libraryUsers.length === 0) return;
 
-    // Tüm kullanıcılara bildirim gönder
     const notifications = libraryUsers.map(user => ({
       recipient_email: user.user_email,
       actor_username: actorUsername,

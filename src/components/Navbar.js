@@ -262,40 +262,80 @@ export default function Navbar() {
   );
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
-  function getNotificationLink(n) {
-    switch (n.type) {
-      case 'vote':
-        return n.book_id ? `/kitap/${n.book_id}` : '#';
-      case 'chapter_vote':
-        return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
-      case 'comment':
-        if (n.chapter_id && n.book_id) {
-          return `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
-        } else if (n.book_id) {
-          return `/kitap/${n.book_id}`;
-        }
-        return '#';
-      case 'new_chapter':
-        return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
-      case 'pano_vote':
-      case 'pano_comment':
-        return n.pano_id ? `/pano/${n.pano_id}` : '#';
-      case 'reply':
-        if (n.pano_id) {
-          return `/pano/${n.pano_id}`;
-        } else if (n.chapter_id && n.book_id) {
-          return `/kitap/${n.book_id}/bolum/${n.chapter_id}`;
-        } else if (n.book_id) {
-          return `/kitap/${n.book_id}`;
-        }
-        return '#';
-      case 'follow':
-        return n.actor_username ? `/yazar/${n.actor_username}` : '#';
-      default:
-        return '#';
-    }
-  }
 
+
+
+
+// Navbar.js içindeki getNotificationLink fonksiyonunu BU HALE getir:
+
+function getNotificationLink(n) {
+  // 🔍 DEBUG: Bildirimi console'a yazdır
+  console.log('📢 Bildirim verisi:', {
+    type: n.type,
+    paragraph_id: n.paragraph_id,
+    paragraph_id_type: typeof n.paragraph_id,
+    comment_id: n.comment_id,
+    book_id: n.book_id,
+    chapter_id: n.chapter_id
+  });
+  
+  switch (n.type) {
+    case 'vote':
+      return n.book_id ? `/kitap/${n.book_id}` : '#';
+    
+    case 'chapter_vote':
+      return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
+    
+    case 'comment':
+      if (n.chapter_id && n.book_id) {
+        // 🔥 PARAGRAF YORUMU MU KONTROL ET - null string de kontrol et
+        if (n.paragraph_id !== null && n.paragraph_id !== undefined && n.paragraph_id !== 'null') {
+          console.log('✅ Paragraf yorumuna gidiliyor:', n.paragraph_id);
+          // Paragraf yorumu - paragrafa git ve aç
+          return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;
+        } else {
+          console.log('✅ Bölüm yorumuna gidiliyor');
+          // Bölüm yorumu - bölüm yorumlarına git
+          return `/kitap/${n.book_id}/bolum/${n.chapter_id}?scrollTo=chapter-comments&commentId=${n.comment_id || ''}`;
+        }
+      } else if (n.book_id) {
+        return `/kitap/${n.book_id}`;
+      }
+      return '#';
+    
+    case 'new_chapter':
+      return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
+    
+    case 'pano_vote':
+    case 'pano_comment':
+      return n.pano_id ? `/pano/${n.pano_id}` : '#';
+    
+    case 'reply':
+      if (n.pano_id) {
+        return `/pano/${n.pano_id}`;
+      } else if (n.chapter_id && n.book_id) {
+        // 🔥 PARAGRAF YORUMU YANITI MI YOKSA BÖLÜM YORUMU YANITI MI?
+        if (n.paragraph_id !== null && n.paragraph_id !== undefined && n.paragraph_id !== 'null') {
+          console.log('✅ Paragraf yorumu yanıtına gidiliyor:', n.paragraph_id);
+          // Paragraf yorumu yanıtı - paragrafa git ve aç
+          return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;
+        } else {
+          console.log('✅ Bölüm yorumu yanıtına gidiliyor');
+          // Bölüm yorumu yanıtı - bölüm yorumlarına git
+          return `/kitap/${n.book_id}/bolum/${n.chapter_id}?scrollTo=chapter-comments&commentId=${n.comment_id || ''}`;
+        }
+      } else if (n.book_id) {
+        return `/kitap/${n.book_id}`;
+      }
+      return '#';
+    
+    case 'follow':
+      return n.actor_username ? `/yazar/${n.actor_username}` : '#';
+    
+    default:
+      return '#';
+  }
+}
   function getNotificationText(n) {
     switch (n.type) {
       case 'vote': return 'eserini beğendi';

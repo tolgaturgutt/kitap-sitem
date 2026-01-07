@@ -8,6 +8,7 @@ import { Toaster, toast } from 'react-hot-toast';
 import { createChapterVoteNotification } from '@/lib/notifications';
 import Username from '@/components/Username';
 import Image from 'next/image';
+import { useSearchParams } from 'next/navigation'; // 👈 1. BUNU EKLE
 
 export default function BolumDetay({ params }) {
   const decodedParams = use(params);
@@ -24,7 +25,7 @@ export default function BolumDetay({ params }) {
 
   const [likes, setLikes] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
-  const [notFound, setNotFound] = useState(false); // 👈 YENİ EKLENEN
+  const [notFound, setNotFound] = useState(false);
 
   const [readerSettings, setReaderSettings] = useState({
     fontSize: 20,
@@ -32,6 +33,8 @@ export default function BolumDetay({ params }) {
     theme: 'bg-[#fdfdfd] text-gray-800'
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const searchParams = useSearchParams(); // 👈 2. BUNU EKLE
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -50,16 +53,13 @@ export default function BolumDetay({ params }) {
     async function getFullData() {
       if (!bolumId || !id) return;
       try {
-        // 👇 error değişkenini de alıyoruz
         const { data: chapter, error: chapterError } = await supabase.from('chapters').select('*').eq('id', bolumId).single();
 
-        // 👇 YENİ EKLENEN KONTROL BLOKU
         if (chapterError || !chapter) {
           setNotFound(true);
           setLoading(false);
           return;
         }
-        // 👆 BURAYA KADAR
         
         const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
         const { data: all } = await supabase.from('chapters').select('id, title, is_draft').eq('book_id', id).order('order_no', { ascending: true });
@@ -67,7 +67,6 @@ export default function BolumDetay({ params }) {
         const { data: { user: currentUser } } = await supabase.auth.getUser();
         setUser(currentUser);
 
-        // ✅ TASLAK KONTROL - Yazar veya admin değilse erişimi engelle
         const isAuthor = currentUser && book?.user_email === currentUser.email;
         
         let isUserAdmin = false;
@@ -80,18 +79,16 @@ export default function BolumDetay({ params }) {
           isUserAdmin = !!adminCheck;
         }
 
-        // Eğer bölüm taslaksa ve kullanıcı yazar/admin değilse
         if (chapter?.is_draft && !isAuthor && !isUserAdmin) {
-          window.location.href = '/'; // Ana sayfaya yönlendir
+          window.location.href = '/';
           return;
         }
 
-        // Eğer kitap taslaksa ve kullanıcı yazar/admin değilse
         if (book?.is_draft && !isAuthor && !isUserAdmin) {
           window.location.href = '/';
           return;
         }
-        // Yazar profilini çek
+
         if (book?.user_email) {
           const { data: profile } = await supabase
             .from('profiles')
@@ -101,7 +98,6 @@ export default function BolumDetay({ params }) {
 
           setAuthorProfile(profile);
 
-          // Admin mi kontrol et
           const { data: adminData } = await supabase
             .from('announcement_admins')
             .select('user_email')
@@ -111,23 +107,19 @@ export default function BolumDetay({ params }) {
           setIsAdmin(!!adminData);
         }
 
-      if (currentUser) {
-          // 🛡️ KORUMA: F5 spamını engellemek için SessionStorage kontrolü
+        if (currentUser) {
           const viewKey = `viewed_chapter_${bolumId}_${currentUser.id}`;
           const hasViewed = sessionStorage.getItem(viewKey);
 
-          // Eğer bu oturumda daha önce sayılmadıysa arttır
           if (!hasViewed) {
             await supabase.rpc('increment_view_count', {
               p_chapter_id: Number(bolumId),
               p_user_id: currentUser.id
             });
             
-            // Tarayıcıya "bu adam bunu okudu" diye not düş
             sessionStorage.setItem(viewKey, 'true');
           }
 
-          // Okuma geçmişini her türlü güncelle (tarih güncellensin, "kaldığım yer" özelliği için)
           const { error: historyError } = await supabase.from('reading_history').upsert({
             user_email: currentUser.email,
             book_id: Number(id),
@@ -170,43 +162,111 @@ export default function BolumDetay({ params }) {
     }
     getFullData();
   }, [id, bolumId]);
-useEffect(() => {
-  const handleKeyDown = (e) => {
-    if (
-      e.key === 'F12' ||
-      (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
-      (e.ctrlKey && (e.key === 'u' || e.key === 'U')) ||
-      (e.ctrlKey && (e.key === 'c' || e.key === 'C')) ||
-      (e.ctrlKey && (e.key === 'a' || e.key === 'A'))
-    ) {
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) ||
+        (e.ctrlKey && (e.key === 'u' || e.key === 'U')) ||
+        (e.ctrlKey && (e.key === 'c' || e.key === 'C')) ||
+        (e.ctrlKey && (e.key === 'a' || e.key === 'A'))
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    };
+
+    const handleContextMenu = (e) => {
       e.preventDefault();
-      e.stopPropagation();
-    
       return false;
-    }
-  };
+    };
 
-  const handleContextMenu = (e) => {
-    e.preventDefault();
- 
-    return false;
-  };
+    document.addEventListener('keydown', handleKeyDown, true);
+    document.addEventListener('contextmenu', handleContextMenu);
+    
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true);
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
 
-  document.addEventListener('keydown', handleKeyDown, true);
-  document.addEventListener('contextmenu', handleContextMenu);
-  
-  return () => {
-    document.removeEventListener('keydown', handleKeyDown, true);
-    document.removeEventListener('contextmenu', handleContextMenu);
-  };
-}, []);
+  // 👇 3. BU YENİ useEffect'İ EKLE
+  useEffect(() => {
+    if (loading || !data.chapter) return;
+
+    const openPara = searchParams.get('openPara');
+    const scrollTo = searchParams.get('scrollTo');
+    const commentId = searchParams.get('commentId');
+
+    const timer = setTimeout(() => {
+      if (openPara !== null) {
+        setActivePara(openPara);
+        
+        setTimeout(() => {
+          const paraElement = document.querySelector(`[data-para-id="${openPara}"]`);
+          if (paraElement) {
+            paraElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 100);
+        
+        if (commentId) {
+          let attempts = 0;
+          const checkInterval = setInterval(() => {
+            attempts++;
+            const commentElement = document.querySelector(`[data-comment-id="${commentId}"]`);
+            
+            if (commentElement) {
+              clearInterval(checkInterval);
+              
+              const scrollContainer = commentElement.closest('.overflow-y-auto');
+              if (scrollContainer) {
+                const elementTop = commentElement.offsetTop;
+                scrollContainer.scrollTo({
+                  top: elementTop - 100,
+                  behavior: 'smooth'
+                });
+              }
+              commentElement.classList.add('highlight-comment');
+              setTimeout(() => {
+                commentElement.classList.remove('highlight-comment');
+              }, 3000);
+            } else if (attempts >= 15) {
+              clearInterval(checkInterval);
+            }
+          }, 400);
+        }
+      } else if (scrollTo === 'chapter-comments') {
+        const commentsSection = document.getElementById('chapter-comments-section');
+        if (commentsSection) {
+          commentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        if (commentId) {
+          setTimeout(() => {
+            const commentElement = document.querySelector(`[data-comment-id="${commentId}"]`);
+            if (commentElement) {
+              commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              commentElement.classList.add('highlight-comment');
+              setTimeout(() => {
+                commentElement.classList.remove('highlight-comment');
+              }, 3000);
+            }
+          }, 500);
+        }
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [loading, data.chapter, searchParams]);
+  // 👆 3. BURAYA KADAR EKLE
 
   const handleLike = async () => {
     if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
     if (!user.email_confirmed_at) {
        return toast.error("Oy vermek için lütfen email adresinizi onaylayın.");
     }
-    
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -259,7 +319,6 @@ useEffect(() => {
 
   if (loading) return <div className="min-h-screen flex items-center justify-center font-black opacity-10 animate-pulse text-5xl italic uppercase tracking-tighter">YUKLENIYOR</div>;
 
-  // 👇 YENİ EKLENEN TASARIM
   if (notFound) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#fcfcfc] dark:bg-[#080808] px-6 text-center">
@@ -291,11 +350,9 @@ useEffect(() => {
       </div>
     );
   }
-  // 👆 BURAYA KADAR
 
   const currentIndex = data.allChapters.findIndex(c => Number(c.id) === Number(bolumId));
   
-  // ✅ Yazar/admin değilse sadece yayında bölümleri göster
   const isAuthor = user && data.book?.user_email === user.email;
   const visibleChapters = (isAuthor || isAdmin) 
     ? data.allChapters 
@@ -308,7 +365,6 @@ useEffect(() => {
   const paragraphs = data.chapter?.content
     ? (() => {
       const content = data.chapter.content;
-
       const hasHTML = /<br|<p|<\/p/i.test(content);
 
       if (hasHTML) {
@@ -329,7 +385,6 @@ useEffect(() => {
     })()
     : [];
 
-  // Profil linki - kendi kitabımızsa /profil, değilse /yazar/username
   const authorLink = user && authorProfile?.email === user.email
     ? '/profil'
     : `/yazar/${authorProfile?.username || data.book?.username}`;
@@ -365,71 +420,60 @@ useEffect(() => {
       <div className="flex justify-center min-h-screen relative">
         <main className={`w-full max-w-2xl pt-48 pb-20 px-6 md:px-8 shrink-0 transition-colors duration-500 ${readerSettings.theme}`}>
           <header 
-  className="mb-24 text-center select-none"
-  onCopy={(e) => e.preventDefault()}
-  onContextMenu={(e) => e.preventDefault()}
->
-  <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
-</header>
+            className="mb-24 text-center select-none"
+            onCopy={(e) => e.preventDefault()}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
+          </header>
 
-   <article 
-  className={`${readerSettings.fontFamily} leading-[2.1] select-none`} 
-  style={{ fontSize: `${readerSettings.fontSize}px` }}
-  onCopy={(e) => e.preventDefault()}
-  onContextMenu={(e) => e.preventDefault()}
->
+          <article 
+            className={`${readerSettings.fontFamily} leading-[2.1] select-none`} 
+            style={{ fontSize: `${readerSettings.fontSize}px` }}
+            onCopy={(e) => e.preventDefault()}
+            onContextMenu={(e) => e.preventDefault()}
+          >
             {paragraphs.map((para, i) => {
               const paraId = i.toString();
               const count = paraCommentCounts[paraId] || 0;
 
               return (
-                <div key={i} className="relative group mb-4 isolate">
-
+                <div key={i} className="relative group mb-4 isolate" data-para-id={paraId}>
                   <div className="relative">
-                    {/* YAZI KISMI - Buton için sağdan boşluk bırakıldı (pr-7) */}
                     <div
                       className={`
-  transition-all duration-500
-  pr-0 md:pr-7
-  ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}
-`}
-
+                        transition-all duration-500
+                        pr-0 md:pr-7
+                        ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}
+                      `}
                       dangerouslySetInnerHTML={{ __html: para }}
                     />
 
                     <div
-  onClick={() => setActivePara(activePara === paraId ? null : paraId)}
-  className={`
-    absolute right-[-12px] top-1/2 -translate-y-1/2
-    w-[15px] h-[15px] md:w-[25px] md:h-[25px]
-
-    rounded-full bg-gray-400 opacity-40
-    z-10 cursor-pointer
-    transition-all
-
-    group-hover:w-4 group-hover:h-4
-    group-hover:bg-red-600 group-hover:opacity-100
-
-    ${count > 0 || activePara === paraId ? 'w-4 h-4 bg-red-600 opacity-100' : ''}
-  `}
->
-  {(count > 0 || activePara === paraId) && (
-    <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white scale-[0.7]">
-      {count > 0 ? count : '+'}
-    </span>
-  )}
-</div>
-
-
-
-
+                      onClick={() => setActivePara(activePara === paraId ? null : paraId)}
+                      className={`
+                        absolute right-[-12px] top-1/2 -translate-y-1/2
+                        w-[15px] h-[15px] md:w-[25px] md:h-[25px]
+                        rounded-full bg-gray-400 opacity-40
+                        z-10 cursor-pointer
+                        transition-all
+                        group-hover:w-4 group-hover:h-4
+                        group-hover:bg-red-600 group-hover:opacity-100
+                        ${count > 0 || activePara === paraId ? 'w-4 h-4 bg-red-600 opacity-100' : ''}
+                      `}
+                    >
+                      {(count > 0 || activePara === paraId) && (
+                        <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white scale-[0.7]">
+                          {count > 0 ? count : '+'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })}
           </article>
 
-          {/* NAVİGASYON BUTONLARI */}
           <div className="mt-16 flex items-center justify-between gap-6 border-t border-current/10 pt-8">
             {prevChapter ? (
               <Link href={`/kitap/${id}/bolum/${prevChapter.id}`} className="flex-1 h-11 flex items-center justify-center rounded-full bg-current/5 text-[9px] font-black uppercase tracking-widest opacity-60 hover:opacity-100 hover:bg-current/10 transition-all">
@@ -448,7 +492,6 @@ useEffect(() => {
             )}
           </div>
 
-          {/* ✅ YAZAR BİLGİSİ - NAVİGASYON BUTONLARININ ALTINDA */}
           {authorProfile && (
             <Link
               href={authorLink}
@@ -496,56 +539,44 @@ useEffect(() => {
           )}
         </main>
 
-        {/* PARAGRAF YORUM PANELİ */}
-       {/* PARAGRAF YORUM PANELİ */}
-<aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[400px] transition-all duration-500 z-[60] ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
-  }`}>
-  <div
-    className="absolute inset-0 bg-black/50 md:hidden"
-    onClick={() => setActivePara(null)}
-  />
+        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[400px] transition-all duration-500 z-[60] ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
+          }`}>
+          <div
+            className="absolute inset-0 bg-black/50 md:hidden"
+            onClick={() => setActivePara(null)}
+          />
 
-  {/* MOBİLDEKİ KUTU */}
-  <div className="absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
-    
-    {/* Üst Başlık Kısmı (Sabit) */}
-  <div className="shrink-0 p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase tracking-widest bg-white dark:bg-[#0f0f0f] z-50 relative rounded-t-[2rem]">
-  <span className="opacity-40">Paragraf Yorumları</span>
-  
-  {/* Çarpı Butonu: Rengini koyulaştırdım ve tıklama alanını büyüttüm */}
-  <button 
-    onClick={() => setActivePara(null)} 
-    className="text-black dark:text-white hover:text-red-600 text-xl font-bold p-4 -mr-4 flex items-center justify-center"
-  >
-    ✕
-  </button>
-</div>
-    {/* Yorumların Olduğu Kısım (Kaydırılabilir) */}
-    {/* EKLENEN: min-h-0 ve overscroll-contain */}
-   
+          <div className="absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+            
+            <div className="shrink-0 p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase tracking-widest bg-white dark:bg-[#0f0f0f] z-50 relative rounded-t-[2rem]">
+              <span className="opacity-40">Paragraf Yorumları</span>
+              
+              <button 
+                onClick={() => setActivePara(null)} 
+                className="text-black dark:text-white hover:text-red-600 text-xl font-bold p-4 -mr-4 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
 
-{/* Yorumların Olduğu Kısım (Sabit Çerçeve) */}
-{/* Scroll ve padding'i buradan kaldırdık, overflow-hidden yaptık */}
-<div className="flex-1 overflow-hidden relative bg-gray-50 dark:bg-black/20">
- <YorumAlani
-  type="paragraph"
-  targetId={bolumId}
-  bookId={id}
-  paraId={activePara}
-  onCommentAdded={handleCommentAdded}
-  onStatsUpdate={(newStats) => {
-    // Paragraf yorumu eklendi, kitap istatistikleri güncellendi
-    console.log('Kitap stats güncellendi (paragraf):', newStats);
-    // İsterseniz buraya bir state güncellemesi ekleyebilirsiniz
-  }}
-/>
-</div>
-  </div>
-</aside>
+            <div className="flex-1 overflow-hidden relative bg-gray-50 dark:bg-black/20">
+              <YorumAlani
+                key={`paragraph-${activePara}`} // 🔥 Key ekle - paraId değişince yeniden mount olsun
+                type="paragraph"
+                targetId={bolumId}
+                bookId={id}
+                paraId={activePara}
+                onCommentAdded={handleCommentAdded}
+                onStatsUpdate={(newStats) => {
+                  console.log('Kitap stats güncellendi (paragraf):', newStats);
+                }}
+              />
+            </div>
+          </div>
+        </aside>
       </div>
 
-      {/* BÖLÜM YORUMLARI */}
-      <section className="bg-[#fcfcfc] dark:bg-[#080808] pt-12 pb-20">
+      <section id="chapter-comments-section" className="bg-[#fcfcfc] dark:bg-[#080808] pt-12 pb-20">
         <div className="max-w-2xl mx-auto px-6 md:px-8">
           <div className="p-8 border-4 border-red-600 rounded-3xl bg-white/50 dark:bg-black/30">
             <div className="text-center mb-12">
@@ -554,7 +585,7 @@ useEffect(() => {
                 Bölüm Yorumları
               </h2>
 
-             <div className="flex justify-center gap-3 mt-6 flex-wrap">
+              <div className="flex justify-center gap-3 mt-6 flex-wrap">
                 <button
                   onClick={handleLike}
                   className={`flex items-center gap-3 px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl hover:scale-105 active:scale-95 ${hasLiked
@@ -601,18 +632,16 @@ useEffect(() => {
 
             {bolumId && id ? (
               <YorumAlani
-  type="chapter"
-  targetId={bolumId}
-  bookId={id}
-  paraId={null}
-  onCommentAdded={handleCommentAdded}
-  includeParagraphs={true}
-  onStatsUpdate={(newStats) => {
-    // Bölüm yorumu eklendi, kitap istatistikleri güncellendi
-    console.log('Kitap stats güncellendi (bölüm):', newStats);
-    // İsterseniz buraya da state güncellemesi ekleyebilirsiniz
-  }}
-/>
+                type="chapter"
+                targetId={bolumId}
+                bookId={id}
+                paraId={null}
+                onCommentAdded={handleCommentAdded}
+                includeParagraphs={true}
+                onStatsUpdate={(newStats) => {
+                  console.log('Kitap stats güncellendi (bölüm):', newStats);
+                }}
+              />
             ) : (
               <p className="text-center text-red-500">ID'ler yüklenemedi</p>
             )}
