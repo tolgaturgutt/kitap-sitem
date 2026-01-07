@@ -111,13 +111,24 @@ export default function BolumDetay({ params }) {
           setIsAdmin(!!adminData);
         }
 
-        if (currentUser) {
-          await supabase.rpc('increment_view_count', {
-            p_chapter_id: Number(bolumId),
-            p_user_id: currentUser.id
-          });
+      if (currentUser) {
+          // 🛡️ KORUMA: F5 spamını engellemek için SessionStorage kontrolü
+          const viewKey = `viewed_chapter_${bolumId}_${currentUser.id}`;
+          const hasViewed = sessionStorage.getItem(viewKey);
 
-          await supabase.from('reading_history').upsert({
+          // Eğer bu oturumda daha önce sayılmadıysa arttır
+          if (!hasViewed) {
+            await supabase.rpc('increment_view_count', {
+              p_chapter_id: Number(bolumId),
+              p_user_id: currentUser.id
+            });
+            
+            // Tarayıcıya "bu adam bunu okudu" diye not düş
+            sessionStorage.setItem(viewKey, 'true');
+          }
+
+          // Okuma geçmişini her türlü güncelle (tarih güncellensin, "kaldığım yer" özelliği için)
+          const { error: historyError } = await supabase.from('reading_history').upsert({
             user_email: currentUser.email,
             book_id: Number(id),
             chapter_id: Number(bolumId),
@@ -192,6 +203,10 @@ useEffect(() => {
 
   const handleLike = async () => {
     if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
+    if (!user.email_confirmed_at) {
+       return toast.error("Oy vermek için lütfen email adresinizi onaylayın.");
+    }
+    
 
     const { data: profile } = await supabase
       .from('profiles')

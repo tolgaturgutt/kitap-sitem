@@ -202,14 +202,24 @@ export default function GirisSayfasi() {
           followed_id: KITAPLAB_RESMI_ID,
         });
 
-        // ✅ 6. ADIM: BAŞARILI KAYIT
-        document.cookie = "site_erisim=acik; path=/; max-age=604800; SameSite=Strict";
-        toast.success('Kayıt başarılı! Yönlendiriliyorsunuz...');
-        
-        setTimeout(() => {
-          router.push('/');
-          router.refresh();
-        }, 1500);
+       // ✅ 6. ADIM: BAŞARILI KAYIT - MAIL ONAYI BEKLEME MODU
+// Kullanıcıyı hemen içeri almıyoruz, cookie basmıyoruz.
+toast.success('Kayıt oluşturuldu! 🚀', { duration: 4000 });
+toast('Lütfen mail kutunuza (Spam dahil) gelen onay linkine tıklayarak hesabınızı doğrulayın.', {
+  icon: '✉️',
+  duration: 8000, // Mesaj ekranda uzun kalsın
+  style: {
+    border: '1px solid #713200',
+    padding: '16px',
+    color: '#713200',
+  },
+});
+
+// Formu temizle ve "Giriş Yap" moduna döndür ki adam maili onaylayıp gelince giriş yapsın
+setIsSignUp(false);
+setLoginInput('');
+setPassword('');
+setAgreed(false);
 
       } catch (error) {
         toast.error(error.message || 'Bir hata oluştu.');
