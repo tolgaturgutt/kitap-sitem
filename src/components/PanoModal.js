@@ -29,6 +29,7 @@ export default function PanoModal({
   const [panoOwnerProfile, setPanoOwnerProfile] = useState(null);
 
   // --- 1. VERİLERİ YÜKLE (OPTİMİZE EDİLDİ) ---
+// --- 1. VERİLERİ YÜKLE (OPTİMİZE EDİLDİ) ---
   useEffect(() => {
     if (!selectedPano) return;
 
@@ -76,27 +77,13 @@ export default function PanoModal({
       }
 
       // D) Yorumlar
-    // D) Yorumlar (Garantili Sorgu)
       promises.push(
         supabase
           .from('pano_comments')
-          .select(`
-            *,
-            profiles:user_id (
-              username,
-              avatar_url,
-              email
-            )
-          `)
+          .select(`*, profiles:user_id ( username, avatar_url )`)
           .eq('pano_id', selectedPano.id)
           .order('created_at', { ascending: true })
-          .then(({ data, error }) => {
-            if (error) {
-              console.error("Yorum Hatası:", error);
-              return { type: 'comments', data: [] };
-            }
-            return { type: 'comments', data };
-          })
+          .then(({ data }) => ({ type: 'comments', data }))
       );
 
       // HEPSİNİ BEKLE VE DAĞIT
@@ -204,38 +191,26 @@ export default function PanoModal({
 
     if (error) { toast.error('Hata oluştu!'); return; }
 
-    // 🎯 DÜZELTME: Yanıt verilen yorumun sahibine bildirim gönder
     if (replyTo) {
       const parentComment = panoComments.find(c => c.id === replyTo);
-      if (parentComment && parentComment.user_email !== user.email) {
+      if (parentComment) {
         await createReplyNotification(username, user.email, parentComment.user_email, null, null, selectedPano.id);
       }
     } else {
-      // Ana yorum ise pano sahibine bildir
-      if (selectedPano.user_email !== user.email) {
-        await createPanoCommentNotification(username, user.email, selectedPano.id, selectedPano.user_email);
-      }
+      await createPanoCommentNotification(username, user.email, selectedPano.id, selectedPano.user_email);
     }
 
     setNewComment('');
     setReplyTo(null);
     setReplyToUsername(null);
 
-  // Yorumları tekrar çek (Güncel hali)
-    const { data: comments, error: refreshError } = await supabase
+    // Yorumları tekrar çek
+    const { data: comments } = await supabase
       .from('pano_comments')
-      .select(`
-        *,
-        profiles:user_id (
-          username,
-          avatar_url,
-          email
-        )
-      `)
+      .select(`*, profiles:user_id ( username, avatar_url )`)
       .eq('pano_id', selectedPano.id)
       .order('created_at', { ascending: true });
 
-    if (refreshError) console.error("Yenileme Hatası:", refreshError);
     setPanoComments(comments || []);
     toast.success('Yorum eklendi!');
   }
@@ -343,8 +318,7 @@ export default function PanoModal({
           </p>
           <button 
             onClick={() => {
-              // 🎯 DÜZELTME: Her zaman direkt yanıt verilen yorumun ID'sini kaydet
-              setReplyTo(comment.id);
+              setReplyTo(comment.parent_id || comment.id);
               setReplyToUsername(displayUsername);
               setNewComment(`@${displayUsername}  `);
             }} 
