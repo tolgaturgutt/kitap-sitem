@@ -76,13 +76,27 @@ export default function PanoModal({
       }
 
       // D) Yorumlar
+    // D) Yorumlar (Garantili Sorgu)
       promises.push(
         supabase
           .from('pano_comments')
-          .select(`*, profiles:user_id ( username, avatar_url )`)
+          .select(`
+            *,
+            profiles:user_id (
+              username,
+              avatar_url,
+              email
+            )
+          `)
           .eq('pano_id', selectedPano.id)
           .order('created_at', { ascending: true })
-          .then(({ data }) => ({ type: 'comments', data }))
+          .then(({ data, error }) => {
+            if (error) {
+              console.error("Yorum Hatası:", error);
+              return { type: 'comments', data: [] };
+            }
+            return { type: 'comments', data };
+          })
       );
 
       // HEPSİNİ BEKLE VE DAĞIT
@@ -207,13 +221,21 @@ export default function PanoModal({
     setReplyTo(null);
     setReplyToUsername(null);
 
-    // Yorumları tekrar çek
-    const { data: comments } = await supabase
+  // Yorumları tekrar çek (Güncel hali)
+    const { data: comments, error: refreshError } = await supabase
       .from('pano_comments')
-      .select(`*, profiles:user_id ( username, avatar_url )`)
+      .select(`
+        *,
+        profiles:user_id (
+          username,
+          avatar_url,
+          email
+        )
+      `)
       .eq('pano_id', selectedPano.id)
       .order('created_at', { ascending: true });
 
+    if (refreshError) console.error("Yenileme Hatası:", refreshError);
     setPanoComments(comments || []);
     toast.success('Yorum eklendi!');
   }
