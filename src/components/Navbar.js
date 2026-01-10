@@ -205,6 +205,7 @@ export default function Navbar() {
     }
   }
 // 🔥 REALTIME BİLDİRİM DİNLEYİCİSİ (Bunu eklemen yeterli)
+  // 🔥 REALTIME BİLDİRİM DİNLEYİCİSİ (Çarpı Butonlu & Şık Tasarım)
   useEffect(() => {
     if (!user) return;
 
@@ -222,15 +223,35 @@ export default function Navbar() {
         async (payload) => {
           console.log("🔔 Anlık bildirim geldi:", payload);
           
-          // Mevcut fonksiyonu çağırıp listeyi yeniliyoruz
+          // Listeyi yenile ki zil ikonundaki sayı artsın
           await loadNotifications(user.email);
           
-          // Ufak bir uyarı (Toast) gösteriyoruz
-          toast('Yeni bir bildiriminiz var! 🔔', {
+          // 👇 BURASI: Çarpı butonlu özel bildirim kutusu
+          toast((t) => (
+            <div className="flex items-center justify-between w-full gap-4 min-w-[250px]">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🔔</span>
+                <span className="text-sm font-bold">Yeni bir bildiriminiz var!</span>
+              </div>
+              {/* ÇARPI BUTONU */}
+              <button 
+                onClick={() => toast.dismiss(t.id)} 
+                className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors text-xs font-black border border-white/10"
+              >
+                ✕
+              </button>
+            </div>
+          ), {
+            // Kutunun dış görünüş ayarları (Karanlık tema)
             style: {
-              background: '#333',
-              color: '#fff',
+              background: '#1a1a1a', // Koyu gri arka plan
+              color: '#fff',         // Beyaz yazı
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '12px',
+              padding: '12px 16px',
             },
+            duration: 5000, // 5 saniye sonra kendiliğinden gider
+            position: 'bottom-right', // Sağ altta çıksın
           });
         }
       )
@@ -241,6 +262,7 @@ export default function Navbar() {
       supabase.removeChannel(channel);
     };
   }, [user]);
+   
   function handleSearchTrigger() {
     if (!query.trim()) return;
     setShowSearch(false);
