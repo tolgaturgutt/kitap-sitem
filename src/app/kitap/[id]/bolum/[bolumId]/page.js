@@ -109,7 +109,7 @@ export default function BolumDetay({ params }) {
 
         if (currentUser) {
           const viewKey = `viewed_chapter_${bolumId}_${currentUser.id}`;
-          const hasViewed = sessionStorage.getItem(viewKey);
+          const hasViewed = localStorage.getItem(viewKey);
 
           if (!hasViewed) {
             await supabase.rpc('increment_view_count', {
@@ -117,7 +117,7 @@ export default function BolumDetay({ params }) {
               p_user_id: currentUser.id
             });
             
-            sessionStorage.setItem(viewKey, 'true');
+            localStorage.setItem(viewKey, 'true');
           }
 
           const { error: historyError } = await supabase.from('reading_history').upsert({
