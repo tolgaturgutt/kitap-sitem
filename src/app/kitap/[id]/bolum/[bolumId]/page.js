@@ -111,15 +111,17 @@ export default function BolumDetay({ params }) {
           const viewKey = `viewed_chapter_${bolumId}_${currentUser.id}`;
           const hasViewed = localStorage.getItem(viewKey);
 
-          if (!hasViewed) {
+        if (!hasViewed) {
+            // 🛑 KİLİDİ ÖNCE VURUYORUZ!
+            // Kod daha veritabanına gitmeden "Bu okundu" diye işaretliyoruz.
+            // Böylece ikinci istek gelirse "Zaten okunmuş" deyip iptal ediyor.
+            localStorage.setItem(viewKey, 'true');
+
             await supabase.rpc('increment_view_count', {
               p_chapter_id: Number(bolumId),
               p_user_id: currentUser.id
             });
-            
-            localStorage.setItem(viewKey, 'true');
           }
-
           const { error: historyError } = await supabase.from('reading_history').upsert({
             user_email: currentUser.email,
             book_id: Number(id),
