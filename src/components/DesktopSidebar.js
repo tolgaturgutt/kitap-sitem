@@ -1,16 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 
 export default function DesktopSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [showCreateMenu, setShowCreateMenu] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const isActive = (path) => pathname === path;
+
+  // Admin kontrolü
+  useEffect(() => {
+    async function checkAdmin() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+
+      const { data: adminList } = await supabase
+        .from('announcement_admins')
+        .select('user_email');
+
+      const adminEmails = adminList?.map(a => a.user_email.toLowerCase()) || [];
+      setIsAdmin(adminEmails.includes(user.email.toLowerCase()));
+    }
+    checkAdmin();
+  }, []);
 
   const handleComingSoon = () => {
     toast('Yakında kullanımda! 🚀', {
@@ -149,18 +170,37 @@ export default function DesktopSidebar() {
             )}
           </div>
 
-          {/* 4. ETKİNLİKLER (Yakında) */}
-          <button
-            onClick={handleComingSoon}
-            className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all group bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 relative"
-          >
-            <div className="text-3xl">🎉</div>
-            <div className="flex-1 text-left">
-              <p className="font-black text-sm uppercase tracking-wide">Etkinlikler</p>
-              <p className="text-[9px] opacity-70 font-medium">Yarışmalar & duyurular</p>
-            </div>
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse shadow-lg"></div>
-          </button>
+          {/* 4. ETKİNLİKLER */}
+          {isAdmin ? (
+            <Link
+              href="/etkinlikler"
+              onClick={() => setIsOpen(false)}
+              className={`flex items-center gap-4 p-4 rounded-2xl transition-all group ${
+                isActive('/etkinlikler')
+                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+                  : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600'
+              } relative`}
+            >
+              <div className="text-3xl">🎉</div>
+              <div className="flex-1 text-left">
+                <p className="font-black text-sm uppercase tracking-wide">Etkinlikler</p>
+                <p className="text-[9px] opacity-70 font-medium">Yarışmalar & duyurular</p>
+              </div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse shadow-lg"></div>
+            </Link>
+          ) : (
+            <button
+              onClick={handleComingSoon}
+              className="w-full flex items-center gap-4 p-4 rounded-2xl transition-all group bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 relative"
+            >
+              <div className="text-3xl">🎉</div>
+              <div className="flex-1 text-left">
+                <p className="font-black text-sm uppercase tracking-wide">Etkinlikler</p>
+                <p className="text-[9px] opacity-70 font-medium">Yarışmalar & duyurular</p>
+              </div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-500 rounded-full animate-pulse shadow-lg"></div>
+            </button>
+          )}
 
           {/* 5. SIRALAMA */}
           <Link

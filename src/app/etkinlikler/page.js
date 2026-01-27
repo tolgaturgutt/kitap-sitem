@@ -48,16 +48,26 @@ export default function EtkinliklerSayfasi() {
           username,
           book_id,
           chapter_id,
-          submitted_at
+          submitted_at,
+          is_champion
         )
       `)
       .eq('is_active', true)
       .order('start_date', { ascending: false });
 
     if (!error && data) {
-      // Aktif ve geçmiş etkinlikleri ayır
-      const aktifEtkinlikler = data.filter(e => new Date(e.end_date) >= new Date(now));
-      const gecmisEtkinlikler = data.filter(e => new Date(e.end_date) < new Date(now));
+      // Aktif ve geçmiş etkinlikleri ayır - şampiyon seçildiyse geçmiş sayılır
+      const aktifEtkinlikler = data.filter(e => {
+        const hasChampion = e.event_participants?.some(p => p.is_champion);
+        const dateEnded = new Date(e.end_date) < new Date(now);
+        return !dateEnded && !hasChampion; // Tarihi geçmemiş VE şampiyon yok
+      });
+      
+      const gecmisEtkinlikler = data.filter(e => {
+        const hasChampion = e.event_participants?.some(p => p.is_champion);
+        const dateEnded = new Date(e.end_date) < new Date(now);
+        return dateEnded || hasChampion; // Tarihi geçmiş VEYA şampiyon var
+      });
       
       setEvents({
         aktif: aktifEtkinlikler,
@@ -287,13 +297,16 @@ export default function EtkinliklerSayfasi() {
             {displayEvents.map(event => {
               const isUserParticipated = user && event.event_participants.some(p => p.user_email === user.email);
               const isFull = event.event_participants.length >= event.max_participants;
-              const isEnded = new Date(event.end_date) < new Date();
+              const hasChampion = event.event_participants.some(p => p.is_champion);
+              const dateEnded = new Date(event.end_date) < new Date(); // Sadece tarih kontrolü
+              const isEnded = dateEnded || hasChampion; // Görünüm için (badge vs)
+              const canJoin = !dateEnded && !isFull; // Katılım için sadece tarih ve dolu kontrolü
               const participantCount = event.event_participants.length;
 
               return (
                 <div
                   key={event.id}
-                  className="bg-white dark:bg-white/5 rounded-[2.5rem] border dark:border-white/10 overflow-hidden hover:shadow-2xl transition-all group"
+                  className="bg-white dark:bg-white/5 rounded-2xl md:rounded-[2.5rem] border dark:border-white/10 overflow-hidden hover:shadow-2xl transition-all group"
                 >
                   {/* KAPAK RESMİ */}
                   {event.image_url && (
@@ -306,40 +319,40 @@ export default function EtkinliklerSayfasi() {
                     </div>
                   )}
 
-                  <div className="p-8">
+                  <div className="p-4 md:p-8">
                     {/* BAŞLIK */}
-                    <h2 className="text-3xl font-black dark:text-white mb-3 uppercase tracking-tight">
+                    <h2 className="text-xl md:text-3xl font-black dark:text-white mb-2 md:mb-3 uppercase tracking-tight">
                       {event.title}
                     </h2>
 
                     {/* TEMA */}
                     {event.theme && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                      <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mb-3 md:mb-4">
                         🎨 <span className="font-bold">{event.theme}</span>
                       </p>
                     )}
 
                     {/* AÇIKLAMA */}
-                    <p className="text-gray-600 dark:text-gray-300 mb-6 leading-relaxed">
+                    <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-4 md:mb-6 leading-relaxed line-clamp-3 md:line-clamp-none">
                       {event.description}
                     </p>
 
                     {/* BİLGİLER */}
-                    <div className="space-y-3 mb-6">
-                      <div className="flex items-center gap-3 text-sm">
-                        <span className="font-black text-gray-400 uppercase text-xs">📅 Başlangıç:</span>
-                        <span className="dark:text-white font-bold">{formatDate(event.start_date)}</span>
+                    <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
+                      <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm">
+                        <span className="font-black text-gray-400 uppercase text-[10px] md:text-xs">📅 Başlangıç:</span>
+                        <span className="dark:text-white font-bold text-xs md:text-sm">{formatDate(event.start_date)}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-sm">
-                        <span className="font-black text-gray-400 uppercase text-xs">🏁 Bitiş:</span>
-                        <span className="dark:text-white font-bold">{formatDate(event.end_date)}</span>
+                      <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm">
+                        <span className="font-black text-gray-400 uppercase text-[10px] md:text-xs">🏁 Bitiş:</span>
+                        <span className="dark:text-white font-bold text-xs md:text-sm">{formatDate(event.end_date)}</span>
                       </div>
-                      <div className="flex items-center gap-3 text-sm">
-                        <span className="font-black text-gray-400 uppercase text-xs">👥 Katılımcılar:</span>
-                        <span className="dark:text-white font-bold">
+                      <div className="flex items-center gap-2 md:gap-3 text-xs md:text-sm">
+                        <span className="font-black text-gray-400 uppercase text-[10px] md:text-xs">👥 Katılımcılar:</span>
+                        <span className="dark:text-white font-bold text-xs md:text-sm">
                           {participantCount} / {event.max_participants}
                         </span>
-                        <div className="flex-1 bg-gray-200 dark:bg-white/10 rounded-full h-2 overflow-hidden">
+                        <div className="flex-1 bg-gray-200 dark:bg-white/10 rounded-full h-1.5 md:h-2 overflow-hidden">
                           <div 
                             className="bg-red-600 h-full rounded-full transition-all"
                             style={{ width: `${(participantCount / event.max_participants) * 100}%` }}
@@ -349,41 +362,54 @@ export default function EtkinliklerSayfasi() {
                     </div>
 
                     {/* BUTONLAR */}
-                    <div className="flex gap-3">
-                      {isUserParticipated ? (
-                        <>
-                          <button
-                            onClick={() => handleWithdraw(event.id)}
-                            className="flex-1 py-4 bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400 rounded-2xl font-black uppercase text-sm hover:bg-gray-300 dark:hover:bg-white/20 transition-all"
-                          >
-                            ❌ ÇEKİL
-                          </button>
-                          <Link
-                            href={`/etkinlikler/${event.id}`}
-                            className="flex-1 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase text-sm text-center hover:bg-blue-700 transition-all"
-                          >
-                            📋 DETAYLAR
-                          </Link>
-                        </>
+                    <div className="flex gap-2 md:gap-3">
+                      {isEnded ? (
+                        // Geçmiş etkinlik - sadece detaylar butonu
+                        <Link
+                          href={`/etkinlikler/${event.id}`}
+                          className="flex-1 py-3 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black uppercase text-xs md:text-sm text-center hover:bg-blue-700 transition-all"
+                        >
+                          📋 DETAYLAR
+                        </Link>
                       ) : (
+                        // Aktif etkinlik - katılma/çekilme butonları
                         <>
-                          <button
-                            onClick={() => handleEventClick(event)}
-                            disabled={isFull || isEnded}
-                            className={`flex-1 py-4 rounded-2xl font-black uppercase text-sm transition-all ${
-                              isFull || isEnded
-                                ? 'bg-gray-300 dark:bg-white/10 text-gray-500 cursor-not-allowed'
-                                : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
-                            }`}
-                          >
-                            {isEnded ? '⏰ SONA ERDİ' : isFull ? '🚫 DOLU' : '🎯 KATIL'}
-                          </button>
-                          <Link
-                            href={`/etkinlikler/${event.id}`}
-                            className="flex-1 py-4 bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400 rounded-2xl font-black uppercase text-sm text-center hover:bg-gray-300 dark:hover:bg-white/20 transition-all"
-                          >
-                            📋 DETAYLAR
-                          </Link>
+                          {isUserParticipated ? (
+                            <>
+                              <button
+                                onClick={() => handleWithdraw(event.id)}
+                                className="flex-1 py-3 md:py-4 bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400 rounded-xl md:rounded-2xl font-black uppercase text-xs md:text-sm hover:bg-gray-300 dark:hover:bg-white/20 transition-all"
+                              >
+                                ❌ ÇEKİL
+                              </button>
+                              <Link
+                                href={`/etkinlikler/${event.id}`}
+                                className="flex-1 py-3 md:py-4 bg-blue-600 text-white rounded-xl md:rounded-2xl font-black uppercase text-xs md:text-sm text-center hover:bg-blue-700 transition-all"
+                              >
+                                📋 DETAYLAR
+                              </Link>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleEventClick(event)}
+                                disabled={!canJoin}
+                                className={`flex-1 py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-xs md:text-sm transition-all ${
+                                  !canJoin
+                                    ? 'bg-gray-300 dark:bg-white/10 text-gray-500 cursor-not-allowed'
+                                    : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
+                                }`}
+                              >
+                                {dateEnded ? '⏰ SONA ERDİ' : isFull ? '🚫 DOLU' : '🎯 KATIL'}
+                              </button>
+                              <Link
+                                href={`/etkinlikler/${event.id}`}
+                                className="flex-1 py-3 md:py-4 bg-gray-200 dark:bg-white/10 text-gray-600 dark:text-gray-400 rounded-xl md:rounded-2xl font-black uppercase text-xs md:text-sm text-center hover:bg-gray-300 dark:hover:bg-white/20 transition-all"
+                              >
+                                📋 DETAYLAR
+                              </Link>
+                            </>
+                          )}
                         </>
                       )}
                     </div>
