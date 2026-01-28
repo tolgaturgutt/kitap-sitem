@@ -173,29 +173,18 @@ export default function MobileNav() {
             <span className="text-[8px] font-black uppercase">Oluştur</span>
           </button>
 
-          {isAdmin ? (
-            <Link
-              href="/etkinlikler"
-              className={`flex flex-col items-center justify-center w-[68px] h-16 ${
-                isActive('/etkinlikler')
-                  ? 'text-red-600'
-                  : 'text-gray-400 hover:text-red-600'
-              } relative`}
-            >
-              <div className="text-2xl">🎉</div>
-              <span className="text-[8px] font-black uppercase">Etkinlik</span>
-              <span className="absolute top-1 right-2 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-            </Link>
-          ) : (
-            <button
-              onClick={handleComingSoon}
-              className="flex flex-col items-center justify-center w-[68px] h-16 text-gray-400 hover:text-red-600 relative"
-            >
-              <div className="text-2xl">🎉</div>
-              <span className="text-[8px] font-black uppercase">Etkinlik</span>
-              <span className="absolute top-1 right-2 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
-            </button>
-          )}
+      <Link
+            href="/etkinlikler"
+            className={`flex flex-col items-center justify-center w-[68px] h-16 ${
+              isActive('/etkinlikler')
+                ? 'text-red-600'
+                : 'text-gray-400 hover:text-red-600'
+            } relative`}
+          >
+            <div className="text-2xl">🎉</div>
+            <span className="text-[8px] font-black uppercase">Etkinlik</span>
+           
+          </Link>
 
           <Link
             href="/siralama"
