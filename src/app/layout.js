@@ -3,8 +3,9 @@
 import { Inter } from "next/font/google";
 import Footer from "@/components/Footer";
 import "./globals.css";
-import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation"; // 👈 useRouter eklendi
+// 👇 useRef eklendi
+import { useEffect, useState, useRef } from "react";
+import { usePathname, useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "next-themes";
 import MobileNav from "@/components/MobileNav";
@@ -12,52 +13,62 @@ import DesktopSidebar from "@/components/DesktopSidebar";
 import BanKontrol from '@/components/BanKontrol';
 import WarningSystem from '@/components/WarningSystem';
 import { Toaster } from 'react-hot-toast';
-import { App } from '@capacitor/app'; // 👈 Capacitor App eklendi
+import { App } from '@capacitor/app';
 
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({ children }) {
   const pathname = usePathname();
-  const router = useRouter(); // 👈 Router tanımlandı
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
+  
+  // 🔥 ÖNEMLİ: Hangi sayfada olduğumuzu anlık takip etmek için Ref kullanıyoruz
+  const pathnameRef = useRef(pathname);
 
-  // 🔥 MOBİL GERİ TUŞU AYARI (Capacitor & Android İçin)
+  // 1. Sayfa her değiştiğinde bu Ref'i güncelle (Canlı Takip)
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+
+  // 2. Geri Tuşu Dinleyicisini SADECE BİR KERE KUR (Ömürlük)
   useEffect(() => {
     let backButtonListener;
 
     const setupListener = async () => {
       try {
-        // Capacitor'ün geri tuşunu dinliyoruz
         backButtonListener = await App.addListener('backButton', (data) => {
-          // Eğer ana sayfada veya giriş sayfasındaysak uygulamadan çık
-          if (pathname === '/' || pathname === '/giris') {
+          // Dinleyicinin içindeyken en güncel sayfayı Ref'ten okuyoruz
+          // (Eski yöntemde burası karışıyordu, şimdi garanti)
+          const currentPath = pathnameRef.current;
+          
+          if (currentPath === '/' || currentPath === '/giris') {
+            // Ana sayfa veya girişteysek -> Uygulamadan Çık
             App.exitApp(); 
           } else {
-            // Diğer sayfalardaysak bir geri git (Tarayıcı geçmişi gibi)
+            // Diğer sayfalardaysak -> Bir geri git
             router.back();
           }
         });
       } catch (error) {
-        // Web ortamında çalışıyorsa hata vermesin diye sessizce geçiyoruz
         console.log("Web ortamında geri tuşu dinleyicisi aktif değil.");
       }
     };
 
     setupListener();
 
-    // Temizlik: Sayfa değişirse dinleyiciyi kaldır ki çakışma olmasın
+    // Temizlik: Sadece uygulama tamamen kapanırsa silinsin
     return () => {
       if (backButtonListener) {
         backButtonListener.remove();
       }
     };
-  }, [pathname, router]); // Adres değişince güncel konumu bilsin
+  }, []); // 👈 BOŞ DİZİ: Bu kod sadece uygulama ilk açıldığında 1 kere çalışır, bir daha bozulmaz.
 
+  // --- BAŞLIK AYARLARI ---
   useEffect(() => {
     setMounted(true);
     let baslik = "KitapLab - Kendi Hikayeni Yaz";
 
-    // --- BAŞLIK AYARLARI ---
     if (pathname === '/giris') baslik = "Giriş Yap | KitapLab";
     else if (pathname === '/kayit') baslik = "Kayıt Ol | KitapLab";
     else if (pathname === '/profil') baslik = "Profilim | KitapLab";
@@ -84,19 +95,17 @@ export default function RootLayout({ children }) {
         <meta name="description" content="KitapLab ile hayal gücünü serbest bırak. Kendi hikayeni yaz, binlerce ücretsiz kitabı oku ve yazarlarla etkileşime geç." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         
-        {/* 👇 Google'ın o dünya ikonunu silmesi için gereken satırlar */}
         <link rel="icon" href="/logo.png" sizes="any" /> 
         <link rel="icon" href="/icon.png" type="image/png" sizes="48x48" />
         <link rel="apple-touch-icon" href="/logo.png" />
       </head>
 
-      {/* 👇 DÜZELTİLEN YER: Style içindeki paddingBottom'u kaldırdık. Artık siteyi yukarı itmeyecek. */}
       <body className={`${inter.className} bg-[#fafafa] dark:bg-black text-black dark:text-white transition-colors duration-300`}>
         
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Toaster position="top-center" /> 
           <BanKontrol /> 
-          <WarningSystem /> {/* Hayalet Katman */}
+          <WarningSystem />
 
           {mounted ? (
             <>
