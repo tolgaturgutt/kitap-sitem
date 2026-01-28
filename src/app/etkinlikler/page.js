@@ -253,27 +253,30 @@ export default function EtkinliklerSayfasi() {
           </p>
         </div>
 
-        {/* SEKMELER */}
-        <div className="flex justify-center gap-4 mb-12">
+       {/* SEKMELER */}
+        <div className="flex justify-center gap-2 md:gap-4 mb-8 md:mb-12">
           <button
             onClick={() => setActiveTab('aktif')}
-            className={`px-8 py-4 rounded-full font-black uppercase text-sm tracking-widest transition-all ${
+            className={`px-4 py-2.5 md:px-8 md:py-4 rounded-full font-black uppercase text-[10px] md:text-sm tracking-wide md:tracking-widest transition-all flex items-center gap-1 md:gap-2 ${
               activeTab === 'aktif'
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
                 : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-400 border dark:border-white/10'
             }`}
           >
-            🔥 AKTİF ETKİNLİKLER ({events.aktif?.length || 0})
+            <span className="text-base md:text-lg">🔥</span> 
+            <span>AKTİF <span className="hidden md:inline">ETKİNLİKLER</span> ({events.aktif?.length || 0})</span>
           </button>
+          
           <button
             onClick={() => setActiveTab('gecmis')}
-            className={`px-8 py-4 rounded-full font-black uppercase text-sm tracking-widest transition-all ${
+            className={`px-4 py-2.5 md:px-8 md:py-4 rounded-full font-black uppercase text-[10px] md:text-sm tracking-wide md:tracking-widest transition-all flex items-center gap-1 md:gap-2 ${
               activeTab === 'gecmis'
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
                 : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-400 border dark:border-white/10'
             }`}
           >
-            📚 GEÇMİŞ ETKİNLİKLER ({events.gecmis?.length || 0})
+            <span className="text-base md:text-lg">📚</span>
+            <span>GEÇMİŞ <span className="hidden md:inline">ETKİNLİKLER</span> ({events.gecmis?.length || 0})</span>
           </button>
         </div>
 

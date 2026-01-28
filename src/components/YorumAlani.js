@@ -415,6 +415,7 @@ function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onD
                         <Username 
                             username={commentUsername}
                             isAdmin={comment.profiles?.role === 'admin'}
+                            isPremium={comment.profiles?.role === 'premium'}
                             className={`${isMain ? 'text-[11px]' : 'text-[9px]'} font-black dark:text-gray-300 tracking-wide uppercase`}
                         />
                     </a>

@@ -4,26 +4,60 @@ import { Inter } from "next/font/google";
 import Footer from "@/components/Footer";
 import "./globals.css";
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation"; // 👈 useRouter eklendi
 import Navbar from "@/components/Navbar";
 import { ThemeProvider } from "next-themes";
 import MobileNav from "@/components/MobileNav";
 import DesktopSidebar from "@/components/DesktopSidebar";
 import BanKontrol from '@/components/BanKontrol';
-import WarningSystem from '@/components/WarningSystem'; // 👈 1. EKLEME BURASI
+import WarningSystem from '@/components/WarningSystem';
 import { Toaster } from 'react-hot-toast';
+import { App } from '@capacitor/app'; // 👈 Capacitor App eklendi
 
 const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({ children }) {
   const pathname = usePathname();
+  const router = useRouter(); // 👈 Router tanımlandı
   const [mounted, setMounted] = useState(false);
+
+  // 🔥 MOBİL GERİ TUŞU AYARI (Capacitor & Android İçin)
+  useEffect(() => {
+    let backButtonListener;
+
+    const setupListener = async () => {
+      try {
+        // Capacitor'ün geri tuşunu dinliyoruz
+        backButtonListener = await App.addListener('backButton', (data) => {
+          // Eğer ana sayfada veya giriş sayfasındaysak uygulamadan çık
+          if (pathname === '/' || pathname === '/giris') {
+            App.exitApp(); 
+          } else {
+            // Diğer sayfalardaysak bir geri git (Tarayıcı geçmişi gibi)
+            router.back();
+          }
+        });
+      } catch (error) {
+        // Web ortamında çalışıyorsa hata vermesin diye sessizce geçiyoruz
+        console.log("Web ortamında geri tuşu dinleyicisi aktif değil.");
+      }
+    };
+
+    setupListener();
+
+    // Temizlik: Sayfa değişirse dinleyiciyi kaldır ki çakışma olmasın
+    return () => {
+      if (backButtonListener) {
+        backButtonListener.remove();
+      }
+    };
+  }, [pathname, router]); // Adres değişince güncel konumu bilsin
 
   useEffect(() => {
     setMounted(true);
     let baslik = "KitapLab - Kendi Hikayeni Yaz";
 
-    // --- BAŞLIK AYARLARI (AYNEN KORUNDU) ---
+    // --- BAŞLIK AYARLARI ---
     if (pathname === '/giris') baslik = "Giriş Yap | KitapLab";
     else if (pathname === '/kayit') baslik = "Kayıt Ol | KitapLab";
     else if (pathname === '/profil') baslik = "Profilim | KitapLab";
@@ -62,7 +96,7 @@ export default function RootLayout({ children }) {
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Toaster position="top-center" /> 
           <BanKontrol /> 
-          <WarningSystem /> {/* 👈 2. VE EN ÖNEMLİ EKLEME BURASI: Hayalet Katman Devrede */}
+          <WarningSystem /> {/* Hayalet Katman */}
 
           {mounted ? (
             <>
@@ -86,4 +120,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-// Cache temizliği için güncelleme - Kral geri döndü

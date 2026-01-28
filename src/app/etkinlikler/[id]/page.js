@@ -383,10 +383,12 @@ export default function EtkinlikDetay({ params }) {
                 <p className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1">{participants.length}</p>
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-black uppercase">Katılımcı</p>
               </div>
-              <div className="text-center">
-                <p className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1">{new Date(event.end_date).getDate()}</p>
-                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-black uppercase">Son Gün</p>
-              </div>
+             <div className="text-center">
+  <p className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1">
+    {new Date(event.end_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+  </p>
+  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-black uppercase">Son Gün</p>
+</div>
               <div className="text-center">
                 <p className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1">
                   {new Date(event.start_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
@@ -470,11 +472,11 @@ export default function EtkinlikDetay({ params }) {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                      <Username 
+                     <Username 
   username={participant.display_username} 
   isAdmin={participant.is_admin}
-  isPremium={participant.role === 'premium'} // 👈 YENİ EKLENEN
-/>  <Username username={participant.display_username} isAdmin={participant.is_admin} />
+  isPremium={participant.role === 'premium'}
+/>
                         <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">
                           {new Date(participant.submitted_at).toLocaleDateString('tr-TR')}
                         </p>
