@@ -76,6 +76,7 @@ export default function KutuphanePage() {
           return {
             ...book,
             username: displayUsername, // Güncel isim
+            role: profile?.role,
             is_admin: emails.includes(ownerEmail), // Güncel admin kontrolü
             totalViews,
             totalVotes,
@@ -214,7 +215,11 @@ export default function KutuphanePage() {
                     )}
 
                     <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 mb-2">
-                      <Username username={kitap.username} isAdmin={kitap.is_admin} />
+                     <Username 
+    username={kitap.username} 
+    isAdmin={kitap.is_admin} 
+    isPremium={kitap.role === 'premium'} // 👈 YENİ EKLENEN
+  />
                     </p>
 
                     <div className="flex items-center gap-1.5 md:gap-2 text-[8px] md:text-[9px] font-bold text-gray-400">

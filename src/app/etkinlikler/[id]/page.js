@@ -76,7 +76,7 @@ export default function EtkinlikDetay({ params }) {
         participantsData.map(async (participant) => {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('avatar_url, username')
+            .select('avatar_url, username,role')
             .eq('email', participant.user_email)
             .single();
 
@@ -84,6 +84,7 @@ export default function EtkinlikDetay({ params }) {
             ...participant,
             avatar_url: profile?.avatar_url || null,
             display_username: profile?.username || participant.username,
+            role: profile?.role,
             is_admin: emails.includes(participant.user_email?.toLowerCase()),
           };
         })
@@ -311,6 +312,7 @@ export default function EtkinlikDetay({ params }) {
                     <Username
                       username={champion.display_username}
                       isAdmin={champion.is_admin}
+                      isPremium={champion.role === 'premium'}
                       className="text-lg sm:text-2xl md:text-3xl font-black text-white"
                     />
                   </div>
@@ -468,7 +470,11 @@ export default function EtkinlikDetay({ params }) {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <Username username={participant.display_username} isAdmin={participant.is_admin} />
+                      <Username 
+  username={participant.display_username} 
+  isAdmin={participant.is_admin}
+  isPremium={participant.role === 'premium'} // 👈 YENİ EKLENEN
+/>  <Username username={participant.display_username} isAdmin={participant.is_admin} />
                         <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">
                           {new Date(participant.submitted_at).toLocaleDateString('tr-TR')}
                         </p>

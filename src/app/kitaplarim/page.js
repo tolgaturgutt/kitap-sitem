@@ -101,6 +101,7 @@ export default function KitaplarimSayfasi() {
           return {
             ...book,
             username: displayUsername,
+            role: profile?.role,
             is_admin: emails.includes(ownerEmail),
             totalViews,
             totalVotes,
@@ -272,7 +273,11 @@ export default function KitaplarimSayfasi() {
                   {/* Kütüphane için yazar adı */}
                   {activeTab === 'kutuphane' && (
                     <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest mb-1">
-                      <Username username={k.username} isAdmin={k.is_admin} />
+                     <Username 
+      username={k.username} 
+      isAdmin={k.is_admin} 
+      isPremium={k.role === 'premium'} // 👈 YENİ EKLENEN
+    />
                     </p>
                   )}
                   

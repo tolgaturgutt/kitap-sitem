@@ -33,7 +33,7 @@ export default function ProfilSayfasi() {
   const [modalType, setModalType] = useState(null);
   const [selectedPano, setSelectedPano] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '' });
+  const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '',role: '' });
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
 
@@ -63,7 +63,8 @@ export default function ProfilSayfasi() {
         username: profile?.username || currentUsername,
         bio: profile?.bio || '',
         avatar_url: profile?.avatar_url || '',
-        instagram: profile?.instagram || ''
+        instagram: profile?.instagram || '',
+        role: profile?.role
       });
 
       const { data: adminData } = await supabase
@@ -114,7 +115,7 @@ export default function ProfilSayfasi() {
         .from('author_follows')
         .select(`
           followed_id,
-          profiles:followed_id ( username, full_name, avatar_url, email )
+          profiles:followed_id ( username, full_name, avatar_url, email, role )
         `)
         .eq('follower_id', activeUser.id);
 
@@ -123,7 +124,7 @@ export default function ProfilSayfasi() {
         .from('author_follows')
         .select(`
           follower_id,
-          profiles:follower_id ( username, full_name, avatar_url, email )
+          profiles:follower_id ( username, full_name, avatar_url, email, role )
         `)
         .eq('followed_id', activeUser.id);
 
@@ -133,6 +134,7 @@ export default function ProfilSayfasi() {
         username: item.profiles?.username || 'Bilinmeyen',
         full_name: item.profiles?.full_name,
         avatar_url: item.profiles?.avatar_url,
+        role: item.profiles?.role,
         is_admin: adminEmailList.includes(item.profiles?.email)
       })) || [];
 
@@ -141,6 +143,7 @@ export default function ProfilSayfasi() {
         username: item.profiles?.username || 'Bilinmeyen',
         full_name: item.profiles?.full_name,
         avatar_url: item.profiles?.avatar_url,
+        role: item.profiles?.role,
         is_admin: adminEmailList.includes(item.profiles?.email)
       })) || [];
 
@@ -309,11 +312,12 @@ export default function ProfilSayfasi() {
                   </div>
 
                   <div className="flex justify-center md:justify-start mb-3 md:mb-4">
-                    <Username
-                      username={profileData.username}
-                      isAdmin={isAdmin}
-                      className="text-xs text-gray-400 uppercase font-bold tracking-wide"
-                    />
+                   <Username
+  username={profileData.username}
+  isAdmin={isAdmin}
+  isPremium={profileData.role === 'premium'} // 👈 YENİ EKLENEN
+  className="text-xs text-gray-400 uppercase font-bold tracking-wide"
+/>
                   </div>
 
                   <div className="flex flex-wrap gap-2 justify-center md:justify-start">
@@ -616,6 +620,7 @@ export default function ProfilSayfasi() {
                           <Username
                             username={displayName}
                             isAdmin={p.is_admin}
+                            isPremium={p.role === 'premium'}
                             className="text-[10px] md:text-xs font-bold"
                           />
                           {p.full_name && (

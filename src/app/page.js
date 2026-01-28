@@ -324,7 +324,11 @@ function CategoryRow({ title, books, isFeatured = false }) {
             )}
 
             <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
-              <Username username={kitap.username} isAdmin={kitap.is_admin} />
+              <Username 
+  username={kitap.username} 
+  isAdmin={kitap.is_admin} 
+  isPremium={kitap.role === 'premium'} // 👈 YENİ
+/>
             </p>
 
             <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
@@ -386,7 +390,11 @@ function TopReadRow({ books }) {
             )}
 
             <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
-              <Username username={kitap.username} isAdmin={kitap.is_admin} />
+              <Username 
+  username={kitap.username} 
+  isAdmin={kitap.is_admin} 
+  isPremium={kitap.role === 'premium'} // 👈 YENİ
+/>
             </p>
 
             <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
@@ -454,7 +462,7 @@ export default function Home() {
               id,
               title,
               cover_url,
-              profiles:user_id(username, avatar_url, email),
+              profiles:user_id(username, avatar_url, email,role),
               chapters (
                 id,
                 title,
@@ -488,7 +496,8 @@ export default function Home() {
             ...item,
             books: {
               ...book,
-              username: book.profiles?.username || book.username,
+             username: book.profiles?.username || book.username,
+              role: book.profiles?.role, // 👈 EKLE
               totalViews,
               totalVotes, 
               totalComments: 0
@@ -501,7 +510,7 @@ export default function Home() {
       // 4. Son Eklenen Bölümleri Çek
       const { data: recentChaps } = await supabase
         .from('chapters')
-        .select('id, title, created_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, profiles:user_id(username, avatar_url, email))')
+        .select('id, title, created_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, profiles:user_id(username, avatar_url, email,role))')
         .eq('books.is_draft', false)
         .eq('is_draft', false)
         .order('created_at', { ascending: false })
@@ -511,9 +520,10 @@ export default function Home() {
         const bookOwnerEmail = c.books?.profiles?.email || c.books?.user_email;
         return {
           ...c,
-          books: {
+        books: {
             ...c.books,
-            username: c.books.profiles?.username || c.books.username
+            username: c.books.profiles?.username || c.books.username,
+            role: c.books.profiles?.role // 👈 EKLE
           },
           is_admin: emails.includes(bookOwnerEmail)
         };
@@ -526,7 +536,7 @@ export default function Home() {
       // total_votes sütununu da istiyoruz
       let { data: allBooks, error: booksError } = await supabase
         .from('books')
-        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email), chapters(id, views, is_draft)');
+        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email,role), chapters(id, views, is_draft)');
 
       if (booksError) {
         setLoading(false);
@@ -556,7 +566,8 @@ export default function Home() {
 
           return {
             ...book,
-            username: book.profiles?.username || book.username,
+          username: book.profiles?.username || book.username,
+            role: book.profiles?.role, // 👈 EKLE
             is_admin: emails.includes(bookOwnerEmail),
             totalViews,
             totalVotes,
@@ -726,7 +737,11 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
                 {chapter.books?.title}
               </h3>
               <p className="text-[7px] md:text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">
-                <Username username={chapter.books?.username} isAdmin={chapter.is_admin} />
+                <Username 
+  username={chapter.books?.username} 
+  isAdmin={chapter.is_admin} 
+  isPremium={chapter.books?.role === 'premium'} // 👈 YENİ (Dikkat: chapter.books.role)
+/>
               </p>
             </div>
           ))}
@@ -786,7 +801,11 @@ function EditorsChoiceSection({ books }) {
               )}
 
               <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest pl-6 truncate">
-                <Username username={kitap.username} isAdmin={kitap.is_admin} />
+               <Username 
+  username={kitap.username} 
+  isAdmin={kitap.is_admin} 
+  isPremium={kitap.role === 'premium'} // 👈 YENİ
+/>
               </p>
 
               <div className="flex items-center gap-1.5 md:gap-3 mt-2 pl-1 text-[8px] md:text-[9px] font-bold text-gray-400">

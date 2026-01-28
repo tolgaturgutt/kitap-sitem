@@ -45,7 +45,8 @@ export default function PanoPage({ params }) {
         profiles:user_id (
           username,
           avatar_url,
-          email
+          email,
+          role
         )
       `)
       .eq('id', panoId)

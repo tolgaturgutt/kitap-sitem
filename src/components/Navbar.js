@@ -52,7 +52,7 @@ export default function Navbar() {
         const fetchProfile = async () => {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('avatar_url, username')
+            .select('avatar_url, username,role')
             .eq('id', session.user.id)
             .single();
 
@@ -462,6 +462,7 @@ function getNotificationLink(n) {
                             <Username
                               username={b.username}
                               isAdmin={b.author_role === 'admin'}
+                              isPremium={b.author_role === 'premium'}
                               className="text-[9px] text-gray-400 uppercase"
                             />
                           </div>
@@ -498,6 +499,7 @@ function getNotificationLink(n) {
                             <Username
                               username={u.username}
                               isAdmin={u.role === 'admin'}
+                              isPremium={u.role === 'premium'}
                               className="text-xs font-bold group-hover:text-red-600 transition-colors"
                             />
                             {u.full_name && <p className="text-[9px] text-gray-400">{u.full_name}</p>}
@@ -814,6 +816,7 @@ function getNotificationLink(n) {
                               <Username
                                 username={b.username}
                                 isAdmin={b.author_role === 'admin'}
+                                isPremium={b.author_role === 'premium'}
                                 className="text-[9px] text-gray-400 uppercase"
                               />
                             </div>
@@ -850,6 +853,7 @@ function getNotificationLink(n) {
                               <Username
                                 username={u.username}
                                 isAdmin={u.role === 'admin'}
+                                isPremium={u.role === 'premium'}
                                 className="text-xs font-bold group-hover:text-red-600 transition-colors"
                               />
                               {u.full_name && <p className="text-[9px] text-gray-400">{u.full_name}</p>}

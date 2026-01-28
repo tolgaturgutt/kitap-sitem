@@ -185,11 +185,12 @@ async function fetchBooks(currentOffset) {
                     {book.title}
                   </h3>
                   <div className="mt-1">
-                    <Username 
-                      username={book.username} 
-                      isAdmin={book.author_role === 'admin'} 
-                      className="text-[10px] text-gray-500 font-bold uppercase tracking-wider" 
-                    />
+                  <Username 
+  username={book.username} 
+  isAdmin={book.author_role === 'admin'}
+  isPremium={book.author_role === 'premium'} 
+  className="text-[10px] text-gray-500 font-bold uppercase tracking-wider" 
+/>
                   </div>
                   
                   {/* ✅ İSTATİSTİKLER (Okunma, Beğeni, Yorum) */}

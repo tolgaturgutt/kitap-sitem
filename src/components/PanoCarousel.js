@@ -52,7 +52,7 @@ export default function PanoCarousel({ onPanoClick, user }) {
         // 2. Bu e-postalara ait profilleri TEK SEFERDE çek
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('email, username, avatar_url')
+          .select('email, username, avatar_url,role')
           .in('email', userEmails);
 
         // 3. Profilleri panolarla eşleştir (Hafızada birleştirme)
@@ -190,6 +190,7 @@ export default function PanoCarousel({ onPanoClick, user }) {
                     <Username 
                       username={pano.profiles?.username || pano.user_email.split('@')[0]}
                       isAdmin={isAdmin}
+                      isPremium={pano.profiles?.role === 'premium'}
                       className="text-[10px] font-bold text-center truncate dark:text-white"
                     />
                   </div>

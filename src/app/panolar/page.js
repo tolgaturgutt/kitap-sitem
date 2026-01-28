@@ -47,7 +47,7 @@ export default function TumPanolar() {
           panosData.map(async (pano) => {
             const { data: profile } = await supabase
               .from('profiles')
-              .select('username, avatar_url')
+              .select('username, avatar_url,role')
               .eq('email', pano.user_email)
               .single();
             
@@ -165,10 +165,11 @@ export default function TumPanolar() {
                       onClick={(e) => e.stopPropagation()}
                       className="text-[10px] font-black hover:text-red-600 transition-colors"
                     >
-                      <Username
-                        username={pano.profiles?.username || pano.username}
-                        isAdmin={adminEmails.includes(pano.user_email)}
-                      />
+                     <Username
+  username={pano.profiles?.username || pano.username}
+  isAdmin={adminEmails.includes(pano.user_email)}
+  isPremium={pano.profiles?.role === 'premium'} // 👈 YENİ EKLENEN
+/>
                     </Link>
                     <span className="text-[9px] text-gray-400">•</span>
                     <span className="text-[9px] text-gray-400 font-bold">

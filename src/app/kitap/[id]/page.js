@@ -418,7 +418,11 @@ export default function KitapDetay({ params }) {
               </div>
               <div>
                 <p className="text-sm font-black group-hover:text-red-600 transition-colors">
-                  <Username username={displayAuthorName} isAdmin={data.authorIsAdmin} />
+                 <Username 
+  username={displayAuthorName} 
+  isAdmin={data.authorIsAdmin} 
+  isPremium={data.authorProfile?.role === 'premium'} 
+/>
                 </p>
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Eser Sahibi</p>
               </div>

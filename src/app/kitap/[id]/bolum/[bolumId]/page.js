@@ -92,7 +92,7 @@ export default function BolumDetay({ params }) {
         if (book?.user_email) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('username, avatar_url, email')
+            .select('username, avatar_url, email,role')
             .eq('email', book.user_email)
             .single();
 
@@ -528,10 +528,11 @@ export default function BolumDetay({ params }) {
                   Yazar
                 </p>
                 <div className="text-sm font-bold group-hover:text-red-600 transition-colors">
-                  <Username
-                    username={authorProfile.username || data.book?.username}
-                    isAdmin={isAdmin}
-                  />
+                 <Username
+  username={authorProfile.username || data.book?.username}
+  isAdmin={isAdmin}
+  isPremium={authorProfile?.role === 'premium'} // 👈 YENİ EKLENEN
+/>
                 </div>
               </div>
               <div className="text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">

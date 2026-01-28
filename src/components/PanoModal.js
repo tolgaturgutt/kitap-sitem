@@ -80,7 +80,7 @@ export default function PanoModal({
       promises.push(
         supabase
           .from('pano_comments')
-          .select(`*, profiles:user_id ( username, avatar_url )`)
+          .select(`*, profiles:user_id ( username, avatar_url ,role)`)
           .eq('pano_id', selectedPano.id)
           .order('created_at', { ascending: true })
           .then(({ data }) => ({ type: 'comments', data }))
@@ -132,7 +132,7 @@ export default function PanoModal({
 
   // Yedek fonksiyon: Eğer Carousel'den profil gelmediyse
   async function fetchOwnerProfile() {
-    let ownerQuery = supabase.from('profiles').select('username, avatar_url, email');
+    let ownerQuery = supabase.from('profiles').select('username, avatar_url, email,role');
     if (selectedPano.user_id) {
       ownerQuery = ownerQuery.eq('id', selectedPano.user_id);
     } else {
@@ -207,7 +207,7 @@ export default function PanoModal({
     // Yorumları tekrar çek
     const { data: comments } = await supabase
       .from('pano_comments')
-      .select(`*, profiles:user_id ( username, avatar_url )`)
+      .select(`*, profiles:user_id ( username, avatar_url,role )`)
       .eq('pano_id', selectedPano.id)
       .order('created_at', { ascending: true });
 
@@ -287,7 +287,11 @@ export default function PanoModal({
               href={profileLink}
               className="text-[10px] md:text-xs font-black hover:text-red-600 transition-colors"
             >
-              <Username username={displayUsername} isAdmin={adminEmails.includes(comment.user_email)} />
+             <Username 
+  username={displayUsername} 
+  isAdmin={adminEmails.includes(comment.user_email)} 
+  isPremium={comment.profiles?.role === 'premium'} // 👈 YENİ EKLENEN
+/>
             </Link>
            {user && (
               <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
@@ -452,7 +456,13 @@ export default function PanoModal({
                    )}
                 </div>
                  <div>
-                    <p className="text-[10px] font-black uppercase"><Username username={ownerUsername} isAdmin={adminEmails.includes(ownerEmail)} /></p>
+                    <p className="text-[10px] font-black uppercase">
+  <Username 
+    username={ownerUsername} 
+    isAdmin={adminEmails.includes(ownerEmail)} 
+    isPremium={ownerProfile?.role === 'premium'} 
+  />
+</p>
                     <span className="text-[9px] text-gray-400 font-bold">{new Date(selectedPano.created_at).toLocaleDateString('tr-TR')}</span>
                  </div>
               </Link>

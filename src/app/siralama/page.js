@@ -88,7 +88,14 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
                   </div>
                   <h3 className={`font-bold text-sm truncate ${colors.hover} transition-colors`}>{book.title}</h3>
                 </Link>
-                <div className="mt-1"><Username username={book.profiles?.username} isAdmin={isUserAdmin} className="text-xs text-gray-400 font-bold uppercase tracking-wider" /></div>
+                <div className="mt-1">
+  <Username 
+    username={book.profiles?.username} 
+    isAdmin={isUserAdmin} 
+    isPremium={book.profiles?.role === 'premium'} // 👈 YENİ EKLENEN
+    className="text-xs text-gray-400 font-bold uppercase tracking-wider" 
+  />
+</div>
                 <p className="text-[10px] text-gray-500 mt-1">
                   {book.weekly_reads ? `${formatNumber(book.weekly_reads)} okuma (bu hafta)` : 
                    book.monthly_reads ? `${formatNumber(book.monthly_reads)} okuma (bu ay)` : 
@@ -189,7 +196,8 @@ const ikiHaftaOnce = getLastWeekMonday();
         profiles: { // Profil yapısını senin koduna uydurdum
           username: item.username,
           email: item.user_email,
-          avatar_url: item.user_avatar
+          avatar_url: item.user_avatar,
+          role: item.role
         }
       })) || [];
 
@@ -199,7 +207,7 @@ const ikiHaftaOnce = getLastWeekMonday();
       // Aylık en çok okunan kitaplar (chapter_views'dan)
       const { data: monthlyChapterViews, error: monthlyViewsError } = await supabase
         .from('chapter_views')
-        .select(`chapter_id, created_at, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, profiles:user_id (username, email)))`)
+       .select(`chapter_id, created_at, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, profiles:user_id (username, email, role)))`)
         .gte('created_at', birAyOnce.toISOString());
 
       const monthlyBookViewCounts = {};
@@ -231,7 +239,7 @@ const ikiHaftaOnce = getLastWeekMonday();
           username,
           is_draft,
           chapters (views), 
-          profiles:user_id (username, email)
+          profiles:user_id (username, email,role)
         `)
         .eq('is_draft', false); // Taslakları gizle
 
@@ -274,6 +282,7 @@ const ikiHaftaOnce = getLastWeekMonday();
         username: writer.username,
         email: writer.email,
         avatar: writer.avatar_url,
+        role: writer.role,
         totalWords: writer.total_words
       })) || [];
 
@@ -293,6 +302,7 @@ const { data: topCommentersData, error: commentError } = await supabase
         username: user.username,
         email: user.email,
         avatar: user.avatar_url,
+        role: user.role,
         count: user.comment_count
       })) || [];
       
@@ -317,18 +327,20 @@ const { data: topCommentersData, error: commentError } = await supabase
          end_date: birHaftaOnce.toISOString()
       });
 
-      setLastWeekChampions({
+    setLastWeekChampions({
         writer: rpcChampionWriter?.[0] ? {
            username: rpcChampionWriter[0].username,
            email: rpcChampionWriter[0].email,
            avatar: rpcChampionWriter[0].avatar_url,
+           role: rpcChampionWriter[0].role, // 👈 DÜZELTİLDİ: Artık Yazarın (Writer) rolünü alıyor
            totalWords: rpcChampionWriter[0].total_words
         } : null,
         
-        commenter: rpcChampionCommenter?.[0] ? {
+       commenter: rpcChampionCommenter?.[0] ? {
            username: rpcChampionCommenter[0].username,
            email: rpcChampionCommenter[0].email,
            avatar: rpcChampionCommenter[0].avatar_url,
+           role: rpcChampionCommenter[0].role, // 👈 BUNU EKLE
            count: rpcChampionCommenter[0].count
         } : null,
         
@@ -389,7 +401,7 @@ const { data: topCommentersData, error: commentError } = await supabase
                     <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden border-2 md:border-4 border-yellow-500 group-hover:scale-110 transition-transform bg-gray-200 dark:bg-gray-800">
                       {lastWeekChampions.writer.avatar && <img src={lastWeekChampions.writer.avatar} className="w-full h-full object-cover" alt="" />}
                     </div>
-                    <Username username={lastWeekChampions.writer.username} isAdmin={adminEmails.includes(lastWeekChampions.writer.email)} className="font-bold text-xs md:text-base group-hover:text-yellow-500 transition-colors" />
+                    <Username username={lastWeekChampions.writer.username} isAdmin={adminEmails.includes(lastWeekChampions.writer.email)} isPremium={lastWeekChampions.writer.role === 'premium'} className="font-bold text-xs md:text-base group-hover:text-yellow-500 transition-colors" />
                     <p className="text-[10px] md:text-xs text-gray-400 font-medium">{formatNumber(lastWeekChampions.writer.totalWords)} kelime</p>
                   </Link>
                 </div>
@@ -421,7 +433,7 @@ const { data: topCommentersData, error: commentError } = await supabase
                     <div className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden border-2 md:border-4 border-yellow-500 group-hover:scale-110 transition-transform bg-gray-200 dark:bg-gray-800">
                       {lastWeekChampions.commenter.avatar && <img src={lastWeekChampions.commenter.avatar} className="w-full h-full object-cover" alt="" />}
                     </div>
-                    <Username username={lastWeekChampions.commenter.username} isAdmin={adminEmails.includes(lastWeekChampions.commenter.email)} className="font-bold text-xs md:text-base group-hover:text-yellow-500 transition-colors" />
+                    <Username username={lastWeekChampions.commenter.username} isAdmin={adminEmails.includes(lastWeekChampions.commenter.email)} isPremium={lastWeekChampions.commenter.role === 'premium'} className="font-bold text-xs md:text-base group-hover:text-yellow-500 transition-colors" />
                     <p className="text-[10px] md:text-xs text-gray-400 font-medium">{lastWeekChampions.commenter.count} yorum</p>
                   </Link>
                 </div>
@@ -449,7 +461,14 @@ const { data: topCommentersData, error: commentError } = await supabase
                         {writer.avatar && <img src={writer.avatar} className="w-full h-full object-cover" alt="" />}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2"><Username username={writer.username} isAdmin={isUserAdmin} className="font-bold text-sm md:text-base" /></div>
+                       <div className="flex items-center gap-2">
+  <Username 
+    username={writer.username} 
+    isAdmin={isUserAdmin} 
+    isPremium={writer.role === 'premium'} // 👈 EKLENDİ
+    className="font-bold text-sm md:text-base" 
+  />
+</div>
                         <p className="text-xs text-gray-400 font-medium">{formatNumber(writer.totalWords)} kelime yazdı</p>
                       </div>
                     </Link>
@@ -477,7 +496,14 @@ const { data: topCommentersData, error: commentError } = await supabase
                         {user.avatar && <img src={user.avatar} className="w-full h-full object-cover" alt="" />}
                       </div>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2"><Username username={user.username} isAdmin={isUserAdmin} className="font-bold text-sm md:text-base" /></div>
+                       <div className="flex items-center gap-2">
+  <Username 
+    username={user.username} 
+    isAdmin={isUserAdmin} 
+    isPremium={user.role === 'premium'} // 👈 EKLENDİ
+    className="font-bold text-sm md:text-base" 
+  />
+</div>
                         <p className="text-xs text-gray-400 font-medium">{user.count} yorum yaptı</p>
                       </div>
                     </Link>

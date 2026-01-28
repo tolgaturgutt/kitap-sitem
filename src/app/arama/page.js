@@ -137,6 +137,7 @@ function AramaIcerik() {
                           <Username
                             username={book.username}
                             isAdmin={book.profiles?.role === 'admin'}
+                            isPremium={book.profiles?.role === 'premium'} // 👈 YENİ EKLENEN
                             className="text-xs text-gray-500 dark:text-gray-400 italic"
                           />
                         </div>
@@ -173,6 +174,7 @@ function AramaIcerik() {
                         <Username
                           username={u.username}
                           isAdmin={u.role === 'admin'}
+                          isPremium={u.role === 'premium'} // 👈 YENİ EKLENEN
                           className="font-bold dark:text-white group-hover:text-red-600 transition-colors"
                         />
                       </div>

@@ -137,7 +137,7 @@ const [warningReason, setWarningReason] = useState('');
           .from('author_follows')
           .select(`
             follower_id,
-            profiles:follower_id ( username, full_name, avatar_url, email )
+            profiles:follower_id ( username, full_name, avatar_url, email, role )
           `)
           .eq('followed_id', p.id);
 
@@ -146,7 +146,7 @@ const [warningReason, setWarningReason] = useState('');
           .from('author_follows')
           .select(`
             followed_id,
-            profiles:followed_id ( username, full_name, avatar_url, email )
+            profiles:followed_id ( username, full_name, avatar_url, email, role )
           `)
           .eq('follower_id', p.id);
 
@@ -156,6 +156,7 @@ const [warningReason, setWarningReason] = useState('');
             username: item.profiles?.username || 'Gizli Kullanıcı',
             full_name: item.profiles?.full_name,
             avatar_url: item.profiles?.avatar_url,
+            role: item.profiles?.role,
             is_admin: emails.includes(item.profiles?.email)
         })) || [];
 
@@ -164,6 +165,7 @@ const [warningReason, setWarningReason] = useState('');
             username: item.profiles?.username || 'Gizli Kullanıcı',
             full_name: item.profiles?.full_name,
             avatar_url: item.profiles?.avatar_url,
+            role: item.profiles?.role,
             is_admin: emails.includes(item.profiles?.email)
         })) || [];
 
@@ -364,7 +366,12 @@ async function handleSendWarning() {
                 <div className="text-center md:text-left">
                   <h1 className="text-2xl md:text-3xl font-black uppercase dark:text-white tracking-tighter">{author.full_name || author.username}</h1>
                   <div className="flex justify-center md:justify-start mt-1">
-                    <Username username={author.username} isAdmin={author.role === 'admin'} className="text-xs text-gray-400 uppercase italic" />
+                    <Username 
+  username={author.username} 
+  isAdmin={author.role === 'admin'} 
+  isPremium={author.role === 'premium'} // 👈 YENİ EKLENEN
+  className="text-xs text-gray-400 uppercase italic" 
+/>
                   </div>
                 </div>
               
@@ -640,6 +647,7 @@ async function handleSendWarning() {
                           <Username
                             username={p.username}
                             isAdmin={p.is_admin}
+                            isPremium={p.role === 'premium'}
                             className="text-[10px] md:text-xs font-bold"
                           />
                           {p.full_name && (
