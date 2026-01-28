@@ -12,7 +12,7 @@ import MobileNav from "@/components/MobileNav";
 import DesktopSidebar from "@/components/DesktopSidebar";
 import BanKontrol from '@/components/BanKontrol';
 import WarningSystem from '@/components/WarningSystem';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast'; // 👈 toast eklendi
 import { App } from '@capacitor/app';
 
 const inter = Inter({ subsets: ["latin"] });
@@ -22,30 +22,30 @@ export default function RootLayout({ children }) {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   
-  // 🔥 ÖNEMLİ: Hangi sayfada olduğumuzu anlık takip etmek için Ref kullanıyoruz
+  // 🔥 Canlı Takip İçin Ref
   const pathnameRef = useRef(pathname);
 
-  // 1. Sayfa her değiştiğinde bu Ref'i güncelle (Canlı Takip)
   useEffect(() => {
     pathnameRef.current = pathname;
   }, [pathname]);
 
-  // 2. Geri Tuşu Dinleyicisini SADECE BİR KERE KUR (Ömürlük)
+  // 🔥 MOBİL GERİ TUŞU AYARI (Capacitor)
   useEffect(() => {
     let backButtonListener;
 
     const setupListener = async () => {
       try {
         backButtonListener = await App.addListener('backButton', (data) => {
-          // Dinleyicinin içindeyken en güncel sayfayı Ref'ten okuyoruz
-          // (Eski yöntemde burası karışıyordu, şimdi garanti)
           const currentPath = pathnameRef.current;
           
+          // Test Amaçlı Bildirim (Çalışınca Silebilirsin)
+          // toast('Geri tuşu algılandı', { icon: '🔙', duration: 1000 });
+
           if (currentPath === '/' || currentPath === '/giris') {
-            // Ana sayfa veya girişteysek -> Uygulamadan Çık
+            // Ana sayfadaysak çık
             App.exitApp(); 
           } else {
-            // Diğer sayfalardaysak -> Bir geri git
+            // Değilsek bir geri git
             router.back();
           }
         });
@@ -56,13 +56,12 @@ export default function RootLayout({ children }) {
 
     setupListener();
 
-    // Temizlik: Sadece uygulama tamamen kapanırsa silinsin
     return () => {
       if (backButtonListener) {
         backButtonListener.remove();
       }
     };
-  }, []); // 👈 BOŞ DİZİ: Bu kod sadece uygulama ilk açıldığında 1 kere çalışır, bir daha bozulmaz.
+  }, []);
 
   // --- BAŞLIK AYARLARI ---
   useEffect(() => {
@@ -129,4 +128,3 @@ export default function RootLayout({ children }) {
     </html>
   );
 }
-//.deneme
