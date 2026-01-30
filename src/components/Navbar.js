@@ -86,10 +86,15 @@ export default function Navbar() {
   }, []);
 
   async function loadNotifications(email) {
+    // 🔥 SON 7 GÜN AYARI
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
     const { data: n } = await supabase
       .from('notifications')
       .select('*')
       .eq('recipient_email', email)
+      .gte('created_at', sevenDaysAgo.toISOString()) // Sadece son 7 gün
       .order('created_at', { ascending: false })
       .limit(50);
 
@@ -100,7 +105,6 @@ export default function Navbar() {
 
       if (chapterIds.length > 0) {
         const uniqueIds = [...new Set(chapterIds)];
-
         const { data: chapters } = await supabase
           .from('chapters')
           .select('id, title')
@@ -109,21 +113,17 @@ export default function Navbar() {
         if (chapters) {
           n.forEach(notif => {
             const foundChapter = chapters.find(c => c.id === notif.chapter_id);
-            if (foundChapter) {
-              notif.chapter_title = foundChapter.title;
-            }
+            if (foundChapter) notif.chapter_title = foundChapter.title;
           });
         }
       }
 
-      // 🆕 PANO BAŞLIKLARINI DA ÇEK
       const panoIds = n
         .filter(notif => notif.pano_id && !notif.pano_title)
         .map(notif => notif.pano_id);
 
       if (panoIds.length > 0) {
         const uniquePanoIds = [...new Set(panoIds)];
-
         const { data: panos } = await supabase
           .from('panolar')
           .select('id, title')
@@ -132,14 +132,11 @@ export default function Navbar() {
         if (panos) {
           n.forEach(notif => {
             const foundPano = panos.find(p => p.id === notif.pano_id);
-            if (foundPano) {
-              notif.pano_title = foundPano.title;
-            }
+            if (foundPano) notif.pano_title = foundPano.title;
           });
         }
       }
     }
-
     setNotifications(n || []);
   }
 
@@ -268,6 +265,26 @@ export default function Navbar() {
     setShowSearch(false);
     setShowMobileSearch(false);
     router.push(`/arama?q=${encodeURIComponent(query)}`);
+  }
+  // 🗑️ BİLDİRİM SİLME FONKSİYONU
+  async function deleteNotification(e, id) {
+    e.preventDefault(); // Linke tıklamayı engelle
+    e.stopPropagation();
+
+    // Listeden hemen sil (Hız hissi için)
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      toast.error('Silinemedi');
+      loadNotifications(user.email); // Hata olursa geri yükle
+    } else {
+      toast.success('Bildirim silindi');
+    }
   }
 
   if (!mounted) return null;
@@ -556,7 +573,9 @@ function getNotificationLink(n) {
                       </button>
                     </div>
 
-                    <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 h-[65vh] md:h-[400px]">
+                   <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 h-[65vh] md:h-[400px]">
+                      
+                      {/* SOL TARA (AKTİVİTELER) */}
                       <div className="flex-1 overflow-y-auto no-scrollbar h-1/2 md:h-auto">
                         <div className="p-3 md:p-4 bg-gray-50/50 dark:bg-white/[0.02] sticky top-0 backdrop-blur-sm z-10">
                           <p className="text-[8px] font-black uppercase text-red-600 tracking-[0.2em] flex items-center gap-2">
@@ -567,14 +586,14 @@ function getNotificationLink(n) {
                           {activityNotifs.length === 0 ? (
                             <div className="text-center py-8 md:py-12">
                               <span className="text-2xl md:text-3xl block mb-2 opacity-20">😴</span>
-                              <p className="text-[8px] md:text-[9px] text-gray-400 italic">Henüz aktivite yok</p>
+                              <p className="text-[8px] md:text-[9px] text-gray-400 italic">Son 7 günde aktivite yok</p>
                             </div>
                           ) : activityNotifs.map(n => (
                             <Link
                               key={n.id}
                               href={getNotificationLink(n)}
                               onClick={() => setShowNotifs(false)}
-                              className="block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/20"
+                              className="relative block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/20 pr-8"
                             >
                               <div className="flex items-start gap-2 md:gap-3">
                                 <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-red-600/10 flex items-center justify-center shrink-0">
@@ -586,29 +605,33 @@ function getNotificationLink(n) {
                                     {' '}
                                     {getNotificationText(n)}
                                   </p>
-
                                   {n.book_title && (
                                     <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">
                                       "{n.book_title}
                                       {n.chapter_title && ` - ${n.chapter_title}`}"
                                     </p>
                                   )}
-
                                   <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
-                                    {new Date(n.created_at).toLocaleDateString('tr-TR', {
-                                      day: 'numeric',
-                                      month: 'short',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
+                                    {new Date(n.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                   </p>
                                 </div>
                               </div>
+                              {/* 🗑️ SİLME BUTONU */}
+                            <button
+  onClick={(e) => deleteNotification(e, n.id)}
+  className="absolute top-3 right-3 p-1.5 md:p-2 rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
+  title="Bildirimi Sil"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+  </svg>
+</button>
                             </Link>
                           ))}
                         </div>
                       </div>
 
+                      {/* SAĞ TARAF (SOSYAL) */}
                       <div className="flex-1 overflow-y-auto no-scrollbar bg-gray-50/30 dark:bg-white/[0.01] border-t md:border-t-0 dark:border-white/5 h-1/2 md:h-auto">
                         <div className="p-3 md:p-4 bg-blue-50/50 dark:bg-blue-950/10 sticky top-0 backdrop-blur-sm z-10">
                           <p className="text-[8px] font-black uppercase text-blue-600 tracking-[0.2em] flex items-center gap-2">
@@ -619,14 +642,14 @@ function getNotificationLink(n) {
                           {socialNotifs.length === 0 ? (
                             <div className="text-center py-8 md:py-12">
                               <span className="text-2xl md:text-3xl block mb-2 opacity-20">🫥</span>
-                              <p className="text-[8px] md:text-[9px] text-gray-400 italic">Henüz sosyal aktivite yok</p>
+                              <p className="text-[8px] md:text-[9px] text-gray-400 italic">Son 7 günde sosyal aktivite yok</p>
                             </div>
                           ) : socialNotifs.map(n => (
                             <Link
                               key={n.id}
                               href={getNotificationLink(n)}
                               onClick={() => setShowNotifs(false)}
-                              className="block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-blue-950/20"
+                              className="relative block p-2.5 md:p-3 rounded-xl md:rounded-2xl transition-all group hover:scale-[1.02] bg-white dark:bg-white/5 hover:bg-blue-50 dark:hover:bg-blue-950/20 pr-8"
                             >
                               <div className="flex items-start gap-2 md:gap-3">
                                 <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-blue-600/10 flex items-center justify-center shrink-0 font-black text-blue-600 text-xs">
@@ -638,18 +661,26 @@ function getNotificationLink(n) {
                                     {' '}
                                     {getNotificationText(n)}
                                   </p>
-                                  
                                   {n.pano_title && (
                                     <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">
                                       "{n.pano_title}"
                                     </p>
                                   )}
-                                  
                                   <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
                                     {new Date(n.created_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                   </p>
                                 </div>
                               </div>
+                              {/* 🗑️ SİLME BUTONU */}
+                             <button
+  onClick={(e) => deleteNotification(e, n.id)}
+  className="absolute top-3 right-3 p-1.5 md:p-2 rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
+  title="Bildirimi Sil"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+  </svg>
+</button>
                             </Link>
                           ))}
                         </div>
