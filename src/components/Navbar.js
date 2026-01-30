@@ -619,11 +619,14 @@ export default function Navbar() {
                               {/* 🗑️ SİLME BUTONU */}
                               <button
                                 onClick={(e) => deleteNotification(e, n.id)}
-                                // 👇 DÜZELTİLEN KISIM: w-7 h-7 flex items-center justify-center eklendi
-                                className="absolute top-3 right-3 w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
+                                // 👇 DEĞİŞİKLİKLER: 
+                                // 1. 'top-3 right-3' yerine 'top-2 right-2' (Yukarı ve sağa çektik)
+                                // 2. 'w-7 h-7' yerine 'w-6 h-6' (Mobilde küçülttük, kibar oldu)
+                                className="absolute top-2 right-2 w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
                                 title="Bildirimi Sil"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                {/* İkon boyutunu da mobilde 3 (12px), masaüstünde 4 (16px) yaptık */}
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
                                 </svg>
                               </button>
@@ -675,11 +678,14 @@ export default function Navbar() {
                               {/* 🗑️ SİLME BUTONU */}
                               <button
                                 onClick={(e) => deleteNotification(e, n.id)}
-                                // 👇 DÜZELTİLEN KISIM: w-7 h-7 flex items-center justify-center eklendi
-                                className="absolute top-3 right-3 w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
+                                // 👇 DEĞİŞİKLİKLER: 
+                                // 1. 'top-3 right-3' yerine 'top-2 right-2' (Yukarı ve sağa çektik)
+                                // 2. 'w-7 h-7' yerine 'w-6 h-6' (Mobilde küçülttük, kibar oldu)
+                                className="absolute top-2 right-2 w-6 h-6 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
                                 title="Bildirimi Sil"
                               >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                {/* İkon boyutunu da mobilde 3 (12px), masaüstünde 4 (16px) yaptık */}
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 md:w-4 md:h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                   <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
                                 </svg>
                               </button>
