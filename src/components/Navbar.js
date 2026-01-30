@@ -201,7 +201,7 @@ export default function Navbar() {
       setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     }
   }
-// 🔥 REALTIME BİLDİRİM DİNLEYİCİSİ (Bunu eklemen yeterli)
+  // 🔥 REALTIME BİLDİRİM DİNLEYİCİSİ (Bunu eklemen yeterli)
   // 🔥 REALTIME BİLDİRİM DİNLEYİCİSİ (Çarpı Butonlu & Şık Tasarım)
   useEffect(() => {
     if (!user) return;
@@ -219,10 +219,10 @@ export default function Navbar() {
         },
         async (payload) => {
           console.log("🔔 Anlık bildirim geldi:", payload);
-          
+
           // Listeyi yenile ki zil ikonundaki sayı artsın
           await loadNotifications(user.email);
-          
+
           // 👇 BURASI: Çarpı butonlu özel bildirim kutusu
           toast((t) => (
             <div className="flex items-center justify-between w-full gap-4 min-w-[250px]">
@@ -231,8 +231,8 @@ export default function Navbar() {
                 <span className="text-sm font-bold">Yeni bir bildiriminiz var!</span>
               </div>
               {/* ÇARPI BUTONU */}
-              <button 
-                onClick={() => toast.dismiss(t.id)} 
+              <button
+                onClick={() => toast.dismiss(t.id)}
                 className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors text-xs font-black border border-white/10"
               >
                 ✕
@@ -259,7 +259,7 @@ export default function Navbar() {
       supabase.removeChannel(channel);
     };
   }, [user]);
-   
+
   function handleSearchTrigger() {
     if (!query.trim()) return;
     setShowSearch(false);
@@ -305,76 +305,76 @@ export default function Navbar() {
 
 
 
-// Navbar.js içindeki getNotificationLink fonksiyonunu BU HALE getir:
+  // Navbar.js içindeki getNotificationLink fonksiyonunu BU HALE getir:
 
-function getNotificationLink(n) {
-  // 🔍 DEBUG: Bildirimi console'a yazdır
-  console.log('📢 Bildirim verisi:', {
-    type: n.type,
-    paragraph_id: n.paragraph_id,
-    paragraph_id_type: typeof n.paragraph_id,
-    comment_id: n.comment_id,
-    book_id: n.book_id,
-    chapter_id: n.chapter_id
-  });
-  
-  switch (n.type) {
-    case 'vote':
-      return n.book_id ? `/kitap/${n.book_id}` : '#';
-    
-    case 'chapter_vote':
-      return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
-    
-    case 'comment':
-      if (n.chapter_id && n.book_id) {
-        // 🔥 PARAGRAF YORUMU MU KONTROL ET - null string de kontrol et
-        if (n.paragraph_id !== null && n.paragraph_id !== undefined && n.paragraph_id !== 'null') {
-          console.log('✅ Paragraf yorumuna gidiliyor:', n.paragraph_id);
-          // Paragraf yorumu - paragrafa git ve aç
-          return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;
-        } else {
-          console.log('✅ Bölüm yorumuna gidiliyor');
-          // Bölüm yorumu - bölüm yorumlarına git
-          return `/kitap/${n.book_id}/bolum/${n.chapter_id}?scrollTo=chapter-comments&commentId=${n.comment_id || ''}`;
+  function getNotificationLink(n) {
+    // 🔍 DEBUG: Bildirimi console'a yazdır
+    console.log('📢 Bildirim verisi:', {
+      type: n.type,
+      paragraph_id: n.paragraph_id,
+      paragraph_id_type: typeof n.paragraph_id,
+      comment_id: n.comment_id,
+      book_id: n.book_id,
+      chapter_id: n.chapter_id
+    });
+
+    switch (n.type) {
+      case 'vote':
+        return n.book_id ? `/kitap/${n.book_id}` : '#';
+
+      case 'chapter_vote':
+        return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
+
+      case 'comment':
+        if (n.chapter_id && n.book_id) {
+          // 🔥 PARAGRAF YORUMU MU KONTROL ET - null string de kontrol et
+          if (n.paragraph_id !== null && n.paragraph_id !== undefined && n.paragraph_id !== 'null') {
+            console.log('✅ Paragraf yorumuna gidiliyor:', n.paragraph_id);
+            // Paragraf yorumu - paragrafa git ve aç
+            return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;
+          } else {
+            console.log('✅ Bölüm yorumuna gidiliyor');
+            // Bölüm yorumu - bölüm yorumlarına git
+            return `/kitap/${n.book_id}/bolum/${n.chapter_id}?scrollTo=chapter-comments&commentId=${n.comment_id || ''}`;
+          }
+        } else if (n.book_id) {
+          return `/kitap/${n.book_id}`;
         }
-      } else if (n.book_id) {
-        return `/kitap/${n.book_id}`;
-      }
-      return '#';
-    
-    case 'new_chapter':
-      return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
-    
-    case 'pano_vote':
-    case 'pano_comment':
-      return n.pano_id ? `/pano/${n.pano_id}` : '#';
-    
-    case 'reply':
-      if (n.pano_id) {
-        return `/pano/${n.pano_id}`;
-      } else if (n.chapter_id && n.book_id) {
-        // 🔥 PARAGRAF YORUMU YANITI MI YOKSA BÖLÜM YORUMU YANITI MI?
-        if (n.paragraph_id !== null && n.paragraph_id !== undefined && n.paragraph_id !== 'null') {
-          console.log('✅ Paragraf yorumu yanıtına gidiliyor:', n.paragraph_id);
-          // Paragraf yorumu yanıtı - paragrafa git ve aç
-          return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;
-        } else {
-          console.log('✅ Bölüm yorumu yanıtına gidiliyor');
-          // Bölüm yorumu yanıtı - bölüm yorumlarına git
-          return `/kitap/${n.book_id}/bolum/${n.chapter_id}?scrollTo=chapter-comments&commentId=${n.comment_id || ''}`;
+        return '#';
+
+      case 'new_chapter':
+        return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
+
+      case 'pano_vote':
+      case 'pano_comment':
+        return n.pano_id ? `/pano/${n.pano_id}` : '#';
+
+      case 'reply':
+        if (n.pano_id) {
+          return `/pano/${n.pano_id}`;
+        } else if (n.chapter_id && n.book_id) {
+          // 🔥 PARAGRAF YORUMU YANITI MI YOKSA BÖLÜM YORUMU YANITI MI?
+          if (n.paragraph_id !== null && n.paragraph_id !== undefined && n.paragraph_id !== 'null') {
+            console.log('✅ Paragraf yorumu yanıtına gidiliyor:', n.paragraph_id);
+            // Paragraf yorumu yanıtı - paragrafa git ve aç
+            return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;
+          } else {
+            console.log('✅ Bölüm yorumu yanıtına gidiliyor');
+            // Bölüm yorumu yanıtı - bölüm yorumlarına git
+            return `/kitap/${n.book_id}/bolum/${n.chapter_id}?scrollTo=chapter-comments&commentId=${n.comment_id || ''}`;
+          }
+        } else if (n.book_id) {
+          return `/kitap/${n.book_id}`;
         }
-      } else if (n.book_id) {
-        return `/kitap/${n.book_id}`;
-      }
-      return '#';
-    
-    case 'follow':
-      return n.actor_username ? `/yazar/${n.actor_username}` : '#';
-    
-    default:
-      return '#';
+        return '#';
+
+      case 'follow':
+        return n.actor_username ? `/yazar/${n.actor_username}` : '#';
+
+      default:
+        return '#';
+    }
   }
-}
   function getNotificationText(n) {
     switch (n.type) {
       case 'vote': return 'eserini beğendi';
@@ -573,8 +573,8 @@ function getNotificationLink(n) {
                       </button>
                     </div>
 
-                   <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 h-[65vh] md:h-[400px]">
-                      
+                    <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 h-[65vh] md:h-[400px]">
+
                       {/* SOL TARA (AKTİVİTELER) */}
                       <div className="flex-1 overflow-y-auto no-scrollbar h-1/2 md:h-auto">
                         <div className="p-3 md:p-4 bg-gray-50/50 dark:bg-white/[0.02] sticky top-0 backdrop-blur-sm z-10">
@@ -617,15 +617,16 @@ function getNotificationLink(n) {
                                 </div>
                               </div>
                               {/* 🗑️ SİLME BUTONU */}
-                            <button
-  onClick={(e) => deleteNotification(e, n.id)}
-  className="absolute top-3 right-3 p-1.5 md:p-2 rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
-  title="Bildirimi Sil"
->
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-  </svg>
-</button>
+                              <button
+                                onClick={(e) => deleteNotification(e, n.id)}
+                                // 👇 DÜZELTİLEN KISIM: w-7 h-7 flex items-center justify-center eklendi
+                                className="absolute top-3 right-3 w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
+                                title="Bildirimi Sil"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                </svg>
+                              </button>
                             </Link>
                           ))}
                         </div>
@@ -672,15 +673,16 @@ function getNotificationLink(n) {
                                 </div>
                               </div>
                               {/* 🗑️ SİLME BUTONU */}
-                             <button
-  onClick={(e) => deleteNotification(e, n.id)}
-  className="absolute top-3 right-3 p-1.5 md:p-2 rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
-  title="Bildirimi Sil"
->
-  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
-  </svg>
-</button>
+                              <button
+                                onClick={(e) => deleteNotification(e, n.id)}
+                                // 👇 DÜZELTİLEN KISIM: w-7 h-7 flex items-center justify-center eklendi
+                                className="absolute top-3 right-3 w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 text-gray-400 hover:bg-red-600 hover:text-white hover:border-red-600 transition-all duration-200 z-20 shadow-sm opacity-100 md:opacity-0 group-hover:opacity-100"
+                                title="Bildirimi Sil"
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                                </svg>
+                              </button>
                             </Link>
                           ))}
                         </div>
