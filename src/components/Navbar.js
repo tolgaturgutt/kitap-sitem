@@ -95,8 +95,7 @@ export default function Navbar() {
       .select('*')
       .eq('recipient_email', email)
       .gte('created_at', sevenDaysAgo.toISOString()) // Sadece son 7 gün
-      .order('created_at', { ascending: false })
-      .limit(50);
+      .order('created_at', { ascending: false }); // ❌ .limit(50) satırını sildim, artık sınır yok!
 
     if (n && n.length > 0) {
       const chapterIds = n
