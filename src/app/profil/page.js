@@ -454,16 +454,21 @@ export default function ProfilSayfasi() {
           </div>
         </header>
 
-        <div className="flex gap-4 md:gap-8 mb-6 md:mb-8 border-b dark:border-white/5 pb-4 overflow-x-auto">
-          {['eserler', 'taslaklar', 'panolar', 'kupalar', 'hakkında'].map(t => (
-            <button
-              key={t}
-              onClick={() => setActiveTab(t)}
-              className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === t ? 'text-red-600' : 'text-gray-400'}`}
-            >
-              {t}
-            </button>
-          ))}
+        <div className="mb-6 md:mb-8 border-b dark:border-white/5 pb-4">
+          <div className="flex gap-3 md:gap-8 overflow-x-auto no-scrollbar px-1">
+            {['eserler', 'taslaklar', 'panolar', 'kupalar', 'hakkında'].map(t => (
+              <button
+                key={t}
+                onClick={() => setActiveTab(t)}
+                className={`shrink-0 px-4 md:px-0 py-2 rounded-full md:rounded-none text-[10px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === t
+                    ? 'bg-red-600 text-white md:bg-transparent md:text-red-600'
+                    : 'bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-300 md:bg-transparent'
+                  }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="min-h-[300px]">
