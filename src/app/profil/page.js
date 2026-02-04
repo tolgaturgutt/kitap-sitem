@@ -8,6 +8,7 @@ import Username from '@/components/Username';
 import PanoModal from '@/components/PanoModal';
 import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
+
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
   if (!num) return 0;
@@ -22,6 +23,9 @@ export default function ProfilSayfasi() {
   const [myDrafts, setMyDrafts] = useState([]);
   const [myPanos, setMyPanos] = useState([]);
 
+  // ✅ KUPALAR
+  const [trophies, setTrophies] = useState([]);
+
   // Takip sayıları için
   const [followedAuthorsCount, setFollowedAuthorsCount] = useState(0);
   const [myFollowersCount, setMyFollowersCount] = useState(0);
@@ -33,7 +37,7 @@ export default function ProfilSayfasi() {
   const [modalType, setModalType] = useState(null);
   const [selectedPano, setSelectedPano] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '',role: '' });
+  const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '', role: '' });
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
 
@@ -42,7 +46,7 @@ export default function ProfilSayfasi() {
   const [followingWithProfiles, setFollowingWithProfiles] = useState([]);
 
   useEffect(() => {
-   async function getData() {
+    async function getData() {
       // Admin listesini çek
       const { data: admins } = await supabase
         .from('announcement_admins')
@@ -76,21 +80,17 @@ export default function ProfilSayfasi() {
       if (adminData) setIsAdmin(true);
 
       // --- KİTAPLARI VE İSTATİSTİK VERİLERİNİ ÇEK (GÜNCELLENDİ) ---
-      // 👇 ARTIK 'total_votes' ve 'total_comment_count' SÜTUNLARINI İSTİYORUZ
       const { data: written } = await supabase
         .from('books')
         .select('*, total_comment_count, total_votes, chapters(id, views)')
         .eq('user_email', activeUser.email)
         .order('created_at', { ascending: false });
 
-      // ❌ SİLİNDİ: commentsData ve votesData (Artık ihtiyacımız yok)
-
       // Verileri birleştirme fonksiyonu
       const mergeStats = (list) => {
         return list.map(book => {
           const totalBookViews = book.chapters?.reduce((acc, c) => acc + (c.views || 0), 0) || 0;
-          
-          // ✅ ARTIK DİREKT HAZIR SAYILARI ALIYORUZ (HIZLI)
+
           const totalComments = book.total_comment_count || 0;
           const totalVotes = book.total_votes || 0;
 
@@ -107,6 +107,18 @@ export default function ProfilSayfasi() {
         const grandTotal = enrichedWritten.reduce((acc, curr) => acc + curr.totalViews, 0);
         setTotalViews(grandTotal);
       }
+
+      // ✅ --- KUPALARI ÇEK (ŞAMPİYON OLDUĞUN ETKİNLİKLER) ---
+      const { data: trophyData } = await supabase
+        .from('event_participants')
+        .select(`
+          id,
+          event:events(id, title, image_url, end_date)
+        `)
+        .eq('user_email', activeUser.email)
+        .eq('is_champion', true);
+
+      setTrophies(trophyData || []);
 
       // --- YENİ TAKİP SİSTEMİ (Supabase Relations) ---
 
@@ -128,9 +140,8 @@ export default function ProfilSayfasi() {
         `)
         .eq('followed_id', activeUser.id);
 
-      // Verileri Frontend'in anlayacağı düz formata çeviriyoruz
       const cleanFollowing = followingData?.map(item => ({
-        followed_id: item.followed_id, 
+        followed_id: item.followed_id,
         username: item.profiles?.username || 'Bilinmeyen',
         full_name: item.profiles?.full_name,
         avatar_url: item.profiles?.avatar_url,
@@ -152,7 +163,6 @@ export default function ProfilSayfasi() {
 
       setFollowersWithProfiles(cleanFollowers);
       setMyFollowersCount(cleanFollowers.length);
-
 
       // PANOLAR
       const { data: panos } = await supabase
@@ -179,7 +189,7 @@ export default function ProfilSayfasi() {
         .from('profiles')
         .select('id')
         .eq('username', profileData.username)
-        .neq('id', user.id) // Kendi ID'miz hariç bak
+        .neq('id', user.id)
         .single();
 
       if (existingUser) {
@@ -188,14 +198,11 @@ export default function ProfilSayfasi() {
       }
     }
 
-    // Güncelleme İşlemi
     const { error } = await supabase.from('profiles').upsert({
       id: user.id,
       email: user.email,
       full_name: profileData.full_name,
       username: profileData.username,
-      // DİKKAT: Veritabanında sütun adın 'instagram' ise böyle kalmalı.
-      // Eğer 'instagram_url' ise burayı düzeltmelisin.
       instagram: profileData.instagram,
       avatar_url: profileData.avatar_url,
       bio: profileData.bio,
@@ -205,7 +212,6 @@ export default function ProfilSayfasi() {
     if (error) {
       console.log("HATA:", error);
 
-      // 🔥 KULLANICI ADI DOLU MU?
       if (error.message.includes('unique_username_case_insensitive')) {
         toast.error('Bu kullanıcı adı zaten kullanımda. Lütfen başka bir tane seçin.');
       } else {
@@ -214,7 +220,6 @@ export default function ProfilSayfasi() {
     } else {
       toast.success("Güncellendi ✅");
       setIsEditing(false);
-      // Sayfayı yenilemeye gerek kalmadan state güncellensin diye:
       setUser(prev => ({ ...prev, user_metadata: { ...prev.user_metadata, username: profileData.username } }));
     }
   }
@@ -240,11 +245,10 @@ export default function ProfilSayfasi() {
     const { error } = await supabase
       .from('author_follows')
       .delete()
-      .eq('follower_id', user.id)   // Benim ID'm
-      .eq('followed_id', targetId); // Silinecek kişinin ID'si
+      .eq('follower_id', user.id)
+      .eq('followed_id', targetId);
 
     if (!error) {
-      // Listeden çıkar
       setFollowingWithProfiles(prev => prev.filter(a => a.followed_id !== targetId));
       setFollowedAuthorsCount(prev => prev - 1);
       toast.success("Bırakıldı");
@@ -302,6 +306,7 @@ export default function ProfilSayfasi() {
                 user.email[0].toUpperCase()
               )}
             </div>
+
             <div className="flex-1 w-full">
               {!isEditing ? (
                 <>
@@ -312,12 +317,12 @@ export default function ProfilSayfasi() {
                   </div>
 
                   <div className="flex justify-center md:justify-start mb-3 md:mb-4">
-                   <Username
-  username={profileData.username}
-  isAdmin={isAdmin}
-  isPremium={profileData.role === 'premium'} // 👈 YENİ EKLENEN
-  className="text-xs text-gray-400 uppercase font-bold tracking-wide"
-/>
+                    <Username
+                      username={profileData.username}
+                      isAdmin={isAdmin}
+                      isPremium={profileData.role === 'premium'}
+                      className="text-xs text-gray-400 uppercase font-bold tracking-wide"
+                    />
                   </div>
 
                   <div className="flex flex-wrap gap-2 justify-center md:justify-start">
@@ -341,50 +346,47 @@ export default function ProfilSayfasi() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 animate-in fade-in zoom-in-95 duration-200">
                   <div className="md:col-span-2 mb-2 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl md:rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 text-center relative group cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
-                  
-<input
-  type="file"
-  accept="image/*"
-  onChange={async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
 
-    const toastId = toast.loading('Fotoğraf optimize ediliyor ve yükleniyor... ⚡');
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
 
-    try {
-      // 1. SIKIŞTIRMA AYARLARI (Avatar küçük olur, 500px yeter)
-      const options = {
-        maxSizeMB: 0.1,          // 100KB (Profil fotosu için ideal)
-        maxWidthOrHeight: 500,   // Max 500px (Kapak gibi 1000 olmasına gerek yok)
-        useWebWorker: false,
-        fileType: 'image/jpeg'
-      };
+                        const toastId = toast.loading('Fotoğraf optimize ediliyor ve yükleniyor... ⚡');
 
-      // 2. SIKIŞTIRMA İŞLEMİ
-      const compressedFile = await imageCompression(file, options);
+                        try {
+                          const options = {
+                            maxSizeMB: 0.1,
+                            maxWidthOrHeight: 500,
+                            useWebWorker: false,
+                            fileType: 'image/jpeg'
+                          };
 
-      // 3. YÜKLEME İŞLEMİ (Artık compressedFile gidiyor)
-      const fileExt = "jpg"; 
-      const fileName = `${user.id}-${Math.random()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, compressedFile);
+                          const compressedFile = await imageCompression(file, options);
 
-      if (!uploadError) {
-        const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
-        setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
-        toast.success("Fotoğraf yüklendi! Kaydetmeyi unutma.", { id: toastId });
-      } else {
-        console.error(uploadError);
-        toast.error("Yükleme hatası!", { id: toastId });
-      }
+                          const fileExt = "jpg";
+                          const fileName = `${user.id}-${Math.random()}.${fileExt}`;
 
-    } catch (error) {
-      console.error("Sıkıştırma hatası:", error);
-      toast.error("Resim işlenirken hata oluştu", { id: toastId });
-    }
-  }}
-  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-/>
+                          const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, compressedFile);
+
+                          if (!uploadError) {
+                            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
+                            setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
+                            toast.success("Fotoğraf yüklendi! Kaydetmeyi unutma.", { id: toastId });
+                          } else {
+                            console.error(uploadError);
+                            toast.error("Yükleme hatası!", { id: toastId });
+                          }
+
+                        } catch (error) {
+                          console.error("Sıkıştırma hatası:", error);
+                          toast.error("Resim işlenirken hata oluştu", { id: toastId });
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                    />
                     <span className="text-xl md:text-2xl mb-1 block">📸</span>
                     <p className="text-[9px] md:text-[10px] font-black uppercase text-gray-400 group-hover:text-red-600">Profil Fotoğrafını Değiştir</p>
                   </div>
@@ -441,6 +443,10 @@ export default function ProfilSayfasi() {
               <div className="flex justify-center md:justify-start gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6 w-full">
                 <div className="text-center"><p className="text-xl md:text-2xl font-black">{myBooks.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40">Eser</p></div>
                 <div className="text-center"><p className="text-xl md:text-2xl font-black text-red-600">{formatNumber(totalViews)}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40">Okunma</p></div>
+
+                {/* ✅ KUPA SAYISI */}
+                <div className="text-center"><p className="text-xl md:text-2xl font-black">{trophies.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40">Kupa</p></div>
+
                 <button onClick={() => setModalType('followers')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{myFollowersCount}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takipçi</p></button>
                 <button onClick={() => setModalType('following')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{followedAuthorsCount}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takip</p></button>
               </div>
@@ -449,8 +455,14 @@ export default function ProfilSayfasi() {
         </header>
 
         <div className="flex gap-4 md:gap-8 mb-6 md:mb-8 border-b dark:border-white/5 pb-4 overflow-x-auto">
-          {['eserler', 'taslaklar', 'panolar', 'hakkında'].map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === t ? 'text-red-600' : 'text-gray-400'}`}>{t}</button>
+          {['eserler', 'taslaklar', 'panolar', 'kupalar', 'hakkında'].map(t => (
+            <button
+              key={t}
+              onClick={() => setActiveTab(t)}
+              className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap ${activeTab === t ? 'text-red-600' : 'text-gray-400'}`}
+            >
+              {t}
+            </button>
           ))}
         </div>
 
@@ -460,8 +472,8 @@ export default function ProfilSayfasi() {
               <div className="w-full">
                 <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Biyografi</h3>
                 <p className="italic text-gray-500 leading-relaxed w-full font-serif text-base md:text-lg whitespace-pre-wrap">
-  {profileData.bio || "Biyografi henüz eklenmemiş."}
-</p>
+                  {profileData.bio || "Biyografi henüz eklenmemiş."}
+                </p>
               </div>
 
               {profileData.instagram && (
@@ -525,6 +537,49 @@ export default function ProfilSayfasi() {
                 ))
               )}
             </div>
+          ) : activeTab === 'kupalar' ? (
+            <div className="animate-in fade-in">
+              {trophies.length === 0 ? (
+                <div className="text-center py-20 opacity-50">
+                  <div className="text-6xl mb-4">🏆</div>
+                  <p className="font-black uppercase text-sm">Henüz kazanılmış kupa yok</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                  {trophies.map(t => (
+                    <Link
+                      key={t.id}
+                      href={`/etkinlikler/${t.event?.id}`}
+                      className="group relative overflow-hidden rounded-3xl p-6 border bg-gradient-to-br from-yellow-400/10 via-amber-500/10 to-orange-600/10 hover:scale-[1.02] transition-all"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-orange-600/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+
+                      <div className="relative z-10 flex gap-5 items-center">
+                        <div className="text-5xl">🏆</div>
+
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[10px] font-black uppercase opacity-50 mb-1 tracking-widest">
+                            Etkinlik Şampiyonu
+                          </p>
+
+                          <h3 className="font-black text-lg uppercase tracking-tight line-clamp-2">
+                            {t.event?.title || 'Etkinlik'}
+                          </h3>
+
+                          {t.event?.end_date && (
+                            <p className="text-xs opacity-50 mt-1">
+                              {new Date(t.event.end_date).toLocaleDateString('tr-TR')}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="text-sm font-black text-yellow-600">Gör →</div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
               {(activeTab === 'taslaklar' ? myDrafts : myBooks).map(k => (
@@ -532,7 +587,6 @@ export default function ProfilSayfasi() {
                   <div className="aspect-[2/3] rounded-xl md:rounded-[2rem] overflow-hidden border dark:border-white/5 mb-2 md:mb-3 shadow-md group-hover:-translate-y-1 transition-all relative">
                     {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full bg-gray-200 dark:bg-white/10" />}
 
-                    {/* Taslak Rozeti */}
                     {k.is_draft && (
                       <div className="absolute top-2 right-2 bg-gray-500 text-white text-[7px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-lg z-10 uppercase tracking-wider">
                         TASLAK
@@ -542,7 +596,6 @@ export default function ProfilSayfasi() {
 
                   <h3 className="text-[9px] md:text-[10px] font-black text-center uppercase truncate italic dark:text-white group-hover:text-red-600 transition-colors">{k.title}</h3>
 
-                  {/* ✅ TAMAMLANDI ROZETİ */}
                   {k.is_completed && (
                     <div className="flex justify-center mt-1">
                       <span className="text-[7px] md:text-[8px] font-black text-green-600 bg-green-100 dark:bg-green-900/30 px-1.5 md:px-2 py-0.5 rounded-md uppercase tracking-wide">
@@ -551,7 +604,6 @@ export default function ProfilSayfasi() {
                     </div>
                   )}
 
-                  {/* ✅ İSTATİSTİK ŞERİDİ */}
                   <div className="flex items-center justify-center gap-1.5 md:gap-2 mt-1 md:mt-1.5 text-[7px] md:text-[8px] font-black text-gray-400">
                     <span className="flex items-center gap-0.5">👁️ {formatNumber(k.totalViews)}</span>
                     <span className="flex items-center gap-0.5">❤️ {formatNumber(k.totalVotes)}</span>
@@ -585,7 +637,6 @@ export default function ProfilSayfasi() {
               ) : (
                 (modalType === 'followers' ? followersWithProfiles : followingWithProfiles).map((p, i) => {
 
-                  // Veri artık direkt burada (Supabase join sayesinde)
                   const displayName = p.username || 'Kullanıcı';
                   const displayAvatar = p.avatar_url;
                   const targetId = modalType === 'followers' ? p.follower_id : p.followed_id;
@@ -602,7 +653,6 @@ export default function ProfilSayfasi() {
                       >
                         <div className="relative w-8 h-8 md:w-9 md:h-9 rounded-full bg-red-600/10 overflow-hidden flex items-center justify-center font-black text-red-600 text-[10px] md:text-xs">
                           {displayAvatar ? (
-                            // 👇 Next.js Image: Resmi 80x80 piksele küçültüp indirir.
                             <Image
                               src={displayAvatar}
                               alt={displayName || 'Avatar'}
