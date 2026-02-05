@@ -374,21 +374,22 @@ export default function EtkinlikDetay({ params }) {
               <p className="text-sm sm:text-lg text-gray-500 font-bold mb-3 sm:mb-6">🎨 Konu: "{event.theme}"</p>
             )}
 
-            <p className="text-gray-600 dark:text-gray-300 mb-4 sm:mb-8 leading-relaxed text-sm sm:text-lg max-w-3xl">
+            <p className="text-gray-600 dark:text-gray-300 mb-4 sm:mb-8 leading-relaxed text-sm sm:text-lg max-w-3xl whitespace-pre-line">
               {event.description}
             </p>
+
 
             <div className="grid grid-cols-3 gap-2 sm:gap-6 p-3 sm:p-6 bg-gray-50 dark:bg-black/20 rounded-2xl border dark:border-white/5">
               <div className="text-center">
                 <p className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1">{participants.length}</p>
                 <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-black uppercase">Katılımcı</p>
               </div>
-             <div className="text-center">
-  <p className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1">
-    {new Date(event.end_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
-  </p>
-  <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-black uppercase">Son Gün</p>
-</div>
+              <div className="text-center">
+                <p className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1">
+                  {new Date(event.end_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
+                </p>
+                <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-black uppercase">Son Gün</p>
+              </div>
               <div className="text-center">
                 <p className="text-xl sm:text-3xl font-black mb-0.5 sm:mb-1">
                   {new Date(event.start_date).toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' })}
@@ -413,11 +414,10 @@ export default function EtkinlikDetay({ params }) {
                   <button
                     onClick={handleParticipate}
                     disabled={participants.length >= event.max_participants}
-                    className={`flex-1 px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-black uppercase text-[11px] sm:text-sm transition-all ${
-                      participants.length >= event.max_participants
+                    className={`flex-1 px-4 sm:px-8 py-3 sm:py-4 rounded-2xl font-black uppercase text-[11px] sm:text-sm transition-all ${participants.length >= event.max_participants
                         ? 'bg-gray-300 dark:bg-white/10 text-gray-500 cursor-not-allowed'
                         : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
-                    }`}
+                      }`}
                   >
                     {participants.length >= event.max_participants ? '🚫 Dolu' : '🎯 Etkinliğe Katıl'}
                   </button>
@@ -472,11 +472,11 @@ export default function EtkinlikDetay({ params }) {
                       </div>
 
                       <div className="flex-1 min-w-0">
-                     <Username 
-  username={participant.display_username} 
-  isAdmin={participant.is_admin}
-  isPremium={participant.role === 'premium'}
-/>
+                        <Username
+                          username={participant.display_username}
+                          isAdmin={participant.is_admin}
+                          isPremium={participant.role === 'premium'}
+                        />
                         <p className="text-[10px] sm:text-xs text-gray-400 mt-0.5 sm:mt-1">
                           {new Date(participant.submitted_at).toLocaleDateString('tr-TR')}
                         </p>
@@ -600,11 +600,10 @@ export default function EtkinlikDetay({ params }) {
                         <button
                           key={book.id}
                           onClick={() => setSelectedBook(book)}
-                          className={`p-3 sm:p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-3 sm:gap-4 ${
-                            selectedBook?.id === book.id
+                          className={`p-3 sm:p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-3 sm:gap-4 ${selectedBook?.id === book.id
                               ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
                               : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
-                          }`}
+                            }`}
                         >
                           {book.cover_url && (
                             <img
@@ -635,11 +634,10 @@ export default function EtkinlikDetay({ params }) {
                           <button
                             key={chapter.id}
                             onClick={() => setSelectedChapter(chapter)}
-                            className={`w-full p-3 sm:p-4 rounded-2xl border-2 text-left transition-all ${
-                              selectedChapter?.id === chapter.id
+                            className={`w-full p-3 sm:p-4 rounded-2xl border-2 text-left transition-all ${selectedChapter?.id === chapter.id
                                 ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
                                 : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
-                            }`}
+                              }`}
                           >
                             <div className="flex justify-between items-center gap-3">
                               <div className="flex-1 min-w-0">

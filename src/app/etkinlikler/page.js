@@ -31,13 +31,13 @@ export default function EtkinliklerSayfasi() {
 
     // Etkinlikleri çek
     await fetchEvents();
-    
+
     setLoading(false);
   }
 
   async function fetchEvents() {
     const now = new Date().toISOString();
-    
+
     const { data, error } = await supabase
       .from('events')
       .select(`
@@ -62,13 +62,13 @@ export default function EtkinliklerSayfasi() {
         const dateEnded = new Date(e.end_date) < new Date(now);
         return !dateEnded && !hasChampion; // Tarihi geçmemiş VE şampiyon yok
       });
-      
+
       const gecmisEtkinlikler = data.filter(e => {
         const hasChampion = e.event_participants?.some(p => p.is_champion);
         const dateEnded = new Date(e.end_date) < new Date(now);
         return dateEnded || hasChampion; // Tarihi geçmiş VEYA şampiyon var
       });
-      
+
       setEvents({
         aktif: aktifEtkinlikler,
         gecmis: gecmisEtkinlikler
@@ -103,10 +103,10 @@ export default function EtkinliklerSayfasi() {
     }
 
     setSelectedEvent(event);
-    
+
     // Kullanıcının uygun kitaplarını çek
     await fetchUserEligibleBooks();
-    
+
     setShowParticipateModal(true);
   }
 
@@ -125,7 +125,7 @@ export default function EtkinliklerSayfasi() {
 
     // Her kitap için bölümleri kontrol et (2k-10k kelime arası)
     const eligibleBooks = [];
-    
+
     for (const book of books) {
       const { data: bookChapters } = await supabase
         .from('chapters')
@@ -194,7 +194,7 @@ export default function EtkinliklerSayfasi() {
     setSelectedBook(null);
     setSelectedChapter(null);
     setSubmitting(false);
-    
+
     // Etkinlikleri yenile
     fetchEvents();
   }
@@ -240,9 +240,9 @@ export default function EtkinliklerSayfasi() {
   return (
     <div className="min-h-screen py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black">
       <Toaster />
-      
+
       <div className="max-w-7xl mx-auto">
-        
+
         {/* BAŞLIK */}
         <div className="text-center mb-16">
           <h1 className="text-5xl md:text-7xl font-black uppercase tracking-tighter dark:text-white mb-4">
@@ -253,27 +253,25 @@ export default function EtkinliklerSayfasi() {
           </p>
         </div>
 
-       {/* SEKMELER */}
+        {/* SEKMELER */}
         <div className="flex justify-center gap-2 md:gap-4 mb-8 md:mb-12">
           <button
             onClick={() => setActiveTab('aktif')}
-            className={`px-4 py-2.5 md:px-8 md:py-4 rounded-full font-black uppercase text-[10px] md:text-sm tracking-wide md:tracking-widest transition-all flex items-center gap-1 md:gap-2 ${
-              activeTab === 'aktif'
+            className={`px-4 py-2.5 md:px-8 md:py-4 rounded-full font-black uppercase text-[10px] md:text-sm tracking-wide md:tracking-widest transition-all flex items-center gap-1 md:gap-2 ${activeTab === 'aktif'
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
                 : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-400 border dark:border-white/10'
-            }`}
+              }`}
           >
-            <span className="text-base md:text-lg">🔥</span> 
+            <span className="text-base md:text-lg">🔥</span>
             <span>AKTİF <span className="hidden md:inline">ETKİNLİKLER</span> ({events.aktif?.length || 0})</span>
           </button>
-          
+
           <button
             onClick={() => setActiveTab('gecmis')}
-            className={`px-4 py-2.5 md:px-8 md:py-4 rounded-full font-black uppercase text-[10px] md:text-sm tracking-wide md:tracking-widest transition-all flex items-center gap-1 md:gap-2 ${
-              activeTab === 'gecmis'
+            className={`px-4 py-2.5 md:px-8 md:py-4 rounded-full font-black uppercase text-[10px] md:text-sm tracking-wide md:tracking-widest transition-all flex items-center gap-1 md:gap-2 ${activeTab === 'gecmis'
                 ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
                 : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-400 border dark:border-white/10'
-            }`}
+              }`}
           >
             <span className="text-base md:text-lg">📚</span>
             <span>GEÇMİŞ <span className="hidden md:inline">ETKİNLİKLER</span> ({events.gecmis?.length || 0})</span>
@@ -290,8 +288,8 @@ export default function EtkinliklerSayfasi() {
               {activeTab === 'aktif' ? 'Henüz Aktif Etkinlik Yok' : 'Geçmiş Etkinlik Yok'}
             </h2>
             <p className="text-gray-400">
-              {activeTab === 'aktif' 
-                ? 'Yakında yeni etkinlikler eklenecek, takipte kal!' 
+              {activeTab === 'aktif'
+                ? 'Yakında yeni etkinlikler eklenecek, takipte kal!'
                 : 'Henüz tamamlanmış bir etkinlik bulunmuyor.'}
             </p>
           </div>
@@ -314,9 +312,9 @@ export default function EtkinliklerSayfasi() {
                   {/* KAPAK RESMİ */}
                   {event.image_url && (
                     <div className="aspect-video w-full bg-gray-100 dark:bg-black/20 overflow-hidden">
-                      <img 
-                        src={event.image_url} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
+                      <img
+                        src={event.image_url}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         alt={event.title}
                       />
                     </div>
@@ -336,9 +334,10 @@ export default function EtkinliklerSayfasi() {
                     )}
 
                     {/* AÇIKLAMA */}
-                    <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-4 md:mb-6 leading-relaxed line-clamp-3 md:line-clamp-none">
+                    <p className="text-sm md:text-base text-gray-600 dark:text-gray-300 mb-4 md:mb-6 leading-relaxed line-clamp-3 md:line-clamp-none whitespace-pre-line">
                       {event.description}
                     </p>
+
 
                     {/* BİLGİLER */}
                     <div className="space-y-2 md:space-y-3 mb-4 md:mb-6">
@@ -356,7 +355,7 @@ export default function EtkinliklerSayfasi() {
                           {participantCount} / {event.max_participants}
                         </span>
                         <div className="flex-1 bg-gray-200 dark:bg-white/10 rounded-full h-1.5 md:h-2 overflow-hidden">
-                          <div 
+                          <div
                             className="bg-red-600 h-full rounded-full transition-all"
                             style={{ width: `${(participantCount / event.max_participants) * 100}%` }}
                           />
@@ -397,11 +396,10 @@ export default function EtkinliklerSayfasi() {
                               <button
                                 onClick={() => handleEventClick(event)}
                                 disabled={!canJoin}
-                                className={`flex-1 py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-xs md:text-sm transition-all ${
-                                  !canJoin
+                                className={`flex-1 py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-xs md:text-sm transition-all ${!canJoin
                                     ? 'bg-gray-300 dark:bg-white/10 text-gray-500 cursor-not-allowed'
                                     : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
-                                }`}
+                                  }`}
                               >
                                 {dateEnded ? '⏰ SONA ERDİ' : isFull ? '🚫 DOLU' : '🎯 KATIL'}
                               </button>
@@ -426,11 +424,11 @@ export default function EtkinliklerSayfasi() {
 
       {/* KATILIM MODAL */}
       {showParticipateModal && (
-        <div 
+        <div
           className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4 backdrop-blur-sm"
           onClick={() => setShowParticipateModal(false)}
         >
-          <div 
+          <div
             className="bg-white dark:bg-[#111] rounded-3xl p-8 max-w-2xl w-full shadow-2xl border dark:border-white/10 max-h-[90vh] overflow-y-auto"
             onClick={e => e.stopPropagation()}
           >
@@ -441,8 +439,8 @@ export default function EtkinliklerSayfasi() {
                 </h2>
                 <p className="text-sm text-gray-500">{selectedEvent?.title}</p>
               </div>
-              <button 
-                onClick={() => setShowParticipateModal(false)} 
+              <button
+                onClick={() => setShowParticipateModal(false)}
                 className="p-2 bg-gray-100 dark:bg-white/10 rounded-full hover:bg-gray-200 dark:hover:bg-white/20 transition-all"
               >
                 ✕
@@ -486,11 +484,10 @@ export default function EtkinliklerSayfasi() {
                       <button
                         key={book.id}
                         onClick={() => setSelectedBook(book)}
-                        className={`p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-4 ${
-                          selectedBook?.id === book.id
+                        className={`p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-4 ${selectedBook?.id === book.id
                             ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
                             : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
-                        }`}
+                          }`}
                       >
                         {book.cover_url && (
                           <img src={book.cover_url} className="w-12 h-16 object-cover rounded-lg" alt={book.title} />
@@ -520,11 +517,10 @@ export default function EtkinliklerSayfasi() {
                         <button
                           key={chapter.id}
                           onClick={() => setSelectedChapter(chapter)}
-                          className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${
-                            selectedChapter?.id === chapter.id
+                          className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${selectedChapter?.id === chapter.id
                               ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
                               : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
-                          }`}
+                            }`}
                         >
                           <div className="flex justify-between items-center">
                             <div className="flex-1">
