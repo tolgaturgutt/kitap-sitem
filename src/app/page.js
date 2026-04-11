@@ -584,9 +584,9 @@ export default function Home() {
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
       // --- DÜZELTME 1: Veri çekme limitini artırdık (Garanti olsun diye 5000 yaptık) ---
-      const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(5000);
-      const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(5000);
-      const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString()).limit(5000);
+      const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(1000);
+      const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(1000);
+      const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString()).limit(1000);
 
       if (allBooks) {
         const scored = allBooks.map(b => {
