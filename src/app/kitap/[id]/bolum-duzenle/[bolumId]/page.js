@@ -201,9 +201,9 @@ export default function BolumDuzenle({ params }) {
           return router.push('/giris');
         }
 
-        const { data: chapter, error } = await supabase
+       const { data: chapter, error } = await supabase
           .from('chapters')
-          .select('*, books(user_email)')
+          .select('*, books(user_id, user_email, co_author_id, co_author_status)') // Ortak yazar verilerini ekledik
           .eq('id', ids.bolumId)
           .single();
 
@@ -216,7 +216,11 @@ export default function BolumDuzenle({ params }) {
         const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', user.email).single();
         if (adminData) isAdmin = true;
 
-        if (chapter.books.user_email !== user?.email && !isAdmin) {
+        // --- YETKİ KONTROLÜNÜ GENİŞLETİYORUZ ---
+        const isOwner = chapter.books.user_id === user.id || chapter.books.user_email === user.email;
+        const isCoAuthor = chapter.books.co_author_id === user.id && chapter.books.co_author_status === 'accepted';
+
+        if (!isOwner && !isCoAuthor && !isAdmin) {
           toast.error("Bu yetkiye sahip değilsin.");
           return router.push(`/kitap/${ids.kitapId}`);
         }

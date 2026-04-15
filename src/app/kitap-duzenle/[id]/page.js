@@ -46,9 +46,9 @@ export default function KitapDuzenle({ params }) {
       }
 
       // 3️⃣ Kitabı çek
-      const { data: book, error } = await supabase
+     const { data: book, error } = await supabase
         .from('books')
-        .select('*')
+        .select('*, profiles!user_id(id, email)') // Sahibi ve ortak yazarı tam çekiyoruz
         .eq('id', id)
         .single();
 
@@ -67,8 +67,11 @@ export default function KitapDuzenle({ params }) {
         .single();
       if (adminData) isAdmin = true;
 
-      // 5️⃣ Yetki kontrolü
-      if (book.user_email !== user.email && !isAdmin) {
+     // 5️⃣ Yetki kontrolü (Sahibi mi? Ortak Yazar mı? Admin mi?)
+      const isOwner = book.user_email === user.email;
+      const isCoAuthor = book.co_author_id === user.id && book.co_author_status === 'accepted';
+
+      if (!isOwner && !isCoAuthor && !isAdmin) {
         toast.error('Bu yetki size ait değil.');
         router.push('/profil');
         return;
