@@ -763,18 +763,23 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
               <h3 className="font-bold text-[11px] dark:text-white leading-tight truncate group-hover/card:text-red-600 transition-colors">
                 {chapter.books?.title}
               </h3>
-              <div className="flex flex-col mt-1 gap-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-400">
-                <Username
-                  username={chapter.books?.username}
-                  isAdmin={chapter.is_admin}
-                  isPremium={chapter.books?.role === 'premium'}
-                />
-                {chapter.books?.co_author_name && (
+             {/* 👇 Mobilde text-[7px] yaptık ve taşmayı önlemek için w-full overflow-hidden ekledik */}
+              <div className="flex flex-col mt-1 gap-0.5 text-[7px] md:text-[9px] font-bold uppercase tracking-widest text-gray-400 w-full overflow-hidden">
+                <div className="truncate w-full">
                   <Username
-                    username={chapter.books.co_author_name}
-                    isAdmin={chapter.books.co_author_is_admin}
-                    isPremium={chapter.books.co_author_role === 'premium'}
+                    username={chapter.books?.username}
+                    isAdmin={chapter.is_admin}
+                    isPremium={chapter.books?.role === 'premium'}
                   />
+                </div>
+                {chapter.books?.co_author_name && (
+                  <div className="truncate w-full">
+                    <Username
+                      username={chapter.books.co_author_name}
+                      isAdmin={chapter.books.co_author_is_admin}
+                      isPremium={chapter.books.co_author_role === 'premium'}
+                    />
+                  </div>
                 )}
               </div>
             </div>
