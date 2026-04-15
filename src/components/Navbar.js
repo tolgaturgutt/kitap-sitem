@@ -24,6 +24,7 @@ export default function Navbar() {
   const mobileSearchRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
+  const [invites, setInvites] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -63,8 +64,20 @@ export default function Navbar() {
           await loadNotifications(session.user.email);
         };
 
+        // --- YENİ: Ortak Yazar Davetlerini Çek ---
+        const fetchInvites = async () => {
+          const { data } = await supabase
+            .from('books')
+            .select('id, title, username')
+            .eq('co_author_id', session.user.id)
+            .eq('co_author_status', 'pending');
+          
+          if (data) setInvites(data);
+        };
+
         fetchProfile();
         fetchNotifs();
+        fetchInvites(); 
       }
     };
     loadSession();
@@ -299,6 +312,27 @@ export default function Navbar() {
     (n.type === 'reply' && !n.pano_id)
   );
   const unreadCount = notifications.filter(n => !n.is_read).length;
+  const totalAlerts = unreadCount + invites.length;
+  // --- YENİ: Daveti Yanıtlama Fonksiyonu ---
+  async function respondToInvite(bookId, accept) {
+    // Kabul ederse accepted yap, reddederse co_author sütunlarını tamamen temizle
+    const updateData = accept 
+      ? { co_author_status: 'accepted' } 
+      : { co_author_id: null, co_author_status: null };
+
+    const { error } = await supabase
+      .from('books')
+      .update(updateData)
+      .eq('id', bookId);
+
+    if (error) {
+      toast.error('İşlem başarısız oldu.');
+    } else {
+      toast.success(accept ? '✅ Ortaklık davetini kabul ettin!' : '❌ Daveti reddettin.');
+      // Daveti listeden sil ki ekrandan kaybolsun
+      setInvites(prev => prev.filter(inv => inv.id !== bookId));
+    }
+  }
 
 
 
@@ -548,9 +582,9 @@ export default function Navbar() {
                   className={`w-9 h-9 md:w-11 md:h-11 flex items-center justify-center rounded-full relative transition-all ${showNotifs ? 'bg-red-600 text-white scale-110' : 'bg-gray-100 dark:bg-white/5 text-gray-500 hover:scale-105'}`}
                 >
                   <span className="text-base md:text-xl">🔔</span>
-                  {unreadCount > 0 && (
+                 {totalAlerts > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-red-600 text-white text-[8px] md:text-[9px] font-black rounded-full flex items-center justify-center animate-pulse">
-                      {unreadCount}
+                      {totalAlerts}
                     </span>
                   )}
                 </button>
@@ -571,6 +605,38 @@ export default function Navbar() {
                         ✕
                       </button>
                     </div>
+                    {/* --- YENİ: BEKLEYEN DAVETLER VİTRİNİ --- */}
+                    {invites.length > 0 && (
+                      <div className="p-3 md:p-4 bg-yellow-50/80 dark:bg-yellow-900/20 border-b border-yellow-100 dark:border-yellow-900/50">
+                        <p className="text-[9px] font-black uppercase text-yellow-600 tracking-[0.2em] mb-2.5 flex items-center gap-2">
+                          🤝 Bekleyen Ortaklık Davetleri
+                        </p>
+                        <div className="space-y-2">
+                          {invites.map(inv => (
+                            <div key={inv.id} className="bg-white dark:bg-black/50 p-3 rounded-xl border border-yellow-200 dark:border-yellow-700/50 shadow-sm">
+                              <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed mb-3">
+                                <span className="font-black text-red-600">@{inv.username}</span> seni <span className="font-bold italic">"{inv.title}"</span> kitabına ortak yazar olarak davet ediyor.
+                              </p>
+                              <div className="flex gap-2">
+                                <button 
+                                  onClick={() => respondToInvite(inv.id, true)} 
+                                  className="flex-1 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase tracking-wider py-2 rounded-lg transition-colors"
+                                >
+                                  Kabul Et
+                                </button>
+                                <button 
+                                  onClick={() => respondToInvite(inv.id, false)} 
+                                  className="flex-1 bg-gray-200 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/30 text-gray-700 dark:text-gray-300 hover:text-red-600 text-[10px] font-black uppercase tracking-wider py-2 rounded-lg transition-colors"
+                                >
+                                  Reddet
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
 
                     <div className="flex flex-col md:flex-row md:divide-x dark:divide-white/5 h-[65vh] md:h-[400px]">
 

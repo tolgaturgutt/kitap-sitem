@@ -22,7 +22,9 @@ export default function KitapDetay({ params }) {
   
   const [data, setData] = useState({ 
     book: null, 
-    authorProfile: null, 
+    authorProfile: null,
+    coAuthorProfile: null,
+    coAuthorIsAdmin: false,
     chapters: [], 
     stats: { 
       views: 0, 
@@ -87,6 +89,26 @@ export default function KitapDetay({ params }) {
          authorIsAdmin = !!authorAdminCheck;
       }
 
+      // 3.5 ORTAK YAZAR PROFİLİ
+      let coAuthorProfile = null;
+      let coAuthorIsAdmin = false;
+      if (book.co_author_id && book.co_author_status === 'accepted') {
+        const { data: coProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', book.co_author_id)
+          .single();
+        if (coProfile) {
+          coAuthorProfile = coProfile;
+          const { data: coAdminCheck } = await supabase
+            .from('announcement_admins')
+            .select('*')
+            .eq('user_email', coProfile.email)
+            .single();
+          coAuthorIsAdmin = !!coAdminCheck;
+        }
+      }
+
       // 4. BEN ADMİN MİYİM?
       let adminStatus = false;
       if (user) {
@@ -134,6 +156,8 @@ export default function KitapDetay({ params }) {
       setData({ 
         book, 
         authorProfile,
+        coAuthorProfile,
+        coAuthorIsAdmin,
         chapters: filteredChapters, 
         stats: { 
           views: totalViews, 
@@ -408,7 +432,7 @@ export default function KitapDetay({ params }) {
               {data.book.title}
             </h1>
             
-            <Link href={`/yazar/${displayAuthorName}`} className="flex items-center gap-4 mb-10 group w-fit">
+            <Link href={`/yazar/${displayAuthorName}`} className="flex items-center gap-4 mb-4 group w-fit">
               <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-sm uppercase">
                 {displayAuthorAvatar && displayAuthorAvatar.includes('http') ? (
                   <img src={displayAuthorAvatar} className="w-full h-full object-cover" alt="" />
@@ -427,6 +451,29 @@ export default function KitapDetay({ params }) {
                 <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Eser Sahibi</p>
               </div>
             </Link>
+
+            {/* ORTAK YAZAR */}
+            {data.coAuthorProfile && (
+              <Link href={`/yazar/${data.coAuthorProfile.username}`} className="flex items-center gap-4 mb-10 group w-fit">
+                <div className="w-14 h-14 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-sm uppercase">
+                  {data.coAuthorProfile.avatar_url ? (
+                    <img src={data.coAuthorProfile.avatar_url} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    (data.coAuthorProfile.username || 'U')[0]
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-black group-hover:text-red-600 transition-colors">
+                    <Username
+                      username={data.coAuthorProfile.username}
+                      isAdmin={data.coAuthorIsAdmin}
+                      isPremium={data.coAuthorProfile.role === 'premium'}
+                    />
+                  </p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Ortak Yazar</p>
+                </div>
+              </Link>
+            )}
             
             {/* İSTATİSTİKLER */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 mb-10 bg-white dark:bg-white/5 p-8 rounded-[2rem] border dark:border-white/5">

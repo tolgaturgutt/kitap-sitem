@@ -5,11 +5,16 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
+import Username from '@/components/Username';
+
 
 export default function KitapEkle() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [adminEmails, setAdminEmails] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [coAuthorInput, setCoAuthorInput] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
   const [formData, setFormData] = useState({
     title: '',
     category: '',
@@ -28,13 +33,30 @@ export default function KitapEkle() {
       const categoryNames = data?.map(c => c.name) || [];
       setCategories(categoryNames);
       
-      // İlk kategoriyi default seç
-      if (categoryNames.length > 0) {
-        setFormData(prev => ({ ...prev, category: categoryNames[0] }));
+    // İlk kategoriyi default seç
+      if (categoryNames.length > 0) {
+        setFormData(prev => ({ ...prev, category: categoryNames[0] }));
+      }
+
+      // --- DÜZELTME: Adminleri email yerine ID'leri veya Usernameleri ile tanıyacağız ---
+      // (Eğer announcement_admins tablosunda user_id veya username varsa onları çek, 
+      // yoksa bile profiles tablosuyla eşleştirip adminlerin profil verilerini al)
+      
+      const { data: adminList } = await supabase.from('announcement_admins').select('user_email');
+      const emails = adminList?.map(a => a.user_email) || [];
+      
+      // Adminlerin e-postalarından gidip profillerini (ve username'lerini) bul
+      if (emails.length > 0) {
+        const { data: adminProfiles } = await supabase
+          .from('profiles')
+          .select('username')
+          .in('email', emails);
+          
+        setAdminEmails(adminProfiles?.map(p => p.username) || []); // Artık içinde mail değil, username'ler var!
       }
-    }
-    fetchCategories();
-  }, []);
+      } 
+    fetchCategories(); 
+  }, []); 
 // Resim Sıkıştırma Fonksiyonu
   async function handleImageChange(event) {
     const file = event.target.files[0];
@@ -55,6 +77,25 @@ export default function KitapEkle() {
     } catch (error) {
       console.log("Hata:", error);
       toast.error("Resim işlenemedi");
+    }
+  }
+  // --- YENİ: Ortak Yazar Canlı Arama ---
+  async function handleAuthorSearch(value) {
+    setCoAuthorInput(value); // Önce inputu güncelle
+    
+    if (value.length < 2) {
+      setSearchResults([]); // 2 harften azsa listeyi temizle
+      return;
+    }
+
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, avatar_url, email, role')
+      .ilike('username', `%${value}%`)
+      .limit(5);
+
+    if (data) {
+      setSearchResults(data);
     }
   }
   async function handleSubmit(e) {
@@ -88,6 +129,27 @@ export default function KitapEkle() {
         const { data: { publicUrl } } = supabase.storage.from('book-covers').getPublicUrl(fileName);
         coverUrl = publicUrl;
       }
+      // 3.5 Ortak Yazar Kontrolü
+      let coAuthorId = null;
+      let coAuthorStatus = null;
+
+      if (coAuthorInput.trim()) {
+        const { data: coUser } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('username', coAuthorInput.trim())
+          .single();
+
+        if (!coUser) {
+          throw new Error(`"${coAuthorInput}" adında bir kullanıcı bulunamadı!`);
+        }
+        if (coUser.id === user.id) {
+          throw new Error("Kendinizi ortak yazar ekleyemezsiniz!");
+        }
+        
+        coAuthorId = coUser.id;
+        coAuthorStatus = 'pending';
+      }
 
       // 4. Kitabı Kaydet
       const { data, error } = await supabase.from('books').insert([
@@ -98,7 +160,9 @@ export default function KitapEkle() {
           cover_url: coverUrl,
           user_id: user.id,
           user_email: user.email,
-          username: username
+          username: username,
+          co_author_id: coAuthorId,
+          co_author_status: coAuthorStatus
         }
       ]).select();
 
@@ -154,6 +218,51 @@ export default function KitapEkle() {
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
+          </div>
+         {/* Ortak Yazar Ekleme (AKILLI ARAMA VERSİYONU) */}
+          <div className="relative">
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Ortak Yazar Davet Et (İsteğe Bağlı)</label>
+            <input 
+              type="text" 
+              value={coAuthorInput}
+              onChange={(e) => handleAuthorSearch(e.target.value)}
+              className="w-full p-4 bg-gray-50 dark:bg-black border dark:border-gray-800 rounded-2xl font-bold dark:text-white outline-none focus:border-red-600 transition-colors"
+              placeholder="Kullanıcı adı aramaya başla..."
+            />
+            
+            {/* Canlı Arama Sonuçları Listesi */}
+            {searchResults.length > 0 && (
+              <ul className="absolute z-10 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                {searchResults.map((userResult) => (
+                  <li 
+                    key={userResult.id}
+                    onClick={() => {
+                      setCoAuthorInput(userResult.username); 
+                      setSearchResults([]); 
+                    }}
+                    className="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0 flex items-center gap-3"
+                  >
+                    {/* YUVARLAK PROFİL FOTOĞRAFI */}
+                    <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 border dark:border-gray-700 bg-gray-200 dark:bg-gray-800">
+                      <img 
+                        src={userResult.avatar_url || '/placeholder.png'} 
+                        alt={userResult.username}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    
+                    {/* KLAS USERNAME BİLEŞENİN */}
+                    <div className="text-sm">
+                      <Username 
+                        username={userResult.username} 
+                        isAdmin={adminEmails.includes(userResult.username)}
+                        isPremium={userResult.role === 'premium'} 
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
 
           {/* Özet Alanı */}
