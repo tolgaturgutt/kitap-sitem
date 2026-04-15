@@ -243,8 +243,7 @@ export default function KitapDetay({ params }) {
   }
 
   async function handleToggleDraft() {
-    const isAuthor = data.user && data.book.user_email === data.user.email;
-    if (!isAuthor && !data.isAdmin) return;
+   if (!canEdit) return; // canEdit zaten ortak yazarı kapsıyor
 
     const newStatus = !data.book.is_draft; 
     const { error } = await supabase.from('books').update({ is_draft: newStatus }).eq('id', id);
@@ -259,8 +258,7 @@ export default function KitapDetay({ params }) {
   }
 
   async function handleToggleCompleted() {
-    const isAuthor = data.user && data.book.user_email === data.user.email;
-    if (!isAuthor && !data.isAdmin) return;
+   if (!canEdit) return; // canEdit zaten ortak yazarı kapsıyor
 
     const newStatus = !data.book.is_completed;
     const { error } = await supabase.from('books').update({ is_completed: newStatus }).eq('id', id);
@@ -347,7 +345,10 @@ export default function KitapDetay({ params }) {
   if (!data.book) return <div className="py-20 text-center font-black">ESER BULUNAMADI</div>;
 
   const isAuthor = data.user && data.book.user_email === data.user.email;
-  const canEdit = isAuthor || data.isAdmin;
+  // YENİ: Onaylanmış ortak yazar mı?
+  const isCoAuthor = data.user && data.book.co_author_id === data.user.id && data.book.co_author_status === 'accepted';
+  // canEdit artık ikisini de kapsıyor
+  const canEdit = isAuthor || isCoAuthor || data.isAdmin;
 
   const visibleChapters = canEdit 
     ? data.chapters 
