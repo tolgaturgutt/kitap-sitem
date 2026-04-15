@@ -323,13 +323,20 @@ function CategoryRow({ title, books, isFeatured = false }) {
               </div>
             )}
 
-            <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
-              <Username 
-  username={kitap.username} 
-  isAdmin={kitap.is_admin} 
-  isPremium={kitap.role === 'premium'} // 👈 YENİ
-/>
-            </p>
+            <div className="flex flex-col mt-0.5 gap-0.5 text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80">
+              <Username
+                username={kitap.username}
+                isAdmin={kitap.is_admin}
+                isPremium={kitap.role === 'premium'}
+              />
+              {kitap.co_author_name && (
+                <Username
+                  username={kitap.co_author_name}
+                  isAdmin={kitap.co_author_is_admin}
+                  isPremium={kitap.co_author_role === 'premium'}
+                />
+              )}
+            </div>
 
             <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
               <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
@@ -389,13 +396,20 @@ function TopReadRow({ books }) {
               </div>
             )}
 
-            <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
-              <Username 
-  username={kitap.username} 
-  isAdmin={kitap.is_admin} 
-  isPremium={kitap.role === 'premium'} // 👈 YENİ
-/>
-            </p>
+            <div className="flex flex-col mt-0.5 gap-0.5 text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80">
+              <Username
+                username={kitap.username}
+                isAdmin={kitap.is_admin}
+                isPremium={kitap.role === 'premium'}
+              />
+              {kitap.co_author_name && (
+                <Username
+                  username={kitap.co_author_name}
+                  isAdmin={kitap.co_author_is_admin}
+                  isPremium={kitap.co_author_role === 'premium'}
+                />
+              )}
+            </div>
 
             <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
               <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>
@@ -510,7 +524,7 @@ export default function Home() {
       // 4. Son Eklenen Bölümleri Çek
       const { data: recentChaps } = await supabase
         .from('chapters')
-        .select('id, title, created_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, profiles:user_id(username, avatar_url, email,role))')
+       .select('id, title, created_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, co_author_id, co_author_status, profiles:user_id(username, avatar_url, email,role), co_author:profiles!co_author_id(username, email, role))')
         .eq('books.is_draft', false)
         .eq('is_draft', false)
         .order('created_at', { ascending: false })
@@ -518,12 +532,18 @@ export default function Home() {
 
       const recentChapsWithAdmin = recentChaps?.map(c => {
         const bookOwnerEmail = c.books?.profiles?.email || c.books?.user_email;
+        const hasAcceptedCoAuthor = c.books?.co_author_id && c.books?.co_author_status === 'accepted' && c.books?.co_author;
+        const coAuthorEmail = c.books?.co_author?.email;
         return {
           ...c,
-        books: {
+          books: {
             ...c.books,
             username: c.books.profiles?.username || c.books.username,
-            role: c.books.profiles?.role // 👈 EKLE
+            role: c.books.profiles?.role,
+            // ORTAK YAZAR VERİLERİ
+            co_author_name: hasAcceptedCoAuthor ? c.books.co_author.username : null,
+            co_author_role: hasAcceptedCoAuthor ? c.books.co_author.role : null,
+            co_author_is_admin: coAuthorEmail ? emails.includes(coAuthorEmail) : false,
           },
           is_admin: emails.includes(bookOwnerEmail)
         };
@@ -534,9 +554,9 @@ export default function Home() {
       // --- 5. KİTAPLARI ÇEKME VE HESAPLAMA (GÜNCELLENEN KISIM) ---
       
       // total_votes sütununu da istiyoruz
-      let { data: allBooks, error: booksError } = await supabase
+     let { data: allBooks, error: booksError } = await supabase
         .from('books')
-        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email,role), chapters(id, views, is_draft)');
+        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email, role), co_author:profiles!co_author_id(username, email, role), chapters(id, views, is_draft)');
 
       if (booksError) {
         setLoading(false);
@@ -564,11 +584,18 @@ export default function Home() {
 
           const bookOwnerEmail = book.profiles?.email || book.user_email;
 
+       const hasAcceptedCoAuthor = book.co_author_id && book.co_author_status === 'accepted' && book.co_author;
+          const coAuthorEmail = book.co_author?.email;
+
           return {
             ...book,
-          username: book.profiles?.username || book.username,
-            role: book.profiles?.role, // 👈 EKLE
+            username: book.profiles?.username || book.username,
+            role: book.profiles?.role,
             is_admin: emails.includes(bookOwnerEmail),
+            // ORTAK YAZAR VERİLERİ
+            co_author_name: hasAcceptedCoAuthor ? book.co_author.username : null,
+            co_author_role: hasAcceptedCoAuthor ? book.co_author.role : null,
+            co_author_is_admin: coAuthorEmail ? emails.includes(coAuthorEmail) : false,
             totalViews,
             totalVotes,
             totalComments
@@ -736,13 +763,20 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
               <h3 className="font-bold text-[11px] dark:text-white leading-tight truncate group-hover/card:text-red-600 transition-colors">
                 {chapter.books?.title}
               </h3>
-              <p className="text-[7px] md:text-[9px] font-bold text-gray-400 uppercase tracking-widest mt-1 truncate">
-                <Username 
-  username={chapter.books?.username} 
-  isAdmin={chapter.is_admin} 
-  isPremium={chapter.books?.role === 'premium'} // 👈 YENİ (Dikkat: chapter.books.role)
-/>
-              </p>
+              <div className="flex flex-col mt-1 gap-0.5 text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                <Username
+                  username={chapter.books?.username}
+                  isAdmin={chapter.is_admin}
+                  isPremium={chapter.books?.role === 'premium'}
+                />
+                {chapter.books?.co_author_name && (
+                  <Username
+                    username={chapter.books.co_author_name}
+                    isAdmin={chapter.books.co_author_is_admin}
+                    isPremium={chapter.books.co_author_role === 'premium'}
+                  />
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -800,13 +834,20 @@ function EditorsChoiceSection({ books }) {
                 </div>
               )}
 
-              <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest pl-6 truncate">
-               <Username 
-  username={kitap.username} 
-  isAdmin={kitap.is_admin} 
-  isPremium={kitap.role === 'premium'} // 👈 YENİ
-/>
-              </p>
+              <div className="flex flex-col pl-6 mt-0.5 gap-0.5 text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80">
+                <Username
+                  username={kitap.username}
+                  isAdmin={kitap.is_admin}
+                  isPremium={kitap.role === 'premium'}
+                />
+                {kitap.co_author_name && (
+                  <Username
+                    username={kitap.co_author_name}
+                    isAdmin={kitap.co_author_is_admin}
+                    isPremium={kitap.co_author_role === 'premium'}
+                  />
+                )}
+              </div>
 
               <div className="flex items-center gap-1.5 md:gap-3 mt-2 pl-1 text-[8px] md:text-[9px] font-bold text-gray-400">
                 <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>

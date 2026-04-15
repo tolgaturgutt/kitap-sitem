@@ -79,11 +79,12 @@ export default function ProfilSayfasi() {
 
       if (adminData) setIsAdmin(true);
 
-      // --- KİTAPLARI VE İSTATİSTİK VERİLERİNİ ÇEK (GÜNCELLENDİ) ---
+     // --- KİTAPLARI VE İSTATİSTİK VERİLERİNİ ÇEK (GÜNCELLENDİ) ---
       const { data: written } = await supabase
         .from('books')
         .select('*, total_comment_count, total_votes, chapters(id, views)')
-        .eq('user_email', activeUser.email)
+        // BURASI DEĞİŞTİ: Sahibi olduğun VEYA onaylanmış ortağı olduğun kitaplar
+        .or(`user_id.eq.${activeUser.id},and(co_author_id.eq.${activeUser.id},co_author_status.eq.accepted)`)
         .order('created_at', { ascending: false });
 
       // Verileri birleştirme fonksiyonu
@@ -597,6 +598,7 @@ export default function ProfilSayfasi() {
                         TASLAK
                       </div>
                     )}
+                    
                   </div>
 
                   <h3 className="text-[9px] md:text-[10px] font-black text-center uppercase truncate italic dark:text-white group-hover:text-red-600 transition-colors">{k.title}</h3>

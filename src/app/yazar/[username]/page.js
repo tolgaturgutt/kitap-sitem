@@ -91,12 +91,13 @@ export default function YazarProfili() {
         setIsOwner(user && (user.id === p.id || user.email === p.email));
         setAuthor(p);
 
-        // --- KİTAPLARI ÇEK (HIZLANDIRILMIŞ VERSİYON) ---
+       // --- KİTAPLARI ÇEK (ORTAK YAZAR DESTEKLİ) ---
         let { data: b } = await supabase
           .from('books')
-          // 👇 BURASI KRİTİK: total_comment_count ve total_votes EKLENDİ
+          // total_comment_count ve total_votes zaten sendeydi, sorguyu genişletiyoruz
           .select('*, total_comment_count, total_votes, chapters(id, views)')
-          .eq('user_email', p.email || p.id) // Eski veriler için email fallback
+          // BURASI DEĞİŞTİ: Yazarın kendi eseri VEYA onaylanmış ortağı olduğu eser
+          .or(`user_id.eq.${p.id},and(co_author_id.eq.${p.id},co_author_status.eq.accepted)`)
           .order('created_at', { ascending: false });
 
         if (b) {
