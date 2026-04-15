@@ -14,54 +14,64 @@ function AramaIcerik() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'books', 'users'
 
-  useEffect(() => {
+ useEffect(() => {
     async function performDeepSearch() {
       if (!query) return;
       setLoading(true);
 
-      // 1. KİTAPLARI (Bölüm Bilgisiyle) VE KULLANICILARI ÇEK
-      const [booksRes, usersRes] = await Promise.all([
+      // 1. KİTAPLARI, KULLANICILARI VE ADMİNLERİ AYNI ANDA ÇEK (Fişek gibi hızlı)
+      const [booksRes, usersRes, adminsRes] = await Promise.all([
         supabase
           .from('books')
-          .select('id, title, summary, cover_url, username, category, chapters(id)')
+          // 👇 YENİ: Ortak yazar, ana yazar ve email bilgileri ilişkiyle (join) çekiliyor
+          .select('id, title, summary, cover_url, username, user_email, category, chapters(id), profiles:user_id(username, email, role), co_author:profiles!co_author_id(username, email, role), co_author_id, co_author_status')
           .ilike('title', `%${query}%`)
-          .limit(50), // 👈 GÜVENLİK SİGORTASI: En fazla 50 kitap getir
+          .limit(50),
 
         supabase
           .from('profiles')
-          .select('username, full_name, avatar_url, bio, role')
+          // 👇 YENİ: Gerçek admin kontrolü için 'email' de eklendi
+          .select('username, full_name, avatar_url, bio, role, email')
           .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
-          .limit(20) // 👈 Yazar araması için de 20 limit koyduk
+          .limit(20),
+          
+        supabase
+          .from('announcement_admins')
+          .select('user_email')
       ]);
 
+      // ADMİNLERİ LİSTELE
+      const admins = adminsRes.data ? adminsRes.data.map(a => a.user_email) : [];
+
+      // KİTAPLARI İŞLE
       let booksData = booksRes.data || [];
-
-      // ✅ HAYALET FİLTRESİ: Bölümü olmayan kitapları listeden at
       if (booksData.length > 0) {
+        // Hayalet filtresi: Bölümü olmayanları at
         booksData = booksData.filter(b => b.chapters && b.chapters.length > 0);
-      }
-      const usersData = usersRes.data || [];
-
-      // 2. KİTAPLAR GELDİYSE, YAZARLARININ ROLLERİNİ ARKADAN ÇEKİP BİRLEŞTİRELİM
-      if (booksData.length > 0) {
-        // Kitapların yazarlarının isim listesini çıkar
-        const authorNames = [...new Set(booksData.map(b => b.username))];
-
-        // Bu isimlerin rollerini sor
-        const { data: roles } = await supabase
-          .from('profiles')
-          .select('username, role')
-          .in('username', authorNames);
-
-        // Kitap verisine bu rolü yapıştır (Sanki join yapmışız gibi)
+        
+        // Verileri formatla (Ortak yazar ve Admin kontrollerini yap)
         booksData = booksData.map(book => {
-          const yazarProfili = roles?.find(r => r.username === book.username);
+          const ownerEmail = book.profiles?.email || book.user_email;
+          const hasAcceptedCoAuthor = book.co_author_id && book.co_author_status === 'accepted' && book.co_author;
+          const coAuthorEmail = book.co_author?.email;
+
           return {
             ...book,
-            profiles: { role: yazarProfili?.role } // Username bileşeni bu formatı bekliyor
+            username: book.profiles?.username || book.username,
+            author_role: book.profiles?.role,
+            is_admin: admins.includes(ownerEmail),
+            co_author_name: hasAcceptedCoAuthor ? book.co_author.username : null,
+            co_author_role: hasAcceptedCoAuthor ? book.co_author.role : null,
+            co_author_is_admin: coAuthorEmail ? admins.includes(coAuthorEmail) : false
           };
         });
       }
+
+      // KULLANICILARI İŞLE (Adminleri işaretle)
+      const usersData = (usersRes.data || []).map(u => ({
+        ...u,
+        is_admin: admins.includes(u.email)
+      }));
 
       setResults({
         books: booksData,
@@ -133,13 +143,21 @@ function AramaIcerik() {
                       <div className="flex flex-col justify-center py-2">
                         <span className="text-[9px] font-black uppercase text-red-600 mb-1">{book.category}</span>
                         <h3 className="text-xl font-bold dark:text-white mb-2 group-hover:text-red-600 transition-colors">{book.title}</h3>
-                        <div className="mb-4">
+                       <div className="flex flex-col gap-0.5 mb-4">
                           <Username
                             username={book.username}
-                            isAdmin={book.profiles?.role === 'admin'}
-                            isPremium={book.profiles?.role === 'premium'} // 👈 YENİ EKLENEN
+                            isAdmin={book.is_admin}
+                            isPremium={book.author_role === 'premium'}
                             className="text-xs text-gray-500 dark:text-gray-400 italic"
                           />
+                          {book.co_author_name && (
+                            <Username
+                              username={book.co_author_name}
+                              isAdmin={book.co_author_is_admin}
+                              isPremium={book.co_author_role === 'premium'}
+                              className="text-[10px] text-gray-400 dark:text-gray-500 italic opacity-80"
+                            />
+                          )}
                         </div>
                         <p className="text-[11px] text-gray-400 dark:text-gray-500 line-clamp-2 leading-relaxed">{book.summary}</p>
                       </div>
@@ -170,11 +188,11 @@ function AramaIcerik() {
                           <div className="w-full h-full bg-gray-200 dark:bg-black/50 flex items-center justify-center font-black">?</div>
                         )}
                       </div>
-                      <div className="mb-1">
+                    <div className="mb-1">
                         <Username
                           username={u.username}
-                          isAdmin={u.role === 'admin'}
-                          isPremium={u.role === 'premium'} // 👈 YENİ EKLENEN
+                          isAdmin={u.is_admin} // 👈 ARTIK GERÇEK ADMİN VERİTABANINA BAKIYOR
+                          isPremium={u.role === 'premium'}
                           className="font-bold dark:text-white group-hover:text-red-600 transition-colors"
                         />
                       </div>

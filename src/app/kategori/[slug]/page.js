@@ -46,13 +46,11 @@ export default function CategoryPage() {
       setAdminEmails(emails);
 
       // 3️⃣ Bu kategorideki kitapları çek
-      let { data: allBooks } = await supabase
+     let { data: allBooks } = await supabase
         .from('books')
-        // 👇 DİKKAT: Buraya 'total_votes' ekledim, eskiden yoktu.
-        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email,role), chapters(id, views)')
+        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email, role), co_author:profiles!co_author_id(username, email, role), chapters(id, views)')
         .eq('category', categoryData.name)
         .eq('is_draft', false);
-
       if (!allBooks) {
         setLoading(false);
         return;
@@ -74,13 +72,21 @@ export default function CategoryPage() {
         // 👇 ARTIK DOĞRUDAN VERİTABANINDAN GELEN SAYIYI ALIYORUZ
         const totalComments = book.total_comment_count || 0;
         
-        const bookOwnerEmail = book.profiles?.email || book.user_email;
+       const bookOwnerEmail = book.profiles?.email || book.user_email;
+        
+        // YENİ: Ortak yazar onaylıysa bilgilerini hazırla
+        const hasAcceptedCoAuthor = book.co_author_id && book.co_author_status === 'accepted' && book.co_author;
+        const coAuthorEmail = book.co_author?.email;
 
         return {
           ...book,
           username: book.profiles?.username || book.username,
           role: book.profiles?.role,
           is_admin: emails.includes(bookOwnerEmail),
+          // --- ORTAK YAZAR VERİLERİ ---
+          co_author_name: hasAcceptedCoAuthor ? book.co_author.username : null,
+          co_author_role: hasAcceptedCoAuthor ? book.co_author.role : null,
+          co_author_is_admin: coAuthorEmail ? emails.includes(coAuthorEmail) : false,
           totalViews,
           totalVotes,
           totalComments
@@ -230,13 +236,20 @@ export default function CategoryPage() {
                     </div>
                   )}
                   
-                  <p className="text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
-                   <Username 
-  username={kitap.username} 
-  isAdmin={kitap.is_admin}
-  isPremium={kitap.role === 'premium'} // 👈 MAVİ TİK İÇİN
-/>
-                  </p>
+               <div className="flex flex-col mt-0.5 gap-0.5 text-[7px] md:text-[9px] font-bold uppercase tracking-widest opacity-80 truncate">
+                    <Username 
+                      username={kitap.username} 
+                      isAdmin={kitap.is_admin}
+                      isPremium={kitap.role === 'premium'} 
+                    />
+                    {kitap.co_author_name && (
+                      <Username 
+                        username={kitap.co_author_name} 
+                        isAdmin={kitap.co_author_is_admin}
+                        isPremium={kitap.co_author_role === 'premium'} 
+                      />
+                    )}
+                  </div>
 
                   <div className="flex items-center gap-1.5 md:gap-3 mt-2 text-[8px] md:text-[9px] font-bold text-gray-400">
                     <span className="flex items-center gap-0.5">👁️ {formatNumber(kitap.totalViews)}</span>

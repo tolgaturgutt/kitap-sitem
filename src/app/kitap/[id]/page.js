@@ -298,19 +298,29 @@ export default function KitapDetay({ params }) {
      }
   }
 
-  async function handleDeleteBook() {
-    if (!window.confirm('ADMIN DİKKATİ: Bu kitabı ve bağlı her şeyi silmek üzeresin. Emin misin?')) return;
+ async function handleDeleteBook() {
+    if (!window.confirm('DİKKAT: Bu kitabı ve bağlı her şeyi silmek üzeresin. Emin misin?')) return;
     const toastId = toast.loading('Silme işlemi başlatıldı...');
+    
     try {
+      // 1. Önce bağlantılı alt verileri temizle (Foreign Key hatalarını önlemek için)
       await supabase.from('chapters').delete().eq('book_id', id);
       await supabase.from('comments').delete().eq('book_id', id);
       await supabase.from('book_votes').delete().eq('book_id', id);
       await supabase.from('follows').delete().eq('book_id', id);
       await supabase.from('notifications').delete().eq('book_id', id);
-      await supabase.from('books').delete().eq('id', id);
-      toast.dismiss(toastId);
-      toast.success('KİTAP VE TÜM VERİLER SİLİNDİ ✅');
-      router.push('/profil'); 
+      
+      // 2. ASIL KİTABI SİL VE HATAYI YAKALA
+      const { error } = await supabase.from('books').delete().eq('id', id);
+      
+      if (error) {
+        toast.dismiss(toastId);
+        toast.error('Ana kitap kaydı silinemedi: ' + error.message);
+      } else {
+        toast.dismiss(toastId);
+        toast.success('KİTAP VE TÜM VERİLER SİLİNDİ ✅');
+        router.push('/profil'); 
+      }
     } catch (error) {
       toast.dismiss(toastId);
       toast.error(error.message, { duration: 6000 });

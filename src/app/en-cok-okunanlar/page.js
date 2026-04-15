@@ -32,9 +32,9 @@ export default function Top100Page() {
 async function fetchBooks(currentOffset) {
     try {
       // ✅ 1. 'total_votes' SÜTUNUNU EKLEDİM (DİKKAT)
-      let { data: newBooks } = await supabase
+    let { data: newBooks } = await supabase
         .from('books')
-        .select('*, total_comment_count, total_votes, chapters(id, views), profiles:user_id(username, role)');
+        .select('*, total_comment_count, total_votes, chapters(id, views), profiles:user_id(username, role), co_author:profiles!co_author_id(username, role)');
 
       // ✅ HAYALET FİLTRESİ
       if (newBooks) {
@@ -54,11 +54,14 @@ async function fetchBooks(currentOffset) {
 
       // ❌ ESKİ 'chapter_votes' ÇEKME KODU SİLİNDİ (Siteyi yavaşlatıyordu)
 
-      // --- VERİLERİ BİRLEŞTİR ---
+    // --- VERİLERİ BİRLEŞTİR ---
       newBooks = newBooks.map(book => {
         const profile = book.profiles;
         const displayUsername = profile?.username || book.username;
         const displayRole = profile?.role;
+        
+        // YENİ: Ortak yazar onaylıysa bilgilerini hazırla
+        const hasAcceptedCoAuthor = book.co_author_id && book.co_author_status === 'accepted' && book.co_author;
         
         // ✅ 1. Toplam Yorum
         const totalComments = book.total_comment_count || 0;
@@ -71,10 +74,13 @@ async function fetchBooks(currentOffset) {
           .filter(c => c.id)
           .reduce((sum, c) => sum + (c.views || 0), 0);
 
-        return { 
+      return { 
           ...book, 
           username: displayUsername,
           author_role: displayRole,
+          // --- ORTAK YAZAR VERİLERİ ---
+          co_author_name: hasAcceptedCoAuthor ? book.co_author.username : null,
+          co_author_role: hasAcceptedCoAuthor ? book.co_author.role : null,
           totalComments,
           totalVotes,
           totalViews
@@ -184,13 +190,19 @@ async function fetchBooks(currentOffset) {
                   <h3 className="text-sm font-black text-gray-900 dark:text-white line-clamp-1 group-hover:text-red-600 transition-colors">
                     {book.title}
                   </h3>
-                  <div className="mt-1">
-                  <Username 
-  username={book.username} 
-  isAdmin={book.author_role === 'admin'}
-  isPremium={book.author_role === 'premium'} 
-  className="text-[10px] text-gray-500 font-bold uppercase tracking-wider" 
-/>
+                <div className="flex flex-col mt-1 gap-0.5 text-[8px] md:text-[10px] text-gray-500 font-bold uppercase tracking-wider">
+                    <Username 
+                      username={book.username} 
+                      isAdmin={book.author_role === 'admin'}
+                      isPremium={book.author_role === 'premium'} 
+                    />
+                    {book.co_author_name && (
+                      <Username 
+                        username={book.co_author_name} 
+                        isAdmin={book.co_author_role === 'admin'}
+                        isPremium={book.co_author_role === 'premium'} 
+                      />
+                    )}
                   </div>
                   
                   {/* ✅ İSTATİSTİKLER (Okunma, Beğeni, Yorum) */}

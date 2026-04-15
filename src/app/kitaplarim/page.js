@@ -37,14 +37,14 @@ export default function KitaplarimSayfasi() {
 
       // --- 1. KİTAPLARI VE İSTATİSTİKLERİ ÇEK (total_votes EKLENDİ) ---
       // 👇 ARTIK 'total_votes' SÜTUNUNU DİREKT İSTİYORUZ
-      const { data: written } = await supabase
+     const { data: written } = await supabase
         .from('books')
         .select('*, total_comment_count, total_votes, chapters(id, views)') 
-        .eq('user_email', activeUser.email)
+        .or(`user_id.eq.${activeUser.id},and(co_author_id.eq.${activeUser.id},co_author_status.eq.accepted)`)
         .order('created_at', { ascending: false });
 
       // --- 2. KÜTÜPHANE KİTAPLARINI ÇEK (total_votes EKLENDİ) ---
-      const { data: follows } = await supabase
+     const { data: follows } = await supabase
         .from('follows')
         .select(`
           *, 
@@ -53,9 +53,10 @@ export default function KitaplarimSayfasi() {
             total_comment_count,
             total_votes, 
             chapters(id, views),
-            profiles:user_id(username, role, email)
+            profiles:user_id(username, role, email),
+            co_author:profiles!co_author_id(username, email, role)
           )
-        `) // 👆 books içine total_votes da eklendi
+        `)
         .eq('user_email', activeUser.email)
         .eq('books.is_draft', false)
         .order('created_at', { ascending: false });
@@ -84,7 +85,7 @@ export default function KitaplarimSayfasi() {
 
       // KÜTÜPHANE KİTAPLARINI AYARLA
       if (follows) {
-        const booksWithStats = follows.map(follow => {
+       const booksWithStats = follows.map(follow => {
           const book = follow.books;
           if (!book) return null;
 
@@ -92,9 +93,11 @@ export default function KitaplarimSayfasi() {
           const displayUsername = profile?.username || book.username;
           const ownerEmail = profile?.email || book.user_email;
 
+          // YENİ: Ortak yazar verilerini hazırla
+          const hasAcceptedCoAuthor = book.co_author_id && book.co_author_status === 'accepted' && book.co_author;
+          const coAuthorEmail = book.co_author?.email;
+
           const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
-          
-          // ✅ BURADA DA HAZIR SAYILARI KULLANIYORUZ
           const totalVotes = book.total_votes || 0;
           const totalComments = book.total_comment_count || 0;
 
@@ -103,6 +106,10 @@ export default function KitaplarimSayfasi() {
             username: displayUsername,
             role: profile?.role,
             is_admin: emails.includes(ownerEmail),
+            // ORTAK YAZAR BİLGİLERİ EKLENİYOR
+            co_author_name: hasAcceptedCoAuthor ? book.co_author.username : null,
+            co_author_role: hasAcceptedCoAuthor ? book.co_author.role : null,
+            co_author_is_admin: coAuthorEmail ? emails.includes(coAuthorEmail) : false,
             totalViews,
             totalVotes,
             totalComments
@@ -270,15 +277,22 @@ export default function KitaplarimSayfasi() {
                     {k.title}
                   </h3>
                   
-                  {/* Kütüphane için yazar adı */}
+                {/* Kütüphane için yazar adı */}
                   {activeTab === 'kutuphane' && (
-                    <p className="text-[8px] md:text-[9px] font-bold uppercase tracking-widest mb-1">
-                     <Username 
-      username={k.username} 
-      isAdmin={k.is_admin} 
-      isPremium={k.role === 'premium'} // 👈 YENİ EKLENEN
-    />
-                    </p>
+                    <div className="flex flex-col mt-0.5 gap-0.5 text-[8px] md:text-[9px] font-bold uppercase tracking-widest mb-1 opacity-90">
+                      <Username 
+                        username={k.username} 
+                        isAdmin={k.is_admin} 
+                        isPremium={k.role === 'premium'} 
+                      />
+                      {k.co_author_name && (
+                        <Username 
+                          username={k.co_author_name} 
+                          isAdmin={k.co_author_is_admin} 
+                          isPremium={k.co_author_role === 'premium'} 
+                        />
+                      )}
+                    </div>
                   )}
                   
                   {/* Tamamlandı Rozeti */}

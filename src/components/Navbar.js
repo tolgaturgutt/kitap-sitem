@@ -31,14 +31,22 @@ export default function Navbar() {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef(null);
   const [showMobileSearch, setShowMobileSearch] = useState(false);
+  const [adminEmails, setAdminEmails] = useState([]);
 
   if (pathname === '/sifre-yenile') {
     return null;
   }
 
-  useEffect(() => {
+ useEffect(() => {
     setMounted(true);
     const loadSession = async () => {
+      // YENİ: Admin listesini çek (Giriş yapmasa bile herkes adminleri doğru görsün)
+      const fetchAdmins = async () => {
+        const { data } = await supabase.from('announcement_admins').select('user_email');
+        if (data) setAdminEmails(data.map(a => a.user_email));
+      };
+      fetchAdmins();
+
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setUser(session.user);
@@ -152,45 +160,57 @@ export default function Navbar() {
     setNotifications(n || []);
   }
 
-  useEffect(() => {
+ useEffect(() => {
     const timer = setTimeout(async () => {
       if (query.trim().length > 1) {
+        
+        // 1. KİTAPLARI ÇEK (Ortak yazar bilgileriyle beraber)
         let { data: b } = await supabase
           .from('books')
-          .select('*, chapters(id)')
+          .select('*, chapters(id), profiles:user_id(username, email, role), co_author:profiles!co_author_id(username, email, role)')
           .ilike('title', `%${query}%`)
           .limit(10);
 
         if (b) {
           b = b.filter(kitap => kitap.chapters && kitap.chapters.length > 0).slice(0, 5);
+          
+          // VERİYİ İŞLE (Adminleri ve Ortak Yazarları formatla)
+          b = b.map(book => {
+            const ownerEmail = book.profiles?.email || book.user_email;
+            const hasAcceptedCoAuthor = book.co_author_id && book.co_author_status === 'accepted' && book.co_author;
+            const coAuthorEmail = book.co_author?.email;
+
+            return {
+              ...book,
+              username: book.profiles?.username || book.username,
+              author_role: book.profiles?.role,
+              is_admin: adminEmails.includes(ownerEmail), // Gerçek admin kontrolü
+              co_author_name: hasAcceptedCoAuthor ? book.co_author.username : null,
+              co_author_role: hasAcceptedCoAuthor ? book.co_author.role : null,
+              co_author_is_admin: coAuthorEmail ? adminEmails.includes(coAuthorEmail) : false
+            };
+          });
         }
 
+        // 2. KULLANICILARI ÇEK
         const { data: u } = await supabase
           .from('profiles')
           .select('*')
           .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
           .limit(5);
 
-        if (b && b.length > 0) {
-          const authorNames = [...new Set(b.map(book => book.username))];
-          const { data: roles } = await supabase
-            .from('profiles')
-            .select('username, role')
-            .in('username', authorNames);
+        // Kullanıcılara da gerçek admin kontrolü yap
+        const mappedUsers = u?.map(user => ({
+          ...user,
+          is_admin: adminEmails.includes(user.email)
+        })) || [];
 
-          b.forEach(book => {
-            const author = roles?.find(r => r.username === book.username);
-            book.author_role = author?.role;
-          });
-        }
-
-        setSearchResults({ books: b || [], users: u || [] });
+        setSearchResults({ books: b || [], users: mappedUsers });
         setShowSearch(true);
       } else setShowSearch(false);
     }, 300);
     return () => clearTimeout(timer);
-  }, [query]);
-
+  }, [query, adminEmails]);
   async function handleLogout() {
     await supabase.auth.signOut();
     toast.success('Çıkış yapıldı.');
@@ -507,14 +527,22 @@ export default function Navbar() {
                               sizes="32px"
                             />
                           </div>
-                          <div className="flex-1 min-w-0">
+                         <div className="flex-1 min-w-0">
                             <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
-                            <Username
-                              username={b.username}
-                              isAdmin={b.author_role === 'admin'}
-                              isPremium={b.author_role === 'premium'}
-                              className="text-[9px] text-gray-400 uppercase"
-                            />
+                            <div className="flex flex-col mt-0.5 gap-0.5 text-[9px] text-gray-400 uppercase tracking-widest">
+                              <Username
+                                username={b.username}
+                                isAdmin={b.is_admin}
+                                isPremium={b.author_role === 'premium'}
+                              />
+                              {b.co_author_name && (
+                                <Username
+                                  username={b.co_author_name}
+                                  isAdmin={b.co_author_is_admin}
+                                  isPremium={b.co_author_role === 'premium'}
+                                />
+                              )}
+                            </div>
                           </div>
                         </Link>
                       ))}
@@ -545,15 +573,15 @@ export default function Navbar() {
                               u.username[0].toUpperCase()
                             )}
                           </div>
-                          <div className="flex-1">
-                            <Username
-                              username={u.username}
-                              isAdmin={u.role === 'admin'}
-                              isPremium={u.role === 'premium'}
-                              className="text-xs font-bold group-hover:text-red-600 transition-colors"
-                            />
-                            {u.full_name && <p className="text-[9px] text-gray-400">{u.full_name}</p>}
-                          </div>
+                         <div className="flex-1">
+                                <Username
+                                  username={u.username}
+                                  isAdmin={u.is_admin}
+                                  isPremium={u.role === 'premium'}
+                                  className="text-xs font-bold group-hover:text-red-600 transition-colors"
+                                />
+                                {u.full_name && <p className="text-[9px] text-gray-400">{u.full_name}</p>}
+                              </div>
                         </Link>
                       ))}
                     </div>
@@ -915,15 +943,23 @@ export default function Navbar() {
                                 sizes="32px"
                               />
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
-                              <Username
-                                username={b.username}
-                                isAdmin={b.author_role === 'admin'}
-                                isPremium={b.author_role === 'premium'}
-                                className="text-[9px] text-gray-400 uppercase"
-                              />
-                            </div>
+                           <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold truncate group-hover:text-red-600 transition-colors">{b.title}</p>
+                                <div className="flex flex-col mt-0.5 gap-0.5 text-[9px] text-gray-400 uppercase tracking-widest">
+                                  <Username
+                                    username={b.username}
+                                    isAdmin={b.is_admin}
+                                    isPremium={b.author_role === 'premium'}
+                                  />
+                                  {b.co_author_name && (
+                                    <Username
+                                      username={b.co_author_name}
+                                      isAdmin={b.co_author_is_admin}
+                                      isPremium={b.co_author_role === 'premium'}
+                                    />
+                                  )}
+                                </div>
+                              </div>
                           </Link>
                         ))}
                       </div>
@@ -956,7 +992,7 @@ export default function Navbar() {
                             <div className="flex-1">
                               <Username
                                 username={u.username}
-                                isAdmin={u.role === 'admin'}
+                                isAdmin={u.is_admin}
                                 isPremium={u.role === 'premium'}
                                 className="text-xs font-bold group-hover:text-red-600 transition-colors"
                               />

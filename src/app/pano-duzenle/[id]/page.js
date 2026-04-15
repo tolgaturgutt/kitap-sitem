@@ -63,14 +63,14 @@ export default function PanoDuzenle({ params }) {
       setTitle(pano.title);
       setContent(pano.content);
 
-      // D) KİTAPLARI GETİR - ✅ SADECE KULLANICININ KENDİ KİTAPLARI
+     // D) KİTAPLARI GETİR - ✅ KENDİ KİTAPLARI + ORTAK YAZAR OLDUĞU KİTAPLARI GETİR
       let { data: allBooks } = await supabase
         .from('books')
         .select('id, title, cover_url, user_email, username, chapters(id)') 
         .eq('is_draft', false)
-        .eq('user_email', activeUser.email) // ✅ Sadece kendi kitapları
+        // 👇 DEĞİŞEN KISIM: Ya sahibi benim, ya da onaylanmış ortak yazarım
+        .or(`user_id.eq.${activeUser.id},and(co_author_id.eq.${activeUser.id},co_author_status.eq.accepted)`)
         .order('title');
-      
       // Hayalet Filtresi: Bölümü olmayanları at
       if (allBooks) {
         allBooks = allBooks.filter(book => book.chapters && book.chapters.length > 0);

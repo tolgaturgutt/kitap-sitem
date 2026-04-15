@@ -22,6 +22,8 @@ export default function BolumDetay({ params }) {
   const [user, setUser] = useState(null);
   const [authorProfile, setAuthorProfile] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [coAuthorProfile, setCoAuthorProfile] = useState(null);
+  const [coAuthorIsAdmin, setCoAuthorIsAdmin] = useState(false);
 
   const [likes, setLikes] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
@@ -61,7 +63,7 @@ export default function BolumDetay({ params }) {
           return;
         }
         
-        const { data: book } = await supabase.from('books').select('*').eq('id', id).single();
+        const { data: book } = await supabase.from('books').select('*, co_author:profiles!co_author_id(username, email, role, avatar_url)').eq('id', id).single();
         const { data: all } = await supabase.from('chapters').select('id, title, is_draft').eq('book_id', id).order('order_no', { ascending: true });
 
         const { data: { user: currentUser } } = await supabase.auth.getUser();
@@ -105,6 +107,18 @@ export default function BolumDetay({ params }) {
             .single();
 
           setIsAdmin(!!adminData);
+        }
+        // YENİ: Ortak Yazar verilerini işle
+        if (book?.co_author_id && book?.co_author_status === 'accepted' && book?.co_author) {
+          setCoAuthorProfile(book.co_author);
+
+          const { data: coAdminData } = await supabase
+            .from('announcement_admins')
+            .select('user_email')
+            .eq('user_email', book.co_author.email)
+            .single();
+
+          setCoAuthorIsAdmin(!!coAdminData);
         }
 
         if (currentUser) {
@@ -494,48 +508,90 @@ export default function BolumDetay({ params }) {
             )}
           </div>
 
-          {authorProfile && (
+         {authorProfile && (
             <Link
               href={authorLink}
-              className="mt-8 flex items-center gap-4 p-5 rounded-2xl bg-current/5 hover:bg-current/10 transition-all group border border-current/10"
+              className="mt-8 flex items-center justify-between gap-4 p-5 rounded-2xl bg-current/5 hover:bg-current/10 transition-all group border border-current/10"
             >
-              <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 ${readerSettings.theme.includes('bg-[#f4ecd8]')
-                ? 'bg-[#e8d9c3]'
-                : readerSettings.theme.includes('bg-[#0a0a0a]')
-                  ? 'bg-white/10'
-                  : 'bg-gray-200'
-                }`}>
-                {authorProfile.avatar_url ? (
-                  <img src={authorProfile.avatar_url} className="w-full h-full object-cover" alt="" />
-                ) : (
-                  <div className={`w-full h-full flex items-center justify-center font-black text-lg ${readerSettings.theme.includes('bg-[#f4ecd8]')
-                    ? 'text-[#8b7355]'
+              {/* SOL TARAF: PPLER VE İSİMLER BİRBİRİNE YAPIŞIK BİR GRUP */}
+              <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
+                
+                {/* 1. PP: ANA YAZAR (EN SOLDA) */}
+                <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 ${readerSettings.theme.includes('bg-[#f4ecd8]')
+                  ? 'bg-[#e8d9c3]'
+                  : readerSettings.theme.includes('bg-[#0a0a0a]')
+                    ? 'bg-white/10'
+                    : 'bg-gray-200'
+                  }`}>
+                  {authorProfile.avatar_url ? (
+                    <img src={authorProfile.avatar_url} className="w-full h-full object-cover" alt="" />
+                  ) : (
+                    <div className={`w-full h-full flex items-center justify-center font-black text-lg ${readerSettings.theme.includes('bg-[#f4ecd8]')
+                      ? 'text-[#8b7355]'
+                      : readerSettings.theme.includes('bg-[#0a0a0a]')
+                        ? 'text-gray-400'
+                        : 'text-gray-600'
+                      }`}>
+                      {authorProfile.username?.[0]?.toUpperCase() || 'Y'}
+                    </div>
+                  )}
+                </div>
+
+                {/* İSİMLER (SADECE KENDİ YERİ KADAR YER KAPLAR, PP'Yİ İTMEZ) */}
+                <div className="flex flex-col shrink min-w-0">
+                  <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${readerSettings.theme.includes('bg-[#f4ecd8]')
+                    ? 'text-[#8b7355] opacity-60'
                     : readerSettings.theme.includes('bg-[#0a0a0a]')
-                      ? 'text-gray-400'
-                      : 'text-gray-600'
+                      ? 'text-gray-500'
+                      : 'text-gray-400'
                     }`}>
-                    {authorProfile.username?.[0]?.toUpperCase() || 'Y'}
+                    {coAuthorProfile ? 'YAZARLAR' : 'YAZAR'}
+                  </p>
+                  <div className="text-sm font-bold group-hover:text-red-600 transition-colors flex flex-wrap items-center gap-x-1.5">
+                    <Username
+                      username={authorProfile.username || data.book?.username}
+                      isAdmin={isAdmin}
+                      isPremium={authorProfile?.role === 'premium'}
+                    />
+                    {coAuthorProfile && (
+                      <>
+                        <span className="text-[12px] opacity-40 font-black">&</span>
+                        <Username
+                          username={coAuthorProfile.username}
+                          isAdmin={coAuthorIsAdmin}
+                          isPremium={coAuthorProfile.role === 'premium'}
+                        />
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. PP: ORTAK YAZAR (HEMEN İSİMLERİN BİTTİĞİ YERE YAPIŞIR) */}
+                {coAuthorProfile && (
+                  <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 animate-in fade-in slide-in-from-right-2 duration-500 ${readerSettings.theme.includes('bg-[#f4ecd8]')
+                    ? 'bg-[#e8d9c3]'
+                    : readerSettings.theme.includes('bg-[#0a0a0a]')
+                      ? 'bg-white/10'
+                      : 'bg-gray-200'
+                    }`}>
+                    {coAuthorProfile.avatar_url ? (
+                      <img src={coAuthorProfile.avatar_url} className="w-full h-full object-cover" alt="" />
+                    ) : (
+                      <div className={`w-full h-full flex items-center justify-center font-black text-lg ${readerSettings.theme.includes('bg-[#f4ecd8]')
+                        ? 'text-[#8b7355]'
+                        : readerSettings.theme.includes('bg-[#0a0a0a]')
+                          ? 'text-gray-400'
+                          : 'text-gray-600'
+                        }`}>
+                        {coAuthorProfile.username?.[0]?.toUpperCase() || 'O'}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${readerSettings.theme.includes('bg-[#f4ecd8]')
-                  ? 'text-[#8b7355] opacity-60'
-                  : readerSettings.theme.includes('bg-[#0a0a0a]')
-                    ? 'text-gray-500'
-                    : 'text-gray-400'
-                  }`}>
-                  Yazar
-                </p>
-                <div className="text-sm font-bold group-hover:text-red-600 transition-colors">
-                 <Username
-  username={authorProfile.username || data.book?.username}
-  isAdmin={isAdmin}
-  isPremium={authorProfile?.role === 'premium'} // 👈 YENİ EKLENEN
-/>
-                </div>
-              </div>
-              <div className="text-red-600 opacity-0 group-hover:opacity-100 transition-opacity">
+
+              {/* OK İKONU (KARTIN EN SAĞINDA TEK BAŞINA DURUR) */}
+              <div className="text-red-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-1">
                 →
               </div>
             </Link>
