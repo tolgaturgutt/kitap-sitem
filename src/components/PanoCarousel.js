@@ -24,7 +24,7 @@ export default function PanoCarousel({ onPanoClick, user }) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
-      const { data: rawPanolar } = await supabase
+     const { data: rawPanolar } = await supabase
         .from('panolar')
         .select(`
           *,
@@ -39,8 +39,9 @@ export default function PanoCarousel({ onPanoClick, user }) {
           )
         `)
         .gte('created_at', yesterday.toISOString())
-        .order('created_at', { ascending: false })
-        .limit(30);
+        .order('is_pinned', { ascending: false }) // 🔥 YENİ: Önce tutturulanlar
+        .order('created_at', { ascending: false }) // Sonra en yeniler
+        .limit(30);;
       
       if (rawPanolar && rawPanolar.length > 0) {
         // 🔥🔥🔥 OPTİMİZASYON BURADA 🔥🔥🔥
@@ -163,6 +164,13 @@ export default function PanoCarousel({ onPanoClick, user }) {
                         )
                   } transition-all group-hover/story:scale-110 duration-300`}>
                     
+                    {/* 🔥 YENİ: Sağ üst köşedeki raptiye */}
+                    {pano.is_pinned && (
+                      <div className="absolute -top-1 -right-1 z-20 bg-white dark:bg-[#080808] rounded-full p-0.5 shadow-md flex items-center justify-center">
+                        <span className="text-[14px]">📌</span>
+                      </div>
+                    )}
+
                    {/* 👇 'relative' ekledik ki resim taşmasın */}
                     <div className="relative w-20 h-20 rounded-full overflow-hidden bg-white dark:bg-gray-900 p-0.5">
                       {pano.profiles?.avatar_url ? (

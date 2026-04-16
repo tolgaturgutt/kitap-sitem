@@ -256,6 +256,21 @@ export default function PanoModal({
       onClose();
     }
   }
+  async function handleTogglePin() {
+    const newStatus = !selectedPano.is_pinned;
+    
+    const { error } = await supabase
+      .from('panolar')
+      .update({ is_pinned: newStatus })
+      .eq('id', selectedPano.id);
+      
+    if (!error) {
+      toast.success(newStatus ? '📌 Pano başa tutturuldu!' : 'Tutturma kaldırıldı!');
+      setTimeout(() => window.location.reload(), 800); // 0.8 saniye sonra yenile
+    } else {
+      toast.error('Hata oluştu!');
+    }
+  }
 
   const CommentItem = ({ comment, isReply = false }) => {
     const canDelete = isAdmin || isOwner || (user && user.email === comment.user_email);
@@ -470,6 +485,12 @@ export default function PanoModal({
                  <Link href={buttonLink} className="flex-1 text-center bg-red-600 hover:bg-red-700 text-white font-black text-[10px] px-4 py-3 rounded-xl uppercase tracking-wider transition-all">
                    {buttonText}
                  </Link>
+                 {/* 🔥 YENİ: Admin Başa Tutturma Butonu */}
+                 {isAdmin && (
+                   <button onClick={handleTogglePin} className="bg-yellow-500 hover:bg-yellow-600 text-black font-black text-[10px] px-4 py-3 rounded-xl uppercase transition-all">
+                     {selectedPano.is_pinned ? '📌 KALDIR' : '📌 TUTTUR'}
+                   </button>
+                 )}
                  {isOwner && <Link href={`/pano-duzenle/${selectedPano.id}`} className="bg-blue-600 text-white font-black text-[10px] px-4 py-3 rounded-xl uppercase">DÜZENLE</Link>}
                  {(isAdmin || isOwner) && <button onClick={handleDeletePano} className="bg-black dark:bg-white text-white dark:text-black font-black text-[10px] px-4 py-3 rounded-xl uppercase">SİL</button>}
               </div>
