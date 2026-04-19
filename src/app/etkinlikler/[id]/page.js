@@ -681,4 +681,4 @@ export default function EtkinlikDetay({ params }) {
       </div>
     </div>
   );
-}
+}  //düzenleme
