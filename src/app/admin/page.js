@@ -85,6 +85,8 @@ const [eventForm, setEventForm] = useState({
   start_date: '', 
   end_date: '', 
   max_participants: 20, 
+  min_words: 500,
+  max_words: 2000,
   image_url: '', 
   is_active: true
 });
@@ -1076,6 +1078,10 @@ const [loadingEvents, setLoadingEvents] = useState(false);
           toast.error('Bitiş tarihi başlangıçtan sonra olmalı!');
           return;
         }
+        if (!eventForm.min_words || !eventForm.max_words || eventForm.min_words >= eventForm.max_words) {
+          toast.error('Kelime sınırlarını doğru gir! Min, max\'tan küçük olmalı.');
+          return;
+        }
 
         const payload = { ...eventForm, created_by: adminEmail };
         const q = editingEventId 
@@ -1090,7 +1096,7 @@ const [loadingEvents, setLoadingEvents] = useState(false);
           setEditingEventId(null);
           setEventForm({
             title: '', description: '', theme: '', start_date: '', 
-            end_date: '', max_participants: 20, image_url: '', is_active: true
+            end_date: '', max_participants: 20, min_words: 500, max_words: 2000, image_url: '', is_active: true
           });
           fetchEvents();
         }
@@ -1206,6 +1212,29 @@ const [loadingEvents, setLoadingEvents] = useState(false);
           />
         </div>
 
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase">Min. Kelime Sayısı</label>
+            <input 
+              type="number" 
+              min="1"
+              value={eventForm.min_words} 
+              onChange={e => setEventForm({...eventForm, min_words: e.target.value === '' ? '' : parseInt(e.target.value)})} 
+              className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none" 
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 uppercase">Max. Kelime Sayısı</label>
+            <input 
+              type="number" 
+              min="1"
+              value={eventForm.max_words} 
+              onChange={e => setEventForm({...eventForm, max_words: e.target.value === '' ? '' : parseInt(e.target.value)})} 
+              className="w-full p-4 bg-gray-50 dark:bg-black/20 rounded-2xl dark:text-white font-bold outline-none" 
+            />
+          </div>
+        </div>
+
         <div className="flex items-center gap-3 p-4 bg-gray-50 dark:bg-black/20 rounded-2xl">
           <input 
             type="checkbox" 
@@ -1263,6 +1292,8 @@ const [loadingEvents, setLoadingEvents] = useState(false);
                           start_date: event.start_date.slice(0, 16),
                           end_date: event.end_date.slice(0, 16),
                           max_participants: event.max_participants,
+                          min_words: event.min_words || 500,
+                          max_words: event.max_words || 2000,
                           image_url: event.image_url || '',
                           is_active: event.is_active
                         });
@@ -1294,6 +1325,9 @@ const [loadingEvents, setLoadingEvents] = useState(false);
                   </span>
                   <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-black">
                     👥 {event.participant_count || 0}/{event.max_participants}
+                  </span>
+                  <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full font-black">
+                    ✍️ {event.min_words || 500}–{event.max_words || 2000} kelime
                   </span>
                   <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full font-mono text-[10px]">
                     📅 {new Date(event.start_date).toLocaleDateString('tr-TR')}

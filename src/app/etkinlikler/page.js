@@ -105,12 +105,12 @@ export default function EtkinliklerSayfasi() {
     setSelectedEvent(event);
 
     // Kullanıcının uygun kitaplarını çek
-    await fetchUserEligibleBooks();
+    await fetchUserEligibleBooks(event);
 
     setShowParticipateModal(true);
   }
 
-  async function fetchUserEligibleBooks() {
+  async function fetchUserEligibleBooks(event) {
     // Kullanıcının yayında olan kitaplarını çek
     const { data: books } = await supabase
       .from('books')
@@ -123,17 +123,28 @@ export default function EtkinliklerSayfasi() {
       return;
     }
 
-    // Her kitap için bölümleri kontrol et (2k-10k kelime arası)
+    // Her kitap için bölümleri kontrol et - sadece TEK bölümü olan kitaplar
     const eligibleBooks = [];
 
     for (const book of books) {
+      // Önce kitabın toplam bölüm sayısını kontrol et
+      const { count: totalChapters } = await supabase
+        .from('chapters')
+        .select('id', { count: 'exact', head: true })
+        .eq('book_id', book.id)
+        .eq('is_draft', false);
+
+      // Birden fazla bölümü varsa geç
+      if (totalChapters !== 1) continue;
+
+      // Tek bölüm var, kelime sınırına uyuyor mu kontrol et
       const { data: bookChapters } = await supabase
         .from('chapters')
         .select('id, title, word_count, order_no')
         .eq('book_id', book.id)
         .eq('is_draft', false)
-        .gte('word_count', 2000)
-        .lte('word_count', 10000)
+        .gte('word_count', event.min_words)
+        .lte('word_count', event.max_words)
         .order('order_no', { ascending: true });
 
       if (bookChapters && bookChapters.length > 0) {
@@ -258,8 +269,8 @@ export default function EtkinliklerSayfasi() {
           <button
             onClick={() => setActiveTab('aktif')}
             className={`px-4 py-2.5 md:px-8 md:py-4 rounded-full font-black uppercase text-[10px] md:text-sm tracking-wide md:tracking-widest transition-all flex items-center gap-1 md:gap-2 ${activeTab === 'aktif'
-                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
-                : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-400 border dark:border-white/10'
+              ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+              : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-400 border dark:border-white/10'
               }`}
           >
             <span className="text-base md:text-lg">🔥</span>
@@ -269,8 +280,8 @@ export default function EtkinliklerSayfasi() {
           <button
             onClick={() => setActiveTab('gecmis')}
             className={`px-4 py-2.5 md:px-8 md:py-4 rounded-full font-black uppercase text-[10px] md:text-sm tracking-wide md:tracking-widest transition-all flex items-center gap-1 md:gap-2 ${activeTab === 'gecmis'
-                ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
-                : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-400 border dark:border-white/10'
+              ? 'bg-red-600 text-white shadow-lg shadow-red-600/30'
+              : 'bg-white dark:bg-white/5 text-gray-600 dark:text-gray-400 border dark:border-white/10'
               }`}
           >
             <span className="text-base md:text-lg">📚</span>
@@ -397,8 +408,8 @@ export default function EtkinliklerSayfasi() {
                                 onClick={() => handleEventClick(event)}
                                 disabled={!canJoin}
                                 className={`flex-1 py-3 md:py-4 rounded-xl md:rounded-2xl font-black uppercase text-xs md:text-sm transition-all ${!canJoin
-                                    ? 'bg-gray-300 dark:bg-white/10 text-gray-500 cursor-not-allowed'
-                                    : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
+                                  ? 'bg-gray-300 dark:bg-white/10 text-gray-500 cursor-not-allowed'
+                                  : 'bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/30'
                                   }`}
                               >
                                 {dateEnded ? '⏰ SONA ERDİ' : isFull ? '🚫 DOLU' : '🎯 KATIL'}
@@ -452,7 +463,7 @@ export default function EtkinliklerSayfasi() {
               <p className="text-sm font-black text-blue-600 dark:text-blue-400 mb-2 uppercase">📋 KURALLAR</p>
               <ul className="text-sm text-gray-600 dark:text-gray-400 space-y-1">
                 <li>• Sadece <strong>1 bölüm</strong> gönderebilirsin</li>
-                <li>• Bölüm <strong>2.000 - 10.000 kelime</strong> arasında olmalı</li>
+                <li>• Bölüm <strong>{selectedEvent?.min_words?.toLocaleString()} - {selectedEvent?.max_words?.toLocaleString()} kelime</strong> arasında olmalı</li>
                 <li>• Her etkinliğe <strong>sadece 1 kitapla</strong> katılabilirsin</li>
                 <li>• Bölüm <strong>yayında</strong> olmalı (taslak olmamalı)</li>
               </ul>
@@ -463,7 +474,7 @@ export default function EtkinliklerSayfasi() {
                 <span className="text-5xl block mb-4">😢</span>
                 <p className="text-lg font-bold dark:text-white mb-2">Uygun Kitap Bulunamadı</p>
                 <p className="text-sm text-gray-500 mb-6">
-                  2.000-10.000 kelime arasında yayında bir bölümün olmalı.
+                  {selectedEvent?.min_words?.toLocaleString()}-{selectedEvent?.max_words?.toLocaleString()} kelime arasında yayında bir bölümün olmalı.
                 </p>
                 <Link
                   href="/kitap-ekle"
@@ -485,8 +496,8 @@ export default function EtkinliklerSayfasi() {
                         key={book.id}
                         onClick={() => setSelectedBook(book)}
                         className={`p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-4 ${selectedBook?.id === book.id
-                            ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
-                            : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                          ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
+                          : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
                           }`}
                       >
                         {book.cover_url && (
@@ -518,8 +529,8 @@ export default function EtkinliklerSayfasi() {
                           key={chapter.id}
                           onClick={() => setSelectedChapter(chapter)}
                           className={`w-full p-4 rounded-2xl border-2 text-left transition-all ${selectedChapter?.id === chapter.id
-                              ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
-                              : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                            ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
+                            : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
                             }`}
                         >
                           <div className="flex justify-between items-center">

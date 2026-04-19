@@ -130,13 +130,23 @@ export default function EtkinlikDetay({ params }) {
 
     const eligibleBooks = [];
     for (const book of books) {
+      // Önce kitabın toplam bölüm sayısını kontrol et
+      const { count: totalChapters } = await supabase
+        .from('chapters')
+        .select('id', { count: 'exact', head: true })
+        .eq('book_id', book.id)
+        .eq('is_draft', false);
+
+      // Birden fazla bölümü varsa geç
+      if (totalChapters !== 1) continue;
+
       const { data: bookChapters } = await supabase
         .from('chapters')
         .select('id, title, word_count, order_no')
         .eq('book_id', book.id)
         .eq('is_draft', false)
-        .gte('word_count', 2000)
-        .lte('word_count', 10000)
+        .gte('word_count', event.min_words)
+        .lte('word_count', event.max_words)
         .order('order_no', { ascending: true });
 
       if (bookChapters && bookChapters.length > 0) {
@@ -573,7 +583,7 @@ export default function EtkinlikDetay({ params }) {
                 <p className="text-xs sm:text-sm font-black text-blue-600 dark:text-blue-400 mb-2 uppercase">📋 KURALLAR</p>
                 <ul className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 space-y-1">
                   <li>• Sadece <strong>1 bölüm</strong> gönderebilirsin</li>
-                  <li>• Bölüm <strong>2.000 - 10.000 kelime</strong> arasında olmalı</li>
+                  <li>• Bölüm <strong>{event.min_words?.toLocaleString()} - {event.max_words?.toLocaleString()} kelime</strong> arasında olmalı</li>
                   <li>• Her etkinliğe <strong>sadece 1 kitapla</strong> katılabilirsin</li>
                   <li>• Bölüm <strong>yayında</strong> olmalı (taslak olmamalı)</li>
                 </ul>
@@ -584,7 +594,7 @@ export default function EtkinlikDetay({ params }) {
                   <span className="text-4xl sm:text-5xl block mb-3 sm:mb-4">😢</span>
                   <p className="text-base sm:text-lg font-bold dark:text-white mb-2">Uygun Kitap Bulunamadı</p>
                   <p className="text-xs sm:text-sm text-gray-500 mb-5 sm:mb-6">
-                    2.000-10.000 kelime arasında yayında bir bölümün olmalı.
+                    {event.min_words?.toLocaleString()}-{event.max_words?.toLocaleString()} kelime arasında yayında bir bölümün olmalı.
                   </p>
                 </div>
               ) : (
