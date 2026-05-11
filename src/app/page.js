@@ -611,9 +611,10 @@ export default function Home() {
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
 
       // --- DÜZELTME 1: Veri çekme limitini artırdık (Garanti olsun diye 5000 yaptık) ---
-      const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(1000);
-      const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(1000);
-      const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString()).limit(1000);
+   // 🔥 KOTA DOSTU OPTİMİZASYON: 1000 limitleri 100'e çekildi
+      const { data: recentComments } = await supabase.from('comments').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(100);
+      const { data: recentFollows } = await supabase.from('follows').select('book_id').gte('created_at', tenDaysAgo.toISOString()).limit(100);
+      const { data: recentVotes } = await supabase.from('chapter_votes').select('chapter_id').gte('created_at', tenDaysAgo.toISOString()).limit(100);
 
       if (allBooks) {
         const scored = allBooks.map(b => {
@@ -662,7 +663,7 @@ export default function Home() {
 
       <div className="max-w-7xl mx-auto">
         <DuyuruPaneli isAdmin={isAdmin} />
-        <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} />
+        <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} adminEmails={adminEmails} />
         <RecentlyAddedChapters chapters={latestChapters} currentUser={user} />
         <EditorsChoiceSection books={editorsChoiceBooks} />
         <ContinueReadingCarousel books={continueReading} />
