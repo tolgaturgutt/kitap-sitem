@@ -89,7 +89,7 @@ export default function MobileNav() {
       ? `calc(72px + ${androidInset}px)`
       : '72px';
 
-  return (
+return (
     <>
       {/* PLUS MENÜ */}
       {showPlusMenu && (
@@ -99,7 +99,7 @@ export default function MobileNav() {
         >
           <div
             className="absolute left-1/2 -translate-x-1/2 w-[160px] bg-white dark:bg-[#1a1a1a] rounded-2xl shadow-2xl border border-red-600/20 overflow-hidden animate-in slide-in-from-bottom-2 duration-200"
-            style={{ bottom: plusMenuBottom }}
+            style={{ bottom: plusMenuBottom, WebkitTextSizeAdjust: '100%' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-2 space-y-1.5">
@@ -108,8 +108,8 @@ export default function MobileNav() {
                 onClick={() => setShowPlusMenu(false)}
                 className="flex items-center gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
               >
-                <div className="text-lg">📌</div>
-                <p className="font-black text-xs text-red-600">Pano Oluştur</p>
+                <div className="text-[18px]">📌</div>
+                <p className="font-black text-[12px] whitespace-nowrap text-red-600">Pano Oluştur</p>
               </Link>
 
               <Link
@@ -117,8 +117,8 @@ export default function MobileNav() {
                 onClick={() => setShowPlusMenu(false)}
                 className="flex items-center gap-2.5 p-3 rounded-xl bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 transition-all"
               >
-                <div className="text-lg">✏️</div>
-                <p className="font-black text-xs text-red-600">Kitap Yaz</p>
+                <div className="text-[18px]">✏️</div>
+                <p className="font-black text-[12px] whitespace-nowrap text-red-600">Kitap Yaz</p>
               </Link>
             </div>
           </div>
@@ -128,7 +128,7 @@ export default function MobileNav() {
       {/* NAVBAR */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]"
-        style={{ paddingBottom: bottomInset }}
+        style={{ paddingBottom: bottomInset, WebkitTextSizeAdjust: '100%' }}
       >
         <div className="flex items-center justify-around h-16 px-2">
           <Link
@@ -139,8 +139,8 @@ export default function MobileNav() {
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
-            <div className="text-2xl">⭐</div>
-            <span className="text-[8px] font-black uppercase">Kategori</span>
+            <div className="text-[24px]">⭐</div>
+            <span className="text-[8px] font-black uppercase whitespace-nowrap">Kategori</span>
           </Link>
 
           <Link
@@ -151,8 +151,8 @@ export default function MobileNav() {
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
-            <div className="text-2xl">📖</div>
-            <span className="text-[8px] font-black uppercase">Kitaplarım</span>
+            <div className="text-[24px]">📖</div>
+            <span className="text-[8px] font-black uppercase whitespace-nowrap">Kitaplarım</span>
           </Link>
 
           <button
@@ -164,13 +164,13 @@ export default function MobileNav() {
             }`}
           >
             <div
-              className={`text-3xl transition-transform ${
+              className={`text-[30px] transition-transform ${
                 showPlusMenu ? 'rotate-45' : ''
               }`}
             >
               ➕
             </div>
-            <span className="text-[8px] font-black uppercase">Oluştur</span>
+            <span className="text-[8px] font-black uppercase whitespace-nowrap">Oluştur</span>
           </button>
 
       <Link
@@ -181,8 +181,8 @@ export default function MobileNav() {
                 : 'text-gray-400 hover:text-red-600'
             } relative`}
           >
-            <div className="text-2xl">🎉</div>
-            <span className="text-[8px] font-black uppercase">Etkinlik</span>
+            <div className="text-[24px]">🎉</div>
+            <span className="text-[8px] font-black uppercase whitespace-nowrap">Etkinlik</span>
            
           </Link>
 
@@ -194,8 +194,8 @@ export default function MobileNav() {
                 : 'text-gray-400 hover:text-red-600'
             }`}
           >
-            <div className="text-2xl">🏆</div>
-            <span className="text-[8px] font-black uppercase">Sıralama</span>
+            <div className="text-[24px]">🏆</div>
+            <span className="text-[8px] font-black uppercase whitespace-nowrap">Sıralama</span>
           </Link>
         </div>
       </nav>
