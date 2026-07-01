@@ -35,7 +35,7 @@ export default async function sitemap() {
   // A) Kitaplar (/kitap/[id])
   // Not: 'kitaplar' tablo ismini kendi veritabanındaki isme göre ayarla (örn: 'books' olabilir)
   const { data: kitaplar } = await supabase
-    .from('kitaplar')
+    .from('books')
     .select('id, created_at')
     .order('created_at', { ascending: false })
     .limit(1000); // Google için ilk 1000 kitabı çekiyoruz, artırılabilir.
@@ -83,7 +83,7 @@ export default async function sitemap() {
     priority: 0.6,
   }));
 
-  // 3. TÜM ROTLARI BİRLEŞTİR VE GOOGLE'A SUN
+ 
   return [
     ...staticRoutes,
     ...kitapRoutes,
