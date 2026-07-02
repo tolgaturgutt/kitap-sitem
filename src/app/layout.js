@@ -123,25 +123,15 @@ useEffect(() => {
           <BanKontrol />
           <WarningSystem />
 
-          {mounted ? (
-            <>
-              {!hideNavbar && <Navbar />}
-              <DesktopSidebar />
-             <main className={!hideNavbar ? "pt-20 min-h-[100dvh] pb-16 md:pb-0" : "min-h-[100dvh]"}>
-  <RefreshWrapper>
-    {children}
-  </RefreshWrapper>
-</main>
-              {!hideNavbar && <Footer />}
-              {!hideNavbar && <MobileNav />}
-            </>
-          ) : (
-            <main className={!hideNavbar ? "pt-20" : ""}>
-  <RefreshWrapper>
-    {children}
-  </RefreshWrapper>
-</main>
-          )}
+         {!hideNavbar && <Navbar />}
+          <DesktopSidebar />
+          <main className={!hideNavbar ? "pt-20 min-h-[100dvh] pb-16 md:pb-0" : "min-h-[100dvh]"}>
+            <RefreshWrapper>
+              {children}
+            </RefreshWrapper>
+          </main>
+          {!hideNavbar && <Footer />}
+          {!hideNavbar && <MobileNav />}
         </ThemeProvider>
       </body>
     </html>

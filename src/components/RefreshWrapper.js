@@ -1,11 +1,8 @@
 'use client';
 
 import PullToRefresh from 'react-simple-pull-to-refresh';
-import { useRouter } from 'next/navigation';
 
 export default function RefreshWrapper({ children }) {
-  const router = useRouter();
-
   const handleRefresh = async () => {
     // Sayfayı komple yenilemek için:
     window.location.reload();
@@ -14,10 +11,23 @@ export default function RefreshWrapper({ children }) {
   return (
     <PullToRefresh 
       onRefresh={handleRefresh}
-      pullingContent={<div className="text-center p-4 text-xs font-bold text-gray-400">Yenilemek için bırak 👇</div>}
-      refreshingContent={<div className="text-center p-4 text-xs font-bold text-red-500 animate-pulse">KitapLab Yenileniyor... 📚</div>}
+      pullDownThreshold={80} // 🔥 KRİTİK AYAR 1: En az 80 piksel aşağı çekmek ZORUNDA.
+      maxPullDownDistance={110} // 🔥 KRİTİK AYAR 2: 110 pikselden fazla sündürüp ekranı bozmasın.
+      pullingContent={
+        <div className="flex flex-col items-center justify-center py-6">
+          <div className="text-[12px] font-black text-gray-400 uppercase tracking-wider">
+            Yenilemek için bırak 👇
+          </div>
+        </div>
+      }
+      refreshingContent={
+        <div className="flex flex-col items-center justify-center py-6">
+          <div className="text-[12px] font-black text-red-600 animate-pulse uppercase tracking-wider">
+            KitapLab Yenileniyor... 📚
+          </div>
+        </div>
+      }
     >
-      {/* Tüm sayfaların içeriği bu children'ın içine gelecek */}
       <div className="min-h-screen">
         {children}
       </div>
