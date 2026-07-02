@@ -12,6 +12,7 @@ import MobileNav from "@/components/MobileNav";
 import DesktopSidebar from "@/components/DesktopSidebar";
 import BanKontrol from "@/components/BanKontrol";
 import WarningSystem from "@/components/WarningSystem";
+import PushSetup from "@/components/PushSetup";
 import RefreshWrapper from "@/components/RefreshWrapper";
 
 import { ThemeProvider } from "next-themes";
@@ -120,6 +121,7 @@ useEffect(() => {
       <body className={`${inter.className} bg-[#fafafa] dark:bg-black text-black dark:text-white transition-colors duration-300`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Toaster position="top-center" />
+          <PushSetup />
           <BanKontrol />
           <WarningSystem />
 
