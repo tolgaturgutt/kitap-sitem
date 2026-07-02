@@ -12,6 +12,7 @@ import MobileNav from "@/components/MobileNav";
 import DesktopSidebar from "@/components/DesktopSidebar";
 import BanKontrol from "@/components/BanKontrol";
 import WarningSystem from "@/components/WarningSystem";
+import RefreshWrapper from "@/components/RefreshWrapper";
 
 import { ThemeProvider } from "next-themes";
 import { Toaster, toast } from "react-hot-toast";
@@ -126,14 +127,20 @@ useEffect(() => {
             <>
               {!hideNavbar && <Navbar />}
               <DesktopSidebar />
-              <main className={!hideNavbar ? "pt-20 min-h-[100dvh] pb-16 md:pb-0" : "min-h-[100dvh]"}>
-                {children}
-              </main>
+             <main className={!hideNavbar ? "pt-20 min-h-[100dvh] pb-16 md:pb-0" : "min-h-[100dvh]"}>
+  <RefreshWrapper>
+    {children}
+  </RefreshWrapper>
+</main>
               {!hideNavbar && <Footer />}
               {!hideNavbar && <MobileNav />}
             </>
           ) : (
-            <main className={!hideNavbar ? "pt-20" : ""}>{children}</main>
+            <main className={!hideNavbar ? "pt-20" : ""}>
+  <RefreshWrapper>
+    {children}
+  </RefreshWrapper>
+</main>
           )}
         </ThemeProvider>
       </body>
