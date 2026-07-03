@@ -1,44 +1,6 @@
 import { supabase } from '@/lib/supabase';
 
-async function callPushSend(notificationId) {
-  try {
-    if (!notificationId) return;
-
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession();
-
-    if (sessionError || !session?.access_token) {
-      console.warn('Push gönderilemedi: aktif session yok.', sessionError);
-      return;
-    }
-
-    const response = await fetch('/api/push/send', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({
-        notification_id: notificationId,
-      }),
-    });
-
-    const result = await response.json().catch(() => null);
-
-    if (!response.ok) {
-      console.error('Push send API hatası:', result);
-      return;
-    }
-
-    console.log('Push send başarılı:', result);
-  } catch (error) {
-    console.error('Push send genel hata:', error);
-  }
-}
-
-async function insertNotificationAndPush(payload) {
+async function insertNotification(payload) {
   const { data, error } = await supabase
     .from('notifications')
     .insert(payload)
@@ -49,14 +11,10 @@ async function insertNotificationAndPush(payload) {
     throw error;
   }
 
-  if (data?.id) {
-    await callPushSend(data.id);
-  }
-
   return data;
 }
 
-async function insertNotificationsAndPush(payloads) {
+async function insertNotifications(payloads) {
   if (!payloads || payloads.length === 0) return [];
 
   const { data, error } = await supabase
@@ -68,15 +26,7 @@ async function insertNotificationsAndPush(payloads) {
     throw error;
   }
 
-  const rows = data || [];
-
-  await Promise.all(
-    rows
-      .filter((row) => row?.id)
-      .map((row) => callPushSend(row.id))
-  );
-
-  return rows;
+  return data || [];
 }
 
 /**
@@ -92,7 +42,7 @@ export async function createChapterVoteNotification(actorUsername, actorEmail, b
 
     if (!book || book.user_email === actorEmail) return;
 
-    await insertNotificationAndPush({
+    await insertNotification({
       recipient_email: book.user_email,
       actor_username: actorUsername,
       type: 'chapter_vote',
@@ -126,7 +76,7 @@ export async function createCommentNotification(
 
     if (!book || book.user_email === actorEmail) return;
 
-    await insertNotificationAndPush({
+    await insertNotification({
       recipient_email: book.user_email,
       actor_username: actorUsername,
       type: 'comment',
@@ -170,7 +120,7 @@ export async function createReplyNotification(
       bookTitle = book?.title || null;
     }
 
-    await insertNotificationAndPush({
+    await insertNotification({
       recipient_email: recipientEmail,
       actor_username: actorUsername,
       type: 'reply',
@@ -194,7 +144,7 @@ export async function createPanoVoteNotification(actorUsername, actorEmail, pano
   try {
     if (recipientEmail === actorEmail) return;
 
-    await insertNotificationAndPush({
+    await insertNotification({
       recipient_email: recipientEmail,
       actor_username: actorUsername,
       type: 'pano_vote',
@@ -213,7 +163,7 @@ export async function createPanoCommentNotification(actorUsername, actorEmail, p
   try {
     if (recipientEmail === actorEmail) return;
 
-    await insertNotificationAndPush({
+    await insertNotification({
       recipient_email: recipientEmail,
       actor_username: actorUsername,
       type: 'pano_comment',
@@ -255,7 +205,7 @@ export async function createNewChapterNotifications(actorUsername, bookId, chapt
       is_read: false,
     }));
 
-    await insertNotificationsAndPush(notifications);
+    await insertNotifications(notifications);
   } catch (error) {
     console.error('New chapter notification error:', error);
   }
