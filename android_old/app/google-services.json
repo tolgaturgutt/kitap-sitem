@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "117184768083",
+    "project_id": "kitaplab-59b68",
+    "storage_bucket": "kitaplab-59b68.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:117184768083:android:52f4b72a7678c43c323ea6",
+        "android_client_info": {
+          "package_name": "com.tolga.kitaplab"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAIQQBqkwRDBqZ7Tqg8hHBEs12sJJ4gKK0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

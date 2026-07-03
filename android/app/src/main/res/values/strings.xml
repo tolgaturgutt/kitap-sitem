@@ -2,6 +2,6 @@
 <resources>
     <string name="app_name">KitapLab</string>
     <string name="title_activity_main">KitapLab</string>
-    <string name="package_name">com.kitaplab.app</string>
-    <string name="custom_url_scheme">com.kitaplab.app</string>
+    <string name="package_name">com.tolga.kitaplab</string>
+    <string name="custom_url_scheme">com.tolga.kitaplab</string>
 </resources>

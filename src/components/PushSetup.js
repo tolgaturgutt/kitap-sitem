@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { toast } from 'react-hot-toast';
@@ -14,35 +14,7 @@ export default function PushSetup() {
   const initializedRef = useRef(false);
   const latestTokenRef = useRef(null);
 
-  useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-
-    const platform = Capacitor.getPlatform();
-
-    console.log('[PushSetup] platform:', platform);
-
-    if (!Capacitor.isNativePlatform()) {
-      console.log('[PushSetup] Native platform değil, push başlatılmadı.');
-      return;
-    }
-
-    initializePush();
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      console.log('[PushSetup] auth event:', event);
-
-      if (event === 'SIGNED_IN' && latestTokenRef.current) {
-        saveTokenToServer(latestTokenRef.current);
-      }
-    });
-
-    return () => {
-      authListener?.subscription?.unsubscribe();
-    };
-  }, []);
-
-  const debugToast = (message) => {
+  const debugToast = useCallback((message) => {
     if (!DEBUG_PUSH) return;
 
     toast(message, {
@@ -55,9 +27,9 @@ export default function PushSetup() {
     });
 
     console.log('[PushSetup]', message);
-  };
+  }, []);
 
-  const saveTokenToServer = async (tokenValue) => {
+  const saveTokenToServer = useCallback(async (tokenValue) => {
     try {
       debugToast('Token servera kaydediliyor...');
 
@@ -106,9 +78,9 @@ export default function PushSetup() {
         duration: 10000,
       });
     }
-  };
+  }, [debugToast]);
 
-  const initializePush = async () => {
+  const initializePush = useCallback(async () => {
     try {
       debugToast('Push başlatılıyor...');
 
@@ -199,7 +171,35 @@ export default function PushSetup() {
         duration: 12000,
       });
     }
-  };
+  }, [debugToast, router, saveTokenToServer]);
+
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const platform = Capacitor.getPlatform();
+
+    console.log('[PushSetup] platform:', platform);
+
+    if (!Capacitor.isNativePlatform()) {
+      console.log('[PushSetup] Native platform değil, push başlatılmadı.');
+      return;
+    }
+
+    initializePush();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      console.log('[PushSetup] auth event:', event);
+
+      if (event === 'SIGNED_IN' && latestTokenRef.current) {
+        saveTokenToServer(latestTokenRef.current);
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
+  }, [initializePush, saveTokenToServer]);
 
   return null;
 }
