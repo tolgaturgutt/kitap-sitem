@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 // MODAL BİLEŞENİ
 function DocumentModal({ isOpen, onClose, title, content }) {
@@ -287,8 +287,6 @@ setAgreed(false);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white p-6">
-      <Toaster position="top-right" />
-
       <DocumentModal 
         isOpen={showKvkk} 
         onClose={() => setShowKvkk(false)} 

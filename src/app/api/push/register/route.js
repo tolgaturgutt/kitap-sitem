@@ -74,19 +74,45 @@ export async function POST(request) {
 
     const supabaseAdmin = getSupabaseAdmin();
 
-    const { error: upsertError } = await supabaseAdmin
+    const tokenPayload = {
+      user_email: user.email,
+      token,
+      platform,
+      updated_at: new Date().toISOString(),
+    };
+
+    let { error: upsertError } = await supabaseAdmin
       .from('push_tokens')
-      .upsert(
-        {
-          user_email: user.email,
-          token,
-          platform,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'token',
-        }
-      );
+      .upsert(tokenPayload, {
+        onConflict: 'token',
+      });
+
+    // token sütununda UNIQUE kuralı yoksa standart upsert 42P10 döner.
+    // Bu durumda mevcut kaydı güncelle veya ilk kaydı ekle.
+    if (upsertError?.code === '42P10') {
+      const { data: existingTokens, error: lookupError } = await supabaseAdmin
+        .from('push_tokens')
+        .select('token')
+        .eq('token', token)
+        .limit(1);
+
+      if (lookupError) {
+        upsertError = lookupError;
+      } else if (existingTokens?.length) {
+        const { error: updateError } = await supabaseAdmin
+          .from('push_tokens')
+          .update(tokenPayload)
+          .eq('token', token);
+
+        upsertError = updateError;
+      } else {
+        const { error: insertError } = await supabaseAdmin
+          .from('push_tokens')
+          .insert(tokenPayload);
+
+        upsertError = insertError;
+      }
+    }
 
     if (upsertError) {
       console.error('[push/register] Supabase upsert error:', upsertError);

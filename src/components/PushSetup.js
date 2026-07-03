@@ -18,7 +18,8 @@ export default function PushSetup() {
     if (!DEBUG_PUSH) return;
 
     toast(message, {
-      duration: 6000,
+      duration: 15000,
+      id: 'kitaplab-push-debug',
       style: {
         background: '#111',
         color: '#fff',
@@ -29,22 +30,26 @@ export default function PushSetup() {
     console.log('[PushSetup]', message);
   }, []);
 
-  const saveTokenToServer = useCallback(async (tokenValue) => {
+  const saveTokenToServer = useCallback(async (tokenValue, sessionOverride = null) => {
     try {
       debugToast('Token servera kaydediliyor...');
 
-      const {
-        data: { session },
-        error: sessionError,
-      } = await supabase.auth.getSession();
+      let session = sessionOverride;
+      let sessionError = null;
+
+      if (!session) {
+        const sessionResult = await supabase.auth.getSession();
+        session = sessionResult.data.session;
+        sessionError = sessionResult.error;
+      }
 
       if (sessionError) {
-        toast.error(`Session hatası: ${sessionError.message}`, { duration: 8000 });
+        toast.error(`Session hatası: ${sessionError.message}`, { duration: 30000 });
         return;
       }
 
       if (!session?.access_token) {
-        toast.error('Giriş yapılmamış görünüyor. Token kaydedilemedi.', { duration: 8000 });
+        toast.error('Giriş yapılmamış görünüyor. Token kaydedilemedi.', { duration: 30000 });
         return;
       }
 
@@ -65,7 +70,7 @@ export default function PushSetup() {
       if (!response.ok) {
         console.error('[PushSetup] register api error:', result);
         toast.error(`Token kayıt hatası: ${result?.error || response.status}`, {
-          duration: 10000,
+          duration: 30000,
         });
         return;
       }
@@ -75,7 +80,7 @@ export default function PushSetup() {
     } catch (error) {
       console.error('[PushSetup] token kayıt kritik hata:', error);
       toast.error(`Token kayıt kritik hata: ${error?.message || error}`, {
-        duration: 10000,
+        duration: 30000,
       });
     }
   }, [debugToast]);
@@ -93,7 +98,7 @@ export default function PushSetup() {
       }
 
       if (permission.receive !== 'granted') {
-        toast.error('Bildirim izni verilmedi.', { duration: 8000 });
+        toast.error('Bildirim izni verilmedi.', { duration: 30000 });
         return;
       }
 
@@ -114,25 +119,26 @@ export default function PushSetup() {
 
       await PushNotifications.removeAllListeners();
 
-      PushNotifications.addListener('registration', async (token) => {
+      await PushNotifications.addListener('registration', async (token) => {
         console.log('[PushSetup] FCM token:', token.value);
 
         latestTokenRef.current = token.value;
+        window.localStorage.setItem('kitaplab_fcm_token', token.value);
 
         toast.success('FCM token alındı ✅', { duration: 6000 });
 
         await saveTokenToServer(token.value);
       });
 
-      PushNotifications.addListener('registrationError', (error) => {
+      await PushNotifications.addListener('registrationError', (error) => {
         console.error('[PushSetup] registrationError:', error);
 
         toast.error(`FCM kayıt hatası: ${JSON.stringify(error)}`, {
-          duration: 12000,
+          duration: 30000,
         });
       });
 
-      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+      await PushNotifications.addListener('pushNotificationReceived', (notification) => {
         console.log('[PushSetup] foreground notification:', notification);
 
         toast.success(
@@ -144,7 +150,7 @@ export default function PushSetup() {
         );
       });
 
-      PushNotifications.addListener('pushNotificationActionPerformed', (event) => {
+      await PushNotifications.addListener('pushNotificationActionPerformed', (event) => {
         console.log('[PushSetup] notification clicked:', event);
 
         const data = event?.notification?.data || {};
@@ -168,7 +174,7 @@ export default function PushSetup() {
       console.error('[PushSetup] kritik hata:', error);
 
       toast.error(`Push kritik hata: ${error?.message || JSON.stringify(error)}`, {
-        duration: 12000,
+        duration: 30000,
       });
     }
   }, [debugToast, router, saveTokenToServer]);
@@ -195,11 +201,16 @@ export default function PushSetup() {
 
     initializePush();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+    const storedToken = window.localStorage.getItem('kitaplab_fcm_token');
+    if (storedToken) {
+      latestTokenRef.current = storedToken;
+    }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[PushSetup] auth event:', event);
 
       if (event === 'SIGNED_IN' && latestTokenRef.current) {
-        saveTokenToServer(latestTokenRef.current);
+        saveTokenToServer(latestTokenRef.current, session);
       }
     });
 
