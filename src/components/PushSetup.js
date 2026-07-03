@@ -5,18 +5,35 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
+
+const DEBUG_PUSH = true;
 
 export default function PushSetup() {
+  const router = useRouter();
+  const initializedRef = useRef(false);
   const latestTokenRef = useRef(null);
 
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      initializePush();
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+
+    const platform = Capacitor.getPlatform();
+
+    console.log('[PushSetup] platform:', platform);
+
+    if (!Capacitor.isNativePlatform()) {
+      console.log('[PushSetup] Native platform değil, push başlatılmadı.');
+      return;
     }
 
+    initializePush();
+
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      console.log('[PushSetup] auth event:', event);
+
       if (event === 'SIGNED_IN' && latestTokenRef.current) {
-        saveTokenToSupabase(latestTokenRef.current);
+        saveTokenToServer(latestTokenRef.current);
       }
     });
 
@@ -25,91 +42,162 @@ export default function PushSetup() {
     };
   }, []);
 
-  const saveTokenToSupabase = async (tokenValue) => {
+  const debugToast = (message) => {
+    if (!DEBUG_PUSH) return;
+
+    toast(message, {
+      duration: 6000,
+      style: {
+        background: '#111',
+        color: '#fff',
+        fontSize: '13px',
+      },
+    });
+
+    console.log('[PushSetup]', message);
+  };
+
+  const saveTokenToServer = async (tokenValue) => {
     try {
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      debugToast('Token servera kaydediliyor...');
 
-      if (userError) {
-        toast.error(`getUser hatası: ${userError.message}`, { duration: 8000 });
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
+
+      if (sessionError) {
+        toast.error(`Session hatası: ${sessionError.message}`, { duration: 8000 });
         return;
       }
 
-      if (!user?.email) {
-        toast.error('Kullanıcı bulunamadı (giriş yapılmamış görünüyor)', { duration: 8000 });
+      if (!session?.access_token) {
+        toast.error('Giriş yapılmamış görünüyor. Token kaydedilemedi.', { duration: 8000 });
         return;
       }
 
-      toast(`Kaydediliyor: ${user.email}`, { duration: 5000 });
+      const response = await fetch('/api/push/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          token: tokenValue,
+          platform: Capacitor.getPlatform(),
+        }),
+      });
 
-      const { error } = await supabase
-        .from('push_tokens')
-        .upsert(
-          {
-            user_email: user.email,
-            token: tokenValue,
-            platform: Capacitor.getPlatform(),
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: 'token' }
-        );
+      const result = await response.json().catch(() => null);
 
-      if (error) {
-        toast.error(`Kayıt hatası: ${error.message}`, { duration: 10000 });
-        console.error('Token kaydetme hatası:', error);
-      } else {
-        toast.success('Token Supabase\'e kaydedildi ✅', { duration: 6000 });
+      if (!response.ok) {
+        console.error('[PushSetup] register api error:', result);
+        toast.error(`Token kayıt hatası: ${result?.error || response.status}`, {
+          duration: 10000,
+        });
+        return;
       }
-    } catch (err) {
-      toast.error(`Genel hata: ${err.message}`, { duration: 8000 });
-      console.error('Token kaydetme genel hata:', err);
+
+      toast.success('Push token Supabase’e kaydedildi ✅', { duration: 7000 });
+      console.log('[PushSetup] token kayıt başarılı:', result);
+    } catch (error) {
+      console.error('[PushSetup] token kayıt kritik hata:', error);
+      toast.error(`Token kayıt kritik hata: ${error?.message || error}`, {
+        duration: 10000,
+      });
     }
   };
 
   const initializePush = async () => {
     try {
-      toast('initializePush başladı', { duration: 3000 });
+      debugToast('Push başlatılıyor...');
 
-      let permStatus = await PushNotifications.checkPermissions();
-      toast(`checkPermissions: ${permStatus.receive}`, { duration: 5000 });
+      let permission = await PushNotifications.checkPermissions();
+      debugToast(`checkPermissions: ${permission.receive}`);
 
-      if (permStatus.receive !== 'granted') {
-        permStatus = await PushNotifications.requestPermissions();
-        toast(`requestPermissions: ${permStatus.receive}`, { duration: 5000 });
+      if (permission.receive !== 'granted') {
+        permission = await PushNotifications.requestPermissions();
+        debugToast(`requestPermissions: ${permission.receive}`);
       }
 
-      if (permStatus.receive !== 'granted') {
-        toast.error('İzin verilmedi, register çağrılmıyor', { duration: 6000 });
+      if (permission.receive !== 'granted') {
+        toast.error('Bildirim izni verilmedi.', { duration: 8000 });
         return;
       }
 
-      await PushNotifications.register();
-      toast('register() çağrıldı', { duration: 3000 });
+      try {
+        await PushNotifications.createChannel({
+          id: 'default',
+          name: 'KitapLab Bildirimleri',
+          description: 'KitapLab mobil bildirimleri',
+          importance: 5,
+          visibility: 1,
+          sound: 'default',
+        });
 
-      PushNotifications.addListener('registration', (token) => {
-        toast.success('Token alındı, kaydediliyor...', { duration: 4000 });
+        debugToast('Android notification channel hazır.');
+      } catch (channelError) {
+        console.log('[PushSetup] channel oluşturma atlandı:', channelError);
+      }
+
+      await PushNotifications.removeAllListeners();
+
+      PushNotifications.addListener('registration', async (token) => {
+        console.log('[PushSetup] FCM token:', token.value);
+
         latestTokenRef.current = token.value;
-        saveTokenToSupabase(token.value);
+
+        toast.success('FCM token alındı ✅', { duration: 6000 });
+
+        await saveTokenToServer(token.value);
       });
 
       PushNotifications.addListener('registrationError', (error) => {
-        toast.error(`Registration hatası: ${JSON.stringify(error)}`, { duration: 8000 });
-        console.error('Push Kayıt Hatası:', error);
-      });
+        console.error('[PushSetup] registrationError:', error);
 
-      PushNotifications.addListener('pushNotificationReceived', (notification) => {
-        toast.success(`${notification.title}\n${notification.body}`, {
-          duration: 4000,
-          icon: '🔔',
+        toast.error(`FCM kayıt hatası: ${JSON.stringify(error)}`, {
+          duration: 12000,
         });
       });
 
-      PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
-        console.log('Bildirime tıklandı:', notification);
+      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        console.log('[PushSetup] foreground notification:', notification);
+
+        toast.success(
+          `${notification.title || 'KitapLab'}\n${notification.body || 'Yeni bildirimin var.'}`,
+          {
+            duration: 6000,
+            icon: '🔔',
+          }
+        );
       });
 
+      PushNotifications.addListener('pushNotificationActionPerformed', (event) => {
+        console.log('[PushSetup] notification clicked:', event);
+
+        const data = event?.notification?.data || {};
+        const url = data?.url;
+
+        if (url && typeof url === 'string') {
+          if (url.startsWith('/')) {
+            router.push(url);
+          } else if (url.startsWith('https://kitaplab.com')) {
+            window.location.href = url;
+          }
+        }
+      });
+
+      debugToast('Listenerlar kuruldu, register çağrılıyor...');
+
+      await PushNotifications.register();
+
+      debugToast('register() çağrıldı.');
     } catch (error) {
-      toast.error(`Kritik hata: ${error?.message || JSON.stringify(error)}`, { duration: 8000 });
-      console.error('Push kurulumunda kritik hata:', error);
+      console.error('[PushSetup] kritik hata:', error);
+
+      toast.error(`Push kritik hata: ${error?.message || JSON.stringify(error)}`, {
+        duration: 12000,
+      });
     }
   };
 
