@@ -186,6 +186,13 @@ export default function PushSetup() {
       return;
     }
 
+    if (!Capacitor.isPluginAvailable('PushNotifications')) {
+      console.warn(
+        '[PushSetup] PushNotifications bu APK içinde yok. Native uygulama güncellenmeli.'
+      );
+      return;
+    }
+
     initializePush();
 
     const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
