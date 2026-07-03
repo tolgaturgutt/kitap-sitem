@@ -183,23 +183,50 @@ export default function PushSetup() {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    const platform = Capacitor.getPlatform();
+    let cancelled = false;
+    const isAndroidWebView = window.navigator.userAgent.includes('; wv)');
+    const firstPlatform = Capacitor.getPlatform();
+    const firstBridgePresent = Boolean(window.androidBridge);
 
-    console.log('[PushSetup] platform:', platform);
-
-    if (!Capacitor.isNativePlatform()) {
+    if (!isAndroidWebView && !firstBridgePresent && firstPlatform === 'web') {
       console.log('[PushSetup] Native platform değil, push başlatılmadı.');
       return;
     }
 
-    if (!Capacitor.isPluginAvailable('PushNotifications')) {
-      console.warn(
-        '[PushSetup] PushNotifications bu APK içinde yok. Native uygulama güncellenmeli.'
-      );
-      return;
-    }
+    const startPush = async () => {
+      let lastPlatform = firstPlatform;
+      let lastBridgePresent = firstBridgePresent;
+      let lastPluginAvailable = false;
 
-    initializePush();
+      for (let attempt = 1; attempt <= 10 && !cancelled; attempt += 1) {
+        lastPlatform = Capacitor.getPlatform();
+        lastBridgePresent = Boolean(window.androidBridge);
+        lastPluginAvailable = Capacitor.isPluginAvailable('PushNotifications');
+
+        debugToast(
+          `Push tanı ${attempt}/10: platform=${lastPlatform}, bridge=${lastBridgePresent}, plugin=${lastPluginAvailable}`
+        );
+
+        if (Capacitor.isNativePlatform() && lastPluginAvailable) {
+          await initializePush();
+          return;
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      if (!cancelled) {
+        toast.error(
+          `Push başlatılamadı: platform=${lastPlatform}, bridge=${lastBridgePresent}, plugin=${lastPluginAvailable}`,
+          {
+            id: 'kitaplab-push-start-error',
+            duration: 30000,
+          }
+        );
+      }
+    };
+
+    startPush();
 
     const storedToken = window.localStorage.getItem('kitaplab_fcm_token');
     if (storedToken) {
@@ -209,15 +236,20 @@ export default function PushSetup() {
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[PushSetup] auth event:', event);
 
-      if (event === 'SIGNED_IN' && latestTokenRef.current) {
+      if (
+        ['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'].includes(event) &&
+        latestTokenRef.current &&
+        session
+      ) {
         saveTokenToServer(latestTokenRef.current, session);
       }
     });
 
     return () => {
+      cancelled = true;
       authListener?.subscription?.unsubscribe();
     };
-  }, [initializePush, saveTokenToServer]);
+  }, [debugToast, initializePush, saveTokenToServer]);
 
   return null;
 }
