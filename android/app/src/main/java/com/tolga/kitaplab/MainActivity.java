@@ -1,4 +1,4 @@
-package com.kitaplab.app;
+package com.tolga.kitaplab;
 
 import com.getcapacitor.BridgeActivity;
 
