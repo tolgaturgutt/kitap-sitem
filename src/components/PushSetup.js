@@ -1,49 +1,101 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { toast } from 'react-hot-toast';
+import { supabase } from '@/lib/supabase';
 
 export default function PushSetup() {
+  const latestTokenRef = useRef(null);
+
   useEffect(() => {
-    // Sadece mobil uygulamada (Android/iOS) çalışsın, web tarayıcılarında hata patlatmasın
     if (Capacitor.isNativePlatform()) {
       initializePush();
     }
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN' && latestTokenRef.current) {
+        saveTokenToSupabase(latestTokenRef.current);
+      }
+    });
+
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
-const initializePush = async () => {
+  const saveTokenToSupabase = async (tokenValue) => {
     try {
-      // 1. İzin durumunu kontrol et
-      let permStatus = await PushNotifications.checkPermissions();
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
 
-      // İzin 'granted' değilse (yani daha önce verilmediyse), zorla iste
-      if (permStatus.receive !== 'granted') {
-        permStatus = await PushNotifications.requestPermissions();
-      }
-
-      // Kullanıcı izni kesin olarak reddettiyse (denied), işlemi burada bitir
-      if (permStatus.receive !== 'granted') {
-        console.log('Kullanıcı bildirimleri reddetti.');
+      if (userError) {
+        toast.error(`getUser hatası: ${userError.message}`, { duration: 8000 });
         return;
       }
 
-      // 2. İzin alındıysa, kurye şirketine (Firebase) kaydı yap
-      await PushNotifications.register();
+      if (!user?.email) {
+        toast.error('Kullanıcı bulunamadı (giriş yapılmamış görünüyor)', { duration: 8000 });
+        return;
+      }
 
-      // 3. Firebase'den bize özel "Cihaz Kimlik Kartı" (Token) geldiğinde
+      toast(`Kaydediliyor: ${user.email}`, { duration: 5000 });
+
+      const { error } = await supabase
+        .from('push_tokens')
+        .upsert(
+          {
+            user_email: user.email,
+            token: tokenValue,
+            platform: Capacitor.getPlatform(),
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'token' }
+        );
+
+      if (error) {
+        toast.error(`Kayıt hatası: ${error.message}`, { duration: 10000 });
+        console.error('Token kaydetme hatası:', error);
+      } else {
+        toast.success('Token Supabase\'e kaydedildi ✅', { duration: 6000 });
+      }
+    } catch (err) {
+      toast.error(`Genel hata: ${err.message}`, { duration: 8000 });
+      console.error('Token kaydetme genel hata:', err);
+    }
+  };
+
+  const initializePush = async () => {
+    try {
+      toast('initializePush başladı', { duration: 3000 });
+
+      let permStatus = await PushNotifications.checkPermissions();
+      toast(`checkPermissions: ${permStatus.receive}`, { duration: 5000 });
+
+      if (permStatus.receive !== 'granted') {
+        permStatus = await PushNotifications.requestPermissions();
+        toast(`requestPermissions: ${permStatus.receive}`, { duration: 5000 });
+      }
+
+      if (permStatus.receive !== 'granted') {
+        toast.error('İzin verilmedi, register çağrılmıyor', { duration: 6000 });
+        return;
+      }
+
+      await PushNotifications.register();
+      toast('register() çağrıldı', { duration: 3000 });
+
       PushNotifications.addListener('registration', (token) => {
-        console.log('🔥 Firebase FCM Token başarıyla alındı:', token.value);
-        // İLERİDE: token.value değerini Supabase'e kaydedeceğiz.
+        toast.success('Token alındı, kaydediliyor...', { duration: 4000 });
+        latestTokenRef.current = token.value;
+        saveTokenToSupabase(token.value);
       });
 
-      // Kayıt sırasında hata olursa (internet yoksa vb.)
       PushNotifications.addListener('registrationError', (error) => {
+        toast.error(`Registration hatası: ${JSON.stringify(error)}`, { duration: 8000 });
         console.error('Push Kayıt Hatası:', error);
       });
 
-      // 4. Uygulama AÇIKKEN bildirim gelirse
       PushNotifications.addListener('pushNotificationReceived', (notification) => {
         toast.success(`${notification.title}\n${notification.body}`, {
           duration: 4000,
@@ -51,15 +103,15 @@ const initializePush = async () => {
         });
       });
 
-      // 5. Bildirime TIKLANDIĞINDA
       PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
         console.log('Bildirime tıklandı:', notification);
       });
 
     } catch (error) {
+      toast.error(`Kritik hata: ${error?.message || JSON.stringify(error)}`, { duration: 8000 });
       console.error('Push kurulumunda kritik hata:', error);
     }
   };
 
-  return null; // Bu bileşen ekranda hiçbir şey göstermeyecek, sadece beyni çalıştıracak
+  return null;
 }
