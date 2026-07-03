@@ -3,66 +3,53 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { toast as hotToast } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-const DEBUG_PUSH = false;
-const silentToast = Object.assign(() => undefined, {
-  success: () => undefined,
-  error: () => undefined,
-});
-const toast = DEBUG_PUSH ? hotToast : silentToast;
+const TOKEN_STORAGE_KEY = 'kitaplab_fcm_token';
+const AUTH_EVENTS = ['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'];
 
 export default function PushSetup() {
   const router = useRouter();
   const initializedRef = useRef(false);
+  const listenersReadyRef = useRef(false);
+  const registrationRunningRef = useRef(false);
   const latestTokenRef = useRef(null);
-
-  const debugToast = useCallback((message) => {
-    if (!DEBUG_PUSH) return;
-
-    toast(message, {
-      duration: 15000,
-      id: 'kitaplab-push-debug',
-      style: {
-        background: '#111',
-        color: '#fff',
-        fontSize: '13px',
-      },
-    });
-
-    console.log('[PushSetup]', message);
-  }, []);
+  const lastSavedTokenRef = useRef(null);
 
   const saveTokenToServer = useCallback(async (tokenValue, sessionOverride = null) => {
-    try {
-      debugToast('Token servera kaydediliyor...');
+    if (!tokenValue) return false;
 
+    try {
       let session = sessionOverride;
-      let sessionError = null;
 
       if (!session) {
-        const sessionResult = await supabase.auth.getSession();
-        session = sessionResult.data.session;
-        sessionError = sessionResult.error;
+        const { data, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('[PushSetup] session error:', error);
+          return false;
+        }
+
+        session = data.session;
       }
 
-      if (sessionError) {
-        toast.error(`Session hatası: ${sessionError.message}`, { duration: 30000 });
-        return;
+      if (!session?.access_token || !session?.user?.email) {
+        return false;
       }
 
-      if (!session?.access_token) {
-        toast.error('Giriş yapılmamış görünüyor. Token kaydedilemedi.', { duration: 30000 });
-        return;
+      const saveKey = session.user.email + ':' + tokenValue;
+
+      if (lastSavedTokenRef.current === saveKey) {
+        return true;
       }
 
       const response = await fetch('/api/push/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: 'Bearer ' + session.access_token,
         },
         body: JSON.stringify({
           token: tokenValue,
@@ -73,40 +60,55 @@ export default function PushSetup() {
       const result = await response.json().catch(() => null);
 
       if (!response.ok) {
-        console.error('[PushSetup] register api error:', result);
-        toast.error(`Token kayıt hatası: ${result?.error || response.status}`, {
-          duration: 30000,
-        });
-        return;
+        console.error('[PushSetup] token register api error:', result);
+        return false;
       }
 
-      toast.success('Push token Supabase’e kaydedildi ✅', { duration: 7000 });
-      console.log('[PushSetup] token kayıt başarılı:', result);
+      lastSavedTokenRef.current = saveKey;
+      console.log('[PushSetup] token kaydedildi:', result);
+      return true;
     } catch (error) {
-      console.error('[PushSetup] token kayıt kritik hata:', error);
-      toast.error(`Token kayıt kritik hata: ${error?.message || error}`, {
-        duration: 30000,
-      });
+      console.error('[PushSetup] token kayıt hatası:', error);
+      return false;
     }
-  }, [debugToast]);
+  }, []);
 
-  const initializePush = useCallback(async () => {
+  const requestPushRegistration = useCallback(async () => {
+    if (
+      registrationRunningRef.current ||
+      !listenersReadyRef.current ||
+      !Capacitor.isNativePlatform() ||
+      !Capacitor.isPluginAvailable('PushNotifications')
+    ) {
+      return false;
+    }
+
+    registrationRunningRef.current = true;
+
     try {
-      debugToast('Push başlatılıyor...');
-
       let permission = await PushNotifications.checkPermissions();
-      debugToast(`checkPermissions: ${permission.receive}`);
 
       if (permission.receive !== 'granted') {
         permission = await PushNotifications.requestPermissions();
-        debugToast(`requestPermissions: ${permission.receive}`);
       }
 
       if (permission.receive !== 'granted') {
-        toast.error('Bildirim izni verilmedi.', { duration: 30000 });
-        return;
+        console.log('[PushSetup] bildirim izni verilmedi.');
+        return false;
       }
 
+      await PushNotifications.register();
+      return true;
+    } catch (error) {
+      console.error('[PushSetup] FCM register hatası:', error);
+      return false;
+    } finally {
+      registrationRunningRef.current = false;
+    }
+  }, []);
+
+  const initializePush = useCallback(async () => {
+    try {
       try {
         await PushNotifications.createChannel({
           id: 'default',
@@ -116,38 +118,33 @@ export default function PushSetup() {
           visibility: 1,
           sound: 'default',
         });
-
-        debugToast('Android notification channel hazır.');
       } catch (channelError) {
-        console.log('[PushSetup] channel oluşturma atlandı:', channelError);
+        console.log('[PushSetup] kanal oluşturma atlandı:', channelError);
       }
 
       await PushNotifications.removeAllListeners();
 
       await PushNotifications.addListener('registration', async (token) => {
-        console.log('[PushSetup] FCM token:', token.value);
+        if (!token?.value) return;
 
         latestTokenRef.current = token.value;
-        window.localStorage.setItem('kitaplab_fcm_token', token.value);
+        window.localStorage.setItem(TOKEN_STORAGE_KEY, token.value);
 
-        toast.success('FCM token alındı ✅', { duration: 6000 });
-
+        console.log('[PushSetup] FCM token alındı.');
         await saveTokenToServer(token.value);
       });
 
       await PushNotifications.addListener('registrationError', (error) => {
         console.error('[PushSetup] registrationError:', error);
-
-        toast.error(`FCM kayıt hatası: ${JSON.stringify(error)}`, {
-          duration: 30000,
-        });
       });
 
       await PushNotifications.addListener('pushNotificationReceived', (notification) => {
         console.log('[PushSetup] foreground notification:', notification);
 
-        hotToast.success(
-          `${notification.title || 'KitapLab'}\n${notification.body || 'Yeni bildirimin var.'}`,
+        toast.success(
+          (notification.title || 'KitapLab') +
+            '\n' +
+            (notification.body || 'Yeni bildirimin var.'),
           {
             duration: 6000,
             icon: '🔔',
@@ -156,105 +153,120 @@ export default function PushSetup() {
       });
 
       await PushNotifications.addListener('pushNotificationActionPerformed', (event) => {
-        console.log('[PushSetup] notification clicked:', event);
-
         const data = event?.notification?.data || {};
         const url = data?.url;
 
-        if (url && typeof url === 'string') {
-          if (url.startsWith('/')) {
-            router.push(url);
-          } else if (url.startsWith('https://kitaplab.com')) {
-            window.location.href = url;
-          }
+        if (!url || typeof url !== 'string') return;
+
+        if (url.startsWith('/')) {
+          router.push(url);
+          return;
+        }
+
+        if (
+          url.startsWith('https://www.kitaplab.com') ||
+          url.startsWith('https://kitaplab.com')
+        ) {
+          window.location.href = url;
         }
       });
 
-      debugToast('Listenerlar kuruldu, register çağrılıyor...');
-
-      await PushNotifications.register();
-
-      debugToast('register() çağrıldı.');
+      listenersReadyRef.current = true;
+      await requestPushRegistration();
     } catch (error) {
-      console.error('[PushSetup] kritik hata:', error);
-
-      toast.error(`Push kritik hata: ${error?.message || JSON.stringify(error)}`, {
-        duration: 30000,
-      });
+      console.error('[PushSetup] başlatma hatası:', error);
     }
-  }, [debugToast, router, saveTokenToServer]);
+  }, [requestPushRegistration, router, saveTokenToServer]);
 
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
     let cancelled = false;
-    const isAndroidWebView = window.navigator.userAgent.includes('; wv)');
-    const firstPlatform = Capacitor.getPlatform();
-    const firstBridgePresent = Boolean(window.androidBridge);
+    const retryTimers = [];
 
-    if (!isAndroidWebView && !firstBridgePresent && firstPlatform === 'web') {
-      console.log('[PushSetup] Native platform değil, push başlatılmadı.');
-      return;
+    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
+
+    if (storedToken) {
+      latestTokenRef.current = storedToken;
     }
 
+    const syncPushToken = async (sessionOverride = null) => {
+      if (cancelled) return;
+
+      const tokenValue =
+        latestTokenRef.current || window.localStorage.getItem(TOKEN_STORAGE_KEY);
+
+      if (tokenValue) {
+        latestTokenRef.current = tokenValue;
+        const saved = await saveTokenToServer(tokenValue, sessionOverride);
+
+        if (saved) return;
+      }
+
+      await requestPushRegistration();
+    };
+
     const startPush = async () => {
-      let lastPlatform = firstPlatform;
-      let lastBridgePresent = firstBridgePresent;
-      let lastPluginAvailable = false;
+      const isAndroidWebView = window.navigator.userAgent.includes('; wv)');
+      const firstPlatform = Capacitor.getPlatform();
+      const firstBridgePresent = Boolean(window.androidBridge);
 
-      for (let attempt = 1; attempt <= 10 && !cancelled; attempt += 1) {
-        lastPlatform = Capacitor.getPlatform();
-        lastBridgePresent = Boolean(window.androidBridge);
-        lastPluginAvailable = Capacitor.isPluginAvailable('PushNotifications');
+      if (!isAndroidWebView && !firstBridgePresent && firstPlatform === 'web') {
+        return;
+      }
 
-        debugToast(
-          `Push tanı ${attempt}/10: platform=${lastPlatform}, bridge=${lastBridgePresent}, plugin=${lastPluginAvailable}`
-        );
-
-        if (Capacitor.isNativePlatform() && lastPluginAvailable) {
+      for (let attempt = 1; attempt <= 20 && !cancelled; attempt += 1) {
+        if (
+          Capacitor.isNativePlatform() &&
+          Capacitor.isPluginAvailable('PushNotifications')
+        ) {
           await initializePush();
+          await syncPushToken();
           return;
         }
 
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      if (!cancelled) {
-        toast.error(
-          `Push başlatılamadı: platform=${lastPlatform}, bridge=${lastBridgePresent}, plugin=${lastPluginAvailable}`,
-          {
-            id: 'kitaplab-push-start-error',
-            duration: 30000,
-          }
-        );
+      console.error('[PushSetup] native push eklentisi bulunamadı.');
+    };
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!AUTH_EVENTS.includes(event) || !session) return;
+
+      window.setTimeout(() => {
+        syncPushToken(session);
+      }, 0);
+    });
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncPushToken();
       }
     };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', syncPushToken);
+
+    [1500, 4000, 10000, 20000].forEach((delay) => {
+      retryTimers.push(
+        window.setTimeout(() => {
+          syncPushToken();
+        }, delay)
+      );
+    });
 
     startPush();
 
-    const storedToken = window.localStorage.getItem('kitaplab_fcm_token');
-    if (storedToken) {
-      latestTokenRef.current = storedToken;
-    }
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[PushSetup] auth event:', event);
-
-      if (
-        ['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'].includes(event) &&
-        latestTokenRef.current &&
-        session
-      ) {
-        saveTokenToServer(latestTokenRef.current, session);
-      }
-    });
-
     return () => {
       cancelled = true;
+      retryTimers.forEach((timer) => window.clearTimeout(timer));
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', syncPushToken);
       authListener?.subscription?.unsubscribe();
     };
-  }, [debugToast, initializePush, saveTokenToServer]);
+  }, [initializePush, requestPushRegistration, saveTokenToServer]);
 
   return null;
 }
