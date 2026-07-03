@@ -3,11 +3,16 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
-import { toast } from 'react-hot-toast';
+import { toast as hotToast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
-const DEBUG_PUSH = true;
+const DEBUG_PUSH = false;
+const silentToast = Object.assign(() => undefined, {
+  success: () => undefined,
+  error: () => undefined,
+});
+const toast = DEBUG_PUSH ? hotToast : silentToast;
 
 export default function PushSetup() {
   const router = useRouter();
@@ -141,7 +146,7 @@ export default function PushSetup() {
       await PushNotifications.addListener('pushNotificationReceived', (notification) => {
         console.log('[PushSetup] foreground notification:', notification);
 
-        toast.success(
+        hotToast.success(
           `${notification.title || 'KitapLab'}\n${notification.body || 'Yeni bildirimin var.'}`,
           {
             duration: 6000,

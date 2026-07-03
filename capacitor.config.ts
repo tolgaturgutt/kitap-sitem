@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'KitapLab',
   webDir: 'public',
   server: {
-    url: 'https://kitaplab.com',
+    url: 'https://www.kitaplab.com',
     // 👇 İŞTE BU SATIRI EKLEMEN LAZIM KRAL
     allowNavigation: ['kitaplab.com', '*.kitaplab.com'],
     androidScheme: 'https',
