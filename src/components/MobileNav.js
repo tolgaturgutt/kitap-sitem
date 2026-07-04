@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { Capacitor } from '@capacitor/core';
 import { supabase } from '@/lib/supabase';
 
 export default function MobileNav() {
@@ -12,8 +11,8 @@ export default function MobileNav() {
   const [showPlusMenu, setShowPlusMenu] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
-  const [platform, setPlatform] = useState('web'); // web | android | ios
-  const [androidInset, setAndroidInset] = useState(0);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const viewportBaselineRef = useRef(0);
 
   /* ---------------- ADMIN KONTROLÜ ---------------- */
   useEffect(() => {
@@ -36,28 +35,53 @@ export default function MobileNav() {
 
   /* ---------------- PLATFORM TESPİT ---------------- */
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) {
-      setPlatform('web');
-      return;
-    }
+    const viewport = window.visualViewport;
+    if (!viewport) return;
 
-    const p = Capacitor.getPlatform();
-    setPlatform(p);
+    let orientationTimer;
 
-    // 🔥 ANDROID TUŞ BAR GERÇEK ÖLÇÜM
-    if (p === 'android' && window.visualViewport) {
-      const updateInset = () => {
-        const diff = window.innerHeight - window.visualViewport.height;
-        setAndroidInset(diff > 0 ? diff : 0);
-      };
+    const updateViewport = () => {
+      const viewportHeight = viewport.height;
 
-      updateInset();
-      window.visualViewport.addEventListener('resize', updateInset);
+      if (
+        viewportBaselineRef.current === 0 ||
+        viewportHeight > viewportBaselineRef.current
+      ) {
+        viewportBaselineRef.current = viewportHeight;
+      }
 
-      return () => {
-        window.visualViewport.removeEventListener('resize', updateInset);
-      };
-    }
+      const keyboardHeight = viewportBaselineRef.current - viewportHeight;
+      const keyboardOpen = keyboardHeight > 150;
+
+      setIsKeyboardOpen(keyboardOpen);
+      document.documentElement.classList.toggle('keyboard-open', keyboardOpen);
+      document.documentElement.style.setProperty(
+        '--visual-viewport-height',
+        `${viewportHeight}px`
+      );
+
+      if (keyboardOpen) setShowPlusMenu(false);
+    };
+
+    const resetViewportBaseline = () => {
+      viewportBaselineRef.current = 0;
+      window.clearTimeout(orientationTimer);
+      orientationTimer = window.setTimeout(updateViewport, 300);
+    };
+
+    updateViewport();
+    viewport.addEventListener('resize', updateViewport);
+    viewport.addEventListener('scroll', updateViewport);
+    window.addEventListener('orientationchange', resetViewportBaseline);
+
+    return () => {
+      window.clearTimeout(orientationTimer);
+      viewport.removeEventListener('resize', updateViewport);
+      viewport.removeEventListener('scroll', updateViewport);
+      window.removeEventListener('orientationchange', resetViewportBaseline);
+      document.documentElement.classList.remove('keyboard-open');
+      document.documentElement.style.removeProperty('--visual-viewport-height');
+    };
   }, []);
 
   const isActive = (path) => pathname === path;
@@ -74,25 +98,15 @@ export default function MobileNav() {
   };
 
   /* ---------------- INSET HESAPLARI ---------------- */
-  const bottomInset =
-  platform === 'ios'
-    ? 'env(safe-area-inset-bottom)'
-    : platform === 'android'
-    ? `${androidInset}px`
-    : '0px'; // WEB = SIFIR, ZORLA
+  const bottomInset = 'env(safe-area-inset-bottom)';
 
 
-  const plusMenuBottom =
-    platform === 'ios'
-      ? 'calc(72px + env(safe-area-inset-bottom))'
-      : platform === 'android'
-      ? `calc(72px + ${androidInset}px)`
-      : '72px';
+  const plusMenuBottom = 'calc(72px + env(safe-area-inset-bottom))';
 
 return (
     <>
       {/* PLUS MENÜ */}
-      {showPlusMenu && (
+      {showPlusMenu && !isKeyboardOpen && (
         <div
           className="fixed inset-0 z-[90] md:hidden"
           onClick={() => setShowPlusMenu(false)}
@@ -127,7 +141,7 @@ return (
 
       {/* NAVBAR */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]"
+        className={`${isKeyboardOpen ? 'hidden' : 'md:hidden'} fixed bottom-0 left-0 right-0 z-[80] bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.1)]`}
         style={{ paddingBottom: bottomInset, WebkitTextSizeAdjust: '100%' }}
       >
         <div className="flex items-center justify-around h-16 px-2">

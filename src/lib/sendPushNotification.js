@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { firebaseMessaging } from '@/lib/firebaseAdmin';
 
+const ANDROID_NOTIFICATION_CHANNEL_ID = 'kitaplab_default_v2';
+
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -85,9 +87,9 @@ export async function sendPushToUserEmail({
     android: {
       priority: 'high',
       notification: {
-        channelId: 'default',
+        channelId: ANDROID_NOTIFICATION_CHANNEL_ID,
         sound: 'default',
-        icon: 'ic_stat_kitaplab',
+        icon: 'ic_stat_kitaplab_notification',
         color: '#D71920',
       },
     },

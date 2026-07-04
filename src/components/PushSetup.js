@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 
 const TOKEN_STORAGE_KEY = 'kitaplab_fcm_token';
 const AUTH_EVENTS = ['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'];
+const ANDROID_NOTIFICATION_CHANNEL_ID = 'kitaplab_default_v2';
 
 export default function PushSetup() {
   const router = useRouter();
@@ -111,12 +112,11 @@ export default function PushSetup() {
     try {
       try {
         await PushNotifications.createChannel({
-          id: 'default',
+          id: ANDROID_NOTIFICATION_CHANNEL_ID,
           name: 'KitapLab Bildirimleri',
           description: 'KitapLab mobil bildirimleri',
           importance: 5,
           visibility: 1,
-          sound: 'default',
         });
       } catch (channelError) {
         console.log('[PushSetup] kanal oluşturma atlandı:', channelError);

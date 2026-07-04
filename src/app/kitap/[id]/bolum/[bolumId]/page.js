@@ -590,14 +590,14 @@ export default function BolumDetay({ params }) {
           )}
         </main>
 
-        <aside className={`fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[400px] transition-all duration-500 z-[60] ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
+        <aside className={`keyboard-safe-overlay fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[400px] transition-all duration-500 z-[60] ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
           }`}>
           <div
             className="absolute inset-0 bg-black/50 md:hidden"
             onClick={() => setActivePara(null)}
           />
 
-          <div className="absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
+          <div className="keyboard-safe-panel absolute left-4 right-4 top-16 bottom-4 md:inset-0 bg-white dark:bg-[#0f0f0f] md:border dark:border-white/10 rounded-[2rem] shadow-2xl flex flex-col overflow-hidden">
             
             <div className="shrink-0 p-4 border-b dark:border-white/5 flex justify-between items-center font-black text-[8px] uppercase tracking-widest bg-white dark:bg-[#0f0f0f] z-50 relative rounded-t-[2rem]">
               <span className="opacity-40">Paragraf Yorumları</span>

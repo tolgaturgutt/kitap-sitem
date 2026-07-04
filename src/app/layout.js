@@ -3,7 +3,7 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
 import Navbar from "@/components/Navbar";
@@ -26,8 +26,6 @@ const inter = Inter({ subsets: ["latin"] });
 export default function RootLayout({ children }) {
   const pathname = usePathname();
   const router = useRouter();
-
-  const [mounted, setMounted] = useState(false);
 
   // ✅ anlık path'i ref'te tut
   const pathnameRef = useRef(pathname);
@@ -84,8 +82,6 @@ useEffect(() => {
 
   // --- BAŞLIK (senin mevcut mantık) ---
   useEffect(() => {
-    setMounted(true);
-
     let baslik = "KitapLab - Kendi Hikayeni Yaz";
 
     if (pathname === "/giris") baslik = "Giriş Yap | KitapLab";
@@ -113,7 +109,7 @@ useEffect(() => {
       <head>
         <title>KitapLab - Kendi Hikayeni Yaz, Oku ve Paylaş</title>
         <meta name="description" content="KitapLab ile hayal gücünü serbest bırak." />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
         <link rel="icon" href="/logo.png" sizes="any" />
         <link rel="apple-touch-icon" href="/logo.png" />
       </head>

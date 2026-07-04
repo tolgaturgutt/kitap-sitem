@@ -355,7 +355,10 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
                 {ListArea}
             </div>
 
-            <div className="shrink-0 px-3 pt-3 pb-10 md:pb-3 bg-white dark:bg-[#0f0f0f] border-t dark:border-white/5 z-20">
+            <div
+                className="shrink-0 px-3 pt-3 bg-white dark:bg-[#0f0f0f] border-t dark:border-white/5 z-20"
+                style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+            >
                 {InputArea}
             </div>
         </div>

@@ -442,10 +442,43 @@
 }
 html, body {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body {
   min-height: 100dvh;
+}
+
+:root {
+  --visual-viewport-height: 100dvh;
+}
+
+@media (max-width: 767px) {
+  .keyboard-safe-overlay {
+    top: 0 !important;
+    right: 0 !important;
+    bottom: auto !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: var(--visual-viewport-height, 100dvh) !important;
+    max-height: var(--visual-viewport-height, 100dvh) !important;
+    padding: 0 !important;
+    overflow: hidden;
+  }
+
+  html.keyboard-open .keyboard-safe-panel {
+    top: 0.5rem !important;
+    bottom: 0.5rem !important;
+    border-radius: 1rem !important;
+  }
+
+  html.keyboard-open input,
+  html.keyboard-open textarea,
+  html.keyboard-open [contenteditable="true"] {
+    scroll-margin-bottom: 1rem;
+  }
 }
 /* globals.css veya tailwind.config.js'e ekle */
 
