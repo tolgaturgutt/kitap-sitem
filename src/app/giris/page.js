@@ -1,8 +1,7 @@
 'use client'; 
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
 // MODAL BİLEŞENİ
@@ -51,9 +50,21 @@ export default function GirisSayfasi() {
   const [showKvkk, setShowKvkk] = useState(false);
   const [showRules, setShowRules] = useState(false);
   const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
   
-  const router = useRouter();
   const isEmail = (text) => text.includes('@');
+
+  const beginLoading = () => {
+    if (loadingRef.current) return false;
+    loadingRef.current = true;
+    setLoading(true);
+    return true;
+  };
+
+  const endLoading = () => {
+    loadingRef.current = false;
+    setLoading(false);
+  };
 
   // 🔒 GÜVENLİK: Input sanitization helper
   const sanitizeInput = (input) => {
@@ -64,6 +75,8 @@ export default function GirisSayfasi() {
   // ŞİFRE SIFIRLAMA
  // ŞİFRE SIFIRLAMA (Sadece E-posta)
   async function handleResetPassword() {
+    if (loadingRef.current) return;
+
     const cleanInput = sanitizeInput(loginInput);
     
     // 👇 Sadece E-posta formatı kontrolü yapıyoruz
@@ -71,7 +84,7 @@ export default function GirisSayfasi() {
       return toast.error('Lütfen geçerli bir e-posta adresi giriniz.');
     }
     
-    setLoading(true);
+    if (!beginLoading()) return;
     
     try {
       // Direkt girilen e-postaya gönderiyoruz
@@ -96,11 +109,12 @@ export default function GirisSayfasi() {
       // Ama supabase genelde "rate limit" dışında hata dönmez (security through obscurity)
       toast.success('Eğer kayıtlıysa e-postanıza bağlantı gönderildi.'); 
     } finally {
-      setLoading(false);
+      endLoading();
     }
   }
   // ANA İŞLEM (GİRİŞ veya KAYIT)
   async function handleAuth() {
+    if (loadingRef.current) return;
     if (isResetMode) return handleResetPassword();
 
     const cleanLogin = sanitizeInput(loginInput);
@@ -130,7 +144,7 @@ export default function GirisSayfasi() {
         return toast.error('Kullanıcı adı 3-20 karakter arası, boşluksuz, sadece harf, rakam, - ve _ içerebilir.');
       }
 
-      setLoading(true);
+      if (!beginLoading()) return;
 
       try {
         // ✅ 1. ADIM: USERNAME KONTROL ET (Auth'dan önce!)
@@ -219,12 +233,13 @@ setAgreed(false);
       } catch (error) {
         toast.error(error.message || 'Bir hata oluştu.');
       } finally {
-        setLoading(false);
+        endLoading();
       }
 
     } else {
       // GİRİŞ YAPMA
-      setLoading(true);
+      if (!beginLoading()) return;
+      let loginSucceeded = false;
       try {
         let finalEmail = cleanLogin;
         if (!isEmail(cleanLogin)) {
@@ -272,15 +287,13 @@ setAgreed(false);
         document.cookie = "site_erisim=acik; path=/; max-age=604800; SameSite=Strict";
         toast.success('Giriş başarılı.');
         
-        setTimeout(() => {
-          router.push('/');
-          router.refresh();
-        }, 1000);
+        loginSucceeded = true;
+        window.location.replace('/');
 
       } catch (error) {
         toast.error(error.message || 'Bir hata oluştu.');
       } finally {
-        setLoading(false);
+        if (!loginSucceeded) endLoading();
       }
     }
   }
@@ -400,7 +413,7 @@ setAgreed(false);
                 <span className="font-bold text-red-600 hover:underline" onClick={(e) => { e.preventDefault(); setShowKvkk(true); }}>
                   KVKK Metni
                 </span>
-                'ni okudum, anladım ve kabul ediyorum.
+                {"'ni okudum, anladım ve kabul ediyorum."}
               </label>
             </div>
           )}

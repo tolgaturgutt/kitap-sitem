@@ -10,6 +10,7 @@ export default function RefreshWrapper({ children }) {
   const wrapperRef = useRef(null);
 
   const startYRef = useRef(0);
+  const startXRef = useRef(0);
   const pullingRef = useRef(false);   // aktif olarak çekiliyor mu (ref -> event listener içinde güncel kalsın diye)
   const statusRef = useRef('idle');   // idle | pulling | canRelease | refreshing (ref -> event listener closure sorunu olmasın diye)
 
@@ -33,12 +34,43 @@ export default function RefreshWrapper({ children }) {
     const el = wrapperRef.current;
     if (!el) return;
 
-    const atTop = () => (window.scrollY || document.documentElement.scrollTop || 0) <= 0;
+    const pageScrollTop = () => {
+      const scrollingElement = document.scrollingElement || document.documentElement;
+
+      return Math.max(
+        window.scrollY || 0,
+        scrollingElement?.scrollTop || 0,
+        document.body?.scrollTop || 0
+      );
+    };
+
+    const atTop = () => pageScrollTop() <= 1;
+
+    const isInsideScrollableArea = (target) => {
+      let node = target instanceof Element ? target : null;
+
+      while (node && node !== el) {
+        const style = window.getComputedStyle(node);
+        const scrollableY = /(auto|scroll)/.test(style.overflowY);
+
+        if (scrollableY && node.scrollHeight > node.clientHeight + 2) {
+          return true;
+        }
+
+        node = node.parentElement;
+      }
+
+      return false;
+    };
 
     const onTouchStart = (e) => {
       if (statusRef.current === 'refreshing') return;
+      if (e.touches.length !== 1) return;
       if (!atTop()) return;
+      if (isInsideScrollableArea(e.target)) return;
+      if (e.target instanceof Element && e.target.closest('input, textarea, select, [contenteditable="true"]')) return;
       startYRef.current = e.touches[0].clientY;
+      startXRef.current = e.touches[0].clientX;
       pullingRef.current = true;
     };
 
@@ -46,7 +78,14 @@ export default function RefreshWrapper({ children }) {
       if (!pullingRef.current || statusRef.current === 'refreshing') return;
 
       const currentY = e.touches[0].clientY;
+      const currentX = e.touches[0].clientX;
       const diff = currentY - startYRef.current;
+      const horizontalDiff = Math.abs(currentX - startXRef.current);
+
+      if (horizontalDiff > Math.abs(diff)) {
+        reset();
+        return;
+      }
 
       // ✅ Yukarı doğru çekildi (ya da sayfa artık en üstte değil) -> tamamen iptal
       if (diff <= 0 || !atTop()) {
@@ -82,16 +121,18 @@ export default function RefreshWrapper({ children }) {
       }
     };
 
+    const onTouchCancel = () => reset();
+
     el.addEventListener('touchstart', onTouchStart, { passive: true });
     el.addEventListener('touchmove', onTouchMove, { passive: false }); // preventDefault için passive:false şart
     el.addEventListener('touchend', onTouchEnd, { passive: true });
-    el.addEventListener('touchcancel', onTouchEnd, { passive: true });
+    el.addEventListener('touchcancel', onTouchCancel, { passive: true });
 
     return () => {
       el.removeEventListener('touchstart', onTouchStart);
       el.removeEventListener('touchmove', onTouchMove);
       el.removeEventListener('touchend', onTouchEnd);
-      el.removeEventListener('touchcancel', onTouchEnd);
+      el.removeEventListener('touchcancel', onTouchCancel);
     };
   }, [reset]);
 
@@ -110,7 +151,7 @@ export default function RefreshWrapper({ children }) {
       : 'text-gray-400';
 
   return (
-    <div ref={wrapperRef} className="min-h-screen">
+    <div ref={wrapperRef} className="min-h-screen overscroll-y-contain">
       {/* Sadece çekilirken / yenilenirken yüksekliği açılan indikatör alanı.
           Sayfa ilk açıldığında (idle + pullDistance 0) hiçbir şey render edilmez. */}
       <div
