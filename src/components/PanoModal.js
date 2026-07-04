@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
+import { createPanoVoteNotification, createPanoCommentNotification } from '@/lib/notifications';
 import Image from 'next/image';
 
 export default function PanoModal({ 
@@ -163,6 +164,8 @@ export default function PanoModal({
       if (error) { // Hata olursa geri al
          setHasLiked(false);
          setPanoLikes(originalLikes);
+      } else {
+         await createPanoVoteNotification(selectedPano.id);
       }
     }
   }
@@ -174,16 +177,24 @@ export default function PanoModal({
     const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
     const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
     
-    const { error } = await supabase.from('pano_comments').insert({
-      pano_id: selectedPano.id,
-      parent_id: replyTo,
-      user_email: user.email,
-      user_id: user.id,
-      username: username,
-      content: newComment
-    });
+    const { data: insertedComment, error } = await supabase
+      .from('pano_comments')
+      .insert({
+        pano_id: selectedPano.id,
+        parent_id: replyTo,
+        user_email: user.email,
+        user_id: user.id,
+        username: username,
+        content: newComment
+      })
+      .select('id')
+      .single();
 
     if (error) { toast.error('Hata oluştu!'); return; }
+
+    if (insertedComment?.id) {
+      await createPanoCommentNotification(insertedComment.id);
+    }
 
     setNewComment('');
     setReplyTo(null);

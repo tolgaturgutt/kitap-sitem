@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import YorumAlani from '@/components/YorumAlani';
 import { Toaster, toast } from 'react-hot-toast';
+import { createChapterVoteNotification } from '@/lib/notifications';
 import Username from '@/components/Username';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation'; // 👈 1. BUNU EKLE
@@ -306,6 +307,8 @@ export default function BolumDetay({ params }) {
         setLikes(prev => prev + 1);
         setHasLiked(true);
         toast.success("Bölüm beğenildi ❤️");
+
+        await createChapterVoteNotification(bolumId);
 
       }
     }

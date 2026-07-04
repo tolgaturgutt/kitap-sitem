@@ -35,7 +35,7 @@ async function getChapterVoteNotification(admin, user, chapterId) {
 
   const { data: vote } = await admin
     .from('chapter_votes')
-    .select('chapter_id')
+    .select('chapter_id, created_at')
     .eq('chapter_id', chapterId)
     .eq('user_email', user.email)
     .limit(1)
@@ -61,6 +61,7 @@ async function getChapterVoteNotification(admin, user, chapterId) {
 
   return {
     recipientEmail: book.user_email,
+    eventCreatedAt: vote.created_at,
     notification: {
       type: 'chapter_vote',
       book_title: book.title,
@@ -78,7 +79,7 @@ async function getPanoVoteNotification(admin, user, panoId) {
 
   const { data: vote } = await admin
     .from('pano_votes')
-    .select('pano_id')
+    .select('pano_id, created_at')
     .eq('pano_id', panoId)
     .eq('user_email', user.email)
     .limit(1)
@@ -96,6 +97,7 @@ async function getPanoVoteNotification(admin, user, panoId) {
 
   return {
     recipientEmail: pano.user_email,
+    eventCreatedAt: vote.created_at,
     notification: {
       type: 'pano_vote',
       pano_id: pano.id,
@@ -111,7 +113,7 @@ async function getLibraryNotification(admin, user, bookId) {
 
   const { data: follow } = await admin
     .from('follows')
-    .select('book_id')
+    .select('book_id, created_at')
     .eq('book_id', bookId)
     .eq('user_email', user.email)
     .limit(1)
@@ -129,6 +131,7 @@ async function getLibraryNotification(admin, user, bookId) {
 
   return {
     recipientEmail: book.user_email,
+    eventCreatedAt: follow.created_at,
     notification: {
       type: 'library_add',
       book_title: book.title,
@@ -193,7 +196,8 @@ export async function POST(request) {
       .select('id')
       .eq('recipient_email', activity.recipientEmail)
       .eq('actor_username', actorUsername)
-      .eq('type', type);
+      .eq('type', type)
+      .eq('created_at', activity.eventCreatedAt);
 
     for (const [column, value] of Object.entries(activity.duplicateFilters)) {
       duplicateQuery = duplicateQuery.eq(column, value);
@@ -212,6 +216,7 @@ export async function POST(request) {
         actor_username: actorUsername,
         ...activity.notification,
         is_read: false,
+        created_at: activity.eventCreatedAt,
       })
       .select('id')
       .single();

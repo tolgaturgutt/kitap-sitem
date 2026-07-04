@@ -29,7 +29,7 @@ async function insertNotifications(payloads) {
   return data || [];
 }
 
-async function createActivityNotification(type, payload) {
+async function postAuthenticatedNotification(url, payload) {
   try {
     const {
       data: { session },
@@ -37,26 +37,38 @@ async function createActivityNotification(type, payload) {
 
     if (!session?.access_token) return false;
 
-    const response = await fetch('/api/notifications/activity', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ type, ...payload }),
-    });
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    if (!response.ok) {
+      if (response.ok) return true;
+
       const result = await response.json().catch(() => null);
-      console.error('[notifications/activity] API error:', result);
-      return false;
+      console.error('[notifications] API error:', result);
+
+      if (attempt < 3) {
+        await new Promise((resolve) => window.setTimeout(resolve, attempt * 400));
+      }
     }
 
-    return true;
+    return false;
   } catch (error) {
-    console.error('[notifications/activity] request error:', error);
+    console.error('[notifications] request error:', error);
     return false;
   }
+}
+
+async function createActivityNotification(type, payload) {
+  return postAuthenticatedNotification('/api/notifications/activity', {
+    type,
+    ...payload,
+  });
 }
 
 /**
@@ -170,20 +182,10 @@ export async function createLibraryAddNotification(bookId) {
 /**
  * PANO YORUM BİLDİRİMİ
  */
-export async function createPanoCommentNotification(actorUsername, actorEmail, panoId, recipientEmail) {
-  try {
-    if (recipientEmail === actorEmail) return;
-
-    await insertNotification({
-      recipient_email: recipientEmail,
-      actor_username: actorUsername,
-      type: 'pano_comment',
-      pano_id: panoId,
-      is_read: false,
-    });
-  } catch (error) {
-    console.error('Pano comment notification error:', error);
-  }
+export async function createPanoCommentNotification(commentId) {
+  return postAuthenticatedNotification('/api/notifications/pano-comment', {
+    comment_id: Number(commentId),
+  });
 }
 
 /**
