@@ -4,6 +4,51 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Username from '@/components/Username';
+import { getAdminEmails } from '@/lib/admins';
+
+const CHAPTER_VIEWS_PAGE_SIZE = 1000;
+
+async function fetchChapterViewsSince(startDate) {
+  const allViews = [];
+
+  for (let from = 0; ; from += CHAPTER_VIEWS_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('chapter_views')
+      .select(`chapter_id, created_at, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, username, is_draft, profiles:user_id (username, email, role)))`)
+      .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: true })
+      .range(from, from + CHAPTER_VIEWS_PAGE_SIZE - 1);
+
+    if (error) {
+      console.error('Okuma verileri alınamadı:', error);
+      break;
+    }
+
+    allViews.push(...(data || []));
+
+    if (!data || data.length < CHAPTER_VIEWS_PAGE_SIZE) break;
+  }
+
+  return allViews;
+}
+
+function rankBooksByViews(views, metricName) {
+  const booksById = new Map();
+
+  views.forEach(item => {
+    const book = item.chapters?.books;
+
+    if (!book || book.is_draft) return;
+
+    const current = booksById.get(book.id) || { ...book, [metricName]: 0 };
+    current[metricName] += 1;
+    booksById.set(book.id, current);
+  });
+
+  return [...booksById.values()]
+    .sort((a, b) => b[metricName] - a[metricName])
+    .slice(0, 10);
+}
 
 function formatNumber(num) {
   if (!num) return 0;
@@ -133,8 +178,7 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const { data: adminData } = await supabase.from('announcement_admins').select('user_email');
-      const admins = adminData?.map(a => a.user_email) || [];
+      const admins = await getAdminEmails();
       setAdminEmails(admins);
 
       // ✅ TARIH HESAPLAMA FONKSİYONLARI
@@ -178,52 +222,32 @@ function getThisMonthFirst() {
 const birHaftaOnce = getThisWeekMonday();
 const birAyOnce = getThisMonthFirst();
 const ikiHaftaOnce = getLastWeekMonday();
-// --- YENİ SİSTEM: HAFTALIK EN ÇOK OKUNANLAR (SQL RPC) ---
-      // Veritabanındaki fonksiyonu çağırıyoruz. Hızlı ve net.
-      const { data: rpcData, error } = await supabase
-        .rpc('get_weekly_most_read_books', { 
-          start_date: birHaftaOnce.toISOString() 
-        });
+      // Haftalık, aylık ve geçen hafta liderini aynı gerçek okuma kayıtlarından üret.
+      const periodStart = new Date(
+        Math.min(ikiHaftaOnce.getTime(), birAyOnce.getTime())
+      );
+      const periodViews = await fetchChapterViewsSince(periodStart);
+      const thisWeekStart = birHaftaOnce.getTime();
+      const lastWeekStart = ikiHaftaOnce.getTime();
+      const monthStart = birAyOnce.getTime();
 
-      if (error) console.error('Haftalık veri hatası:', JSON.stringify(error, null, 2));
+      const weeklyBooks = rankBooksByViews(
+        periodViews.filter(view => new Date(view.created_at).getTime() >= thisWeekStart),
+        'weekly_reads'
+      );
+      const lastWeekBooks = rankBooksByViews(
+        periodViews.filter(view => {
+          const createdAt = new Date(view.created_at).getTime();
+          return createdAt >= lastWeekStart && createdAt < thisWeekStart;
+        }),
+        'weekly_reads'
+      );
+      const monthlyBooks = rankBooksByViews(
+        periodViews.filter(view => new Date(view.created_at).getTime() >= monthStart),
+        'monthly_reads'
+      );
 
-      // Gelen veriyi senin kullandığın yapıya uyduruyoruz (Formatlama)
-      const weeklyBooks = rpcData?.map(item => ({
-        id: item.id,
-        title: item.title,
-        cover_url: item.cover_url,
-        weekly_reads: item.weekly_reads,
-        profiles: { // Profil yapısını senin koduna uydurdum
-          username: item.username,
-          email: item.user_email,
-          avatar_url: item.user_avatar,
-          role: item.role
-        }
-      })) || [];
-
-      
       setWeeklyTopBooks(weeklyBooks);
-
-      // Aylık en çok okunan kitaplar (chapter_views'dan)
-      const { data: monthlyChapterViews, error: monthlyViewsError } = await supabase
-        .from('chapter_views')
-       .select(`chapter_id, created_at, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, profiles:user_id (username, email, role)))`)
-        .gte('created_at', birAyOnce.toISOString());
-
-      const monthlyBookViewCounts = {};
-      monthlyChapterViews?.forEach(item => {
-        if (!item.chapters?.books) return;
-        const book = item.chapters.books;
-        const bId = book.id;
-        if (!monthlyBookViewCounts[bId]) {
-          monthlyBookViewCounts[bId] = { ...book, monthly_reads: 0 };
-        }
-        monthlyBookViewCounts[bId].monthly_reads += 1;
-      });
-      
-      const monthlyBooks = Object.values(monthlyBookViewCounts)
-        .sort((a, b) => b.monthly_reads - a.monthly_reads)
-        .slice(0, 10);
       setMonthlyTopBooks(monthlyBooks);
 // Tüm zamanların en çok okunan kitapları (chapter_views'dan)
 // ✅ 1. TÜM ZAMANLAR (GARANTİ YÖNTEM: Top100 Mantığı)
@@ -321,12 +345,6 @@ const { data: topCommentersData, error: commentError } = await supabase
          end_date: birHaftaOnce.toISOString()
       });
 
-      // 3. En Çok Okunan Kitap (Geçen Hafta)
-      const { data: rpcChampionBook } = await supabase.rpc('get_period_top_book', {
-         start_date: ikiHaftaOnce.toISOString(),
-         end_date: birHaftaOnce.toISOString()
-      });
-
     setLastWeekChampions({
         writer: rpcChampionWriter?.[0] ? {
            username: rpcChampionWriter[0].username,
@@ -344,11 +362,11 @@ const { data: topCommentersData, error: commentError } = await supabase
            count: rpcChampionCommenter[0].count
         } : null,
         
-        book: rpcChampionBook?.[0] ? {
-           id: rpcChampionBook[0].id,
-           title: rpcChampionBook[0].title,
-           cover_url: rpcChampionBook[0].cover_url,
-           weekly_reads: rpcChampionBook[0].weekly_reads
+        book: lastWeekBooks[0] ? {
+           id: lastWeekBooks[0].id,
+           title: lastWeekBooks[0].title,
+           cover_url: lastWeekBooks[0].cover_url,
+           weekly_reads: lastWeekBooks[0].weekly_reads
         } : null
       });
       setLoading(false);

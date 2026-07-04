@@ -8,6 +8,42 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
 import Username from '@/components/Username';
 import Image from 'next/image';
+import { getAdminEmails } from '@/lib/admins';
+
+async function fetchNotifications(email) {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const { data: notifications } = await supabase
+    .from('notifications')
+    .select('id, actor_username, type, book_title, book_id, chapter_id, paragraph_id, comment_id, pano_id, is_read, created_at')
+    .eq('recipient_email', email)
+    .gte('created_at', sevenDaysAgo.toISOString())
+    .order('created_at', { ascending: false });
+
+  if (!notifications?.length) return [];
+
+  const chapterIds = [...new Set(notifications.filter(item => item.chapter_id).map(item => item.chapter_id))];
+  const panoIds = [...new Set(notifications.filter(item => item.pano_id).map(item => item.pano_id))];
+
+  const [{ data: chapters }, { data: panos }] = await Promise.all([
+    chapterIds.length
+      ? supabase.from('chapters').select('id, title').in('id', chapterIds)
+      : Promise.resolve({ data: [] }),
+    panoIds.length
+      ? supabase.from('panolar').select('id, title').in('id', panoIds)
+      : Promise.resolve({ data: [] }),
+  ]);
+
+  const chapterTitles = new Map((chapters || []).map(chapter => [chapter.id, chapter.title]));
+  const panoTitles = new Map((panos || []).map(pano => [pano.id, pano.title]));
+
+  return notifications.map(notification => ({
+    ...notification,
+    chapter_title: chapterTitles.get(notification.chapter_id),
+    pano_title: panoTitles.get(notification.pano_id),
+  }));
+}
 
 export default function Navbar() {
   const [user, setUser] = useState(null);
@@ -33,17 +69,14 @@ export default function Navbar() {
   const [showMobileSearch, setShowMobileSearch] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
 
-  if (pathname === '/sifre-yenile') {
-    return null;
-  }
+  const hideNavbar = pathname === '/sifre-yenile';
 
  useEffect(() => {
     setMounted(true);
     const loadSession = async () => {
       // YENİ: Admin listesini çek (Giriş yapmasa bile herkes adminleri doğru görsün)
       const fetchAdmins = async () => {
-        const { data } = await supabase.from('announcement_admins').select('user_email');
-        if (data) setAdminEmails(data.map(a => a.user_email));
+        setAdminEmails(await getAdminEmails());
       };
       fetchAdmins();
 
@@ -69,7 +102,7 @@ export default function Navbar() {
         };
 
         const fetchNotifs = async () => {
-          await loadNotifications(session.user.email);
+          setNotifications(await fetchNotifications(session.user.email));
         };
 
         // --- YENİ: Ortak Yazar Davetlerini Çek ---
@@ -106,70 +139,26 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  async function loadNotifications(email) {
-    // 🔥 SON 7 GÜN AYARI
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const { data: n } = await supabase
-      .from('notifications')
-      .select('*')
-      .eq('recipient_email', email)
-      .gte('created_at', sevenDaysAgo.toISOString()) // Sadece son 7 gün
-      .order('created_at', { ascending: false }); // ❌ .limit(50) satırını sildim, artık sınır yok!
-
-    if (n && n.length > 0) {
-      const chapterIds = n
-        .filter(notif => notif.chapter_id && !notif.chapter_title)
-        .map(notif => notif.chapter_id);
-
-      if (chapterIds.length > 0) {
-        const uniqueIds = [...new Set(chapterIds)];
-        const { data: chapters } = await supabase
-          .from('chapters')
-          .select('id, title')
-          .in('id', uniqueIds);
-
-        if (chapters) {
-          n.forEach(notif => {
-            const foundChapter = chapters.find(c => c.id === notif.chapter_id);
-            if (foundChapter) notif.chapter_title = foundChapter.title;
-          });
-        }
-      }
-
-      const panoIds = n
-        .filter(notif => notif.pano_id && !notif.pano_title)
-        .map(notif => notif.pano_id);
-
-      if (panoIds.length > 0) {
-        const uniquePanoIds = [...new Set(panoIds)];
-        const { data: panos } = await supabase
-          .from('panolar')
-          .select('id, title')
-          .in('id', uniquePanoIds);
-
-        if (panos) {
-          n.forEach(notif => {
-            const foundPano = panos.find(p => p.id === notif.pano_id);
-            if (foundPano) notif.pano_title = foundPano.title;
-          });
-        }
-      }
-    }
-    setNotifications(n || []);
-  }
-
  useEffect(() => {
+    let cancelled = false;
+
     const timer = setTimeout(async () => {
       if (query.trim().length > 1) {
-        
-        // 1. KİTAPLARI ÇEK (Ortak yazar bilgileriyle beraber)
-        let { data: b } = await supabase
-          .from('books')
-          .select('*, chapters(id), profiles:user_id(username, email, role), co_author:profiles!co_author_id(username, email, role)')
-          .ilike('title', `%${query}%`)
-          .limit(10);
+        const searchTerm = query.trim();
+        const [{ data: bookResults }, { data: userResults }] = await Promise.all([
+          supabase
+            .from('books')
+            .select('id, title, cover_url, username, user_email, co_author_id, co_author_status, chapters(id), profiles:user_id(username, email, role), co_author:profiles!co_author_id(username, email, role)')
+            .ilike('title', `%${searchTerm}%`)
+            .limit(10),
+          supabase
+            .from('profiles')
+            .select('id, username, full_name, avatar_url, email, role')
+            .or(`username.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%`)
+            .limit(5),
+        ]);
+
+        let b = bookResults;
 
         if (b) {
           b = b.filter(kitap => kitap.chapters && kitap.chapters.length > 0).slice(0, 5);
@@ -192,24 +181,22 @@ export default function Navbar() {
           });
         }
 
-        // 2. KULLANICILARI ÇEK
-        const { data: u } = await supabase
-          .from('profiles')
-          .select('*')
-          .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
-          .limit(5);
-
         // Kullanıcılara da gerçek admin kontrolü yap
-        const mappedUsers = u?.map(user => ({
+        const mappedUsers = userResults?.map(user => ({
           ...user,
           is_admin: adminEmails.includes(user.email)
         })) || [];
+
+        if (cancelled) return;
 
         setSearchResults({ books: b || [], users: mappedUsers });
         setShowSearch(true);
       } else setShowSearch(false);
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, [query, adminEmails]);
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -253,7 +240,7 @@ export default function Navbar() {
           console.log("🔔 Anlık bildirim geldi:", payload);
 
           // Listeyi yenile ki zil ikonundaki sayı artsın
-          await loadNotifications(user.email);
+          setNotifications(await fetchNotifications(user.email));
 
           // 👇 BURASI: Çarpı butonlu özel bildirim kutusu
           toast((t) => (
@@ -313,13 +300,13 @@ export default function Navbar() {
 
     if (error) {
       toast.error('Silinemedi');
-      loadNotifications(user.email); // Hata olursa geri yükle
+      setNotifications(await fetchNotifications(user.email)); // Hata olursa geri yükle
     } else {
       toast.success('Bildirim silindi');
     }
   }
 
-  if (!mounted) return null;
+  if (!mounted || hideNavbar) return null;
 
   const socialNotifs = notifications.filter(n => n.type === 'follow' || (n.type === 'reply' && n.pano_id));
   const activityNotifs = notifications.filter(n =>

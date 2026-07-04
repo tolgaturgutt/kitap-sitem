@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { PushNotifications } from '@capacitor/push-notifications';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -10,6 +9,16 @@ import { useRouter } from 'next/navigation';
 const TOKEN_STORAGE_KEY = 'kitaplab_fcm_token';
 const AUTH_EVENTS = ['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'];
 const ANDROID_NOTIFICATION_CHANNEL_ID = 'kitaplab_push_v3';
+let pushNotificationsPluginRequest = null;
+
+function getPushNotificationsPlugin() {
+  if (!pushNotificationsPluginRequest) {
+    pushNotificationsPluginRequest = import('@capacitor/push-notifications')
+      .then(module => module.PushNotifications);
+  }
+
+  return pushNotificationsPluginRequest;
+}
 
 export default function PushSetup() {
   const router = useRouter();
@@ -87,6 +96,7 @@ export default function PushSetup() {
     registrationRunningRef.current = true;
 
     try {
+      const PushNotifications = await getPushNotificationsPlugin();
       let permission = await PushNotifications.checkPermissions();
 
       if (permission.receive !== 'granted') {
@@ -110,6 +120,8 @@ export default function PushSetup() {
 
   const initializePush = useCallback(async () => {
     try {
+      const PushNotifications = await getPushNotificationsPlugin();
+
       try {
         await PushNotifications.createChannel({
           id: ANDROID_NOTIFICATION_CHANNEL_ID,

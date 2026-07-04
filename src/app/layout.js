@@ -18,7 +18,6 @@ import RefreshWrapper from "@/components/RefreshWrapper";
 import { ThemeProvider } from "next-themes";
 import { Toaster, toast } from "react-hot-toast";
 
-import { App } from "@capacitor/app";
 import { Capacitor } from "@capacitor/core";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -35,9 +34,18 @@ export default function RootLayout({ children }) {
 
 // ✅ Back handler (Android exit, iOS toast)
 useEffect(() => {
-  const lastBackPressRef = { current: 0 };
+  if (!Capacitor.isNativePlatform()) return;
 
-  const onBack = () => {
+  const lastBackPressRef = { current: 0 };
+  let cancelled = false;
+  let listenerHandle = null;
+
+  const setupBackHandler = async () => {
+    const { App } = await import("@capacitor/app");
+
+    if (cancelled) return;
+
+    const onBack = () => {
     const currentPath = pathnameRef.current || "/";
 
     // ✅ Ana sayfa: 1 uyarı, 2. basışta (Android) çık
@@ -67,16 +75,19 @@ useEffect(() => {
     }
 
     router.back();
+    };
+
+    await App.removeAllListeners();
+
+    if (cancelled) return;
+    listenerHandle = await App.addListener("backButton", onBack);
   };
 
-  // 🔥 Önce tüm listenerleri temizle
-  App.removeAllListeners();
-  
-  // 🔥 Sonra yenisini ekle
-  const handle = App.addListener("backButton", onBack);
+  setupBackHandler().catch(() => {});
 
   return () => {
-    handle.then(h => h?.remove()).catch(() => {});
+    cancelled = true;
+    listenerHandle?.remove().catch(() => {});
   };
 }, [router]);
 

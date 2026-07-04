@@ -138,6 +138,7 @@ export default function BolumDetay({ params }) {
           }
           const { error: historyError } = await supabase.from('reading_history').upsert({
             user_email: currentUser.email,
+            user_id: currentUser.id,
             book_id: Number(id),
             chapter_id: Number(bolumId),
             updated_at: new Date()

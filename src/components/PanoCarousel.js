@@ -6,36 +6,35 @@ import Link from 'next/link';
 import Username from '@/components/Username';
 import Image from 'next/image';
 
-export default function PanoCarousel({ onPanoClick, user }) {
+export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
   const [panolar, setPanolar] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewedPanos, setViewedPanos] = useState(new Set());
-  const [adminEmails, setAdminEmails] = useState([]);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     async function getPanolar() {
-      // 1. Admin Listesini Çek
-      const { data: admins } = await supabase.from('announcement_admins').select('user_email');
-      const emailsList = admins?.map(a => a.user_email) || [];
-      setAdminEmails(emailsList);
-
-      // 2. Panoları Çek (Son 24 saat)
+      // Son 24 saatteki panoları çek.
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
      const { data: rawPanolar } = await supabase
         .from('panolar')
         .select(`
-          *,
+          id,
+          title,
+          content,
+          created_at,
+          is_pinned,
+          user_id,
+          user_email,
+          username,
+          book_id,
+          chapter_id,
           books (
             id,
             title,
             cover_url
-          ),
-          chapters (
-            id,
-            title
           )
         `)
         .gte('created_at', yesterday.toISOString())
@@ -57,8 +56,11 @@ export default function PanoCarousel({ onPanoClick, user }) {
           .in('email', userEmails);
 
         // 3. Profilleri panolarla eşleştir (Hafızada birleştirme)
+        const profilesByEmail = new Map(
+          (profiles || []).map(profile => [profile.email, profile])
+        );
         const panoWithProfiles = rawPanolar.map(pano => {
-          const profile = profiles?.find(p => p.email === pano.user_email);
+          const profile = profilesByEmail.get(pano.user_email);
           return {
             ...pano,
             profiles: profile // Eşleşen profili buraya gömüyoruz
