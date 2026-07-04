@@ -6,10 +6,15 @@ const config: CapacitorConfig = {
   webDir: 'public',
   server: {
     url: 'https://www.kitaplab.com',
-    // 👇 İŞTE BU SATIRI EKLEMEN LAZIM KRAL
     allowNavigation: ['kitaplab.com', '*.kitaplab.com'],
     androidScheme: 'https',
     cleartext: true
+  },
+  plugins: {
+    LocalNotifications: {
+      smallIcon: 'ic_stat_kitaplab_notification',
+      iconColor: '#D71920'
+    }
   }
 };
 
