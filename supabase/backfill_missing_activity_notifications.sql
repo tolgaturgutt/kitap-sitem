@@ -132,7 +132,9 @@ select
   'skipped'
 from public.pano_comments c
 join public.panolar pano on pano.id = c.pano_id
-left join public.pano_comments parent_comment on parent_comment.id = c.parent_id
+left join public.pano_comments parent_comment
+  on parent_comment.id = c.parent_id
+ and parent_comment.pano_id = c.pano_id
 left join public.profiles p on p.id = c.user_id
 where c.created_at >= now() - interval '7 days'
   and lower(

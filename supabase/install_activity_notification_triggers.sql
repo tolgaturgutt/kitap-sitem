@@ -157,7 +157,8 @@ begin
     select parent_comment.user_email
       into recipient_email_value
     from public.pano_comments parent_comment
-    where parent_comment.id = new.parent_id;
+    where parent_comment.id = new.parent_id
+      and parent_comment.pano_id = new.pano_id;
 
     notification_type_value := 'reply';
   else

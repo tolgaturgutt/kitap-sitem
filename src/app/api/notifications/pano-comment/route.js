@@ -84,11 +84,15 @@ export async function POST(request) {
     if (comment.parent_id) {
       const { data: parentComment, error: parentError } = await admin
         .from('pano_comments')
-        .select('user_email')
+        .select('user_email, pano_id')
         .eq('id', comment.parent_id)
         .single();
 
-      if (parentError || !parentComment?.user_email) {
+      if (
+        parentError ||
+        !parentComment?.user_email ||
+        String(parentComment.pano_id) !== String(comment.pano_id)
+      ) {
         return NextResponse.json(
           { error: parentError?.message || 'Yanıtlanan pano yorumu bulunamadı.' },
           { status: 404 }

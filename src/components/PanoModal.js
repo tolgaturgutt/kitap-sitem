@@ -257,6 +257,29 @@ export default function PanoModal({
       onClose();
     }
   }
+
+  function getThreadReplies(rootCommentId) {
+    const threadReplies = [];
+    const visitedIds = new Set([String(rootCommentId)]);
+
+    function appendReplies(parentCommentId) {
+      panoComments
+        .filter(comment => String(comment.parent_id) === String(parentCommentId))
+        .forEach(comment => {
+          const commentId = String(comment.id);
+
+          if (visitedIds.has(commentId)) return;
+
+          visitedIds.add(commentId);
+          threadReplies.push(comment);
+          appendReplies(comment.id);
+        });
+    }
+
+    appendReplies(rootCommentId);
+    return threadReplies;
+  }
+
   async function handleTogglePin() {
     const newStatus = !selectedPano.is_pinned;
     
@@ -338,7 +361,8 @@ export default function PanoModal({
           </p>
           <button 
             onClick={() => {
-              setReplyTo(comment.parent_id || comment.id);
+              // Bildirim doğrudan yanıtlanan yorumun sahibine gitmeli.
+              setReplyTo(comment.id);
               setReplyToUsername(displayUsername);
               setNewComment(`@${displayUsername}  `);
             }} 
@@ -421,7 +445,7 @@ export default function PanoModal({
                    panoComments.filter(c => !c.parent_id).map(comment => (
                      <div key={comment.id} className="space-y-3">
                        <CommentItem comment={comment} />
-                       {panoComments.filter(r => r.parent_id === comment.id).map(reply => (
+                       {getThreadReplies(comment.id).map(reply => (
                          <CommentItem key={reply.id} comment={reply} isReply={true} />
                        ))}
                      </div>
