@@ -81,6 +81,12 @@ function buildNotificationText(notification) {
         body: actor + ', ' + bookTitle + ' kitabına yeni bölüm ekledi.',
       };
 
+    case 'library_add':
+      return {
+        title: 'Kitabın kütüphaneye eklendi',
+        body: actor + ', ' + bookTitle + ' kitabını kütüphanesine ekledi.',
+      };
+
     case 'follow':
       return {
         title: 'Yeni takipçin var',

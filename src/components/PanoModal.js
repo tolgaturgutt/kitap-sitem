@@ -153,9 +153,6 @@ export default function PanoModal({
     setHasLiked(!hasLiked);
     setPanoLikes(prev => hasLiked ? prev - 1 : prev + 1);
 
-    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
-    const username = profile?.username || user.email.split('@')[0];
-    
     if (originalHasLiked) {
       const { error } = await supabase.from('pano_votes').delete().eq('pano_id', selectedPano.id).eq('user_email', user.email);
       if (error) { // Hata olursa geri al
@@ -168,7 +165,7 @@ export default function PanoModal({
          setHasLiked(false);
          setPanoLikes(originalLikes);
       } else {
-         await createPanoVoteNotification(username, user.email, selectedPano.id, selectedPano.user_email);
+         await createPanoVoteNotification(selectedPano.id);
       }
     }
   }

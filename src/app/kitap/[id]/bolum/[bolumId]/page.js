@@ -284,14 +284,6 @@ export default function BolumDetay({ params }) {
        return toast.error("Oy vermek için lütfen email adresinizi onaylayın.");
     }
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('username')
-      .eq('id', user.id)
-      .single();
-
-    const username = profile?.username || user.email.split('@')[0];
-
     if (hasLiked) {
       const { error } = await supabase
         .from('chapter_votes')
@@ -316,7 +308,7 @@ export default function BolumDetay({ params }) {
         setHasLiked(true);
         toast.success("Bölüm beğenildi ❤️");
 
-        await createChapterVoteNotification(username, user.email, id, bolumId);
+        await createChapterVoteNotification(bolumId);
       }
     }
   };

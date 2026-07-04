@@ -327,6 +327,7 @@ export default function Navbar() {
     n.type === 'chapter_vote' ||
     n.type === 'comment' ||
     n.type === 'new_chapter' ||
+    n.type === 'library_add' ||
     n.type === 'pano_vote' ||
     n.type === 'pano_comment' ||
     (n.type === 'reply' && !n.pano_id)
@@ -398,6 +399,9 @@ export default function Navbar() {
       case 'new_chapter':
         return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
 
+      case 'library_add':
+        return n.book_id ? `/kitap/${n.book_id}` : '#';
+
       case 'pano_vote':
       case 'pano_comment':
         return n.pano_id ? `/pano/${n.pano_id}` : '#';
@@ -435,6 +439,7 @@ export default function Navbar() {
       case 'comment':
         return n.chapter_id ? 'bölümüne yorum yaptı' : 'eserine yorum yaptı';
       case 'new_chapter': return 'yeni bölüm yayınladı';
+      case 'library_add': return 'kitabını kütüphanesine ekledi';
       case 'pano_vote': return 'panonuzu beğendi';
       case 'pano_comment': return 'panonuza yorum yaptı';
       case 'reply': return 'yorumunuza yanıt verdi';
@@ -448,6 +453,7 @@ export default function Navbar() {
       case 'vote': case 'chapter_vote': case 'pano_vote': return '⭐';
       case 'comment': case 'pano_comment': return '💬';
       case 'new_chapter': return '🆕';
+      case 'library_add': return '📚';
       case 'reply': return '↩️';
       case 'follow': return '👤';
       default: return '🔔';

@@ -29,31 +29,43 @@ async function insertNotifications(payloads) {
   return data || [];
 }
 
+async function createActivityNotification(type, payload) {
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) return false;
+
+    const response = await fetch('/api/notifications/activity', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({ type, ...payload }),
+    });
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      console.error('[notifications/activity] API error:', result);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('[notifications/activity] request error:', error);
+    return false;
+  }
+}
+
 /**
  * BÖLÜM BEĞENİ BİLDİRİMİ
  */
-export async function createChapterVoteNotification(actorUsername, actorEmail, bookId, chapterId) {
-  try {
-    const { data: book } = await supabase
-      .from('books')
-      .select('user_email, title')
-      .eq('id', bookId)
-      .single();
-
-    if (!book || book.user_email === actorEmail) return;
-
-    await insertNotification({
-      recipient_email: book.user_email,
-      actor_username: actorUsername,
-      type: 'chapter_vote',
-      book_title: book.title,
-      book_id: bookId,
-      chapter_id: chapterId,
-      is_read: false,
-    });
-  } catch (error) {
-    console.error('Chapter vote notification error:', error);
-  }
+export async function createChapterVoteNotification(chapterId) {
+  return createActivityNotification('chapter_vote', {
+    chapter_id: Number(chapterId),
+  });
 }
 
 /**
@@ -140,20 +152,19 @@ export async function createReplyNotification(
 /**
  * PANO BEĞENİ BİLDİRİMİ
  */
-export async function createPanoVoteNotification(actorUsername, actorEmail, panoId, recipientEmail) {
-  try {
-    if (recipientEmail === actorEmail) return;
+export async function createPanoVoteNotification(panoId) {
+  return createActivityNotification('pano_vote', {
+    pano_id: Number(panoId),
+  });
+}
 
-    await insertNotification({
-      recipient_email: recipientEmail,
-      actor_username: actorUsername,
-      type: 'pano_vote',
-      pano_id: panoId,
-      is_read: false,
-    });
-  } catch (error) {
-    console.error('Pano vote notification error:', error);
-  }
+/**
+ * KÜTÜPHANEYE EKLEME BİLDİRİMİ
+ */
+export async function createLibraryAddNotification(bookId) {
+  return createActivityNotification('library_add', {
+    book_id: Number(bookId),
+  });
 }
 
 /**
