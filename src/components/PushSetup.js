@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 
 const TOKEN_STORAGE_KEY = 'kitaplab_fcm_token';
 const AUTH_EVENTS = ['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'];
-const ANDROID_NOTIFICATION_CHANNEL_ID = 'kitaplab_default_v2';
+const ANDROID_NOTIFICATION_CHANNEL_ID = 'kitaplab_push_v3';
 
 export default function PushSetup() {
   const router = useRouter();
@@ -141,10 +141,12 @@ export default function PushSetup() {
       await PushNotifications.addListener('pushNotificationReceived', (notification) => {
         console.log('[PushSetup] foreground notification:', notification);
 
+        const notificationData = notification?.data || {};
+
         toast.success(
-          (notification.title || 'KitapLab') +
+          (notification.title || notificationData.title || 'KitapLab') +
             '\n' +
-            (notification.body || 'Yeni bildirimin var.'),
+            (notification.body || notificationData.body || 'Yeni bildirimin var.'),
           {
             duration: 6000,
             icon: '🔔',

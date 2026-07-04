@@ -1,8 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { firebaseMessaging } from '@/lib/firebaseAdmin';
 
-const ANDROID_NOTIFICATION_CHANNEL_ID = 'kitaplab_default_v2';
-
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -76,22 +74,14 @@ export async function sendPushToUserEmail({
 
   const response = await firebaseMessaging.sendEachForMulticast({
     tokens,
-    notification: {
-      title: title || 'KitapLab',
-      body: body || 'Yeni bildirimin var.',
-    },
     data: cleanData({
       ...data,
+      title: title || 'KitapLab',
+      body: body || 'Yeni bildirimin var.',
       source: 'kitaplab',
     }),
     android: {
       priority: 'high',
-      notification: {
-        channelId: ANDROID_NOTIFICATION_CHANNEL_ID,
-        sound: 'default',
-        icon: 'ic_stat_kitaplab_push_v3',
-        color: '#D71920',
-      },
     },
   });
 
