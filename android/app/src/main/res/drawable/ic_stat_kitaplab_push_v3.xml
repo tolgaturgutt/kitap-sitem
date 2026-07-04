@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- KitapLab: laboratuvar sisəsi ve acik kitap, bildirimler icin tek renk. -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M8,1h8a1,1 0,0 1,0 2h-1v4l3.4,4.9A1.35,1.35 0,0 1,17.3 14H6.7a1.35,1.35 0,0 1,-1.1 -2.1L9,7V3H8A1,1 0,0 1,8 1zM11,3v4.63L8.04,12h7.92L13,7.63V3z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M2,14.5c3.55,0 6.55,0.75 9,2.9V23c-2.45,-1.55 -5.45,-2.15 -9,-2.15zM22,14.5c-3.55,0 -6.55,0.75 -9,2.9V23c2.45,-1.55 5.45,-2.15 9,-2.15z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M11.25,9.2a0.75,0.75 0,1 0,1.5 0a0.75,0.75 0,1 0,-1.5 0M9.75,11.3a0.55,0.55 0,1 0,1.1 0a0.55,0.55 0,1 0,-1.1 0M13.3,11.45a0.6,0.6 0,1 0,1.2 0a0.6,0.6 0,1 0,-1.2 0" />
+</vector>

@@ -9,7 +9,7 @@
         android:theme="@style/AppTheme">
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_stat_kitaplab_notification"
+            android:resource="@drawable/ic_stat_kitaplab_push_v3"
         />
 
         <meta-data

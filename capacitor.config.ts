@@ -12,7 +12,7 @@ const config: CapacitorConfig = {
   },
   plugins: {
     LocalNotifications: {
-      smallIcon: 'ic_stat_kitaplab_notification',
+      smallIcon: 'ic_stat_kitaplab_push_v3',
       iconColor: '#D71920'
     }
   }

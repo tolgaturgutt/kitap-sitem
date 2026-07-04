@@ -89,7 +89,7 @@ export async function sendPushToUserEmail({
       notification: {
         channelId: ANDROID_NOTIFICATION_CHANNEL_ID,
         sound: 'default',
-        icon: 'ic_stat_kitaplab_notification',
+        icon: 'ic_stat_kitaplab_push_v3',
         color: '#D71920',
       },
     },
