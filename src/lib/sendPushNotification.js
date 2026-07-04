@@ -87,6 +87,8 @@ export async function sendPushToUserEmail({
       notification: {
         channelId: 'default',
         sound: 'default',
+        icon: 'ic_stat_kitaplab',
+        color: '#D71920',
       },
     },
   });

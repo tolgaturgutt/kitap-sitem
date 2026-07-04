@@ -4,7 +4,6 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
-import { createCommentNotification, createReplyNotification } from '@/lib/notifications';
 
 export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded, includeParagraphs = false, onStatsUpdate }) {
   const [comments, setComments] = useState([]);
@@ -15,7 +14,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   
   const [replyComment, setReplyComment] = useState(''); 
   const [replyingTo, setReplyingTo] = useState(null); 
-  const [replyingToUser, setReplyingToUser] = useState(null);
 
   const [user, setUser] = useState(null);
   const [isSending, setIsSending] = useState(false);
@@ -109,10 +107,8 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     if (replyingTo === targetComment.id) {
       setReplyingTo(null);
       setReplyComment('');
-      setReplyingToUser(null);
     } else {
       setReplyingTo(targetComment.id);
-      setReplyingToUser(targetComment.user_email);
       const username = targetComment.profiles?.username || targetComment.username;
       setReplyComment(`@${username} `);
     }
@@ -179,7 +175,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         if (targetComment) {
             setReplyComment('');
             setReplyingTo(null);
-            setReplyingToUser(null);
             toast.success("Yanıt gönderildi");
         } else {
             setNewComment(''); 
@@ -188,7 +183,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 
         if (type === 'paragraph' && onCommentAdded) onCommentAdded(paraId);
         
-        await createNotification(insertedData, username, targetComment);
+        await createNotification(insertedData, targetComment);
 
         if (bookId && onStatsUpdate) {
           const { data: updatedBook } = await supabase
@@ -210,7 +205,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     setIsSending(false);
   }
 
-  async function createNotification(comment, username, targetComment) {
+  async function createNotification(comment, targetComment) {
     try {
       console.log('🔔 Bildirim oluşturuluyor:', {
         comment_id: comment.id,
@@ -219,43 +214,27 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         targetComment: targetComment?.user_email
       });
 
-      if (comment.parent_id) {
-        // YANIT İSE
-        const recipientEmail = replyingToUser || targetComment?.user_email;
-        
-        if (recipientEmail && recipientEmail !== user.email) {
-          console.log('✅ Reply bildirimi gönderiliyor:', {
-            to: recipientEmail,
-            paragraph_id: comment.paragraph_id,
-            comment_id: comment.id
-          });
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-          await createReplyNotification(
-            username, 
-            user.email, 
-            recipientEmail,
-            bookId ? parseInt(bookId) : null, 
-            type === 'book' ? null : parseInt(targetId), 
-            null,
-            comment.paragraph_id,
-            comment.id
-          );
-        }
-      } else {
-        // YENİ YORUM İSE
-        console.log('✅ Comment bildirimi gönderiliyor:', {
-          paragraph_id: comment.paragraph_id,
-          comment_id: comment.id
-        });
+      if (!session?.access_token) return;
 
-        await createCommentNotification(
-          username, 
-          user.email, 
-          parseInt(bookId), 
-          type === 'book' ? null : parseInt(targetId),
-          comment.paragraph_id,
-          comment.id
-        );
+      const response = await fetch('/api/notifications/comment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          comment_id: comment.id,
+          target_comment_id: targetComment?.id || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const result = await response.json().catch(() => null);
+        console.error('❌ Bildirim API hatası:', result);
       }
     } catch (e) { 
       console.error('❌ Bildirim hatası:', e); 
