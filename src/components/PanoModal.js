@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
-import { createPanoVoteNotification, createPanoCommentNotification, createReplyNotification } from '@/lib/notifications';
 import Image from 'next/image';
 
 export default function PanoModal({ 
@@ -164,8 +163,6 @@ export default function PanoModal({
       if (error) { // Hata olursa geri al
          setHasLiked(false);
          setPanoLikes(originalLikes);
-      } else {
-         await createPanoVoteNotification(selectedPano.id);
       }
     }
   }
@@ -187,15 +184,6 @@ export default function PanoModal({
     });
 
     if (error) { toast.error('Hata oluştu!'); return; }
-
-    if (replyTo) {
-      const parentComment = panoComments.find(c => c.id === replyTo);
-      if (parentComment) {
-        await createReplyNotification(username, user.email, parentComment.user_email, null, null, selectedPano.id);
-      }
-    } else {
-      await createPanoCommentNotification(username, user.email, selectedPano.id, selectedPano.user_email);
-    }
 
     setNewComment('');
     setReplyTo(null);

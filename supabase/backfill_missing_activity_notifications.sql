@@ -106,4 +106,61 @@ where f.created_at >= now() - interval '7 days'
       and n.actor_username = coalesce(p.username, split_part(f.user_email, '@', 1))
   );
 
+-- Pano yorumları ve yanıtları -> pano veya yorum sahibine bildirim.
+insert into public.notifications (
+  recipient_email,
+  actor_username,
+  type,
+  pano_id,
+  is_read,
+  created_at,
+  push_status
+)
+select
+  case
+    when c.parent_id is not null then parent_comment.user_email
+    else pano.user_email
+  end,
+  coalesce(p.username, c.username, split_part(c.user_email, '@', 1)),
+  case
+    when c.parent_id is not null then 'reply'
+    else 'pano_comment'
+  end,
+  c.pano_id,
+  false,
+  c.created_at,
+  'skipped'
+from public.pano_comments c
+join public.panolar pano on pano.id = c.pano_id
+left join public.pano_comments parent_comment on parent_comment.id = c.parent_id
+left join public.profiles p on p.id = c.user_id
+where c.created_at >= now() - interval '7 days'
+  and lower(
+    case
+      when c.parent_id is not null then parent_comment.user_email
+      else pano.user_email
+    end
+  ) <> lower(c.user_email)
+  and not exists (
+    select 1
+    from public.notifications n
+    where n.type = case
+        when c.parent_id is not null then 'reply'
+        else 'pano_comment'
+      end
+      and n.pano_id = c.pano_id
+      and lower(n.recipient_email) = lower(
+        case
+          when c.parent_id is not null then parent_comment.user_email
+          else pano.user_email
+        end
+      )
+      and n.actor_username = coalesce(
+        p.username,
+        c.username,
+        split_part(c.user_email, '@', 1)
+      )
+      and n.created_at = c.created_at
+  );
+
 commit;

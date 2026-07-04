@@ -7,7 +7,6 @@ import toast, { Toaster } from 'react-hot-toast';
 import YorumAlani from '@/components/YorumAlani';
 import { useRouter } from 'next/navigation';
 import Username from '@/components/Username';
-import { createLibraryAddNotification } from '@/lib/notifications';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -304,7 +303,6 @@ export default function KitapDetay({ params }) {
 
        setData(prev => ({ ...prev, isFollowing: true, stats: { ...prev.stats, follows: prev.stats.follows + 1 } }));
        toast.success("Kütüphaneye eklendi");
-       await createLibraryAddNotification(id);
      }
   }
 
