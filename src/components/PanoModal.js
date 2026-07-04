@@ -160,12 +160,17 @@ export default function PanoModal({
          setPanoLikes(originalLikes);
       }
     } else {
-      const { error } = await supabase.from('pano_votes').insert({ pano_id: selectedPano.id, user_email: user.email });
+      const { data: insertedVote, error } = await supabase
+        .from('pano_votes')
+        .insert({ pano_id: selectedPano.id, user_email: user.email })
+        .select('id')
+        .single();
+
       if (error) { // Hata olursa geri al
          setHasLiked(false);
          setPanoLikes(originalLikes);
-      } else {
-         await createPanoVoteNotification(selectedPano.id);
+      } else if (insertedVote?.id) {
+         await createPanoVoteNotification(insertedVote.id);
       }
     }
   }

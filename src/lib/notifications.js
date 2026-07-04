@@ -164,9 +164,9 @@ export async function createReplyNotification(
 /**
  * PANO BEĞENİ BİLDİRİMİ
  */
-export async function createPanoVoteNotification(panoId) {
+export async function createPanoVoteNotification(voteId) {
   return createActivityNotification('pano_vote', {
-    pano_id: Number(panoId),
+    vote_id: voteId,
   });
 }
 

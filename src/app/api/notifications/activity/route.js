@@ -74,15 +74,14 @@ async function getChapterVoteNotification(admin, user, chapterId) {
   };
 }
 
-async function getPanoVoteNotification(admin, user, panoId) {
-  if (!panoId) throw new Error('Pano kimliği eksik.');
+async function getPanoVoteNotification(admin, user, voteId) {
+  if (!voteId) throw new Error('Pano beğeni kimliği eksik.');
 
   const { data: vote } = await admin
     .from('pano_votes')
-    .select('pano_id, created_at')
-    .eq('pano_id', panoId)
+    .select('id, pano_id, created_at')
+    .eq('id', voteId)
     .eq('user_email', user.email)
-    .limit(1)
     .maybeSingle();
 
   if (!vote) throw new Error('Pano beğeni kaydı bulunamadı.');
@@ -90,7 +89,7 @@ async function getPanoVoteNotification(admin, user, panoId) {
   const { data: pano } = await admin
     .from('panolar')
     .select('id, user_email')
-    .eq('id', panoId)
+    .eq('id', vote.pano_id)
     .single();
 
   if (!pano?.user_email) throw new Error('Pano sahibi bulunamadı.');
@@ -181,7 +180,7 @@ export async function POST(request) {
     if (type === 'chapter_vote') {
       activity = await getChapterVoteNotification(admin, user, body.chapter_id);
     } else if (type === 'pano_vote') {
-      activity = await getPanoVoteNotification(admin, user, body.pano_id);
+      activity = await getPanoVoteNotification(admin, user, body.vote_id);
     } else {
       activity = await getLibraryNotification(admin, user, body.book_id);
     }
