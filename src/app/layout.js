@@ -121,7 +121,6 @@ useEffect(() => {
         <title>KitapLab - Kendi Hikayeni Yaz, Oku ve Paylaş</title>
         <meta name="description" content="KitapLab ile hayal gücünü serbest bırak." />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-        <link rel="icon" href="/logo.png" sizes="any" />
         <link rel="apple-touch-icon" href="/logo.png" />
       </head>
 

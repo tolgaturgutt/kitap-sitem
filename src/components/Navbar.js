@@ -1,6 +1,6 @@
 'use client';
 
-import Link from 'next/link';
+import NextLink from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
@@ -9,6 +9,10 @@ import { useTheme } from 'next-themes';
 import Username from '@/components/Username';
 import Image from 'next/image';
 import { getAdminEmails } from '@/lib/admins';
+
+function Link(props) {
+  return <NextLink prefetch={false} {...props} />;
+}
 
 async function fetchNotifications(email) {
   const sevenDaysAgo = new Date();
@@ -455,14 +459,20 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-3 md:px-6 h-full flex items-center justify-between gap-2 md:gap-8">
         <Link href="/" className="flex items-center gap-0.5 md:gap-1 shrink-0 group">
           <div className="relative w-10 h-10 md:w-16 md:h-16 flex items-center justify-center">
-            <img
+            <Image
               src="/logo-gunduz.png"
               alt="Logo"
+              width={64}
+              height={64}
+              sizes="(max-width: 768px) 40px, 64px"
               className="w-full h-full object-contain dark:hidden mt-4 md:mt-4 ml-1 md:ml-1"
             />
-            <img
+            <Image
               src="/logo-gece.png"
               alt="Logo"
+              width={64}
+              height={64}
+              sizes="(max-width: 768px) 40px, 64px"
               className="w-full h-full object-contain hidden dark:block"
             />
           </div>

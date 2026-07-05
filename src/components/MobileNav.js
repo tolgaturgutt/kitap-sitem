@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
+import NextLink from 'next/link';
 import { usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
+import { getAdminEmails } from '@/lib/admins';
+
+function Link(props) {
+  return <NextLink prefetch={false} {...props} />;
+}
 
 export default function MobileNav() {
   const pathname = usePathname();
@@ -23,11 +28,7 @@ export default function MobileNav() {
         return;
       }
 
-      const { data: adminList } = await supabase
-        .from('announcement_admins')
-        .select('user_email');
-
-      const adminEmails = adminList?.map(a => a.user_email.toLowerCase()) || [];
+      const adminEmails = (await getAdminEmails()).map(email => email.toLowerCase());
       setIsAdmin(adminEmails.includes(user.email.toLowerCase()));
     }
     checkAdmin();

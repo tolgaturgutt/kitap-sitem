@@ -12,7 +12,7 @@ export default function WarningSystem() {
     async function checkExistingWarning(userId) {
       const { data } = await supabase
         .from('warnings')
-        .select('*')
+        .select('id, reason')
         .eq('user_id', userId)
         .eq('is_seen', false)
         .limit(1)

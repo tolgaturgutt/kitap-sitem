@@ -2,9 +2,13 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
+import NextLink from 'next/link';
 import Username from '@/components/Username';
 import Image from 'next/image';
+
+function Link(props) {
+  return <NextLink prefetch={false} {...props} />;
+}
 
 export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
   const [panolar, setPanolar] = useState([]);

@@ -3,12 +3,16 @@
 import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
-import Link from 'next/link';
+import NextLink from 'next/link';
 import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoCarousel from '@/components/PanoCarousel';
 import { getAdminEmails } from '@/lib/admins';
+
+function Link(props) {
+  return <NextLink prefetch={false} {...props} />;
+}
 
 const PanoModal = dynamic(() => import('@/components/PanoModal'), {
   ssr: false,
@@ -442,12 +446,47 @@ export default function Home() {
 
   useEffect(() => {
  async function fetchData() {
-      // Kullanıcı bilgisi diğer sorguların erişim kurallarını belirler.
-      const { data: { user: activeUser } } = await supabase.auth.getUser();
-      setUser(activeUser);
-
       const tenDaysAgo = new Date();
       tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
+      // Kullanıcı kontrolü sürerken herkese açık verileri de bekletmeden başlat.
+      const publicDataRequest = Promise.all([
+        getAdminEmails(),
+        supabase
+          .from('categories')
+          .select('name')
+          .order('priority', { ascending: false })
+          .limit(5),
+        supabase
+          .from('chapters')
+          .select('id, title, created_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, co_author_id, co_author_status, profiles:user_id(username, avatar_url, email,role), co_author:profiles!co_author_id(username, email, role))')
+          .eq('books.is_draft', false)
+          .eq('is_draft', false)
+          .order('created_at', { ascending: false })
+          .limit(20),
+        supabase
+          .from('books')
+          .select('id, title, cover_url, category, is_draft, is_completed, is_editors_choice, user_id, user_email, username, co_author_id, co_author_status, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email, role), co_author:profiles!co_author_id(username, email, role), chapters(id, views, is_draft)'),
+        supabase
+          .from('comments')
+          .select('book_id')
+          .gte('created_at', tenDaysAgo.toISOString())
+          .limit(100),
+        supabase
+          .from('follows')
+          .select('book_id')
+          .gte('created_at', tenDaysAgo.toISOString())
+          .limit(100),
+        supabase
+          .from('chapter_votes')
+          .select('chapter_id')
+          .gte('created_at', tenDaysAgo.toISOString())
+          .limit(100),
+      ]);
+
+      // Kullanıcı bilgisi yalnızca kişisel okuma geçmişini belirler.
+      const { data: { user: activeUser } } = await supabase.auth.getUser();
+      setUser(activeUser);
 
       const historyRequest = activeUser
         ? supabase
@@ -476,50 +515,18 @@ export default function Home() {
             .limit(5)
         : Promise.resolve({ data: [] });
 
-      // Bağımsız istekleri aynı anda başlat; ana sayfa en yavaş isteği kadar bekler.
       const [
-        emails,
-        { data: categoriesData },
+        [
+          emails,
+          { data: categoriesData },
+          { data: recentChaps },
+          { data: fetchedBooks, error: booksError },
+          { data: recentComments },
+          { data: recentFollows },
+          { data: recentVotes },
+        ],
         { data: history },
-        { data: recentChaps },
-        { data: fetchedBooks, error: booksError },
-        { data: recentComments },
-        { data: recentFollows },
-        { data: recentVotes },
-      ] = await Promise.all([
-        getAdminEmails(),
-        supabase
-          .from('categories')
-          .select('name')
-          .order('priority', { ascending: false })
-          .limit(5),
-        historyRequest,
-        supabase
-          .from('chapters')
-          .select('id, title, created_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, co_author_id, co_author_status, profiles:user_id(username, avatar_url, email,role), co_author:profiles!co_author_id(username, email, role))')
-          .eq('books.is_draft', false)
-          .eq('is_draft', false)
-          .order('created_at', { ascending: false })
-          .limit(20),
-        supabase
-          .from('books')
-          .select('id, title, cover_url, category, is_draft, is_completed, is_editors_choice, user_id, user_email, username, co_author_id, co_author_status, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email, role), co_author:profiles!co_author_id(username, email, role), chapters(id, views, is_draft)'),
-        supabase
-          .from('comments')
-          .select('book_id')
-          .gte('created_at', tenDaysAgo.toISOString())
-          .limit(100),
-        supabase
-          .from('follows')
-          .select('book_id')
-          .gte('created_at', tenDaysAgo.toISOString())
-          .limit(100),
-        supabase
-          .from('chapter_votes')
-          .select('chapter_id')
-          .gte('created_at', tenDaysAgo.toISOString())
-          .limit(100),
-      ]);
+      ] = await Promise.all([publicDataRequest, historyRequest]);
 
       setAdminEmails(emails);
       setIsAdmin(Boolean(activeUser && emails.includes(activeUser.email)));
@@ -680,14 +687,15 @@ export default function Home() {
     fetchData();
   }, []);
 
-  if (loading) return (
-    <div className="py-40 flex justify-center items-center animate-pulse">
-      <div className="text-5xl font-black tracking-tighter"><span className="text-black dark:text-white">Kitap</span><span className="text-red-600">Lab</span></div>
-    </div>
-  );
-
   return (
-    <div className="min-h-screen py-8 md:py-16 px-4 md:px-6 lg:px-16 bg-[#fafafa] dark:bg-black">
+    <>
+      {loading && (
+        <div className="py-40 flex justify-center items-center animate-pulse">
+          <div className="text-5xl font-black tracking-tighter"><span className="text-black dark:text-white">Kitap</span><span className="text-red-600">Lab</span></div>
+        </div>
+      )}
+
+      <div className={`${loading ? 'hidden' : ''} min-h-screen py-8 md:py-16 px-4 md:px-6 lg:px-16 bg-[#fafafa] dark:bg-black`}>
       {selectedPano && (
         <PanoModal
           selectedPano={selectedPano}
@@ -709,7 +717,8 @@ export default function Home() {
         <CategoryRow title="Öne Çıkanlar" books={featuredBooks} isFeatured={true} />
         {Object.entries(booksByCategory).map(([cat, books]) => <CategoryRow key={cat} title={cat} books={books} />)}
       </div>
-    </div>
+      </div>
+    </>
   );
 }
 
