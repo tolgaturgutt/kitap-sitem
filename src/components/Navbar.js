@@ -72,7 +72,7 @@ export default function Navbar() {
   const hideNavbar = pathname === '/sifre-yenile';
 
  useEffect(() => {
-    setMounted(true);
+    const mountedTimer = window.setTimeout(() => setMounted(true), 0);
     const loadSession = async () => {
       // YENİ: Admin listesini çek (Giriş yapmasa bile herkes adminleri doğru görsün)
       const fetchAdmins = async () => {
@@ -136,7 +136,10 @@ export default function Navbar() {
     };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    return () => {
+      window.clearTimeout(mountedTimer);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
  useEffect(() => {
@@ -636,7 +639,7 @@ export default function Navbar() {
                           {invites.map(inv => (
                             <div key={inv.id} className="bg-white dark:bg-black/50 p-3 rounded-xl border border-yellow-200 dark:border-yellow-700/50 shadow-sm">
                               <p className="text-xs text-gray-800 dark:text-gray-200 leading-relaxed mb-3">
-                                <span className="font-black text-red-600">@{inv.username}</span> seni <span className="font-bold italic">"{inv.title}"</span> kitabına ortak yazar olarak davet ediyor.
+                                <span className="font-black text-red-600">@{inv.username}</span> seni <span className="font-bold italic">“{inv.title}”</span> kitabına ortak yazar olarak davet ediyor.
                               </p>
                               <div className="flex gap-2">
                                 <button 
@@ -693,8 +696,8 @@ export default function Navbar() {
                                   </p>
                                   {n.book_title && (
                                     <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">
-                                      "{n.book_title}
-                                      {n.chapter_title && ` - ${n.chapter_title}`}"
+                                      “{n.book_title}
+                                      {n.chapter_title && ` - ${n.chapter_title}`}”
                                     </p>
                                   )}
                                   <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">
@@ -753,7 +756,7 @@ export default function Navbar() {
                                   </p>
                                   {n.pano_title && (
                                     <p className="text-[8px] md:text-[9px] text-gray-500 mt-1 truncate italic">
-                                      "{n.pano_title}"
+                                      “{n.pano_title}”
                                     </p>
                                   )}
                                   <p className="text-[7px] md:text-[8px] text-gray-400 mt-1">

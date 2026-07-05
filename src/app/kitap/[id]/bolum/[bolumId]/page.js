@@ -695,7 +695,7 @@ export default function BolumDetay({ params }) {
                 }}
               />
             ) : (
-              <p className="text-center text-red-500">ID'ler yüklenemedi</p>
+              <p className="text-center text-red-500">ID&apos;ler yüklenemedi</p>
             )}
           </div>
         </div>

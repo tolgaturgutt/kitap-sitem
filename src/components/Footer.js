@@ -11,10 +11,13 @@ export default function Footer() {
   const [isApp, setIsApp] = useState(false);
 
   useEffect(() => {
-    // ⚠️ SADECE GERÇEK APP'TE TRUE
-    if (typeof window !== 'undefined' && window.Capacitor) {
-      setIsApp(Capacitor.isNativePlatform());
-    }
+    const timer = window.setTimeout(() => {
+      if (window.Capacitor) {
+        setIsApp(Capacitor.isNativePlatform());
+      }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   // APK / IPA → footer yok

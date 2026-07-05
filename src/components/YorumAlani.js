@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
@@ -8,9 +8,8 @@ import Username from '@/components/Username';
 export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded, includeParagraphs = false, onStatsUpdate }) {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
-  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
-  
   const commentsEndRef = useRef(null);
+  const shouldScrollToBottomRef = useRef(false);
   
   const [replyComment, setReplyComment] = useState(''); 
   const [replyingTo, setReplyingTo] = useState(null); 
@@ -20,12 +19,52 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
 
+  const fetchComments = useCallback(async () => {
+    let query = supabase
+      .from('comments')
+      .select('*, profiles!comments_user_id_fkey(username, avatar_url, role)')
+      .order('created_at', { ascending: true });
+
+    if (type !== 'paragraph') {
+      query = query.order('created_at', { ascending: false, foreignTable: '' });
+    }
+
+    if (type === 'book') {
+      query = query.eq('book_id', targetId).is('chapter_id', null);
+    } else if (type === 'chapter') {
+      query = query.eq('chapter_id', targetId);
+      if (!includeParagraphs) {
+        query = query.is('paragraph_id', null);
+      }
+    } else if (type === 'paragraph') {
+      query = query.eq('chapter_id', targetId);
+
+      if (paraId === null || paraId === undefined) {
+        query = query.is('paragraph_id', null);
+      } else {
+        query = query.eq('paragraph_id', paraId);
+      }
+    }
+
+    const { data } = await query;
+    const sortedData = [...(data || [])];
+
+    if (type === 'paragraph') {
+      sortedData.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else {
+      sortedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
+
+    setComments(sortedData);
+  }, [includeParagraphs, paraId, targetId, type]);
+
   useEffect(() => {
-    setComments([]);
+    const resetTimer = window.setTimeout(() => setComments([]), 0);
+
     async function load() {
       const { data: { user: u } } = await supabase.auth.getUser();
       setUser(u);
-      
+
       if (u) {
         const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', u.email).single();
         if (adminData) setIsAdmin(true);
@@ -38,70 +77,17 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       fetchComments();
     }
     load();
-  }, [type, targetId, paraId, bookId, includeParagraphs]);
-  
-  // 🔥 YENİ: paraId değiştiğinde yorumları yenile
-  useEffect(() => {
-    if (type === 'paragraph') {
-      fetchComments();
-    }
-  }, [paraId]);
+
+    return () => window.clearTimeout(resetTimer);
+  }, [bookId, fetchComments]);
 
   useEffect(() => {
     // Sadece yeni yorum eklendiğinde scroll yap
-    if (type === 'paragraph' && shouldScrollToBottom && commentsEndRef.current) {
+    if (type === 'paragraph' && shouldScrollToBottomRef.current && commentsEndRef.current) {
       commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-      setShouldScrollToBottom(false);
+      shouldScrollToBottomRef.current = false;
     }
-  }, [comments, type, shouldScrollToBottom]);
-
-  async function fetchComments() {
-    console.log('🔍 Yorumlar yükleniyor:', { type, targetId, paraId, includeParagraphs });
-    
-    let query = supabase
-      .from('comments')
-      .select('*, profiles!comments_user_id_fkey(username, avatar_url, role)')
-      .order('created_at', { ascending: true });
-    
-    if (type !== 'paragraph') {
-       query = query.order('created_at', { ascending: false, foreignTable: '' });
-    }
-
-    if (type === 'book') {
-      query = query.eq('book_id', targetId).is('chapter_id', null);
-    } else if (type === 'chapter') {
-      query = query.eq('chapter_id', targetId);
-      if (!includeParagraphs) {
-        query = query.is('paragraph_id', null);
-      }
-    } else if (type === 'paragraph') {
-      // 🔥 PARAGRAF YORUMLARI - Sadece bu paragrafa ait olanları getir
-      query = query.eq('chapter_id', targetId);
-      
-      if (paraId === null || paraId === undefined) {
-        // paraId yoksa null olanları getir
-        query = query.is('paragraph_id', null);
-      } else {
-        // paraId varsa sadece o paragrafa ait olanları getir
-        query = query.eq('paragraph_id', paraId);
-      }
-      
-      console.log('📍 Paragraf filtrelendi:', paraId);
-    }
-
-    const { data } = await query;
-    
-    console.log(`✅ ${data?.length || 0} yorum getirildi`);
-    
-    let sortedData = data || [];
-    if (type === 'paragraph') {
-        sortedData.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    } else {
-        sortedData.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-    }
-
-    setComments(sortedData);
-  }
+  }, [comments, type]);
 
   function openReply(targetComment) {
     if (replyingTo === targetComment.id) {
@@ -167,7 +153,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     if (!error && insertedData) { 
         if (type === 'paragraph') {
             setComments(prev => [...prev, insertedData]);
-            setShouldScrollToBottom(true);
+            shouldScrollToBottomRef.current = true;
         } else {
             setComments(prev => [insertedData, ...prev]); 
         }
@@ -388,7 +374,7 @@ function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onD
                 href={profileLink}
                 className={`${isMain ? 'w-8 h-8' : 'w-6 h-6'} rounded-full bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 flex items-center justify-center font-black text-gray-400 text-[10px] hover:ring-2 hover:ring-red-600 transition-all cursor-pointer`}
             >
-                {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} className="w-full h-full object-cover" /> : (commentUsername)[0].toUpperCase()}
+                {comment.profiles?.avatar_url ? <img src={comment.profiles.avatar_url} alt={commentUsername} className="w-full h-full object-cover" /> : (commentUsername)[0].toUpperCase()}
             </a>
             
             <div className="flex-1 min-w-0">

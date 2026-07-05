@@ -91,7 +91,7 @@ function AramaIcerik() {
         {/* BAŞLIK VE İSTATİSTİK */}
         <header className="mb-16">
           <h1 className="text-4xl font-black tracking-tighter dark:text-white mb-2">
-            "{query}" <span className="text-gray-400 font-light">için sonuçlar</span>
+            “{query}” <span className="text-gray-400 font-light">için sonuçlar</span>
           </h1>
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-600">
             {totalCount} Eşleşme Bulundu
@@ -208,7 +208,7 @@ function AramaIcerik() {
 
             {totalCount === 0 && (
               <div className="py-40 text-center">
-                <p className="text-2xl font-serif italic text-gray-400 mb-6">"Aradığın hikaye henüz yazılmamış olabilir..."</p>
+                <p className="text-2xl font-serif italic text-gray-400 mb-6">“Aradığın hikaye henüz yazılmamış olabilir...”</p>
                 <Link href="/" className="px-10 py-3 bg-black dark:bg-white text-white dark:text-black rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all">Anasayfaya Dön</Link>
               </div>
             )}

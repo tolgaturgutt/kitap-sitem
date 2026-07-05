@@ -381,7 +381,7 @@ export default function EtkinlikDetay({ params }) {
             </h1>
 
             {event.theme && (
-              <p className="text-sm sm:text-lg text-gray-500 font-bold mb-3 sm:mb-6">🎨 Konu: "{event.theme}"</p>
+              <p className="text-sm sm:text-lg text-gray-500 font-bold mb-3 sm:mb-6">🎨 Konu: “{event.theme}”</p>
             )}
 
             <p className="text-gray-600 dark:text-gray-300 mb-4 sm:mb-8 leading-relaxed text-sm sm:text-lg max-w-3xl whitespace-pre-line">

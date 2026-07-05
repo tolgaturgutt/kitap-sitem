@@ -4,6 +4,7 @@ import { use, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import PanoModal from '@/components/PanoModal';
+import { getAdminEmails } from '@/lib/admins';
 export const dynamic = 'force-dynamic';
 
 export default function PanoPage({ params }) {
@@ -17,47 +18,43 @@ export default function PanoPage({ params }) {
   const router = useRouter();
 
   useEffect(() => {
-    loadData();
-  }, [panoId]);
+    async function loadData() {
+    const [{ data: { session } }, admins, { data: panoData }] =
+        await Promise.all([
+          supabase.auth.getSession(),
+          getAdminEmails(),
+          supabase
+            .from('panolar')
+            .select(`
+              *,
+              books (
+                id,
+                title,
+                cover_url
+              ),
+              profiles:user_id (
+                username,
+                avatar_url,
+                email,
+                role
+              )
+            `)
+            .eq('id', panoId)
+            .single(),
+        ]);
 
-  async function loadData() {
-    // Kullanıcı bilgisi
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) setUser(session.user);
+      if (session?.user) setUser(session.user);
+      setAdminEmails(admins);
 
-    // Admin listesi
-    const { data: admins } = await supabase
-      .from('profiles')
-      .select('email')
-      .eq('role', 'admin');
-    setAdminEmails(admins?.map(a => a.email) || []);
-
-    // Pano bilgisi
-    const { data: panoData } = await supabase
-      .from('panolar')
-      .select(`
-        *,
-        books (
-          id,
-          title,
-          cover_url
-        ),
-        profiles:user_id (
-          username,
-          avatar_url,
-          email,
-          role
-        )
-      `)
-      .eq('id', panoId)
-      .single();
-
-    if (panoData) {
-      setPano(panoData);
-    } else {
-      router.push('/');
+      if (panoData) {
+        setPano(panoData);
+      } else {
+        router.push('/');
+      }
     }
-  }
+
+    loadData();
+  }, [panoId, router]);
 
   function handleClose() {
     router.back();

@@ -196,8 +196,8 @@ export default function MobileDebug() {
             <div className="text-[10px] text-purple-300 font-bold mb-2">💡 Pro Tips:</div>
             <div className="text-[9px] text-purple-200 space-y-1">
               <div>• Chrome DevTools: Ctrl+Shift+M</div>
-              <div>• iPhone'da test: npm run dev --host</div>
-              <div>• Production'da: ?debug=true ekle</div>
+              <div>• iPhone&apos;da test: npm run dev --host</div>
+              <div>• Production&apos;da: ?debug=true ekle</div>
             </div>
           </div>
         </div>

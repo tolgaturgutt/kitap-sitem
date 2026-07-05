@@ -186,7 +186,7 @@ export default function DestekIletisim() {
                   <Link href="/kvkk" className="text-purple-600 hover:underline font-bold">
                     KVKK Aydınlatma Metni
                   </Link>
-                  'ni kabul etmiş olursunuz.
+                  &apos;ni kabul etmiş olursunuz.
                 </p>
               </div>
             </div>
@@ -259,7 +259,7 @@ export default function DestekIletisim() {
                 <span>🔑</span> Şifremi unuttum, ne yapmalıyım?
               </h3>
               <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                Giriş sayfasında "Şifremi Unuttum" linkine tıklayarak e-postanıza şifre sıfırlama bağlantısı gönderebilirsiniz.
+                Giriş sayfasında “Şifremi Unuttum” linkine tıklayarak e-postanıza şifre sıfırlama bağlantısı gönderebilirsiniz.
               </p>
             </div>
 
@@ -268,7 +268,7 @@ export default function DestekIletisim() {
                 <span>🚫</span> İçerik nasıl raporlanır?
               </h3>
               <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">
-                Her içeriğin üzerinde bulunan "..." menüsünden "Rapor Et" seçeneğini kullanabilirsiniz.
+                Her içeriğin üzerinde bulunan “...” menüsünden “Rapor Et” seçeneğini kullanabilirsiniz.
               </p>
             </div>
 

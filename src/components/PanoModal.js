@@ -33,19 +33,33 @@ export default function PanoModal({
   useEffect(() => {
     if (!selectedPano) return;
 
-    // State sıfırlama
-    setPanoLikes(0);
-    setHasLiked(false);
-    setPanoComments([]);
-    setChapterTitle(null);
-    setReplyTo(null);
-    setReplyToUsername(null);
+    async function fetchOwnerProfile() {
+      let ownerQuery = supabase.from('profiles').select('username, avatar_url, email,role');
+      if (selectedPano.user_id) {
+        ownerQuery = ownerQuery.eq('id', selectedPano.user_id);
+      } else {
+        ownerQuery = ownerQuery.eq('email', selectedPano.user_email);
+      }
+      const { data } = await ownerQuery.single();
+      if (data) setPanoOwnerProfile(data);
+    }
+
+    const resetTimer = window.setTimeout(() => {
+      setPanoLikes(0);
+      setHasLiked(false);
+      setPanoComments([]);
+      setChapterTitle(null);
+      setReplyTo(null);
+      setReplyToUsername(null);
+
+      if (selectedPano.profiles) {
+        setPanoOwnerProfile(selectedPano.profiles);
+      }
+    }, 0);
 
     // 🚀 1. OPTİMİZASYON: Profil verisini tekrar çekme! 
     // Carousel'den zaten 'profiles' objesi dolu geliyor. Direkt onu kullan.
-    if (selectedPano.profiles) {
-      setPanoOwnerProfile(selectedPano.profiles);
-    } else {
+    if (!selectedPano.profiles) {
       // Çok nadir durumda (mesela direkt linkten geldiyse) çekelim
       fetchOwnerProfile(); 
     }
@@ -124,23 +138,12 @@ export default function PanoModal({
 
     // Cleanup
     return () => {
+      window.clearTimeout(resetTimer);
       if (chapterSubscription) {
         supabase.removeChannel(chapterSubscription);
       }
     };
   }, [selectedPano, user]);
-
-  // Yedek fonksiyon: Eğer Carousel'den profil gelmediyse
-  async function fetchOwnerProfile() {
-    let ownerQuery = supabase.from('profiles').select('username, avatar_url, email,role');
-    if (selectedPano.user_id) {
-      ownerQuery = ownerQuery.eq('id', selectedPano.user_id);
-    } else {
-      ownerQuery = ownerQuery.eq('email', selectedPano.user_email);
-    }
-    const { data } = await ownerQuery.single();
-    if (data) setPanoOwnerProfile(data);
-  }
 
   // --- 2. FONKSİYONLAR ---
   async function handleLike() {

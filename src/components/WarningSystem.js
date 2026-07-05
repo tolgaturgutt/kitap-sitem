@@ -9,6 +9,20 @@ export default function WarningSystem() {
   useEffect(() => {
     let channel;
 
+    async function checkExistingWarning(userId) {
+      const { data } = await supabase
+        .from('warnings')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_seen', false)
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setWarning(data);
+      }
+    }
+
     const setupWarningSystem = async () => {
       // 1. Önce kullanıcının kim olduğunu öğrenelim
       const { data: { user } } = await supabase.auth.getUser();
@@ -46,21 +60,6 @@ export default function WarningSystem() {
       if (channel) supabase.removeChannel(channel);
     };
   }, []);
-
-  async function checkExistingWarning(userId) {
-    // Veritabanına sor: "Bu adamın görmediği (is_seen: false) cezası var mı?"
-    const { data } = await supabase
-      .from('warnings')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('is_seen', false)
-      .limit(1)
-      .maybeSingle();
-
-    if (data) {
-      setWarning(data);
-    }
-  }
 
   async function handleDismiss() {
     if (!warning) return;
@@ -106,7 +105,7 @@ export default function WarningSystem() {
               İHLAL NEDENİ:
             </p>
             <p className="text-xl font-medium text-black dark:text-white">
-              "{warning.reason}"
+              “{warning.reason}”
             </p>
           </div>
 

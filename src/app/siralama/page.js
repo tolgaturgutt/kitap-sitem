@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import Image from 'next/image';
 import Username from '@/components/Username';
 import { getAdminEmails } from '@/lib/admins';
 
@@ -128,8 +129,18 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
                   <div className={`absolute top-0 left-0 z-10 font-black text-xs px-2.5 py-1.5 rounded-br-xl rounded-tl-xl shadow-lg flex items-center gap-1 ${idx < 3 ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-gray-800 text-white'}`}>
                     <span>{idx < 3 ? style.icon : `#${idx+1}`}</span>
                   </div>
-                  <div className={`aspect-[2/3] rounded-2xl overflow-hidden border shadow-lg mb-3 transition-all duration-300 ${style.border} ${idx < 3 ? 'ring-2 ring-offset-2 ring-offset-[#fafafa] dark:ring-offset-black ' + colors.ring : 'dark:border-white/10'}`}>
-                    {book.cover_url ? <img src={book.cover_url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" alt={book.title} /> : <div className="w-full h-full bg-gray-200 dark:bg-gray-800" />}
+                  <div className={`relative aspect-[2/3] rounded-2xl overflow-hidden border shadow-lg mb-3 transition-all duration-300 ${style.border} ${idx < 3 ? 'ring-2 ring-offset-2 ring-offset-[#fafafa] dark:ring-offset-black ' + colors.ring : 'dark:border-white/10'}`}>
+                    {book.cover_url ? (
+                      <Image
+                        src={book.cover_url}
+                        alt={book.title}
+                        fill
+                        sizes="(max-width: 768px) 140px, 180px"
+                        className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-200 dark:bg-gray-800" />
+                    )}
                   </div>
                   <h3 className={`font-bold text-sm truncate ${colors.hover} transition-colors`}>{book.title}</h3>
                 </Link>

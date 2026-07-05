@@ -13,6 +13,8 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
   const scrollRef = useRef(null);
 
   useEffect(() => {
+    let viewedPanosTimer = null;
+
     async function getPanolar() {
       // Son 24 saatteki panoları çek.
       const yesterday = new Date();
@@ -79,9 +81,15 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
     if (typeof window !== 'undefined') {
       const viewed = localStorage.getItem('viewedPanos');
       if (viewed) {
-        setViewedPanos(new Set(JSON.parse(viewed)));
+        viewedPanosTimer = window.setTimeout(() => {
+          setViewedPanos(new Set(JSON.parse(viewed)));
+        }, 0);
       }
     }
+
+    return () => {
+      if (viewedPanosTimer) window.clearTimeout(viewedPanosTimer);
+    };
   }, []);
 
   const handlePanoClick = (pano) => {

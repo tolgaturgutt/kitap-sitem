@@ -234,7 +234,6 @@ const [loadingEvents, setLoadingEvents] = useState(false);
   }
   }, [activeTab, searchQuery, fetchUsers, fetchReports, fetchSupport, fetchBannedWords, fetchCategories,fetchEvents]);
 
-  useEffect(() => { checkAdmin(); }, []);
   useEffect(() => { if (isAdmin) loadData(); }, [activeTab, isAdmin, loadData]);
 
   useEffect(() => {
@@ -252,14 +251,16 @@ const [loadingEvents, setLoadingEvents] = useState(false);
     if (activeTab === 'destek') fetchSupport(supportPage);
   }, [supportFilter, supportPage, activeTab, fetchSupport]);
 
-  async function checkAdmin() {
+  const checkAdmin = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return router.push('/giris');
     setAdminEmail(user.email);
     const { data: admin } = await supabase.from('announcement_admins').select().eq('user_email', user.email).single();
     if (!admin) { toast.error('Yetkisiz!'); return router.push('/'); }
     setIsAdmin(true); setLoading(false);
-  }
+  }, [router]);
+
+  useEffect(() => { checkAdmin(); }, [checkAdmin]);
 
   const navigateToTarget = (type, id) => {
     let url = null;
@@ -506,7 +507,7 @@ const [loadingEvents, setLoadingEvents] = useState(false);
                   <div className="relative group">
                     <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" id="duyuru-gorsel" />
                     <label htmlFor="duyuru-gorsel" className="w-full max-w-md mx-auto rounded-3xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer min-h-[200px] border-gray-300 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
-                      {duyuruForm.image_url ? <img src={duyuruForm.image_url} className="max-h-[400px] object-contain" /> : <div className="text-center p-6 text-gray-400"><Icons.Photo /><span className="text-[10px] font-black mt-2 uppercase block">Görsel Seç</span></div>}
+                      {duyuruForm.image_url ? <img src={duyuruForm.image_url} alt="Duyuru önizlemesi" className="max-h-[400px] object-contain" /> : <div className="text-center p-6 text-gray-400"><Icons.Photo /><span className="text-[10px] font-black mt-2 uppercase block">Görsel Seç</span></div>}
                     </label>
                     {duyuruForm.image_url && <button type="button" onClick={() => setDuyuruForm({ ...duyuruForm, image_url: null })} className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full">✕</button>}
                   </div>
@@ -530,7 +531,7 @@ const [loadingEvents, setLoadingEvents] = useState(false);
               <div className="lg:col-span-3 space-y-4 max-h-[800px] overflow-y-auto pr-2 border-l dark:border-white/5 lg:pl-8">
                 {duyurular.map(d => (
                   <div key={d.id} className="group p-4 rounded-2xl border dark:border-white/5 bg-gray-50 dark:bg-white/5 flex gap-4 hover:border-red-500 transition-all">
-                    {d.image_url && <img src={d.image_url} className="w-16 h-20 object-cover rounded-lg bg-gray-800" />}
+                    {d.image_url && <img src={d.image_url} alt={d.title || 'Duyuru'} className="w-16 h-20 object-cover rounded-lg bg-gray-800" />}
                     <div className="flex-1">
                       <div className="flex justify-between mb-1">
                         <h3 className="font-bold line-clamp-1" style={{ color: d.text_color }}>{d.title}</h3>
@@ -889,7 +890,7 @@ const [loadingEvents, setLoadingEvents] = useState(false);
                           📄 İçerik Örneği:
                         </p>
                         <p className="text-sm dark:text-white line-clamp-3 italic">
-                          "{r.content_snapshot}"
+                          “{r.content_snapshot}”
                         </p>
                       </div>
                     )}

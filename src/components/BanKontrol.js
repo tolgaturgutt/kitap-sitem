@@ -35,7 +35,7 @@ export default function BanKontrol() {
     };
 
     kontrolEt();
-  }, [pathname]); // Her sayfa değiştirdiğinde (pathname değişince) çalışır
+  }, [pathname, router]); // Her sayfa değiştirdiğinde (pathname değişince) çalışır
 
   return null; // Bu bileşen ekranda bir şey göstermez, gizli çalışır.
 }

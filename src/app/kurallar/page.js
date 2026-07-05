@@ -194,7 +194,7 @@ Ağır ihlallerde doğrudan kalıcı kapatma uygulanabilir.`
             <div className="text-4xl mb-4">⚖️</div>
             <h3 className="text-xl font-black mb-3 dark:text-white">Adil Moderasyon</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-              Kurallar <strong>herkes için</strong> geçerlidir. "Ünlü yazar, büyük takipçi" gibi statüler istisna yaratmaz. Bağlam, niyet ve topluluk güvenliği değerlendirilir.
+              Kurallar <strong>herkes için</strong> geçerlidir. “Ünlü yazar, büyük takipçi” gibi statüler istisna yaratmaz. Bağlam, niyet ve topluluk güvenliği değerlendirilir.
             </p>
           </div>
         </div>
@@ -217,7 +217,7 @@ Ağır ihlallerde doğrudan kalıcı kapatma uygulanabilir.`
           <div className="text-5xl mb-4">✍️</div>
           <h3 className="text-2xl md:text-3xl font-black mb-4">Kabul Beyanı</h3>
           <p className="text-sm md:text-base opacity-90 max-w-2xl mx-auto leading-relaxed mb-6">
-            Platformu kullanan herkes, bu Topluluk Sözleşmesi'ni okuduğunu, anladığını ve kabul ettiğini beyan eder. Kuralların ihlali, platformun yaptırım uygulama hakkını doğurur.
+            Platformu kullanan herkes, bu Topluluk Sözleşmesi&apos;ni okuduğunu, anladığını ve kabul ettiğini beyan eder. Kuralların ihlali, platformun yaptırım uygulama hakkını doğurur.
           </p>
           <Link 
             href="/"

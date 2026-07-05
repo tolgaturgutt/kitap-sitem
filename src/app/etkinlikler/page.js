@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -15,27 +15,11 @@ export default function EtkinliklerSayfasi() {
   const [userBooks, setUserBooks] = useState([]);
   const [selectedBook, setSelectedBook] = useState(null);
   const [selectedChapter, setSelectedChapter] = useState(null);
-  const [chapters, setChapters] = useState([]);
   const [showParticipateModal, setShowParticipateModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('aktif'); // 'aktif' veya 'gecmis'
 
-  useEffect(() => {
-    init();
-  }, []);
-
-  async function init() {
-    // Kullanıcı kontrolü
-    const { data: { user: currentUser } } = await supabase.auth.getUser();
-    setUser(currentUser);
-
-    // Etkinlikleri çek
-    await fetchEvents();
-
-    setLoading(false);
-  }
-
-  async function fetchEvents() {
+  const fetchEvents = useCallback(async () => {
     const now = new Date().toISOString();
 
     const { data, error } = await supabase
@@ -74,7 +58,18 @@ export default function EtkinliklerSayfasi() {
         gecmis: gecmisEtkinlikler
       });
     }
-  }
+  }, []);
+
+  useEffect(() => {
+    async function init() {
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      setUser(currentUser);
+      await fetchEvents();
+      setLoading(false);
+    }
+
+    init();
+  }, [fetchEvents]);
 
   async function handleEventClick(event) {
     if (!user) {
@@ -111,10 +106,20 @@ export default function EtkinliklerSayfasi() {
   }
 
   async function fetchUserEligibleBooks(event) {
-    // Kullanıcının yayında olan kitaplarını çek
     const { data: books } = await supabase
       .from('books')
-      .select('id, title, cover_url')
+      .select(`
+        id,
+        title,
+        cover_url,
+        chapters (
+          id,
+          title,
+          word_count,
+          order_no,
+          is_draft
+        )
+      `)
       .eq('user_email', user.email)
       .eq('is_draft', false);
 
@@ -123,47 +128,30 @@ export default function EtkinliklerSayfasi() {
       return;
     }
 
-    // Her kitap için bölümleri kontrol et - sadece TEK bölümü olan kitaplar
-    const eligibleBooks = [];
+    const eligibleBooks = books.flatMap(book => {
+      const publishedChapters = (book.chapters || [])
+        .filter(chapter => !chapter.is_draft)
+        .sort((a, b) => a.order_no - b.order_no);
 
-    for (const book of books) {
-      // Önce kitabın toplam bölüm sayısını kontrol et
-      const { count: totalChapters } = await supabase
-        .from('chapters')
-        .select('id', { count: 'exact', head: true })
-        .eq('book_id', book.id)
-        .eq('is_draft', false);
+      if (publishedChapters.length !== 1) return [];
 
-      // Birden fazla bölümü varsa geç
-      if (totalChapters !== 1) continue;
+      const chapter = publishedChapters[0];
+      const isWithinWordLimit =
+        chapter.word_count >= event.min_words &&
+        chapter.word_count <= event.max_words;
 
-      // Tek bölüm var, kelime sınırına uyuyor mu kontrol et
-      const { data: bookChapters } = await supabase
-        .from('chapters')
-        .select('id, title, word_count, order_no')
-        .eq('book_id', book.id)
-        .eq('is_draft', false)
-        .gte('word_count', event.min_words)
-        .lte('word_count', event.max_words)
-        .order('order_no', { ascending: true });
+      if (!isWithinWordLimit) return [];
 
-      if (bookChapters && bookChapters.length > 0) {
-        eligibleBooks.push({
-          ...book,
-          eligibleChapters: bookChapters
-        });
-      }
-    }
+      return [{
+        ...book,
+        eligibleChapters: [chapter]
+      }];
+    });
 
     setUserBooks(eligibleBooks);
   }
 
-  useEffect(() => {
-    if (selectedBook) {
-      setChapters(selectedBook.eligibleChapters || []);
-      setSelectedChapter(null);
-    }
-  }, [selectedBook]);
+  const chapters = selectedBook?.eligibleChapters || [];
 
   async function handleSubmitParticipation() {
     if (!selectedBook || !selectedChapter) {
@@ -494,7 +482,10 @@ export default function EtkinliklerSayfasi() {
                     {userBooks.map(book => (
                       <button
                         key={book.id}
-                        onClick={() => setSelectedBook(book)}
+                        onClick={() => {
+                          setSelectedBook(book);
+                          setSelectedChapter(null);
+                        }}
                         className={`p-4 rounded-2xl border-2 text-left transition-all flex items-center gap-4 ${selectedBook?.id === book.id
                           ? 'border-red-600 bg-red-50 dark:bg-red-900/10'
                           : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'

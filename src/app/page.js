@@ -4,11 +4,15 @@ import { useEffect, useState, useRef } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoCarousel from '@/components/PanoCarousel';
-import PanoModal from '@/components/PanoModal';
 import { getAdminEmails } from '@/lib/admins';
+
+const PanoModal = dynamic(() => import('@/components/PanoModal'), {
+  ssr: false,
+});
 
 // --- YARDIMCI: SAYI FORMATLAMA (1200 -> 1.2K) ---
 function formatNumber(num) {
@@ -238,7 +242,6 @@ function ContinueReadingCarousel({ books }) {
                         src={item.books?.cover_url || '/placeholder.png'}
                         alt={item.books?.title || 'Kitap'}
                         fill
-                        unoptimized
                         sizes="(max-width: 768px) 100px, 150px"
                         className="object-cover group-hover:scale-110 transition-transform duration-500"
                       />
@@ -301,7 +304,6 @@ function CategoryRow({ title, books, isFeatured = false }) {
                   src={kitap.cover_url}
                   alt={kitap.title}
                   fill
-                  unoptimized
                   sizes="(max-width: 768px) 150px, 200px"
                   className="object-cover group-hover/card:scale-110 transition-transform duration-700"
                 />
@@ -378,7 +380,6 @@ function TopReadRow({ books }) {
                   src={kitap.cover_url || '/placeholder.png'}
                   alt={kitap.title}
                   fill
-                  unoptimized
                   sizes="(max-width: 768px) 150px, 200px"
                   className="object-cover group-hover/card:scale-110 transition-transform duration-700"
                 />
@@ -687,7 +688,16 @@ export default function Home() {
 
   return (
     <div className="min-h-screen py-8 md:py-16 px-4 md:px-6 lg:px-16 bg-[#fafafa] dark:bg-black">
-      <PanoModal selectedPano={selectedPano} onClose={() => setSelectedPano(null)} user={user} adminEmails={adminEmails} isAdmin={isAdmin} isOwner={user && selectedPano && (user.email === selectedPano.user_email)} />
+      {selectedPano && (
+        <PanoModal
+          selectedPano={selectedPano}
+          onClose={() => setSelectedPano(null)}
+          user={user}
+          adminEmails={adminEmails}
+          isAdmin={isAdmin}
+          isOwner={Boolean(user && user.email === selectedPano.user_email)}
+        />
+      )}
 
       <div className="max-w-7xl mx-auto">
         <DuyuruPaneli isAdmin={isAdmin} />
@@ -777,7 +787,6 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
                   src={chapter.books?.cover_url || '/placeholder.png'}
                   alt={chapter.books?.title || 'Bölüm'}
                   fill
-                  unoptimized
                   sizes="(max-width: 768px) 120px, 160px"
                   className="object-cover group-hover/card:scale-105 transition-transform duration-500"
                 />
@@ -846,7 +855,6 @@ function EditorsChoiceSection({ books }) {
                 src={kitap.cover_url}
                 alt={kitap.title}
                 fill
-                unoptimized
                 sizes="(max-width: 768px) 150px, 200px"
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
               />

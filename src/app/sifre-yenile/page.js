@@ -20,7 +20,7 @@ export default function SifreYenile() {
       }
     }
     checkSession();
-  }, []);
+  }, [router]);
 
   async function handleUpdatePassword() {
     if (!newPassword) {

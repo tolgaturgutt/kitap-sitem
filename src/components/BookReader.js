@@ -43,36 +43,36 @@ export default function BookReader({ content, bookId, chapterId }) {
     : [];
 
   useEffect(() => {
+    async function checkUserAndAdmin() {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUser(user);
+
+      if (user) {
+        const { data } = await supabase
+          .from('announcement_admins')
+          .select('user_email')
+          .eq('user_email', user.email)
+          .single();
+        if (data) setIsAdmin(true);
+      }
+    }
+
+    async function loadComments() {
+      const { data } = await supabase
+        .from('comments')
+        .select('*, profiles(username, avatar_url)')
+        .eq('chapter_id', chapterId)
+        .order('created_at', { ascending: true });
+
+      setComments(data || []);
+    }
+
     if (chapterId) {
       supabase.rpc('increment_views', { target_chapter_id: chapterId });
       loadComments();
     }
     checkUserAndAdmin();
   }, [chapterId]);
-
-  async function checkUserAndAdmin() {
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
-    
-    if (user) {
-      const { data } = await supabase
-        .from('announcement_admins')
-        .select('*')
-        .eq('user_email', user.email)
-        .single();
-      if (data) setIsAdmin(true);
-    }
-  }
-
-  async function loadComments() {
-    const { data } = await supabase
-      .from('comments')
-      .select('*, profiles(username, avatar_url)')
-      .eq('chapter_id', chapterId)
-      .order('created_at', { ascending: true });
-    
-    setComments(data || []);
-  }
 
   async function handleSend() {
     if (!newComment.trim() || !user) return;
