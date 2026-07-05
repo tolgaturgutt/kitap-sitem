@@ -40,7 +40,7 @@ export default function PanoModal({
       } else {
         ownerQuery = ownerQuery.eq('email', selectedPano.user_email);
       }
-      const { data } = await ownerQuery.single();
+      const { data } = await ownerQuery.maybeSingle();
       if (data) setPanoOwnerProfile(data);
     }
 
@@ -85,7 +85,7 @@ export default function PanoModal({
       // C) Kullanıcı Beğenmiş mi?
       if (user) {
         promises.push(
-          supabase.from('pano_votes').select('id').eq('pano_id', selectedPano.id).eq('user_email', user.email).single()
+          supabase.from('pano_votes').select('id').eq('pano_id', selectedPano.id).eq('user_email', user.email).maybeSingle()
             .then(({ data }) => ({ type: 'hasLiked', data }))
         );
       }
@@ -182,7 +182,7 @@ export default function PanoModal({
     if (!user) return toast.error('Giriş yapmalısın!');
     if (!newComment.trim()) return;
 
-    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
     const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
     
     const { data: insertedComment, error } = await supabase

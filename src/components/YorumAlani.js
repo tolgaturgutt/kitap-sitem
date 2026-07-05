@@ -66,7 +66,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       setUser(u);
 
       if (u) {
-        const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', u.email).single();
+        const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', u.email).maybeSingle();
         if (adminData) setIsAdmin(true);
 
         if (bookId) {
@@ -106,7 +106,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     if (!contentToSend.trim() || !user || isSending) return;
     setIsSending(true);
 
-    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
+    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
     const username = profile?.username || user.email.split('@')[0];
 
     let finalParentId = null;

@@ -77,7 +77,7 @@ export default function BolumDetay({ params }) {
             .from('announcement_admins')
             .select('user_email')
             .eq('user_email', currentUser.email)
-            .single();
+            .maybeSingle();
           isUserAdmin = !!adminCheck;
         }
 
@@ -104,7 +104,7 @@ export default function BolumDetay({ params }) {
             .from('announcement_admins')
             .select('user_email')
             .eq('user_email', book.user_email)
-            .single();
+            .maybeSingle();
 
           setIsAdmin(!!adminData);
         }
@@ -116,7 +116,7 @@ export default function BolumDetay({ params }) {
             .from('announcement_admins')
             .select('user_email')
             .eq('user_email', book.co_author.email)
-            .single();
+            .maybeSingle();
 
           setCoAuthorIsAdmin(!!coAdminData);
         }
@@ -149,7 +149,7 @@ export default function BolumDetay({ params }) {
             .select('*')
             .eq('chapter_id', bolumId)
             .eq('user_email', currentUser.email)
-            .single();
+            .maybeSingle();
 
           setHasLiked(!!vote);
         }

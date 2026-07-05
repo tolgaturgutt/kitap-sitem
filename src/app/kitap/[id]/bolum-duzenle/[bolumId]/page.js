@@ -213,7 +213,7 @@ export default function BolumDuzenle({ params }) {
         }
 
         let isAdmin = false;
-        const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', user.email).single();
+        const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', user.email).maybeSingle();
         if (adminData) isAdmin = true;
 
         // --- YETKİ KONTROLÜNÜ GENİŞLETİYORUZ ---

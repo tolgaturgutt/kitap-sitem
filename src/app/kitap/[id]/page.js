@@ -64,17 +64,17 @@ export default function KitapDetay({ params }) {
       let authorProfile = null;
 
       if (book.user_id) {
-        const { data: pId } = await supabase.from('profiles').select('*').eq('id', book.user_id).single();
+        const { data: pId } = await supabase.from('profiles').select('*').eq('id', book.user_id).maybeSingle();
         if (pId) authorProfile = pId;
       }
 
       if (!authorProfile && book.username) {
-        const { data: pUser } = await supabase.from('profiles').select('*').eq('username', book.username).single();
+        const { data: pUser } = await supabase.from('profiles').select('*').eq('username', book.username).maybeSingle();
         if (pUser) authorProfile = pUser;
       }
 
       if (!authorProfile && book.user_email) {
-        const { data: pEmail } = await supabase.from('profiles').select('*').eq('email', book.user_email).single();
+        const { data: pEmail } = await supabase.from('profiles').select('*').eq('email', book.user_email).maybeSingle();
         if (pEmail) authorProfile = pEmail;
       }
 
@@ -86,7 +86,7 @@ export default function KitapDetay({ params }) {
            .from('announcement_admins')
            .select('*')
            .eq('user_email', targetEmail)
-           .single();
+           .maybeSingle();
          authorIsAdmin = !!authorAdminCheck;
       }
 
@@ -98,14 +98,14 @@ export default function KitapDetay({ params }) {
           .from('profiles')
           .select('*')
           .eq('id', book.co_author_id)
-          .single();
+          .maybeSingle();
         if (coProfile) {
           coAuthorProfile = coProfile;
           const { data: coAdminCheck } = await supabase
             .from('announcement_admins')
             .select('*')
             .eq('user_email', coProfile.email)
-            .single();
+            .maybeSingle();
           coAuthorIsAdmin = !!coAdminCheck;
         }
       }
@@ -117,7 +117,7 @@ export default function KitapDetay({ params }) {
           .from('announcement_admins')
           .select('*')
           .eq('user_email', user.email)
-          .single();
+          .maybeSingle();
         if (admin) adminStatus = true;
       }
       
@@ -150,7 +150,7 @@ export default function KitapDetay({ params }) {
       
       let following = false;
       if (user) {
-        const { data: f } = await supabase.from('follows').select('*').eq('book_id', id).eq('user_email', user.email).single();
+        const { data: f } = await supabase.from('follows').select('*').eq('book_id', id).eq('user_email', user.email).maybeSingle();
         following = !!f;
       }
 

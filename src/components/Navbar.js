@@ -96,7 +96,7 @@ export default function Navbar() {
             .from('profiles')
             .select('avatar_url, username,role')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
 
           if (profile) setUserProfile(profile);
         };

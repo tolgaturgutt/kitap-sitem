@@ -64,7 +64,7 @@ export default function KitapDuzenle({ params }) {
         .from('announcement_admins')
         .select('*')
         .eq('user_email', user.email)
-        .single();
+        .maybeSingle();
       if (adminData) isAdmin = true;
 
      // 5️⃣ Yetki kontrolü (Sahibi mi? Ortak Yazar mı? Admin mi?)

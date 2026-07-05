@@ -74,7 +74,7 @@ export default function YazarProfili() {
           .from('announcement_admins')
           .select('*')
           .eq('user_email', user.email)
-          .single();
+          .maybeSingle();
         if (adminData) setIsAdmin(true);
       }
 

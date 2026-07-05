@@ -255,7 +255,7 @@ const [loadingEvents, setLoadingEvents] = useState(false);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return router.push('/giris');
     setAdminEmail(user.email);
-    const { data: admin } = await supabase.from('announcement_admins').select().eq('user_email', user.email).single();
+    const { data: admin } = await supabase.from('announcement_admins').select().eq('user_email', user.email).maybeSingle();
     if (!admin) { toast.error('Yetkisiz!'); return router.push('/'); }
     setIsAdmin(true); setLoading(false);
   }, [router]);

@@ -52,7 +52,7 @@ export default function BookReader({ content, bookId, chapterId }) {
           .from('announcement_admins')
           .select('user_email')
           .eq('user_email', user.email)
-          .single();
+          .maybeSingle();
         if (data) setIsAdmin(true);
       }
     }
