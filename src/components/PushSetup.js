@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { Capacitor } from '@capacitor/core';
+import { PushNotifications } from '@capacitor/push-notifications';
 import { toast } from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
@@ -9,22 +10,13 @@ import { useRouter } from 'next/navigation';
 const TOKEN_STORAGE_KEY = 'kitaplab_fcm_token';
 const AUTH_EVENTS = ['INITIAL_SESSION', 'SIGNED_IN', 'TOKEN_REFRESHED'];
 const ANDROID_NOTIFICATION_CHANNEL_ID = 'kitaplab_push_v3';
-let pushNotificationsPluginRequest = null;
-
-function getPushNotificationsPlugin() {
-  if (!pushNotificationsPluginRequest) {
-    pushNotificationsPluginRequest = import('@capacitor/push-notifications')
-      .then(module => module.PushNotifications);
-  }
-
-  return pushNotificationsPluginRequest;
-}
 
 export default function PushSetup() {
   const router = useRouter();
   const initializedRef = useRef(false);
   const listenersReadyRef = useRef(false);
   const registrationRunningRef = useRef(false);
+  const permissionRequestRunningRef = useRef(false);
   const latestTokenRef = useRef(null);
   const lastSavedTokenRef = useRef(null);
 
@@ -83,6 +75,38 @@ export default function PushSetup() {
     }
   }, []);
 
+  const requestPushPermission = useCallback(async () => {
+    if (
+      permissionRequestRunningRef.current ||
+      !Capacitor.isNativePlatform() ||
+      !Capacitor.isPluginAvailable('PushNotifications')
+    ) {
+      return false;
+    }
+
+    permissionRequestRunningRef.current = true;
+
+    try {
+      let permission = await PushNotifications.checkPermissions();
+
+      if (permission.receive !== 'granted') {
+        permission = await PushNotifications.requestPermissions();
+      }
+
+      if (permission.receive !== 'granted') {
+        console.log('[PushSetup] bildirim izni verilmedi.');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[PushSetup] bildirim izin hatası:', error);
+      return false;
+    } finally {
+      permissionRequestRunningRef.current = false;
+    }
+  }, []);
+
   const requestPushRegistration = useCallback(async () => {
     if (
       registrationRunningRef.current ||
@@ -96,18 +120,8 @@ export default function PushSetup() {
     registrationRunningRef.current = true;
 
     try {
-      const PushNotifications = await getPushNotificationsPlugin();
-      let permission = await PushNotifications.checkPermissions();
-
-      if (permission.receive !== 'granted') {
-        permission = await PushNotifications.requestPermissions();
-      }
-
-      if (permission.receive !== 'granted') {
-        console.log('[PushSetup] bildirim izni verilmedi.');
-        return false;
-      }
-
+      // Android'da FCM tokeni POST_NOTIFICATIONS izninden bağımsızdır.
+      // Tokeni önce isteyerek izin penceresi gösterilemese bile cihaz kaydını koru.
       await PushNotifications.register();
       return true;
     } catch (error) {
@@ -120,8 +134,6 @@ export default function PushSetup() {
 
   const initializePush = useCallback(async () => {
     try {
-      const PushNotifications = await getPushNotificationsPlugin();
-
       try {
         await PushNotifications.createChannel({
           id: ANDROID_NOTIFICATION_CHANNEL_ID,
@@ -186,11 +198,21 @@ export default function PushSetup() {
       });
 
       listenersReadyRef.current = true;
-      await requestPushRegistration();
+
+      if (Capacitor.getPlatform() === 'android') {
+        await requestPushRegistration();
+        await requestPushPermission();
+      } else {
+        const permissionGranted = await requestPushPermission();
+
+        if (permissionGranted) {
+          await requestPushRegistration();
+        }
+      }
     } catch (error) {
       console.error('[PushSetup] başlatma hatası:', error);
     }
-  }, [requestPushRegistration, router, saveTokenToServer]);
+  }, [requestPushPermission, requestPushRegistration, router, saveTokenToServer]);
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -199,38 +221,33 @@ export default function PushSetup() {
     let cancelled = false;
     const retryTimers = [];
 
-    const storedToken = window.localStorage.getItem(TOKEN_STORAGE_KEY);
-
-    if (storedToken) {
-      latestTokenRef.current = storedToken;
-    }
-
     const syncPushToken = async (sessionOverride = null) => {
       if (cancelled) return;
 
-      const tokenValue =
-        latestTokenRef.current || window.localStorage.getItem(TOKEN_STORAGE_KEY);
+      const tokenValue = latestTokenRef.current;
 
       if (tokenValue) {
-        latestTokenRef.current = tokenValue;
-        const saved = await saveTokenToServer(tokenValue, sessionOverride);
-
-        if (saved) return;
+        await saveTokenToServer(tokenValue, sessionOverride);
       }
 
+      // Android yedeğinden dönebilecek eski localStorage tokenine güvenme.
+      // Her senkronizasyonda Firebase'deki güncel tokeni tekrar doğrula.
       await requestPushRegistration();
     };
 
     const startPush = async () => {
-      const isAndroidWebView = window.navigator.userAgent.includes('; wv)');
       const firstPlatform = Capacitor.getPlatform();
-      const firstBridgePresent = Boolean(window.androidBridge);
+      const isLikelyNativeDevice = /Android|iPhone|iPad|iPod/i.test(
+        window.navigator.userAgent
+      );
 
-      if (!isAndroidWebView && !firstBridgePresent && firstPlatform === 'web') {
+      if (firstPlatform === 'web' && !isLikelyNativeDevice) {
         return;
       }
 
-      for (let attempt = 1; attempt <= 20 && !cancelled; attempt += 1) {
+      // Temiz kurulumda Capacitor köprüsü React'ten sonra hazır olabiliyor.
+      // Kırılgan "; wv)" kontrolüne güvenmek yerine köprüyü bekle.
+      for (let attempt = 1; attempt <= 40 && !cancelled; attempt += 1) {
         if (
           Capacitor.isNativePlatform() &&
           Capacitor.isPluginAvailable('PushNotifications')
@@ -240,7 +257,7 @@ export default function PushSetup() {
           return;
         }
 
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 250));
       }
 
       console.error('[PushSetup] native push eklentisi bulunamadı.');
@@ -257,11 +274,16 @@ export default function PushSetup() {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         syncPushToken();
+        requestPushPermission();
       }
     };
 
+    const handleOnline = () => {
+      syncPushToken();
+    };
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('online', syncPushToken);
+    window.addEventListener('online', handleOnline);
 
     [1500, 4000, 10000, 20000].forEach((delay) => {
       retryTimers.push(
@@ -277,10 +299,15 @@ export default function PushSetup() {
       cancelled = true;
       retryTimers.forEach((timer) => window.clearTimeout(timer));
       document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('online', syncPushToken);
+      window.removeEventListener('online', handleOnline);
       authListener?.subscription?.unsubscribe();
     };
-  }, [initializePush, requestPushRegistration, saveTokenToServer]);
+  }, [
+    initializePush,
+    requestPushPermission,
+    requestPushRegistration,
+    saveTokenToServer,
+  ]);
 
   return null;
 }
