@@ -4,9 +4,12 @@ import { useCallback, useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
+import { CommentRankBadge } from '@/components/Badges';
+import { fetchCommentBadgeCounts } from '@/lib/badges';
 
 export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded, includeParagraphs = false, onStatsUpdate }) {
   const [comments, setComments] = useState([]);
+  const [commentBadgeCounts, setCommentBadgeCounts] = useState({});
   const [newComment, setNewComment] = useState('');
   const commentsEndRef = useRef(null);
   const shouldScrollToBottomRef = useRef(false);
@@ -56,6 +59,8 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     }
 
     setComments(sortedData);
+    const badgeCounts = await fetchCommentBadgeCounts(supabase, sortedData);
+    setCommentBadgeCounts(badgeCounts);
   }, [includeParagraphs, paraId, targetId, type]);
 
   useEffect(() => {
@@ -168,6 +173,9 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         }
 
         if (type === 'paragraph' && onCommentAdded) onCommentAdded(paraId);
+
+        const updatedBadgeCounts = await fetchCommentBadgeCounts(supabase, [insertedData]);
+        setCommentBadgeCounts(prev => ({ ...prev, ...updatedBadgeCounts }));
         
         await createNotification(insertedData, targetComment);
 
@@ -235,9 +243,16 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
 
   async function handleDelete(id) {
     if(!confirm("Silinsin mi?")) return;
+    const deletedComment = comments.find(comment => comment.id === id);
     const { error } = await supabase.from('comments').delete().eq('id', id);
     if (!error) { 
         setComments(prev => prev.filter(c => c.id !== id)); 
+        if (deletedComment?.user_id) {
+          setCommentBadgeCounts(prev => ({
+            ...prev,
+            [deletedComment.user_id]: Math.max(0, Number(prev[deletedComment.user_id] || 0) - 1),
+          }));
+        }
         toast.success("Silindi."); 
 
         if (bookId && onStatsUpdate) {
@@ -307,6 +322,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
                 onSendReply={() => handleSend(c)}
                 isSending={isSending}
                 isMain={true}
+                commentCount={commentBadgeCounts[c.user_id] || 0}
             />
             <div className="pl-12 mt-3 space-y-4 border-l-2 border-gray-100 dark:border-white/5 ml-2">
                 {getReplies(c.id).map(reply => (
@@ -325,6 +341,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
                         onSendReply={() => handleSend(reply)}
                         isSending={isSending}
                         isMain={false}
+                        commentCount={commentBadgeCounts[reply.user_id] || 0}
                     />
                 ))}
             </div>
@@ -359,7 +376,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   );
 }
 
-function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain }) {
+function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain, commentCount }) {
     const canDelete = user && (isAdmin || isOwner || user.id === comment.user_id);
     const isOwnComment = user && user.id === comment.user_id;
     const commentUsername = comment.profiles?.username || comment.username || "Anonim";
@@ -379,14 +396,17 @@ function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onD
             
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start mb-1">
-                    <a href={profileLink} className="hover:text-red-600 transition-colors">
-                        <Username 
-                            username={commentUsername}
-                            isAdmin={comment.profiles?.role === 'admin'}
-                            isPremium={comment.profiles?.role === 'premium'}
-                            className={`${isMain ? 'text-[11px]' : 'text-[9px]'} font-black dark:text-gray-300 tracking-wide uppercase`}
-                        />
-                    </a>
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5 pr-2">
+                        <a href={profileLink} className="hover:text-red-600 transition-colors">
+                            <Username
+                                username={commentUsername}
+                                isAdmin={comment.profiles?.role === 'admin'}
+                                isPremium={comment.profiles?.role === 'premium'}
+                                className={`${isMain ? 'text-[11px]' : 'text-[9px]'} font-black dark:text-gray-300 tracking-wide uppercase`}
+                            />
+                        </a>
+                        <CommentRankBadge count={commentCount} compact={!isMain} />
+                    </div>
                     {user && (
                         <div className="flex gap-2 opacity-60 hover:opacity-100">
                              {!isReplying && <button onClick={onReply} className="text-[9px] text-gray-400 hover:text-blue-500 font-bold uppercase">Yanıtla</button>}

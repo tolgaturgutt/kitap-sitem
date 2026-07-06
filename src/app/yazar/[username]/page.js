@@ -9,6 +9,8 @@ import Username from '@/components/Username';
 import { useRouter } from 'next/navigation';
 import PanoModal from '@/components/PanoModal'; 
 import Image from 'next/image';
+import { ProfileBadges } from '@/components/Badges';
+import { buildBadgeStats, EMPTY_BADGE_STATS, fetchProfileBadgeCounts } from '@/lib/badges';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -29,6 +31,7 @@ export default function YazarProfili() {
 
   // ✅ KUPALAR
   const [trophies, setTrophies] = useState([]);
+  const [badgeStats, setBadgeStats] = useState(EMPTY_BADGE_STATS);
 
   // Listeler
   const [followersWithProfiles, setFollowersWithProfiles] = useState([]);
@@ -95,7 +98,7 @@ export default function YazarProfili() {
         let { data: b } = await supabase
           .from('books')
           // total_comment_count ve total_votes zaten sendeydi, sorguyu genişletiyoruz
-          .select('*, total_comment_count, total_votes, chapters(id, views)')
+          .select('*, total_comment_count, total_votes, chapters(id, views, word_count, is_draft)')
           // BURASI DEĞİŞTİ: Yazarın kendi eseri VEYA onaylanmış ortağı olduğu eser
           .or(`user_id.eq.${p.id},and(co_author_id.eq.${p.id},co_author_status.eq.accepted)`)
           .order('created_at', { ascending: false });
@@ -120,6 +123,9 @@ export default function YazarProfili() {
           });
         }
         setBooks(b || []);
+
+        const badgeCounts = await fetchProfileBadgeCounts(supabase, p.id);
+        setBadgeStats(buildBadgeStats(b || [], badgeCounts));
 
         // --- PANOLARI ÇEK ---
         const { data: authorPanos } = await supabase
@@ -490,7 +496,7 @@ export default function YazarProfili() {
         </header>
 
         <div className="flex gap-4 md:gap-8 mb-6 md:mb-8 border-b dark:border-white/5 pb-4 overflow-x-auto">
-          {['eserler', 'panolar', 'kupalar', 'hakkında'].map(t => (
+          {['eserler', 'panolar', 'rozetler', 'kupalar', 'hakkında'].map(t => (
             <button key={t} onClick={() => setActiveTab(t)} className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all relative whitespace-nowrap ${activeTab === t ? 'text-red-600' : 'text-gray-400'}`}>
               {t}
               {activeTab === t && <div className="absolute -bottom-4 left-0 right-0 h-[2px] bg-red-600" />}
@@ -499,7 +505,9 @@ export default function YazarProfili() {
         </div>
 
         <div className="min-h-[300px]">
-          {activeTab === 'hakkında' ? (
+          {activeTab === 'rozetler' ? (
+            <ProfileBadges stats={badgeStats} />
+          ) : activeTab === 'hakkında' ? (
             <div className="p-6 md:p-8 bg-white dark:bg-white/5 rounded-2xl md:rounded-3xl border dark:border-white/5 flex flex-col items-start gap-6 animate-in fade-in slide-in-from-bottom-2">
               <div className="w-full">
                 <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Biyografi</h3>

@@ -8,6 +8,8 @@ import Username from '@/components/Username';
 import PanoModal from '@/components/PanoModal';
 import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
+import { ProfileBadges } from '@/components/Badges';
+import { buildBadgeStats, EMPTY_BADGE_STATS, fetchProfileBadgeCounts } from '@/lib/badges';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -33,6 +35,7 @@ export default function ProfilSayfasi() {
   const [loading, setLoading] = useState(true);
 
   const [totalViews, setTotalViews] = useState(0);
+  const [badgeStats, setBadgeStats] = useState(EMPTY_BADGE_STATS);
   const [activeTab, setActiveTab] = useState('eserler');
   const [modalType, setModalType] = useState(null);
   const [selectedPano, setSelectedPano] = useState(null);
@@ -82,7 +85,7 @@ export default function ProfilSayfasi() {
      // --- KİTAPLARI VE İSTATİSTİK VERİLERİNİ ÇEK (GÜNCELLENDİ) ---
       const { data: written } = await supabase
         .from('books')
-        .select('*, total_comment_count, total_votes, chapters(id, views)')
+        .select('*, total_comment_count, total_votes, chapters(id, views, word_count, is_draft)')
         // BURASI DEĞİŞTİ: Sahibi olduğun VEYA onaylanmış ortağı olduğun kitaplar
         .or(`user_id.eq.${activeUser.id},and(co_author_id.eq.${activeUser.id},co_author_status.eq.accepted)`)
         .order('created_at', { ascending: false });
@@ -99,6 +102,8 @@ export default function ProfilSayfasi() {
         });
       };
 
+      const badgeCounts = await fetchProfileBadgeCounts(supabase, activeUser.id);
+
       // YAZDIĞIM KİTAPLARI AYARLA
       if (written) {
         const enrichedWritten = mergeStats(written);
@@ -107,6 +112,9 @@ export default function ProfilSayfasi() {
 
         const grandTotal = enrichedWritten.reduce((acc, curr) => acc + curr.totalViews, 0);
         setTotalViews(grandTotal);
+        setBadgeStats(buildBadgeStats(enrichedWritten, badgeCounts));
+      } else {
+        setBadgeStats(buildBadgeStats([], badgeCounts));
       }
 
       // ✅ --- KUPALARI ÇEK (ŞAMPİYON OLDUĞUN ETKİNLİKLER) ---
@@ -457,7 +465,7 @@ export default function ProfilSayfasi() {
 
         <div className="mb-6 md:mb-8 border-b dark:border-white/5 pb-4">
           <div className="flex gap-3 md:gap-8 overflow-x-auto no-scrollbar px-1">
-            {['eserler', 'taslaklar', 'panolar', 'kupalar', 'hakkında'].map(t => (
+            {['eserler', 'taslaklar', 'panolar', 'rozetler', 'kupalar', 'hakkında'].map(t => (
               <button
                 key={t}
                 onClick={() => setActiveTab(t)}
@@ -473,7 +481,9 @@ export default function ProfilSayfasi() {
         </div>
 
         <div className="min-h-[300px]">
-          {activeTab === 'hakkında' ? (
+          {activeTab === 'rozetler' ? (
+            <ProfileBadges stats={badgeStats} />
+          ) : activeTab === 'hakkında' ? (
             <div className="p-6 md:p-8 bg-white dark:bg-white/5 rounded-2xl md:rounded-3xl border dark:border-white/5 flex flex-col items-start gap-6 animate-in fade-in slide-in-from-bottom-2">
               <div className="w-full">
                 <h3 className="text-[10px] md:text-xs font-black uppercase text-gray-400 mb-3 tracking-widest">Biyografi</h3>
