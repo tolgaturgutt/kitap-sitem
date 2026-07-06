@@ -465,7 +465,7 @@ export default function ProfilSayfasi() {
 
         <div className="mb-6 md:mb-8 border-b dark:border-white/5 pb-4">
           <div className="flex gap-3 md:gap-8 overflow-x-auto no-scrollbar px-1">
-            {['eserler', 'taslaklar', 'panolar', 'rozetler', 'kupalar', 'hakkında'].map(t => (
+            {['eserler', 'taslaklar', 'rozetler', 'panolar', 'kupalar', 'hakkında'].map(t => (
               <button
                 key={t}
                 onClick={() => setActiveTab(t)}
