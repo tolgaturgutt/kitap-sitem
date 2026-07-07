@@ -36,6 +36,30 @@ function shuffleArray(array) {
   return shuffled;
 }
 
+function CoverImage({ src, alt, sizes, className = '' }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  if (!src || imageFailed) {
+    return (
+      <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-[8px] font-black text-gray-400 dark:text-gray-600 tracking-widest">
+        KAPAK YOK
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+      alt={alt || ''}
+      fill
+      sizes={sizes}
+      unoptimized
+      className={className}
+      onError={() => setImageFailed(true)}
+    />
+  );
+}
+
 function DuyuruPaneli({ isAdmin }) {
   const [duyurular, setDuyurular] = useState([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -792,12 +816,11 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
 
               <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
                 {/* 👇 BURASI DÜZELDİ: kitap yerine chapter.books kullanıyoruz */}
-                <Image
-                  src={chapter.books?.cover_url || '/placeholder.png'}
+                <CoverImage
+                  src={chapter.books?.cover_url}
                   alt={chapter.books?.title || 'Bölüm'}
-                  fill
                   sizes="(max-width: 768px) 120px, 160px"
-                  className="object-cover group-hover/card:scale-105 transition-transform duration-500"
+                  className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
                 />
 
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 pt-6 z-10">
