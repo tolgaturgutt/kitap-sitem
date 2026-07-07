@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -23,7 +23,9 @@ export default function PanoModal({
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [replyToUsername, setReplyToUsername] = useState(null);
+  const [isCommentSending, setIsCommentSending] = useState(false);
   const [chapterTitle, setChapterTitle] = useState(null);
+  const commentSubmitLockRef = useRef(false);
   
   // Pano sahibinin güncel profilini tutacak state
   const [panoOwnerProfile, setPanoOwnerProfile] = useState(null);
@@ -51,6 +53,8 @@ export default function PanoModal({
       setChapterTitle(null);
       setReplyTo(null);
       setReplyToUsername(null);
+      setIsCommentSending(false);
+      commentSubmitLockRef.current = false;
 
       if (selectedPano.profiles) {
         setPanoOwnerProfile(selectedPano.profiles);
@@ -180,43 +184,58 @@ export default function PanoModal({
 
   async function handleComment() {
     if (!user) return toast.error('Giriş yapmalısın!');
-    if (!newComment.trim()) return;
+    const content = newComment.trim();
+    if (!content || commentSubmitLockRef.current) return;
 
-    const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
-    const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
-    
-    const { data: insertedComment, error } = await supabase
-      .from('pano_comments')
-      .insert({
-        pano_id: selectedPano.id,
-        parent_id: replyTo,
-        user_email: user.email,
-        user_id: user.id,
-        username: username,
-        content: newComment
-      })
-      .select('id')
-      .single();
-
-    if (error) { toast.error('Hata oluştu!'); return; }
-
-    if (insertedComment?.id) {
-      await createPanoCommentNotification(insertedComment.id);
-    }
-
+    const targetReplyTo = replyTo;
+    const targetReplyToUsername = replyToUsername;
+    commentSubmitLockRef.current = true;
+    setIsCommentSending(true);
     setNewComment('');
     setReplyTo(null);
     setReplyToUsername(null);
 
-    // Yorumları tekrar çek
-    const { data: comments } = await supabase
-      .from('pano_comments')
-      .select(`*, profiles:user_id ( username, avatar_url,role )`)
-      .eq('pano_id', selectedPano.id)
-      .order('created_at', { ascending: true });
+    try {
+      const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).maybeSingle();
+      const username = profile?.username || user.user_metadata?.username || user.email.split('@')[0];
+      
+      const { data: insertedComment, error } = await supabase
+        .from('pano_comments')
+        .insert({
+          pano_id: selectedPano.id,
+          parent_id: targetReplyTo,
+          user_email: user.email,
+          user_id: user.id,
+          username: username,
+          content
+        })
+        .select(`*, profiles:user_id ( username, avatar_url,role )`)
+        .single();
 
-    setPanoComments(comments || []);
-    toast.success('Yorum eklendi!');
+      if (error) {
+        setNewComment(content);
+        setReplyTo(targetReplyTo);
+        setReplyToUsername(targetReplyToUsername);
+        toast.error('Hata oluştu!');
+        return;
+      }
+
+      setPanoComments(prev => {
+        if (prev.some(comment => String(comment.id) === String(insertedComment.id))) return prev;
+        return [...prev, insertedComment].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      });
+
+      if (insertedComment?.id) {
+        createPanoCommentNotification(insertedComment.id).catch((notificationError) => {
+          console.error('Pano comment notification error:', notificationError);
+        });
+      }
+
+      toast.success('Yorum eklendi!');
+    } finally {
+      commentSubmitLockRef.current = false;
+      setIsCommentSending(false);
+    }
   }
 
   async function handleReportComment(commentId, content) {
@@ -482,9 +501,16 @@ export default function PanoModal({
                     value={newComment} 
                     onChange={e => setNewComment(e.target.value)} 
                     placeholder="Yorum yaz..." 
+                    disabled={isCommentSending}
                     className="flex-1 bg-transparent px-4 py-2 text-sm outline-none dark:text-white"
                   />
-                  <button onClick={handleComment} className="px-6 py-2 bg-red-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all">GÖNDER</button>
+                  <button
+                    onClick={handleComment}
+                    disabled={isCommentSending || !newComment.trim()}
+                    className="px-6 py-2 bg-red-600 text-white rounded-full text-xs font-black uppercase tracking-widest hover:scale-105 transition-all disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+                  >
+                    GÖNDER
+                  </button>
                 </div>
               </div>
             )}
