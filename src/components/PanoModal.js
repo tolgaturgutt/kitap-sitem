@@ -8,6 +8,8 @@ import Username from '@/components/Username';
 import { createPanoVoteNotification, createPanoCommentNotification } from '@/lib/notifications';
 import Image from 'next/image';
 
+import BookCoverImage from '@/components/BookCoverImage';
+
 export default function PanoModal({ 
   selectedPano, 
   onClose, 
@@ -425,10 +427,11 @@ export default function PanoModal({
         {/* SOL TARAF: GÖRSEL */}
         {selectedPano.books?.cover_url && (
           <div className="shrink-0 hidden md:flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
-            <img 
-              src={selectedPano.books.cover_url} 
+            <BookCoverImage
+              src={selectedPano.books.cover_url}
               alt="Kapak"
               className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-full w-auto h-auto max-w-full"
+              objectFit="contain"
             />
           </div>
         )}
@@ -439,10 +442,11 @@ export default function PanoModal({
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
            {selectedPano.books?.cover_url && (
                <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
-                <img 
-                  src={selectedPano.books.cover_url} 
+                <BookCoverImage
+                  src={selectedPano.books.cover_url}
                   alt="Kapak"
                   className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl h-[250px] w-auto"
+                  objectFit="contain"
                 />
               </div>
             )}

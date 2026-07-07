@@ -7,6 +7,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import YorumAlani from '@/components/YorumAlani';
 import { useRouter } from 'next/navigation';
 import Username from '@/components/Username';
+import BookCoverImage from '@/components/BookCoverImage';
 import { createLibraryAddNotification } from '@/lib/notifications';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
@@ -414,11 +415,12 @@ export default function KitapDetay({ params }) {
           {/* KAPAK */}
           <div className="w-full lg:w-80 shrink-0">
             <div className="aspect-[2/3] w-full rounded-[2.5rem] overflow-hidden shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20 sticky top-24">
-              {data.book.cover_url ? (
-                <img src={data.book.cover_url} className="w-full h-full object-cover" alt={data.book.title} />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center font-black text-gray-300 italic text-sm">Kapak Yok</div>
-              )}
+              <BookCoverImage
+                src={data.book.cover_url}
+                alt={data.book.title}
+                className="w-full h-full object-cover"
+                fallbackClassName="text-sm italic"
+              />
               {data.book?.is_editors_choice && (
                 <div className="absolute top-0 right-0 m-4 z-20">
                   <span className="bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-xl shadow-yellow-500/40 animate-pulse">

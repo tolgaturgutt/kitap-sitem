@@ -7,6 +7,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoModal from '@/components/PanoModal';
 import Image from 'next/image';
+import BookCoverImage from '@/components/BookCoverImage';
 import imageCompression from 'browser-image-compression';
 import { ProfileBadges } from '@/components/Badges';
 import { buildBadgeStats, EMPTY_BADGE_STATS, fetchProfileBadgeCounts } from '@/lib/badges';
@@ -519,7 +520,7 @@ export default function ProfilSayfasi() {
                     className="bg-white dark:bg-white/5 p-4 md:p-6 rounded-xl md:rounded-[2rem] border dark:border-white/10 flex gap-4 md:gap-6 relative group hover:border-red-600/30 transition-all cursor-pointer"
                   >
                     <div className="w-16 h-24 md:w-20 md:h-28 shrink-0 rounded-lg md:rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
-                      {pano.books?.cover_url ? <img src={pano.books.cover_url} className="w-full h-full object-cover" alt="" /> : null}
+                      {pano.books?.cover_url ? <BookCoverImage src={pano.books.cover_url} className="w-full h-full object-cover" alt={pano.books?.title || 'Kitap kapağı'} /> : null}
                     </div>
 
                     <div className="flex-1">
@@ -601,7 +602,7 @@ export default function ProfilSayfasi() {
               {(activeTab === 'taslaklar' ? myDrafts : myBooks).map(k => (
                 <Link key={k.id} href={`/kitap/${k.id}`} className="group relative">
                   <div className="aspect-[2/3] rounded-xl md:rounded-[2rem] overflow-hidden border dark:border-white/5 mb-2 md:mb-3 shadow-md group-hover:-translate-y-1 transition-all relative">
-                    {k.cover_url ? <img src={k.cover_url} alt={k.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" /> : <div className="w-full h-full bg-gray-200 dark:bg-white/10" />}
+                    <BookCoverImage src={k.cover_url} alt={k.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
 
                     {k.is_draft && (
                       <div className="absolute top-2 right-2 bg-gray-500 text-white text-[7px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-lg z-10 uppercase tracking-wider">

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
+import BookCoverImage from '@/components/BookCoverImage';
 
 export default function EtkinlikDetay({ params }) {
   const { id } = use(params);
@@ -493,15 +494,13 @@ export default function EtkinlikDetay({ params }) {
                       </div>
                     </div>
 
-                    {participant.book?.cover_url && (
-                      <div className="w-full aspect-[2/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-black/20 mb-3 sm:mb-4">
-                        <img
-                          src={participant.book.cover_url}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          alt={participant.book.title}
-                        />
-                      </div>
-                    )}
+                    <div className="w-full aspect-[2/3] rounded-xl overflow-hidden bg-gray-100 dark:bg-black/20 mb-3 sm:mb-4">
+                      <BookCoverImage
+                        src={participant.book?.cover_url}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        alt={participant.book?.title || 'Kitap kapağı'}
+                      />
+                    </div>
 
                     <h3 className="font-black text-sm sm:text-lg mb-1.5 sm:mb-2 line-clamp-2">
                       {participant.book?.title}
@@ -615,13 +614,11 @@ export default function EtkinlikDetay({ params }) {
                               : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
                             }`}
                         >
-                          {book.cover_url && (
-                            <img
-                              src={book.cover_url}
-                              className="w-10 h-14 sm:w-12 sm:h-16 object-cover rounded-lg"
-                              alt={book.title}
-                            />
-                          )}
+                          <BookCoverImage
+                            src={book.cover_url}
+                            className="w-10 h-14 sm:w-12 sm:h-16 object-cover rounded-lg shrink-0"
+                            alt={book.title}
+                          />
                           <div className="flex-1 min-w-0">
                             <p className="font-bold dark:text-white text-sm sm:text-base truncate">{book.title}</p>
                             <p className="text-[10px] sm:text-xs text-gray-500 mt-1">

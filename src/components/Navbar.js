@@ -8,6 +8,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { useTheme } from 'next-themes';
 import Username from '@/components/Username';
 import Image from 'next/image';
+import BookCoverImage from '@/components/BookCoverImage';
 import { getAdminEmails } from '@/lib/admins';
 
 function Link(props) {
@@ -524,11 +525,10 @@ export default function Navbar() {
                           className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                         >
                           <div className="relative w-8 h-12 shrink-0 rounded overflow-hidden shadow-sm border dark:border-white/10">
-                            <Image
+                            <BookCoverImage
                               src={b.cover_url}
                               alt={b.title}
                               fill
-                              unoptimized
                               className="object-cover"
                               sizes="32px"
                             />
@@ -940,11 +940,10 @@ export default function Navbar() {
                             className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-all group"
                           >
                             <div className="relative w-8 h-12 shrink-0 rounded overflow-hidden shadow-sm border dark:border-white/10">
-                              <Image
+                              <BookCoverImage
                                 src={b.cover_url}
                                 alt={b.title}
                                 fill
-                                unoptimized
                                 className="object-cover"
                                 sizes="32px"
                               />

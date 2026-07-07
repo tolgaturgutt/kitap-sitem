@@ -3,8 +3,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import Image from 'next/image';
 import Username from '@/components/Username';
+import BookCoverImage from '@/components/BookCoverImage';
 import { getAdminEmails } from '@/lib/admins';
 
 const CHAPTER_VIEWS_PAGE_SIZE = 1000;
@@ -131,7 +131,7 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
                   </div>
                   <div className={`relative aspect-[2/3] rounded-2xl overflow-hidden border shadow-lg mb-3 transition-all duration-300 ${style.border} ${idx < 3 ? 'ring-2 ring-offset-2 ring-offset-[#fafafa] dark:ring-offset-black ' + colors.ring : 'dark:border-white/10'}`}>
                     {book.cover_url ? (
-                      <Image
+                      <BookCoverImage
                         src={book.cover_url}
                         alt={book.title}
                         fill
@@ -444,7 +444,7 @@ const { data: topCommentersData, error: commentError } = await supabase
                   </div>
                   <Link href={`/kitap/${lastWeekChampions.book.id}`} className="flex flex-col items-center gap-2 md:gap-3 group">
                     <div className="w-16 md:w-24 aspect-[2/3] rounded-lg md:rounded-xl overflow-hidden border-2 md:border-4 border-yellow-500 group-hover:scale-110 transition-transform">
-                      {lastWeekChampions.book.cover_url ? <img src={lastWeekChampions.book.cover_url} className="w-full h-full object-cover" alt="" /> : <div className="w-full h-full bg-gray-200 dark:bg-gray-800" />}
+                      <BookCoverImage src={lastWeekChampions.book.cover_url} alt={lastWeekChampions.book.title} className="w-full h-full object-cover" />
                     </div>
                     <p className="font-bold text-xs md:text-sm text-center group-hover:text-yellow-500 transition-colors line-clamp-2">{lastWeekChampions.book.title}</p>
                     <p className="text-[10px] md:text-xs text-gray-400 font-medium">{formatNumber(lastWeekChampions.book.weekly_reads)} okuma</p>

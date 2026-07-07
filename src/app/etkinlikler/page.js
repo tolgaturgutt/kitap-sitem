@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
+import BookCoverImage from '@/components/BookCoverImage';
 
 export default function EtkinliklerSayfasi() {
   const router = useRouter();
@@ -491,9 +492,7 @@ export default function EtkinliklerSayfasi() {
                           : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
                           }`}
                       >
-                        {book.cover_url && (
-                          <img src={book.cover_url} className="w-12 h-16 object-cover rounded-lg" alt={book.title} />
-                        )}
+                        <BookCoverImage src={book.cover_url} className="w-12 h-16 object-cover rounded-lg shrink-0" alt={book.title} />
                         <div className="flex-1">
                           <p className="font-bold dark:text-white">{book.title}</p>
                           <p className="text-xs text-gray-500 mt-1">

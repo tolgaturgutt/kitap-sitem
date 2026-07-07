@@ -9,6 +9,7 @@ import Username from '@/components/Username';
 import { useRouter } from 'next/navigation';
 import PanoModal from '@/components/PanoModal'; 
 import Image from 'next/image';
+import BookCoverImage from '@/components/BookCoverImage';
 import { ProfileBadges } from '@/components/Badges';
 import { buildBadgeStats, EMPTY_BADGE_STATS, fetchProfileBadgeCounts } from '@/lib/badges';
 
@@ -583,7 +584,7 @@ export default function YazarProfili() {
                   className="bg-white dark:bg-white/5 p-4 md:p-6 rounded-xl md:rounded-[2rem] border dark:border-white/10 flex gap-4 md:gap-6 relative group hover:border-red-600/30 transition-all cursor-pointer"
                 >
                   <div className="w-16 h-24 md:w-20 md:h-28 shrink-0 rounded-lg md:rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
-                    {pano.books?.cover_url && <img src={pano.books.cover_url} className="w-full h-full object-cover" alt="" />}
+                    {pano.books?.cover_url && <BookCoverImage src={pano.books.cover_url} className="w-full h-full object-cover" alt={pano.books?.title || 'Kitap kapağı'} />}
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base md:text-xl font-black dark:text-white mb-1 md:mb-2 line-clamp-1 uppercase tracking-tighter group-hover:text-red-600 transition-colors">{pano.title}</h3>
@@ -665,7 +666,7 @@ export default function YazarProfili() {
               {books.map(k => (
                 <Link key={k.id} href={`/kitap/${k.id}`} className="group flex flex-col">
                   <div className="aspect-[2/3] rounded-xl md:rounded-[2rem] overflow-hidden border dark:border-white/5 mb-2 md:mb-3 shadow-md group-hover:-translate-y-1 transition-all duration-500 relative">
-                    {k.cover_url ? <img src={k.cover_url} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt="" /> : <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center font-black opacity-20 text-[7px] md:text-[8px]">KAPAK YOK</div>}
+                    <BookCoverImage src={k.cover_url} alt={k.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
                   </div>
 
                   <h3 className="text-[9px] md:text-[10px] font-black text-center uppercase truncate italic dark:text-white group-hover:text-red-600 transition-colors">{k.title}</h3>

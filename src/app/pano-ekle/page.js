@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
 
+import BookCoverImage from '@/components/BookCoverImage';
+
 export default function PanoEkle() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -249,11 +251,7 @@ export default function PanoEkle() {
 
                         {/* Kitap Kapağı */}
                         <div className="w-12 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-white/10 shrink-0">
-                          {book.cover_url ? (
-                            <img src={book.cover_url} className="w-full h-full object-cover" alt="" />
-                          ) : (
-                            <div className="w-full h-full" />
-                          )}
+                          <BookCoverImage src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
                         </div>
 
                         <div className="flex-1 min-w-0">
@@ -288,9 +286,7 @@ export default function PanoEkle() {
 
                 {/* Kitap Kapağı */}
                 <div className="w-16 h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-white/10 shrink-0">
-                  {selectedBook.cover_url && (
-                    <img src={selectedBook.cover_url} className="w-full h-full object-cover" alt="" />
-                  )}
+                  <BookCoverImage src={selectedBook.cover_url} alt={selectedBook.title} className="w-full h-full object-cover" />
                 </div>
 
                 <div className="flex-1">

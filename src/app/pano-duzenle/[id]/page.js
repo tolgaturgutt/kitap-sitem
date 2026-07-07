@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
+import BookCoverImage from '@/components/BookCoverImage';
+
 export const dynamic = 'force-dynamic';
 
 export default function PanoDuzenle({ params }) {
@@ -269,7 +271,7 @@ export default function PanoDuzenle({ params }) {
                           )}
                         </div>
                         <div className="w-12 h-16 rounded-lg overflow-hidden bg-gray-100 dark:bg-white/10 shrink-0">
-                          {book.cover_url && <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />}
+                          <BookCoverImage src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="font-bold text-sm truncate dark:text-white">{book.title}</p>
@@ -288,7 +290,7 @@ export default function PanoDuzenle({ params }) {
             {selectedBook && (
               <div className="mt-4 flex items-center gap-4 p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-900/30 rounded-2xl animate-in fade-in slide-in-from-top-2">
                 <div className="w-16 h-24 rounded-lg overflow-hidden bg-gray-100 dark:bg-white/10 shrink-0">
-                  {selectedBook.cover_url && <img src={selectedBook.cover_url} alt={selectedBook.title} className="w-full h-full object-cover" />}
+                  <BookCoverImage src={selectedBook.cover_url} alt={selectedBook.title} className="w-full h-full object-cover" />
                 </div>
                 <div className="flex-1">
                   <p className="font-bold dark:text-white">{selectedBook.title}</p>

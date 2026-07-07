@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
+import BookCoverImage from '@/components/BookCoverImage';
 
 function formatNumber(num) {
   if (!num) return 0;
@@ -184,15 +185,11 @@ export default function KutuphanePage() {
                 <div key={kitap.id} className="group relative">
                   <Link href={`/kitap/${kitap.id}`} className="block">
                     <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-xl md:rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover:shadow-2xl group-hover:-translate-y-2">
-                      {kitap.cover_url ? (
-                        <img
-                          src={kitap.cover_url}
-                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                          alt={kitap.title}
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-200 dark:bg-gray-900" />
-                      )}
+                      <BookCoverImage
+                        src={kitap.cover_url}
+                        alt={kitap.title}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                      />
                     </div>
 
                     <h3 className="flex items-center gap-1.5 font-bold text-xs md:text-sm dark:text-white mb-1 group-hover:text-red-600 transition-colors line-clamp-2">

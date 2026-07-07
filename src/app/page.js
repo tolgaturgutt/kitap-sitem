@@ -1,13 +1,13 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import NextLink from 'next/link';
 import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoCarousel from '@/components/PanoCarousel';
+import BookCoverImage from '@/components/BookCoverImage';
 import { getAdminEmails } from '@/lib/admins';
 
 function Link(props) {
@@ -34,30 +34,6 @@ function shuffleArray(array) {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   return shuffled;
-}
-
-function CoverImage({ src, alt, sizes, className = '' }) {
-  const [imageFailed, setImageFailed] = useState(false);
-
-  if (!src || imageFailed) {
-    return (
-      <div className="w-full h-full bg-gray-100 dark:bg-white/5 flex items-center justify-center text-[8px] font-black text-gray-400 dark:text-gray-600 tracking-widest">
-        KAPAK YOK
-      </div>
-    );
-  }
-
-  return (
-    <Image
-      src={src}
-      alt={alt || ''}
-      fill
-      sizes={sizes}
-      unoptimized
-      className={className}
-      onError={() => setImageFailed(true)}
-    />
-  );
 }
 
 function DuyuruPaneli({ isAdmin }) {
@@ -266,8 +242,8 @@ function ContinueReadingCarousel({ books }) {
                   <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-6">
                     {/* 👇 className içine 'relative' ekledik */}
                     <div className="relative w-16 h-24 md:w-24 md:h-36 rounded-xl md:rounded-2xl overflow-hidden shrink-0 border dark:border-white/5 shadow-lg">
-                      <Image
-                        src={item.books?.cover_url || '/placeholder.png'}
+                      <BookCoverImage
+                        src={item.books?.cover_url}
                         alt={item.books?.title || 'Kitap'}
                         fill
                         sizes="(max-width: 768px) 100px, 150px"
@@ -327,17 +303,13 @@ function CategoryRow({ title, books, isFeatured = false }) {
         {books.map(kitap => (
           <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-[38%] md:w-36 lg:w-44 snap-start group/card">
             <div className={`relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover/card:shadow-2xl group-hover/card:-translate-y-2 ${isFeatured ? 'border-orange-500/30' : ''}`}>
-              {kitap.cover_url ? (
-                <Image
-                  src={kitap.cover_url}
-                  alt={kitap.title}
-                  fill
-                  sizes="(max-width: 768px) 150px, 200px"
-                  className="object-cover group-hover/card:scale-110 transition-transform duration-700"
-                />
-              ) : (
-                <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />
-              )}
+              <BookCoverImage
+                src={kitap.cover_url}
+                alt={kitap.title}
+                fill
+                sizes="(max-width: 768px) 150px, 200px"
+                className="object-cover group-hover/card:scale-110 transition-transform duration-700"
+              />
               {isFeatured && <div className="absolute top-2 right-2 bg-orange-600 text-[8px] font-black text-white px-2 py-1 rounded-full uppercase shadow-lg">Trend</div>}
             </div>
 
@@ -403,17 +375,13 @@ function TopReadRow({ books }) {
           <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-[38%] md:w-36 lg:w-44 snap-start group/card relative">
             <div className="absolute top-0 left-0 z-10 bg-red-600 text-white font-black text-xs px-2.5 py-1.5 rounded-br-xl rounded-tl-xl shadow-lg border-b-2 border-r-2 border-black/20">#{index + 1}</div>
             <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-500 group-hover/card:shadow-2xl group-hover/card:-translate-y-2">
-              {kitap.cover_url ? (
-                <Image
-                  src={kitap.cover_url || '/placeholder.png'}
-                  alt={kitap.title}
-                  fill
-                  sizes="(max-width: 768px) 150px, 200px"
-                  className="object-cover group-hover/card:scale-110 transition-transform duration-700"
-                />
-              ) : (
-                <div className="w-full h-full bg-gray-50 dark:bg-gray-900" />
-              )}
+              <BookCoverImage
+                src={kitap.cover_url}
+                alt={kitap.title}
+                fill
+                sizes="(max-width: 768px) 150px, 200px"
+                className="object-cover group-hover/card:scale-110 transition-transform duration-700"
+              />
             </div>
 
             <h3 className="font-bold text-[11px] md:text-[13px] dark:text-white mb-0.5 group-hover/card:text-red-600 transition-colors truncate">{kitap.title}</h3>
@@ -816,11 +784,12 @@ function RecentlyAddedChapters({ chapters, currentUser }) {
 
               <div className="relative aspect-[2/3] w-full mb-3 overflow-hidden rounded-2xl border dark:border-gray-800 shadow-md transition-all duration-300 group-hover/card:shadow-xl group-hover/card:-translate-y-1">
                 {/* 👇 BURASI DÜZELDİ: kitap yerine chapter.books kullanıyoruz */}
-                <CoverImage
+                <BookCoverImage
                   src={chapter.books?.cover_url}
                   alt={chapter.books?.title || 'Bölüm'}
+                  fill
                   sizes="(max-width: 768px) 120px, 160px"
-                  className="w-full h-full object-cover group-hover/card:scale-105 transition-transform duration-500"
+                  className="object-cover group-hover/card:scale-105 transition-transform duration-500"
                 />
 
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent p-3 pt-6 z-10">
@@ -883,7 +852,7 @@ function EditorsChoiceSection({ books }) {
         {books.map(kitap => (
           <Link key={kitap.id} href={`/kitap/${kitap.id}`} className="flex-none w-[38%] md:w-36 lg:w-48 snap-start group">
             <div className="relative aspect-[2/3] rounded-xl overflow-hidden transition-all duration-300 border-2 border-yellow-500/40 group-hover:border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)] group-hover:shadow-[0_0_25px_rgba(234,179,8,0.5)]">
-              <Image
+              <BookCoverImage
                 src={kitap.cover_url}
                 alt={kitap.title}
                 fill

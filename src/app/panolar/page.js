@@ -7,6 +7,8 @@ import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoModal from '@/components/PanoModal'; // ✅ MODAL IMPORT EDİLDİ
 
+import BookCoverImage from '@/components/BookCoverImage';
+
 export default function TumPanolar() {
   const [user, setUser] = useState(null);
   const [panos, setPanos] = useState([]);
@@ -142,7 +144,7 @@ export default function TumPanolar() {
               >
                 {/* Kart Görseli */}
                 <div className="w-20 h-28 shrink-0 rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
-                  {pano.books?.cover_url ? <img src={pano.books.cover_url} className="w-full h-full object-cover" alt="" /> : null}
+                  {pano.books?.cover_url ? <BookCoverImage src={pano.books.cover_url} className="w-full h-full object-cover" alt={pano.books?.title || 'Kitap kapağı'} /> : null}
                 </div>
                 
                 <div className="flex-1">

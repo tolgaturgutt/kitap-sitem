@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
+import BookCoverImage from '@/components/BookCoverImage';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -254,7 +255,7 @@ export default function KitaplarimSayfasi() {
                 <Link href={`/kitap/${k.id}`} className="block">
                   <div className="aspect-[2/3] rounded-xl md:rounded-[2rem] overflow-hidden border dark:border-white/5 mb-2 md:mb-3 shadow-md group-hover:-translate-y-1 transition-all relative">
                     {k.cover_url ? (
-                      <img 
+                      <BookCoverImage
                         src={k.cover_url} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" 
                         alt={k.title}

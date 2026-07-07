@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Username from '@/components/Username';
-import Image from 'next/image';
+import BookCoverImage from '@/components/BookCoverImage';
 // --- YARDIMCI: SAYI FORMATLAMA (1200 -> 1.2K) ---
 function formatNumber(num) {
   if (!num) return 0;
@@ -158,11 +158,10 @@ async function fetchBooks(currentOffset) {
                 {/* Kapak Resmi */}
                 <div className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden shadow-lg group-hover:shadow-2xl transition-all">
    {book.cover_url ? (
-      <Image 
+      <BookCoverImage
         src={book.cover_url} 
         alt={book.title}
         fill
-        unoptimized
         sizes="(max-width: 768px) 150px, 200px"
         className="object-cover group-hover:scale-110 transition-transform duration-500" 
       />

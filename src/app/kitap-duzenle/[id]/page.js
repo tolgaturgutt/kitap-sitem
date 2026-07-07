@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import Username from '@/components/Username';
+import BookCoverImage from '@/components/BookCoverImage';
 
 export default function KitapDuzenle({ params }) {
   const { id } = use(params);
@@ -231,7 +232,7 @@ async function guncelle() {
           {/* Mevcut Kapak ve Yeni Seçim */}
           <div className="flex items-center gap-6">
             <div className="w-24 aspect-[2/3] bg-gray-200 dark:bg-gray-800 rounded-lg overflow-hidden shrink-0">
-              {currentCover && <img src={currentCover} alt="Mevcut kitap kapağı" className="w-full h-full object-cover" />}
+              <BookCoverImage src={currentCover} alt="Mevcut kitap kapağı" className="w-full h-full object-cover" />
             </div>
             <div className="flex-1">
               <label className="block text-sm font-bold mb-2 opacity-70">Kapağı Değiştir</label>

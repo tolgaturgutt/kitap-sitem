@@ -6,6 +6,8 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Username from '@/components/Username';
 import Image from 'next/image'; // 👈 BU SATIRI EKLE
+import BookCoverImage from '@/components/BookCoverImage';
+
 function AramaIcerik() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -127,18 +129,14 @@ function AramaIcerik() {
                   {results.books.map(book => (
                     <Link key={book.id} href={`/kitap/${book.id}`} className="flex gap-6 p-4 bg-white dark:bg-white/5 border dark:border-white/5 rounded-[2.5rem] hover:scale-[1.02] transition-transform group shadow-sm">
                       <div className="relative w-28 h-40 rounded-2xl overflow-hidden shrink-0 shadow-lg group-hover:shadow-red-600/20 transition-all">
-                        {book.cover_url ? (
-                          <Image
-                            src={book.cover_url}
-                            alt={book.title}
-                            fill
-                            unoptimized
-                            sizes="112px"
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gray-100 dark:bg-black/40 flex items-center justify-center text-[10px] font-black uppercase text-gray-400">Kapak Yok</div>
-                        )}
+                        <BookCoverImage
+                          src={book.cover_url}
+                          alt={book.title}
+                          fill
+                          sizes="112px"
+                          className="object-cover"
+                          fallbackClassName="text-[10px] uppercase"
+                        />
                       </div>
                       <div className="flex flex-col justify-center py-2">
                         <span className="text-[9px] font-black uppercase text-red-600 mb-1">{book.category}</span>
