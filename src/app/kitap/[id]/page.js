@@ -413,7 +413,7 @@ export default function KitapDetay({ params }) {
         <div className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] lg:flex lg:flex-row gap-x-4 gap-y-6 lg:gap-12 mb-12 lg:mb-20 items-start">
           
           {/* KAPAK */}
-          <div className="w-full lg:w-80 shrink-0">
+          <div className="row-span-5 self-start w-full lg:w-80 shrink-0">
             <div className="relative aspect-[2/3] w-full rounded-2xl lg:rounded-[2.5rem] overflow-hidden shadow-xl lg:shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20 lg:sticky top-24">
               <BookCoverImage
                 src={data.book.cover_url}
