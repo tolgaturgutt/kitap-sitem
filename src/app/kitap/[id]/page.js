@@ -405,7 +405,7 @@ export default function KitapDetay({ params }) {
   const displayAuthorAvatar = data.authorProfile?.avatar_url;
 
   return (
-    <div className="min-h-screen pt-0 pb-8 md:py-16 px-4 md:px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
+    <div className="min-h-screen py-8 md:py-16 px-4 md:px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
       <Toaster />
       <div className="max-w-6xl mx-auto">
         
@@ -414,7 +414,7 @@ export default function KitapDetay({ params }) {
           <div className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-4 items-start lg:contents">
           
           {/* KAPAK — sağdaki blokla aynı yükseklikte kalsın diye row-span */}
-          <div className="self-start w-full -mt-14 sm:-mt-16 lg:mt-0 lg:w-80 shrink-0">
+          <div className="self-start w-full lg:w-80 shrink-0">
             <div className="relative aspect-[2/3] w-full rounded-2xl lg:rounded-[2.5rem] overflow-hidden shadow-xl lg:shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20 lg:sticky top-24">
               <BookCoverImage
                 src={data.book.cover_url}
@@ -469,10 +469,6 @@ export default function KitapDetay({ params }) {
 
           <div className="lg:flex-1">
             <div className="flex flex-wrap items-center gap-2 lg:gap-3 mb-2 lg:mb-6">
-              <span className="inline-block text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/20 px-3 lg:px-4 py-1 lg:py-1.5 rounded-full tracking-[0.16em] lg:tracking-[0.2em]">
-                {data.book.category}
-              </span>
-              
               {data.book.is_editors_choice && (
                 <span className="lg:hidden inline-block text-[8px] sm:text-[9px] font-black uppercase text-yellow-700 bg-yellow-400 px-3 py-1 rounded-full tracking-[0.16em] shadow-lg shadow-yellow-500/30">
                   👑 Editörün Seçimi
@@ -492,9 +488,16 @@ export default function KitapDetay({ params }) {
               )}
             </div>
             
-            <h1 className="min-w-0 break-words text-xl sm:text-2xl md:text-3xl lg:text-6xl font-black mb-2 lg:mb-6 tracking-normal dark:text-white leading-tight uppercase">
-              {data.book.title}
-            </h1>
+            <div className="flex flex-wrap items-center gap-2 lg:gap-4 mb-2 lg:mb-6">
+              <h1 className="min-w-0 break-words text-xl sm:text-2xl md:text-3xl lg:text-6xl font-black tracking-normal dark:text-white leading-tight uppercase">
+                {data.book.title}
+              </h1>
+              {data.book.category && (
+                <span className="inline-flex shrink-0 text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/20 px-3 lg:px-4 py-1 lg:py-1.5 rounded-full tracking-[0.16em] lg:tracking-[0.2em]">
+                  {data.book.category}
+                </span>
+              )}
+            </div>
             
             <Link href={`/yazar/${displayAuthorName}`} className="flex items-center gap-3 lg:gap-4 mb-3 lg:mb-4 group w-fit">
               <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-xs lg:text-sm uppercase">
