@@ -410,11 +410,11 @@ export default function KitapDetay({ params }) {
       <div className="max-w-6xl mx-auto">
         
         {/* ÜST BÖLÜM — resim solda, yanında yazar bilgisi + istatistikler */}
-        <div className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] gap-x-4 gap-y-4 sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] lg:grid-cols-[20rem_minmax(0,1fr)] lg:gap-x-12 lg:gap-y-6">
+        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-x-12 lg:gap-y-6">
           <div className="contents">
           
           {/* KAPAK — sağdaki blokla aynı yükseklikte kalsın diye row-span */}
-          <div className="col-start-1 row-start-1 w-full lg:row-span-2">
+          <div className="mx-auto w-40 max-w-[48vw] lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:mx-0 lg:w-full lg:max-w-none">
             <div className="relative aspect-[2/3] w-full rounded-2xl lg:rounded-[2.5rem] overflow-hidden shadow-xl lg:shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20 lg:sticky top-24">
               <BookCoverImage
                 src={data.book.cover_url}
@@ -433,7 +433,7 @@ export default function KitapDetay({ params }) {
           </div>
           
           {/* BİLGİLER (resmin sağı: etiket, başlık, yazar, ortak yazar, istatistik) */}
-          <div className="col-start-2 row-start-1 grid grid-cols-2 gap-2 self-start rounded-2xl border bg-white p-3 shadow-sm dark:border-white/5 dark:bg-white/5 sm:gap-3 sm:p-4 lg:grid-cols-3 lg:gap-4 lg:p-6 lg:rounded-[2rem]">
+          <div className="grid w-full grid-cols-3 gap-2 self-start rounded-2xl border bg-white p-3 shadow-sm dark:border-white/5 dark:bg-white/5 sm:gap-3 sm:p-4 lg:col-start-2 lg:row-start-1 lg:gap-4 lg:p-6 lg:rounded-[2rem]">
             <div className="text-center">
               <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.views)}</p>
               <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
@@ -467,7 +467,7 @@ export default function KitapDetay({ params }) {
 
           </div>
 
-          <div className="col-span-2 row-start-2 min-w-0 space-y-3 lg:col-span-1 lg:col-start-2 lg:row-start-2 lg:space-y-5">
+          <div className="min-w-0 space-y-3 lg:col-span-1 lg:col-start-2 lg:row-start-2 lg:space-y-5">
             <div className="flex flex-wrap items-center gap-2 lg:gap-3">
               {data.book.is_editors_choice && (
                 <span className="lg:hidden inline-block text-[8px] sm:text-[9px] font-black uppercase text-yellow-700 bg-yellow-400 px-3 py-1 rounded-full tracking-[0.16em] shadow-lg shadow-yellow-500/30">
