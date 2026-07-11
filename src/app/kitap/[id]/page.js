@@ -432,6 +432,38 @@ export default function KitapDetay({ params }) {
           </div>
           
           {/* BİLGİLER (resmin sağı: etiket, başlık, yazar, ortak yazar, istatistik) */}
+          <div className="order-2 col-start-2 row-start-1 self-start grid grid-cols-2 gap-1.5 sm:gap-2 bg-white dark:bg-white/5 p-2 sm:p-3 rounded-2xl border dark:border-white/5 lg:hidden">
+            <div className="text-center">
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.views)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.votes)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">❤️ Beğeni</p>
+            </div>
+
+            <div className="text-center">
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.follows)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📚 Kitaplık</p>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.comments)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">💬 Yorum</p>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.chapters)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📖 Bölüm</p>
+            </div>
+            
+            <div className="text-center">
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.words)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">✍️ Kelime</p>
+            </div>
+          </div>
+
           <div className="contents lg:block lg:flex-1 lg:order-2">
             <div className="order-3 col-span-2 col-start-1 flex flex-wrap items-center gap-2 lg:gap-3 mb-2 lg:mb-6">
               <span className="inline-block text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/20 px-3 lg:px-4 py-1 lg:py-1.5 rounded-full tracking-[0.16em] lg:tracking-[0.2em]">
@@ -505,7 +537,7 @@ export default function KitapDetay({ params }) {
             )}
             
             {/* İSTATİSTİKLER — resmin tam yanında (sağ sütunun içinde) */}
-            <div className="order-2 col-start-2 row-start-1 self-start grid grid-cols-2 lg:grid-cols-6 gap-1.5 sm:gap-2 lg:gap-6 bg-white dark:bg-white/5 p-2 sm:p-3 lg:p-8 rounded-2xl lg:rounded-[2rem] border dark:border-white/5">
+            <div className="hidden lg:grid lg:grid-cols-6 lg:gap-6 bg-white dark:bg-white/5 lg:p-8 lg:rounded-[2rem] border dark:border-white/5">
               <div className="text-center">
                 <p className="text-lg sm:text-xl lg:text-3xl font-black dark:text-white mb-0.5 lg:mb-1">{formatNumber(data.stats.views)}</p>
                 <p className="text-[7px] sm:text-[8px] lg:text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
