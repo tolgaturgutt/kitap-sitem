@@ -405,7 +405,7 @@ export default function KitapDetay({ params }) {
   const displayAuthorAvatar = data.authorProfile?.avatar_url;
 
   return (
-    <div className="min-h-screen py-8 md:py-16 px-4 md:px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
+    <div className="min-h-screen pt-0 pb-8 md:py-16 px-4 md:px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
       <Toaster />
       <div className="max-w-6xl mx-auto">
         
@@ -414,7 +414,7 @@ export default function KitapDetay({ params }) {
           <div className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-4 items-start lg:contents">
           
           {/* KAPAK — sağdaki blokla aynı yükseklikte kalsın diye row-span */}
-          <div className="self-start w-full lg:w-80 shrink-0">
+          <div className="self-start w-full -mt-14 sm:-mt-16 lg:mt-0 lg:w-80 shrink-0">
             <div className="relative aspect-[2/3] w-full rounded-2xl lg:rounded-[2.5rem] overflow-hidden shadow-xl lg:shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20 lg:sticky top-24">
               <BookCoverImage
                 src={data.book.cover_url}
