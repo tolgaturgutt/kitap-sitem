@@ -411,7 +411,7 @@ export default function KitapDetay({ params }) {
         
         {/* ÜST BÖLÜM — resim solda, yanında yazar bilgisi + istatistikler */}
         <div className="space-y-4 lg:space-y-0 lg:flex lg:flex-row lg:gap-12 lg:items-start">
-          <div className="relative min-h-[10.5rem] sm:min-h-[13.5rem] lg:min-h-0 lg:contents">
+          <div className="relative min-h-[11rem] sm:min-h-[14rem] lg:min-h-0 lg:contents">
           
           {/* KAPAK — sağdaki blokla aynı yükseklikte kalsın diye row-span */}
           <div className="absolute left-0 top-0 z-10 w-28 sm:w-36 lg:static lg:w-80 shrink-0">
@@ -433,35 +433,35 @@ export default function KitapDetay({ params }) {
           </div>
           
           {/* BİLGİLER (resmin sağı: etiket, başlık, yazar, ortak yazar, istatistik) */}
-          <div className="absolute left-[calc(7rem+1rem)] right-0 top-0 z-10 grid grid-cols-2 gap-1.5 sm:left-[calc(9rem+1rem)] sm:gap-2 bg-white dark:bg-white/5 p-2 sm:p-3 rounded-2xl border dark:border-white/5 lg:hidden">
+          <div className="absolute left-[calc(7rem+0.75rem)] right-0 top-0 z-10 grid grid-cols-2 gap-1 sm:left-[calc(9rem+0.75rem)] bg-white dark:bg-white/5 p-1.5 sm:p-2 rounded-xl border dark:border-white/5 lg:hidden">
             <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.views)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
+              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.views)}</p>
+              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">👁️ Okunma</p>
             </div>
             
             <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.votes)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">❤️ Beğeni</p>
+              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.votes)}</p>
+              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">❤️ Beğeni</p>
             </div>
 
             <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.follows)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📚 Kitaplık</p>
+              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.follows)}</p>
+              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">📚 Kitaplık</p>
             </div>
             
             <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.comments)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">💬 Yorum</p>
+              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.comments)}</p>
+              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">💬 Yorum</p>
             </div>
             
             <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.chapters)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📖 Bölüm</p>
+              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.chapters)}</p>
+              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">📖 Bölüm</p>
             </div>
             
             <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.words)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">✍️ Kelime</p>
+              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.words)}</p>
+              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">✍️ Kelime</p>
             </div>
           </div>
 
