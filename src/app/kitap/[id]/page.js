@@ -411,10 +411,10 @@ export default function KitapDetay({ params }) {
         
         {/* ÜST BÖLÜM — resim solda, yanında yazar bilgisi + istatistikler */}
         <div className="space-y-4 lg:space-y-0 lg:flex lg:flex-row lg:gap-12 lg:items-start">
-          <div className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] gap-x-4 items-start lg:contents">
+          <div className="relative min-h-[10.5rem] sm:min-h-[13.5rem] lg:min-h-0 lg:contents">
           
           {/* KAPAK — sağdaki blokla aynı yükseklikte kalsın diye row-span */}
-          <div className="self-start w-full lg:w-80 shrink-0">
+          <div className="absolute left-0 top-0 w-28 sm:w-36 lg:static lg:w-80 shrink-0">
             <div className="relative aspect-[2/3] w-full rounded-2xl lg:rounded-[2.5rem] overflow-hidden shadow-xl lg:shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20 lg:sticky top-24">
               <BookCoverImage
                 src={data.book.cover_url}
@@ -433,7 +433,7 @@ export default function KitapDetay({ params }) {
           </div>
           
           {/* BİLGİLER (resmin sağı: etiket, başlık, yazar, ortak yazar, istatistik) */}
-          <div className="self-start grid grid-cols-2 gap-1.5 sm:gap-2 bg-white dark:bg-white/5 p-2 sm:p-3 rounded-2xl border dark:border-white/5 lg:hidden">
+          <div className="absolute left-[calc(7rem+1rem)] right-0 top-0 grid grid-cols-2 gap-1.5 sm:left-[calc(9rem+1rem)] sm:gap-2 bg-white dark:bg-white/5 p-2 sm:p-3 rounded-2xl border dark:border-white/5 lg:hidden">
             <div className="text-center">
               <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.views)}</p>
               <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
