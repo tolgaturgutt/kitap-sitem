@@ -433,35 +433,35 @@ export default function KitapDetay({ params }) {
           </div>
           
           {/* BİLGİLER (resmin sağı: etiket, başlık, yazar, ortak yazar, istatistik) */}
-          <div className="absolute left-[calc(7rem+0.75rem)] right-0 top-0 z-10 grid grid-cols-2 gap-1 sm:left-[calc(9rem+0.75rem)] bg-white dark:bg-white/5 p-1.5 sm:p-2 rounded-xl border dark:border-white/5 lg:hidden">
+          <div className="absolute right-0 top-0 z-10 grid w-[9.75rem] grid-cols-2 gap-1.5 bg-white dark:bg-white/5 p-2 rounded-2xl border dark:border-white/5 sm:w-44 sm:gap-2 sm:p-3 lg:hidden">
             <div className="text-center">
-              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.views)}</p>
-              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">👁️ Okunma</p>
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.views)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
             </div>
             
             <div className="text-center">
-              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.votes)}</p>
-              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">❤️ Beğeni</p>
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.votes)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">❤️ Beğeni</p>
             </div>
 
             <div className="text-center">
-              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.follows)}</p>
-              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">📚 Kitaplık</p>
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.follows)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📚 Kitaplık</p>
             </div>
             
             <div className="text-center">
-              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.comments)}</p>
-              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">💬 Yorum</p>
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.comments)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">💬 Yorum</p>
             </div>
             
             <div className="text-center">
-              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.chapters)}</p>
-              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">📖 Bölüm</p>
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.chapters)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📖 Bölüm</p>
             </div>
             
             <div className="text-center">
-              <p className="text-sm sm:text-base font-black dark:text-white leading-none mb-0.5">{formatNumber(data.stats.words)}</p>
-              <p className="text-[6px] sm:text-[7px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-0.5">✍️ Kelime</p>
+              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.words)}</p>
+              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">✍️ Kelime</p>
             </div>
           </div>
 
