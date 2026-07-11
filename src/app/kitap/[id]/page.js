@@ -405,16 +405,15 @@ export default function KitapDetay({ params }) {
   const displayAuthorAvatar = data.authorProfile?.avatar_url;
 
   return (
-    <div className="min-h-screen pt-0 pb-8 md:py-16 px-4 md:px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
+    <div className="min-h-screen py-8 md:py-16 px-4 md:px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
       <Toaster />
       <div className="max-w-6xl mx-auto">
         
-        {/* ÜST BÖLÜM — resim solda, yanında yazar bilgisi + istatistikler */}
-        <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[20rem_minmax(0,1fr)] lg:items-start lg:gap-x-12 lg:gap-y-6">
-          <div className="contents">
+        {/* ÜST BÖLÜM */}
+        <div className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] sm:grid-cols-[minmax(0,9rem)_minmax(0,1fr)] lg:flex lg:flex-row gap-x-4 gap-y-6 lg:gap-12 mb-12 lg:mb-20 items-start">
           
-          {/* KAPAK — sağdaki blokla aynı yükseklikte kalsın diye row-span */}
-          <div className="mx-auto w-40 max-w-[48vw] lg:col-start-1 lg:row-start-1 lg:row-span-2 lg:mx-0 lg:w-full lg:max-w-none">
+          {/* KAPAK */}
+          <div className="row-span-5 self-start w-full lg:w-80 shrink-0">
             <div className="relative aspect-[2/3] w-full rounded-2xl lg:rounded-[2.5rem] overflow-hidden shadow-xl lg:shadow-2xl border dark:border-white/5 bg-white dark:bg-black/20 lg:sticky top-24">
               <BookCoverImage
                 src={data.book.cover_url}
@@ -423,7 +422,7 @@ export default function KitapDetay({ params }) {
                 fallbackClassName="text-sm italic"
               />
               {data.book?.is_editors_choice && (
-                <div className="hidden lg:block absolute top-0 right-0 m-4 z-20">
+                <div className="absolute top-0 right-0 m-4 z-20">
                   <span className="bg-yellow-500 text-black text-[10px] font-black px-4 py-2 rounded-full uppercase tracking-widest shadow-xl shadow-yellow-500/40 animate-pulse">
                     👑 Editörün Seçimi
                   </span>
@@ -432,48 +431,12 @@ export default function KitapDetay({ params }) {
             </div>
           </div>
           
-          {/* BİLGİLER (resmin sağı: etiket, başlık, yazar, ortak yazar, istatistik) */}
-          <div className="grid w-full grid-cols-3 gap-2 self-start rounded-2xl border bg-white p-3 shadow-sm dark:border-white/5 dark:bg-white/5 sm:gap-3 sm:p-4 lg:col-start-2 lg:row-start-1 lg:gap-4 lg:p-6 lg:rounded-[2rem]">
-            <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.views)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.votes)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">❤️ Beğeni</p>
-            </div>
-
-            <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.follows)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📚 Kitaplık</p>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.comments)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">💬 Yorum</p>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.chapters)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📖 Bölüm</p>
-            </div>
-            
-            <div className="text-center">
-              <p className="text-lg sm:text-xl font-black dark:text-white mb-0.5">{formatNumber(data.stats.words)}</p>
-              <p className="text-[7px] sm:text-[8px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">✍️ Kelime</p>
-            </div>
-          </div>
-
-          </div>
-
-          <div className="min-w-0 space-y-3 lg:col-span-1 lg:col-start-2 lg:row-start-2 lg:space-y-5">
-            <div className="flex flex-wrap items-center gap-2 lg:gap-3">
-              {data.book.is_editors_choice && (
-                <span className="lg:hidden inline-block text-[8px] sm:text-[9px] font-black uppercase text-yellow-700 bg-yellow-400 px-3 py-1 rounded-full tracking-[0.16em] shadow-lg shadow-yellow-500/30">
-                  👑 Editörün Seçimi
-                </span>
-              )}
+          {/* BİLGİLER */}
+          <div className="contents lg:block lg:flex-1">
+            <div className="col-start-2 flex flex-wrap items-center gap-2 lg:gap-3 mb-2 lg:mb-6">
+              <span className="inline-block text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/20 px-3 lg:px-4 py-1 lg:py-1.5 rounded-full tracking-[0.16em] lg:tracking-[0.2em]">
+                {data.book.category}
+              </span>
               
               {data.book.is_completed && (
                 <span className="inline-block text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase text-green-600 bg-green-50 dark:bg-green-950/20 px-3 lg:px-4 py-1 lg:py-1.5 rounded-full tracking-[0.16em] lg:tracking-[0.2em] border border-green-500/20 shadow-[0_0_15px_rgba(34,197,94,0.3)] animate-pulse">
@@ -488,18 +451,11 @@ export default function KitapDetay({ params }) {
               )}
             </div>
             
-            <div className="flex flex-wrap items-center gap-2 lg:gap-4">
-              <h1 className="min-w-0 break-words text-2xl sm:text-3xl md:text-4xl lg:text-6xl font-black tracking-normal dark:text-white leading-tight uppercase">
-                {data.book.title}
-              </h1>
-              {data.book.category && (
-                <span className="inline-flex shrink-0 text-[8px] sm:text-[9px] lg:text-[10px] font-black uppercase text-red-600 bg-red-50 dark:bg-red-950/20 px-3 lg:px-4 py-1 lg:py-1.5 rounded-full tracking-[0.16em] lg:tracking-[0.2em]">
-                  {data.book.category}
-                </span>
-              )}
-            </div>
+            <h1 className="col-start-2 min-w-0 break-words text-xl sm:text-2xl md:text-3xl lg:text-6xl font-black mb-2 lg:mb-6 tracking-normal dark:text-white leading-tight uppercase">
+              {data.book.title}
+            </h1>
             
-            <Link href={`/yazar/${displayAuthorName}`} className="flex items-center gap-3 lg:gap-4 group w-fit">
+            <Link href={`/yazar/${displayAuthorName}`} className="col-start-2 flex items-center gap-3 lg:gap-4 mb-3 lg:mb-4 group w-fit">
               <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-xs lg:text-sm uppercase">
                 {displayAuthorAvatar && displayAuthorAvatar.includes('http') ? (
                   <img src={displayAuthorAvatar} className="w-full h-full object-cover" alt="" />
@@ -521,7 +477,7 @@ export default function KitapDetay({ params }) {
 
             {/* ORTAK YAZAR */}
             {data.coAuthorProfile && (
-              <Link href={`/yazar/${data.coAuthorProfile.username}`} className="flex items-center gap-3 lg:gap-4 group w-fit">
+              <Link href={`/yazar/${data.coAuthorProfile.username}`} className="col-start-2 flex items-center gap-3 lg:gap-4 mb-3 lg:mb-10 group w-fit">
                 <div className="w-10 h-10 lg:w-14 lg:h-14 rounded-full bg-gray-100 dark:bg-white/5 overflow-hidden border-2 border-transparent group-hover:border-red-600 transition-all flex items-center justify-center font-black text-xs lg:text-sm uppercase">
                   {data.coAuthorProfile.avatar_url ? (
                     <img src={data.coAuthorProfile.avatar_url} className="w-full h-full object-cover" alt="" />
@@ -541,11 +497,41 @@ export default function KitapDetay({ params }) {
                 </div>
               </Link>
             )}
-          </div>
-        </div>
+            
+            {/* İSTATİSTİKLER */}
+            <div className="col-start-2 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 lg:gap-6 mb-0 lg:mb-10 bg-white dark:bg-white/5 p-3 sm:p-4 lg:p-8 rounded-2xl lg:rounded-[2rem] border dark:border-white/5">
+              <div className="text-center">
+                <p className="text-lg sm:text-xl lg:text-3xl font-black dark:text-white mb-0.5 lg:mb-1">{formatNumber(data.stats.views)}</p>
+                <p className="text-[7px] sm:text-[8px] lg:text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">👁️ Okunma</p>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-lg sm:text-xl lg:text-3xl font-black dark:text-white mb-0.5 lg:mb-1">{formatNumber(data.stats.votes)}</p>
+                <p className="text-[7px] sm:text-[8px] lg:text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">❤️ Beğeni</p>
+              </div>
 
-        {/* ÖZET — tam genişlik, resmin altında (grid'in dışında, artık üstüne binmiyor) */}
-        <div className="mt-6 lg:mt-10 mb-8 lg:mb-10 p-5 lg:p-8 bg-white dark:bg-white/5 rounded-2xl lg:rounded-[2rem] border dark:border-white/5">
+              <div className="text-center">
+                <p className="text-lg sm:text-xl lg:text-3xl font-black dark:text-white mb-0.5 lg:mb-1">{formatNumber(data.stats.follows)}</p>
+                <p className="text-[7px] sm:text-[8px] lg:text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📚 Kitaplık</p>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-lg sm:text-xl lg:text-3xl font-black dark:text-white mb-0.5 lg:mb-1">{formatNumber(data.stats.comments)}</p>
+                <p className="text-[7px] sm:text-[8px] lg:text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">💬 Yorum</p>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-lg sm:text-xl lg:text-3xl font-black dark:text-white mb-0.5 lg:mb-1">{formatNumber(data.stats.chapters)}</p>
+                <p className="text-[7px] sm:text-[8px] lg:text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">📖 Bölüm</p>
+              </div>
+              
+              <div className="text-center">
+                <p className="text-lg sm:text-xl lg:text-3xl font-black dark:text-white mb-0.5 lg:mb-1">{formatNumber(data.stats.words)}</p>
+                <p className="text-[7px] sm:text-[8px] lg:text-[9px] uppercase text-gray-400 font-black tracking-widest flex items-center justify-center gap-1">✍️ Kelime</p>
+              </div>
+            </div>
+
+            <div className="col-span-2 lg:col-span-1 mb-8 lg:mb-10 p-5 lg:p-8 bg-white dark:bg-white/5 rounded-2xl lg:rounded-[2rem] border dark:border-white/5">
   <p 
     className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap transition-all duration-300"
     style={{ 
@@ -567,9 +553,7 @@ export default function KitapDetay({ params }) {
     </button>
   )}
 </div>
-
-        {/* BUTONLAR — tam genişlik, resmin altında */}
-        <div className="flex flex-col sm:flex-row lg:flex-wrap gap-3 lg:gap-4 mb-12 lg:mb-20">
+            <div className="col-span-2 lg:col-span-1 flex flex-col sm:flex-row lg:flex-wrap gap-3 lg:gap-4">
                
                <button 
                  onClick={handleLibrary} 
@@ -641,6 +625,8 @@ export default function KitapDetay({ params }) {
                    </button>
                  </>
                )}
+            </div>
+          </div>
         </div>
 
         {/* BÖLÜMLER LİSTESİ */}
