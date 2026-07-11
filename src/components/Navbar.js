@@ -15,6 +15,16 @@ function Link(props) {
   return <NextLink prefetch={false} {...props} />;
 }
 
+function hasParagraphTarget(value) {
+  return (
+    value !== null &&
+    value !== undefined &&
+    value !== '' &&
+    value !== 'null' &&
+    value !== 'undefined'
+  );
+}
+
 async function fetchNotifications(email) {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -156,9 +166,9 @@ export default function Navbar() {
         const [{ data: bookResults }, { data: userResults }] = await Promise.all([
           supabase
             .from('books')
-            .select('id, title, cover_url, username, user_email, co_author_id, co_author_status, chapters(id), profiles:user_id(username, email, role), co_author:profiles!co_author_id(username, email, role)')
+            .select('id, title, cover_url, username, user_email, co_author_id, co_author_status, chapters!inner(id), profiles:user_id(username, email, role), co_author:profiles!co_author_id(username, email, role)')
             .ilike('title', `%${searchTerm}%`)
-            .limit(10),
+            .limit(5),
           supabase
             .from('profiles')
             .select('id, username, full_name, avatar_url, email, role')
@@ -377,7 +387,7 @@ export default function Navbar() {
       case 'comment':
         if (n.chapter_id && n.book_id) {
           // 🔥 PARAGRAF YORUMU MU KONTROL ET - null string de kontrol et
-          if (n.paragraph_id !== null && n.paragraph_id !== undefined && n.paragraph_id !== 'null') {
+          if (hasParagraphTarget(n.paragraph_id)) {
             console.log('✅ Paragraf yorumuna gidiliyor:', n.paragraph_id);
             // Paragraf yorumu - paragrafa git ve aç
             return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;
@@ -406,7 +416,7 @@ export default function Navbar() {
           return `/pano/${n.pano_id}`;
         } else if (n.chapter_id && n.book_id) {
           // 🔥 PARAGRAF YORUMU YANITI MI YOKSA BÖLÜM YORUMU YANITI MI?
-          if (n.paragraph_id !== null && n.paragraph_id !== undefined && n.paragraph_id !== 'null') {
+          if (hasParagraphTarget(n.paragraph_id)) {
             console.log('✅ Paragraf yorumu yanıtına gidiliyor:', n.paragraph_id);
             // Paragraf yorumu yanıtı - paragrafa git ve aç
             return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;

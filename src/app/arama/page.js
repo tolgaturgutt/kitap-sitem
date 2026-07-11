@@ -8,6 +8,33 @@ import Username from '@/components/Username';
 import Image from 'next/image'; // 👈 BU SATIRI EKLE
 import BookCoverImage from '@/components/BookCoverImage';
 
+const BOOK_SEARCH_PAGE_SIZE = 100;
+const BOOK_SEARCH_SELECT = 'id, title, summary, cover_url, username, user_email, category, chapters!inner(id), profiles:user_id(username, email, role), co_author:profiles!co_author_id(username, email, role), co_author_id, co_author_status';
+
+async function fetchMatchingBooks(searchTerm) {
+  let from = 0;
+  let rows = [];
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('books')
+      .select(BOOK_SEARCH_SELECT)
+      .ilike('title', `%${searchTerm}%`)
+      .order('created_at', { ascending: false })
+      .range(from, from + BOOK_SEARCH_PAGE_SIZE - 1);
+
+    if (error) return { data: rows, error };
+
+    const page = data || [];
+    rows = rows.concat(page);
+
+    if (page.length < BOOK_SEARCH_PAGE_SIZE) break;
+    from += BOOK_SEARCH_PAGE_SIZE;
+  }
+
+  return { data: rows, error: null };
+}
+
 function AramaIcerik() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
@@ -18,23 +45,22 @@ function AramaIcerik() {
 
  useEffect(() => {
     async function performDeepSearch() {
-      if (!query) return;
+      const searchTerm = query.trim();
+      if (!searchTerm) {
+        setResults({ books: [], users: [] });
+        setLoading(false);
+        return;
+      }
       setLoading(true);
 
       // 1. KİTAPLARI, KULLANICILARI VE ADMİNLERİ AYNI ANDA ÇEK (Fişek gibi hızlı)
       const [booksRes, usersRes, adminsRes] = await Promise.all([
-        supabase
-          .from('books')
-          // 👇 YENİ: Ortak yazar, ana yazar ve email bilgileri ilişkiyle (join) çekiliyor
-          .select('id, title, summary, cover_url, username, user_email, category, chapters(id), profiles:user_id(username, email, role), co_author:profiles!co_author_id(username, email, role), co_author_id, co_author_status')
-          .ilike('title', `%${query}%`)
-          .limit(50),
-
+        fetchMatchingBooks(searchTerm),
         supabase
           .from('profiles')
           // 👇 YENİ: Gerçek admin kontrolü için 'email' de eklendi
           .select('username, full_name, avatar_url, bio, role, email')
-          .or(`username.ilike.%${query}%,full_name.ilike.%${query}%`)
+          .or(`username.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%`)
           .limit(20),
           
         supabase

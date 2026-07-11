@@ -10,6 +10,10 @@ import Username from '@/components/Username';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation'; // 👈 1. BUNU EKLE
 
+function hasSearchParamValue(value) {
+  return value !== null && value !== undefined && value !== '' && value !== 'null' && value !== 'undefined';
+}
+
 export default function BolumDetay({ params }) {
   const decodedParams = use(params);
   const id = decodedParams.id;
@@ -218,7 +222,7 @@ export default function BolumDetay({ params }) {
     const commentId = searchParams.get('commentId');
 
     const timer = setTimeout(() => {
-      if (openPara !== null) {
+      if (hasSearchParamValue(openPara)) {
         setActivePara(openPara);
         
         setTimeout(() => {
@@ -254,23 +258,29 @@ export default function BolumDetay({ params }) {
             }
           }, 400);
         }
-      } else if (scrollTo === 'chapter-comments') {
+      } else if (scrollTo === 'chapter-comments' || (openPara !== null && commentId)) {
         const commentsSection = document.getElementById('chapter-comments-section');
         if (commentsSection) {
           commentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
         
         if (commentId) {
-          setTimeout(() => {
+          let attempts = 0;
+          const checkInterval = setInterval(() => {
+            attempts++;
             const commentElement = document.querySelector(`[data-comment-id="${commentId}"]`);
+
             if (commentElement) {
+              clearInterval(checkInterval);
               commentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
               commentElement.classList.add('highlight-comment');
               setTimeout(() => {
                 commentElement.classList.remove('highlight-comment');
               }, 3000);
+            } else if (attempts >= 15) {
+              clearInterval(checkInterval);
             }
-          }, 500);
+          }, 400);
         }
       }
     }, 300);

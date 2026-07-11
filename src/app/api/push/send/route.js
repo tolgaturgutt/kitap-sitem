@@ -32,6 +32,16 @@ function secretsMatch(providedSecret, expectedSecret) {
   return provided.length === expected.length && timingSafeEqual(provided, expected);
 }
 
+function hasParagraphTarget(value) {
+  return (
+    value !== null &&
+    value !== undefined &&
+    value !== '' &&
+    value !== 'null' &&
+    value !== 'undefined'
+  );
+}
+
 function buildNotificationText(notification) {
   const actor = notification.actor_username || 'Bir kullanıcı';
   const bookTitle = notification.book_title
@@ -117,11 +127,7 @@ function buildNotificationUrl(notification) {
     if (notification.type === 'comment' || notification.type === 'reply') {
       const params = new URLSearchParams();
 
-      if (
-        notification.paragraph_id !== null &&
-        notification.paragraph_id !== undefined &&
-        notification.paragraph_id !== 'null'
-      ) {
+      if (hasParagraphTarget(notification.paragraph_id)) {
         params.set('openPara', notification.paragraph_id);
       } else {
         params.set('scrollTo', 'chapter-comments');
