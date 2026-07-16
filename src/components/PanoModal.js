@@ -410,10 +410,13 @@ export default function PanoModal({
   const ownerProfileLink = user && ownerEmail === user.email 
     ? '/profil' 
     : `/yazar/${ownerUsername}`;
-  
-  const buttonLink = selectedPano.chapter_id 
+
+  const panoVisualUrl = selectedPano.image_url || selectedPano.books?.cover_url;
+  const panoVisualAlt = selectedPano.image_url ? selectedPano.title : (selectedPano.books?.title || 'Pano görseli');
+  const hasLinkedBook = Boolean(selectedPano.book_id);
+  const buttonLink = hasLinkedBook && selectedPano.chapter_id 
     ? `/kitap/${selectedPano.book_id}/bolum/${selectedPano.chapter_id}`
-    : `/kitap/${selectedPano.book_id}`;
+    : hasLinkedBook ? `/kitap/${selectedPano.book_id}` : null;
   
   const buttonText = selectedPano.chapter_id && chapterTitle
     ? `"${chapterTitle}" BÖLÜMÜNE GİT →`
@@ -425,11 +428,11 @@ export default function PanoModal({
         <button onClick={onClose} className="absolute top-8 right-8 z-30 w-12 h-12 bg-white/10 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-all backdrop-blur-md text-xl">✕</button>
 
         {/* SOL TARAF: GÖRSEL */}
-        {selectedPano.books?.cover_url && (
+        {panoVisualUrl && (
           <div className="shrink-0 hidden md:flex items-center justify-center p-8 bg-gray-50 dark:bg-black/40 md:w-1/2 h-full">
             <BookCoverImage
-              src={selectedPano.books.cover_url}
-              alt="Kapak"
+              src={panoVisualUrl}
+              alt={panoVisualAlt}
               className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-2xl max-h-full w-auto h-auto max-w-full"
               objectFit="contain"
             />
@@ -440,11 +443,11 @@ export default function PanoModal({
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-white dark:bg-[#080808]">
           
           <div className="flex-1 overflow-y-auto p-8 md:p-12">
-           {selectedPano.books?.cover_url && (
+           {panoVisualUrl && (
                <div className="md:hidden mb-6 rounded-2xl overflow-hidden border dark:border-white/5 shadow-xl bg-gray-50 dark:bg-black/40 p-4 flex items-center justify-center">
                 <BookCoverImage
-                  src={selectedPano.books.cover_url}
-                  alt="Kapak"
+                  src={panoVisualUrl}
+                  alt={panoVisualAlt}
                   className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl h-[250px] w-auto"
                   objectFit="contain"
                 />
@@ -453,7 +456,7 @@ export default function PanoModal({
 
             <div className="mb-8">
               <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
-                📖 {selectedPano.books?.title}
+                {selectedPano.books?.title ? `📖 ${selectedPano.books.title}` : 'PANO GÖRSELİ'}
               </span>
               <h2 className="text-3xl md:text-4xl font-black mb-4 dark:text-white leading-tight">{selectedPano.title}</h2>
               <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{selectedPano.content}</p>
@@ -540,9 +543,11 @@ export default function PanoModal({
                  </div>
               </Link>
               <div className="flex gap-2">
-                 <Link href={buttonLink} className="flex-1 text-center bg-red-600 hover:bg-red-700 text-white font-black text-[10px] px-4 py-3 rounded-xl uppercase tracking-wider transition-all">
-                   {buttonText}
-                 </Link>
+                 {buttonLink && (
+                   <Link href={buttonLink} className="flex-1 text-center bg-red-600 hover:bg-red-700 text-white font-black text-[10px] px-4 py-3 rounded-xl uppercase tracking-wider transition-all">
+                     {buttonText}
+                   </Link>
+                 )}
                  {/* 🔥 YENİ: Admin Başa Tutturma Butonu */}
                  {isAdmin && (
                    <button onClick={handleTogglePin} className="bg-yellow-500 hover:bg-yellow-600 text-black font-black text-[10px] px-4 py-3 rounded-xl uppercase transition-all">

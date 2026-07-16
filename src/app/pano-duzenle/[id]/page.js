@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
 import Username from '@/components/Username';
 import BookCoverImage from '@/components/BookCoverImage';
+import imageCompression from 'browser-image-compression';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,6 +28,10 @@ export default function PanoDuzenle({ params }) {
   const [showBookDropdown, setShowBookDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
+  const [isAdminUser, setIsAdminUser] = useState(false);
+  const [panoImageUrl, setPanoImageUrl] = useState('');
+  const [panoImageTouched, setPanoImageTouched] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -53,6 +58,7 @@ export default function PanoDuzenle({ params }) {
       setAdminEmails(emails);
 
       const isAdmin = emails.includes(activeUser.email);
+      setIsAdminUser(isAdmin);
       const isOwner = pano.user_email === activeUser.email;
 
       if (!isOwner && !isAdmin) {
@@ -64,6 +70,7 @@ export default function PanoDuzenle({ params }) {
       // C) FORMU DOLDUR
       setTitle(pano.title);
       setContent(pano.content);
+      setPanoImageUrl(pano.image_url || '');
 
      // D) KİTAPLARI GETİR - ✅ KENDİ KİTAPLARI + ORTAK YAZAR OLDUĞU KİTAPLARI GETİR
       let { data: allBooks } = await supabase
@@ -143,25 +150,82 @@ export default function PanoDuzenle({ params }) {
     b.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  async function handlePanoImageUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file || !isAdminUser) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Sadece görsel yükleyebilirsin!');
+      return;
+    }
+
+    setUploadingImage(true);
+    const toastId = toast.loading('Görsel yükleniyor...');
+
+    try {
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 0.4,
+        maxWidthOrHeight: 1400,
+        useWebWorker: false,
+        fileType: 'image/jpeg'
+      });
+
+      const fileName = `${user.id}-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+      const filePath = `panolar/${fileName}`;
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, compressedFile, {
+          contentType: 'image/jpeg',
+          upsert: false
+        });
+
+      if (uploadError) {
+        toast.error('Görsel yüklenemedi!', { id: toastId });
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
+      setPanoImageUrl(publicUrl);
+      setPanoImageTouched(true);
+      toast.success('Görsel hazır!', { id: toastId });
+    } catch (error) {
+      console.error('Pano image upload error:', error);
+      toast.error('Görsel işlenirken hata oluştu!', { id: toastId });
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  }
+
   async function handleUpdate(e) {
     e.preventDefault();
 
     if (!title.trim()) { toast.error('Başlık gerekli!'); return; }
     if (!content.trim()) { toast.error('İçerik gerekli!'); return; }
-    if (!selectedBook) { toast.error('Bir kitap seçmelisin!'); return; }
+    if (!isAdminUser && !selectedBook) { toast.error('Bir kitap seçmelisin!'); return; }
+    if (isAdminUser && !selectedBook && !panoImageUrl) {
+      toast.error('Kitap seçmezsen bir pano görseli eklemelisin!');
+      return;
+    }
 
     setSaving(true);
     const toastId = toast.loading('Pano güncelleniyor...');
 
+    const updatePayload = {
+      title: title.trim(),
+      content: content.trim(),
+      book_id: selectedBook?.id || null,
+      chapter_id: selectedBook ? selectedChapter?.id || null : null,
+      updated_at: new Date()
+    };
+
+    if (isAdminUser && (panoImageTouched || panoImageUrl || !selectedBook)) {
+      updatePayload.image_url = panoImageUrl || null;
+    }
+
     const { error } = await supabase
       .from('panolar')
-      .update({
-        title: title.trim(),
-        content: content.trim(),
-        book_id: selectedBook.id,
-        chapter_id: selectedChapter?.id || null,
-        updated_at: new Date()
-      })
+      .update(updatePayload)
       .eq('id', id);
 
     if (error) {
@@ -228,10 +292,56 @@ export default function PanoDuzenle({ params }) {
             <p className="text-xs text-gray-400 mt-2">{content.length} karakter</p>
           </div>
 
+          {isAdminUser && (
+            <div>
+              <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
+                Pano Görseli {selectedBook ? '(Opsiyonel)' : '*'}
+              </label>
+              <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-900/10 p-5">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handlePanoImageUpload}
+                  disabled={uploadingImage || saving}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                />
+                {panoImageUrl ? (
+                  <div className="flex items-center gap-4">
+                    <BookCoverImage src={panoImageUrl} alt="Pano görseli" className="w-24 h-24 rounded-xl object-cover bg-gray-200 dark:bg-white/10" />
+                    <div className="flex-1">
+                      <p className="text-sm font-black dark:text-white">Görsel seçildi</p>
+                      <p className="text-xs text-gray-500 mt-1">Kitap seçmezsen pano bu görselle yayınlanır.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPanoImageUrl('');
+                        setPanoImageTouched(true);
+                      }}
+                      className="relative z-10 text-red-600 hover:text-red-700 font-black text-sm"
+                    >
+                      Kaldır
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-2xl mb-2">+</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">
+                      {uploadingImage ? 'Yükleniyor...' : 'Tek görsel ekle'}
+                    </p>
+                    <p className="text-xs text-gray-400 mt-2">
+                      Sadece adminler kitapsız pano için görsel kullanabilir.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* KİTAP SEÇİMİ */}
           <div className="relative">
             <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
-              Kitap Seç * {selectedBook && '✓'}
+              Kitap Seç {isAdminUser ? '(Opsiyonel)' : '*'} {selectedBook && '✓'}
             </label>
             
             <div className="relative">
@@ -352,7 +462,7 @@ export default function PanoDuzenle({ params }) {
             <button
               type="submit"
               className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase text-sm shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50"
-              disabled={saving || !title.trim() || !content.trim() || !selectedBook}
+              disabled={saving || uploadingImage || !title.trim() || !content.trim() || (!selectedBook && (!isAdminUser || !panoImageUrl))}
             >
               {saving ? 'Güncelleniyor...' : '💾 Panoyu Güncelle'}
             </button>

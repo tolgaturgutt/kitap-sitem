@@ -24,12 +24,13 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
-     const { data: rawPanolar } = await supabase
+      let { data: rawPanolar, error } = await supabase
         .from('panolar')
         .select(`
           id,
           title,
           content,
+          image_url,
           created_at,
           is_pinned,
           user_id,
@@ -47,6 +48,42 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
         .order('is_pinned', { ascending: false }) // 🔥 YENİ: Önce tutturulanlar
         .order('created_at', { ascending: false }) // Sonra en yeniler
         .limit(30);;
+
+      if (error && (error.message?.includes('image_url') || error.code === '42703' || error.code === 'PGRST204')) {
+        const fallbackResult = await supabase
+          .from('panolar')
+          .select(`
+            id,
+            title,
+            content,
+            created_at,
+            is_pinned,
+            user_id,
+            user_email,
+            username,
+            book_id,
+            chapter_id,
+            books (
+              id,
+              title,
+              cover_url
+            )
+          `)
+          .gte('created_at', yesterday.toISOString())
+          .order('is_pinned', { ascending: false })
+          .order('created_at', { ascending: false })
+          .limit(30);
+
+        rawPanolar = fallbackResult.data?.map(pano => ({ ...pano, image_url: null })) || [];
+        error = fallbackResult.error;
+      }
+
+      if (error) {
+        console.error('PanoCarousel load error:', error);
+        setPanolar([]);
+        setLoading(false);
+        return;
+      }
       
       if (rawPanolar && rawPanolar.length > 0) {
         // 🔥🔥🔥 OPTİMİZASYON BURADA 🔥🔥🔥

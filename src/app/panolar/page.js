@@ -144,13 +144,13 @@ export default function TumPanolar() {
               >
                 {/* Kart Görseli */}
                 <div className="w-20 h-28 shrink-0 rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
-                  {pano.books?.cover_url ? <BookCoverImage src={pano.books.cover_url} className="w-full h-full object-cover" alt={pano.books?.title || 'Kitap kapağı'} /> : null}
+                  {(pano.image_url || pano.books?.cover_url) ? <BookCoverImage src={pano.image_url || pano.books.cover_url} className="w-full h-full object-cover" alt={pano.books?.title || pano.title || 'Pano görseli'} /> : null}
                 </div>
                 
                 <div className="flex-1">
                   <h3 className="text-xl font-black dark:text-white mb-2 line-clamp-1 group-hover:text-red-600 transition-colors">{pano.title}</h3>
                   <p className="text-[10px] text-red-600 font-bold uppercase mb-2 tracking-widest">
-                    📖 {pano.books?.title} {pano.chapter_id && '• ' + (pano.chapters?.title || 'Bölüm')}
+                    {pano.books?.title ? `📖 ${pano.books.title}` : 'PANO GÖRSELİ'} {pano.chapter_id && '• ' + (pano.chapters?.title || 'Bölüm')}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{pano.content}</p>
                   

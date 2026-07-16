@@ -520,13 +520,13 @@ export default function ProfilSayfasi() {
                     className="bg-white dark:bg-white/5 p-4 md:p-6 rounded-xl md:rounded-[2rem] border dark:border-white/10 flex gap-4 md:gap-6 relative group hover:border-red-600/30 transition-all cursor-pointer"
                   >
                     <div className="w-16 h-24 md:w-20 md:h-28 shrink-0 rounded-lg md:rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
-                      {pano.books?.cover_url ? <BookCoverImage src={pano.books.cover_url} className="w-full h-full object-cover" alt={pano.books?.title || 'Kitap kapağı'} /> : null}
+                      {(pano.image_url || pano.books?.cover_url) ? <BookCoverImage src={pano.image_url || pano.books.cover_url} className="w-full h-full object-cover" alt={pano.books?.title || pano.title || 'Pano görseli'} /> : null}
                     </div>
 
                     <div className="flex-1">
                       <h3 className="text-base md:text-xl font-black dark:text-white mb-1 md:mb-2 line-clamp-1 group-hover:text-red-600 transition-colors">{pano.title}</h3>
                       <p className="text-[9px] md:text-[10px] text-red-600 font-bold uppercase mb-2 tracking-widest">
-                        📖 {pano.books?.title} {pano.chapter_id && '• ' + (pano.chapters?.title || 'Bölüm')}
+                        {pano.books?.title ? `📖 ${pano.books.title}` : 'PANO GÖRSELİ'} {pano.chapter_id && '• ' + (pano.chapters?.title || 'Bölüm')}
                       </p>
                       <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{pano.content}</p>
 
