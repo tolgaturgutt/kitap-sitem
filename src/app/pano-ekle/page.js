@@ -164,6 +164,23 @@ export default function PanoEkle() {
     }
   }
 
+  function getPanoSaveErrorMessage(error) {
+    const errorText = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
+    const schemaNeedsUpdate =
+      error?.code === '42703' ||
+      error?.code === 'PGRST204' ||
+      error?.code === '23502' ||
+      errorText.includes('image_url') ||
+      errorText.includes('book_id') ||
+      errorText.includes('null value');
+
+    if (schemaNeedsUpdate) {
+      return 'Veritabanı güncellemesi eksik: add_pano_image_url.sql çalışmalı.';
+    }
+
+    return error?.message ? `Hata: ${error.message}` : 'Hata oluştu!';
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -203,7 +220,8 @@ export default function PanoEkle() {
     const { error } = await supabase.from('panolar').insert(payload);
 
     if (error) {
-      toast.error('Hata oluştu!', { id: toastId });
+      console.error('Pano insert error:', error);
+      toast.error(getPanoSaveErrorMessage(error), { id: toastId });
       setSaving(false);
       return;
     }
