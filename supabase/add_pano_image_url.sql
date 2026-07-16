@@ -51,3 +51,6 @@ before insert or update of user_email, book_id, chapter_id, image_url
 on public.panolar
 for each row
 execute function public.enforce_pano_admin_media_rules();
+
+-- PostgREST schema cache'i hemen yenile.
+notify pgrst, 'reload schema';
