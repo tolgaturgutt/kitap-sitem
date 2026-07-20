@@ -63,11 +63,11 @@ export default function KitapEkle() {
     if (!file) return;
 
     const options = {
-      maxSizeMB: 1,          // 200KB'a indir
-      maxWidthOrHeight: 1920, 
+      maxSizeMB: 0.35,
+      maxWidthOrHeight: 1200,
       useWebWorker: true,
       fileType: 'image/jpeg',
-      initialQuality: 0.8
+      initialQuality: 0.75
     };
 
     try {
@@ -120,10 +120,13 @@ export default function KitapEkle() {
       // 3. Kapak Resmi Yükleme
       if (formData.cover_file) {
         const file = formData.cover_file;
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${user.id}-${Math.random()}.${fileExt}`;
+        const fileName = `${user.id}-${Math.random()}.jpg`;
         
-        const { error: uploadError } = await supabase.storage.from('book-covers').upload(fileName, file);
+        const { error: uploadError } = await supabase.storage.from('book-covers').upload(fileName, file, {
+          cacheControl: '31536000',
+          contentType: 'image/jpeg',
+          upsert: false,
+        });
         if (uploadError) throw uploadError;
 
         const { data: { publicUrl } } = supabase.storage.from('book-covers').getPublicUrl(fileName);

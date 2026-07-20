@@ -164,10 +164,11 @@ export default function PanoDuzenle({ params }) {
 
     try {
       const compressedFile = await imageCompression(file, {
-        maxSizeMB: 0.4,
-        maxWidthOrHeight: 1400,
+        maxSizeMB: 0.35,
+        maxWidthOrHeight: 1200,
         useWebWorker: false,
-        fileType: 'image/jpeg'
+        fileType: 'image/jpeg',
+        initialQuality: 0.75
       });
 
       const fileName = `${user.id}-${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
@@ -175,6 +176,7 @@ export default function PanoDuzenle({ params }) {
       const { error: uploadError } = await supabase.storage
         .from('images')
         .upload(filePath, compressedFile, {
+          cacheControl: '31536000',
           contentType: 'image/jpeg',
           upsert: false
         });

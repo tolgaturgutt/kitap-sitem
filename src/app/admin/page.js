@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast, { Toaster } from 'react-hot-toast';
+import imageCompression from 'browser-image-compression';
 
 // --- İKONLAR ---
 const Icons = {
@@ -19,6 +20,22 @@ const getTargetEmoji = (type) => {
   const map = { 'user': '👤', 'comment': '💬', 'book': '📖', 'review': '⭐', 'chapter': '📄', 'default': '🎯' };
   return map[type] || map.default;
 };
+
+const storageImageUploadOptions = {
+  cacheControl: '31536000',
+  contentType: 'image/jpeg',
+  upsert: false,
+};
+
+function compressAdminImage(file, options = {}) {
+  return imageCompression(file, {
+    maxSizeMB: options.maxSizeMB ?? 0.5,
+    maxWidthOrHeight: options.maxWidthOrHeight ?? 1400,
+    useWebWorker: false,
+    fileType: 'image/jpeg',
+    initialQuality: 0.75,
+  });
+}
 
 export default function AdminPanel() {
   const router = useRouter();
@@ -323,9 +340,10 @@ const [loadingEvents, setLoadingEvents] = useState(false);
     const file = e.target.files[0];
     if (!file) return;
     setUploadingCategoryImage(true);
-    const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
+    const fileName = `${Date.now()}.jpg`;
     try {
-      const { error } = await supabase.storage.from('images').upload(`categories/${fileName}`, file);
+      const compressedFile = await compressAdminImage(file, { maxSizeMB: 0.25, maxWidthOrHeight: 900 });
+      const { error } = await supabase.storage.from('images').upload(`categories/${fileName}`, compressedFile, storageImageUploadOptions);
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(`categories/${fileName}`);
       setCategoryForm({ ...categoryForm, image_url: publicUrl });
@@ -415,9 +433,10 @@ const [loadingEvents, setLoadingEvents] = useState(false);
     const file = e.target.files[0];
     if (!file) return;
     setUploadingImage(true);
-    const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
+    const fileName = `${Date.now()}.jpg`;
     try {
-      const { error } = await supabase.storage.from('images').upload(`announcements/${fileName}`, file);
+      const compressedFile = await compressAdminImage(file, { maxSizeMB: 0.5, maxWidthOrHeight: 1400 });
+      const { error } = await supabase.storage.from('images').upload(`announcements/${fileName}`, compressedFile, storageImageUploadOptions);
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(`announcements/${fileName}`);
       setDuyuruForm({ ...duyuruForm, image_url: publicUrl });
@@ -1112,9 +1131,10 @@ const [loadingEvents, setLoadingEvents] = useState(false);
               const file = e.target.files[0];
               if (!file) return;
               setUploadingEventImage(true);
-              const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
+              const fileName = `${Date.now()}.jpg`;
               try {
-                const { error } = await supabase.storage.from('images').upload(`events/${fileName}`, file);
+                const compressedFile = await compressAdminImage(file, { maxSizeMB: 0.6, maxWidthOrHeight: 1600 });
+                const { error } = await supabase.storage.from('images').upload(`events/${fileName}`, compressedFile, storageImageUploadOptions);
                 if (error) throw error;
                 const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(`events/${fileName}`);
                 setEventForm({ ...eventForm, image_url: publicUrl });

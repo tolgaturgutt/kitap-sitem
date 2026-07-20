@@ -379,7 +379,11 @@ export default function ProfilSayfasi() {
                           const fileExt = "jpg";
                           const fileName = `${user.id}-${Math.random()}.${fileExt}`;
 
-                          const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, compressedFile);
+                          const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, compressedFile, {
+                            cacheControl: '31536000',
+                            contentType: 'image/jpeg',
+                            upsert: false,
+                          });
 
                           if (!uploadError) {
                             const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
