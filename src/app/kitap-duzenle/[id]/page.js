@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import Username from '@/components/Username';
 import BookCoverImage from '@/components/BookCoverImage';
@@ -212,7 +212,6 @@ async function guncelle() {
 
       if (error) throw error;
 
-      toast.success('Değişiklikler kaydedildi.');
       router.push(`/kitap/${id}`);
       router.refresh();
     } catch (error) {
@@ -227,7 +226,6 @@ async function guncelle() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black p-6">
-      <Toaster position="top-right" />
 
       <div className="w-full max-w-2xl bg-gray-50 dark:bg-gray-900 p-8 rounded-2xl border border-gray-200 dark:border-gray-800 shadow-xl">
         <h1 className="text-2xl font-black mb-6 dark:text-white">Kitap Ayarları</h1>

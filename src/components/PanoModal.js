@@ -233,7 +233,6 @@ export default function PanoModal({
         });
       }
 
-      toast.success('Yorum eklendi!');
     } finally {
       commentSubmitLockRef.current = false;
       setIsCommentSending(false);
@@ -266,7 +265,6 @@ export default function PanoModal({
     if (!confirm('Silmek istiyor musun?')) return;
     const { error } = await supabase.from('pano_comments').delete().eq('id', commentId);
     if (!error) {
-      toast.success('Yorum silindi');
       setPanoComments(prev => prev.filter(c => c.id !== commentId));
     }
   }
@@ -276,7 +274,6 @@ export default function PanoModal({
     if (!window.confirm('Panoyu silmek istiyor musun?')) return;
     const { error } = await supabase.from('panolar').delete().eq('id', selectedPano.id);
     if (!error) {
-      toast.success('Pano silindi!');
       if (onDelete) onDelete(selectedPano.id);
       onClose();
     }
@@ -313,7 +310,6 @@ export default function PanoModal({
       .eq('id', selectedPano.id);
       
     if (!error) {
-      toast.success(newStatus ? '📌 Pano başa tutturuldu!' : 'Tutturma kaldırıldı!');
       setTimeout(() => window.location.reload(), 800); // 0.8 saniye sonra yenile
     } else {
       toast.error('Hata oluştu!');

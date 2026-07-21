@@ -88,7 +88,6 @@ export default function BookReader({ content, bookId, chapterId }) {
     if (!error) { 
       setComments([...comments, data]); 
       setNewComment(''); 
-      toast.success('Yorum eklendi.'); 
     } else {
       toast.error('Yorum gönderilemedi.');
     }
@@ -105,7 +104,6 @@ export default function BookReader({ content, bookId, chapterId }) {
       content_snapshot: content
     });
     if (error) toast.error("Hata oluştu.");
-    else toast.success("Şikayet iletildi.");
   }
 
   async function handleDelete(commentId) {
@@ -113,7 +111,6 @@ export default function BookReader({ content, bookId, chapterId }) {
     const { error } = await supabase.from('comments').delete().eq('id', commentId);
     if (!error) {
       setComments(prev => prev.filter(c => c.id !== commentId));
-      toast.success("Yorum silindi.");
     }
   }
 

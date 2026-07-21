@@ -76,7 +76,6 @@ function DuyuruPaneli({ isAdmin }) {
     const { error } = await supabase.from('announcements').delete().eq('id', duyuruId);
     if (!error) {
       setDuyurular(prev => prev.filter(d => d.id !== duyuruId));
-      toast.success("Duyuru silindi.");
       if (selectedDuyuru?.id === duyuruId) setSelectedDuyuru(null);
     }
   }
@@ -451,10 +450,10 @@ export default function Home() {
           .limit(5),
         supabase
           .from('chapters')
-          .select('id, title, created_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, co_author_id, co_author_status, profiles:user_id(username, avatar_url, email,role), co_author:profiles!co_author_id(username, email, role))')
+          .select('id, title, created_at, published_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, co_author_id, co_author_status, profiles:user_id(username, avatar_url, email,role), co_author:profiles!co_author_id(username, email, role))')
           .eq('books.is_draft', false)
           .eq('is_draft', false)
-          .order('created_at', { ascending: false })
+          .order('published_at', { ascending: false, nullsFirst: false })
           .limit(20),
         supabase
           .from('books')

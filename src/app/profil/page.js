@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoModal from '@/components/PanoModal';
 import Image from 'next/image';
@@ -230,7 +230,6 @@ export default function ProfilSayfasi() {
         toast.error("Kaydedilemedi: " + error.message);
       }
     } else {
-      toast.success("Güncellendi ✅");
       setIsEditing(false);
       setUser(prev => ({ ...prev, user_metadata: { ...prev.user_metadata, username: profileData.username } }));
     }
@@ -246,7 +245,6 @@ export default function ProfilSayfasi() {
 
     if (!error) {
       setProfileData(prev => ({ ...prev, avatar_url: '' }));
-      toast.success("Profil fotoğrafı kaldırıldı");
     } else {
       toast.error("Hata oluştu");
     }
@@ -263,7 +261,6 @@ export default function ProfilSayfasi() {
     if (!error) {
       setFollowingWithProfiles(prev => prev.filter(a => a.followed_id !== targetId));
       setFollowedAuthorsCount(prev => prev - 1);
-      toast.success("Bırakıldı");
     } else {
       toast.error("Hata oluştu");
     }
@@ -278,7 +275,6 @@ export default function ProfilSayfasi() {
     if (error) {
       toast.error('Silinirken hata oluştu!');
     } else {
-      toast.success('Pano silindi! 🗑️');
       setMyPanos(prev => prev.filter(p => p.id !== panoId));
       if (selectedPano?.id === panoId) setSelectedPano(null);
     }
@@ -295,7 +291,6 @@ export default function ProfilSayfasi() {
 
   return (
     <div className="min-h-screen py-6 md:py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black transition-colors">
-      <Toaster />
 
       <PanoModal
         selectedPano={selectedPano}
@@ -390,7 +385,7 @@ export default function ProfilSayfasi() {
                           if (!uploadError) {
                             const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(fileName);
                             setProfileData(prev => ({ ...prev, avatar_url: publicUrl }));
-                            toast.success("Fotoğraf yüklendi! Kaydetmeyi unutma.", { id: toastId });
+                            toast.remove(toastId);
                           } else {
                             console.error(uploadError);
                             toast.error("Yükleme hatası!", { id: toastId });

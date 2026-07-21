@@ -126,7 +126,21 @@ useEffect(() => {
 
       <body className={`${inter.className} bg-[#fafafa] dark:bg-black text-black dark:text-white transition-colors duration-300`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-          <Toaster position="top-center" />
+          <Toaster
+            position="top-center"
+            gutter={8}
+            containerStyle={{ zIndex: 99999 }}
+            toastOptions={{
+              duration: 3500,
+              success: { duration: 2200 },
+              error: { duration: 5000 },
+              loading: { duration: 15000 },
+              style: {
+                maxWidth: 'min(92vw, 420px)',
+                wordBreak: 'break-word',
+              },
+            }}
+          />
           <PushSetup />
           <BanKontrol />
           <WarningSystem />

@@ -4,7 +4,7 @@ import NextLink from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { useTheme } from 'next-themes';
 import Username from '@/components/Username';
 import Image from 'next/image';
@@ -221,7 +221,6 @@ export default function Navbar() {
   }, [query, adminEmails]);
   async function handleLogout() {
     await supabase.auth.signOut();
-    toast.success('Çıkış yapıldı.');
     setUser(null);
     router.push('/');
     router.refresh();
@@ -279,6 +278,7 @@ export default function Navbar() {
               </button>
             </div>
           ), {
+            id: `realtime-notification-${payload.new.id}`,
             // Kutunun dış görünüş ayarları (Karanlık tema)
             style: {
               background: '#1a1a1a', // Koyu gri arka plan
@@ -324,7 +324,6 @@ export default function Navbar() {
       toast.error('Silinemedi');
       setNotifications(await fetchNotifications(user.email)); // Hata olursa geri yükle
     } else {
-      toast.success('Bildirim silindi');
     }
   }
 
@@ -343,7 +342,6 @@ export default function Navbar() {
       toast.error('Bildirimler temizlenemedi');
       setNotifications(await fetchNotifications(user.email));
     } else {
-      toast.success('Tüm bildirimler temizlendi');
     }
 
     setIsClearingNotifications(false);

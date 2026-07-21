@@ -3,7 +3,7 @@
 import { useEffect, useState, use, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 export default function BolumDuzenle({ params }) {
   const router = useRouter();
@@ -326,7 +326,6 @@ export default function BolumDuzenle({ params }) {
 
   return (
     <div className="min-h-screen py-24 px-6 bg-[#fcfcfc] dark:bg-[#080808]">
-      <Toaster position="top-right" />
 
       <div className="max-w-3xl mx-auto">
         <header className="mb-16 text-center">

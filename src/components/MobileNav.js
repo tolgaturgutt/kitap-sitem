@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import NextLink from 'next/link';
 import { usePathname } from 'next/navigation';
-import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { getAdminEmails } from '@/lib/admins';
 
@@ -88,14 +87,7 @@ export default function MobileNav() {
   const isActive = (path) => pathname === path;
 
   const handleComingSoon = () => {
-    toast.dismiss('coming-soon');
-    toast('Yakında kullanımda! 🚀', {
-      id: 'coming-soon',
-      icon: '⏳',
-      duration: 2000,
-      position: 'top-center',
-      style: { borderRadius: '10px', background: '#333', color: '#fff' },
-    });
+    setShowPlusMenu(false);
   };
 
   /* ---------------- INSET HESAPLARI ---------------- */

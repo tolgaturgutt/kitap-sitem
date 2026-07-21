@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import YorumAlani from '@/components/YorumAlani';
-import { Toaster, toast } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 import { createChapterVoteNotification } from '@/lib/notifications';
 import Username from '@/components/Username';
 import Image from 'next/image';
@@ -317,7 +317,6 @@ export default function BolumDetay({ params }) {
       if (!error) {
         setLikes(prev => prev + 1);
         setHasLiked(true);
-        toast.success("Bölüm beğenildi ❤️");
 
         await createChapterVoteNotification(bolumId);
 
@@ -411,7 +410,6 @@ export default function BolumDetay({ params }) {
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] dark:bg-[#080808]">
-      <Toaster />
 
       <nav className="fixed top-20 left-1/2 -translate-x-1/2 z-40 w-[85%] max-w-2xl h-11 bg-white/60 dark:bg-black/60 backdrop-blur-3xl border dark:border-white/5 rounded-full flex items-center justify-between px-6 shadow-sm">
         <Link href={`/kitap/${id}`} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-all">

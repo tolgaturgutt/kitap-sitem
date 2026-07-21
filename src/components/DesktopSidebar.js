@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import NextLink from 'next/link';
 import { usePathname } from 'next/navigation';
-import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { getAdminEmails } from '@/lib/admins';
 
@@ -35,14 +34,6 @@ export default function DesktopSidebar() {
   }, []);
 
   const handleComingSoon = () => {
-    toast('Yakında kullanımda! 🚀', {
-      icon: '⏳',
-      style: {
-        borderRadius: '10px',
-        background: '#333',
-        color: '#fff',
-      },
-    });
     setIsOpen(false);
   };
 

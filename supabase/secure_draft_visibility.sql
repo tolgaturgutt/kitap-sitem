@@ -138,6 +138,14 @@ security definer
 set search_path = public, auth
 as $$
 begin
+  -- Yorum ve begeni sayac tetikleyicileri yalnizca bu turetilmis alanlari
+  -- degistirebilir. Normal kullanici UPDATE istekleri RLS tarafindan engellenir.
+  if (to_jsonb(new) - array['total_comment_count', 'total_votes'])
+     is not distinct from
+     (to_jsonb(old) - array['total_comment_count', 'total_votes']) then
+    return new;
+  end if;
+
   if auth.role() = 'service_role'
      or public.is_current_user_admin()
      or old.user_id = auth.uid() then

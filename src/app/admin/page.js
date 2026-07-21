@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 
 // --- İKONLAR ---
@@ -471,7 +471,6 @@ const [loadingEvents, setLoadingEvents] = useState(false);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-[#0a0a0a] py-10 px-4 transition-colors duration-300">
-      <Toaster position="top-center" />
       <div className="max-w-7xl mx-auto">
 
         <h1 className="text-4xl font-black text-center dark:text-white uppercase mb-12">YÖNETİM PANELİ</h1>

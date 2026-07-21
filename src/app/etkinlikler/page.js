@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import BookCoverImage from '@/components/BookCoverImage';
 
 export default function EtkinliklerSayfasi() {
@@ -239,7 +239,6 @@ export default function EtkinliklerSayfasi() {
 
   return (
     <div className="min-h-screen py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black">
-      <Toaster />
 
       <div className="max-w-7xl mx-auto">
 

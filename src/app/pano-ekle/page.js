@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import imageCompression from 'browser-image-compression';
 
@@ -157,7 +157,7 @@ export default function PanoEkle() {
 
       const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
       setPanoImageUrl(publicUrl);
-      toast.success('Görsel hazır!', { id: toastId });
+      toast.remove(toastId);
     } catch (error) {
       console.error('Pano image upload error:', error);
       toast.error('Görsel işlenirken hata oluştu!', { id: toastId });
@@ -234,7 +234,7 @@ export default function PanoEkle() {
       return;
     }
 
-    toast.success('Pano oluşturuldu! 🎉', { id: toastId });
+    toast.remove(toastId);
     router.push('/');
   }
 
@@ -249,7 +249,6 @@ export default function PanoEkle() {
 
   return (
     <div className="min-h-screen py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black">
-      <Toaster />
       
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import Username from '@/components/Username';
 
@@ -73,7 +73,6 @@ export default function KitapEkle() {
     try {
       const compressedFile = await imageCompression(file, options);
       setFormData(prev => ({ ...prev, cover_file: compressedFile }));
-      toast.success("Resim boyutu küçültüldü 👍");
     } catch (error) {
       console.log("Hata:", error);
       toast.error("Resim işlenemedi");
@@ -186,7 +185,6 @@ export default function KitapEkle() {
 
   return (
     <div className="min-h-screen py-20 px-6 flex items-center justify-center bg-[#fafafa] dark:bg-black transition-colors">
-      <Toaster />
       
       <div className="w-full max-w-2xl">
         <div className="text-center mb-10">

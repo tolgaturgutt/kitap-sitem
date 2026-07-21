@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 export default function DestekIletisim() {
   const [formData, setFormData] = useState({
@@ -69,7 +69,6 @@ export default function DestekIletisim() {
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-black py-12 md:py-20 px-4 md:px-6 transition-colors">
-      <Toaster />
       
       <div className="max-w-5xl mx-auto">
         {/* HEADER */}

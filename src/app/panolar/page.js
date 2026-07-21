@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoModal from '@/components/PanoModal'; // ✅ MODAL IMPORT EDİLDİ
 
@@ -84,7 +84,6 @@ export default function TumPanolar() {
     if (error) {
       toast.error('Silinirken hata oluştu!');
     } else {
-      toast.success('Pano silindi! 🗑️');
       setPanos(prev => prev.filter(p => p.id !== panoId));
       if (selectedPano?.id === panoId) setSelectedPano(null);
     }
@@ -106,7 +105,6 @@ export default function TumPanolar() {
 
   return (
     <div className="min-h-screen py-10 md:py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black transition-colors">
-      <Toaster />
 
       {/* ✅ PANO MODAL BİLEŞENİ */}
       <PanoModal 

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import { useRouter } from 'next/navigation';
 import PanoModal from '@/components/PanoModal'; 
@@ -251,7 +251,6 @@ export default function YazarProfili() {
 
       setNewPanoTitle(''); setNewPanoContent(''); setSelectedBookForPano(null); setSelectedChapterForPano(null);
       setShowAddPano(false);
-      toast.success("Pano paylaşıldı! 🚀");
     } else {
       const errorText = `${error.message || ''} ${error.details || ''}`.toLowerCase();
       toast.error(
@@ -289,7 +288,6 @@ export default function YazarProfili() {
         is_admin: adminEmails.includes(currentUser.email)
       }]);
 
-      toast.success("Takip edildi 🎉");
 
       // Bildirim gönder
       await supabase.from('notifications').insert({
@@ -315,7 +313,6 @@ export default function YazarProfili() {
       setIsFollowing(false);
       // Listeden kendimi çıkar
       setFollowersWithProfiles(prev => prev.filter(f => f.follower_id !== currentUser.id));
-      toast.success("Takip bırakıldı");
     } else {
       toast.error("Hata oluştu");
     }
@@ -367,7 +364,6 @@ export default function YazarProfili() {
       toast.error("Hata oluştu.");
     } else {
       removePanoFromList(panoId);
-      toast.success("Pano silindi.");
     }
   }
 
@@ -384,7 +380,6 @@ export default function YazarProfili() {
 
   return (
     <div className="min-h-screen py-6 md:py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black transition-colors">
-      <Toaster />
 
       {/* ✅ PANO MODAL */}
       <PanoModal

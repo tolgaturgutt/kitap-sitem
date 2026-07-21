@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Link from 'next/link';
 
 export default function SettingsPage() {
@@ -109,7 +109,9 @@ export default function SettingsPage() {
 
       if (error) throw error;
 
-      toast.success('Sıfırlama bağlantısı e-postana gönderildi! 📧');
+      toast.success('Sıfırlama bağlantısı e-postana gönderildi! 📧', {
+        id: 'password-reset-email',
+      });
       setShowForgotModal(false); // Modalı kapat
       setResetInput('');         // Kutuyu temizle
 
@@ -171,7 +173,6 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa] dark:bg-black py-12 px-4 md:px-8">
-      <Toaster position="top-center" />
       
       <div className="max-w-2xl mx-auto space-y-8">
         

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
 export default function SifreYenile() {
   const [newPassword, setNewPassword] = useState('');
@@ -58,7 +58,6 @@ export default function SifreYenile() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-black text-black dark:text-white p-6 transition-colors">
-      <Toaster position="top-right" />
 
       <div className="w-full max-w-md bg-gray-50 dark:bg-gray-900 p-8 rounded-xl border border-gray-200 dark:border-gray-800 shadow-2xl">
         <h1 className="text-2xl font-bold mb-2 text-center">Yeni Şifre Belirle</h1>

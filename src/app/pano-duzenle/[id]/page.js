@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import BookCoverImage from '@/components/BookCoverImage';
 import imageCompression from 'browser-image-compression';
@@ -191,7 +191,7 @@ export default function PanoDuzenle({ params }) {
       const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
       setPanoImageUrl(publicUrl);
       setPanoImageTouched(true);
-      toast.success('Görsel hazır!', { id: toastId });
+      toast.remove(toastId);
     } catch (error) {
       console.error('Pano image upload error:', error);
       toast.error('Görsel işlenirken hata oluştu!', { id: toastId });
@@ -254,7 +254,7 @@ export default function PanoDuzenle({ params }) {
       toast.error(getPanoSaveErrorMessage(error), { id: toastId });
       setSaving(false);
     } else {
-      toast.success('Pano başarıyla güncellendi! ✅', { id: toastId });
+      toast.remove(toastId);
       router.push('/profil');
     }
   }
@@ -270,7 +270,6 @@ export default function PanoDuzenle({ params }) {
 
   return (
     <div className="min-h-screen py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black">
-      <Toaster />
       
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">

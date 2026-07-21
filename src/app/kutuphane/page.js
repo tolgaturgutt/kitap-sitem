@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import BookCoverImage from '@/components/BookCoverImage';
 
@@ -105,7 +105,6 @@ export default function KutuphanePage() {
 
     if (!error) {
       setLibraryBooks(prev => prev.filter(b => b.id !== bookId));
-      toast.success('Kitap kütüphaneden kaldırıldı');
     } else {
       toast.error('Bir hata oluştu');
     }
@@ -124,7 +123,6 @@ export default function KutuphanePage() {
 
   return (
     <div className="min-h-screen py-6 md:py-16 px-4 md:px-6 lg:px-16 bg-[#fafafa] dark:bg-black">
-      <Toaster />
       
       <div className="max-w-7xl mx-auto">
         {/* Header */}

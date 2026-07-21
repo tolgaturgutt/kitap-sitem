@@ -166,10 +166,8 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
         if (targetComment) {
             setReplyComment('');
             setReplyingTo(null);
-            toast.success("Yanıt gönderildi");
         } else {
             setNewComment(''); 
-            toast.success("Yorum eklendi");
         }
 
         if (type === 'paragraph' && onCommentAdded) onCommentAdded(paraId);
@@ -253,7 +251,6 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
             [deletedComment.user_id]: Math.max(0, Number(prev[deletedComment.user_id] || 0) - 1),
           }));
         }
-        toast.success("Silindi."); 
 
         if (bookId && onStatsUpdate) {
           const { data: updatedBook } = await supabase

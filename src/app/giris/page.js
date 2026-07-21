@@ -97,7 +97,9 @@ export default function GirisSayfasi() {
         throw resetError;
       }
       
-      toast.success('Sıfırlama bağlantısı e-postanıza gönderildi! 📧');
+      toast.success('Sıfırlama bağlantısı e-postanıza gönderildi! 📧', {
+        id: 'password-reset-email',
+      });
       
       // İşlem bitince giriş ekranına atıp temizleyelim
       setIsResetMode(false);
@@ -107,7 +109,9 @@ export default function GirisSayfasi() {
       console.error(error);
       // Kullanıcı bulunamadı hatasını çok açık vermemek güvenlik açısından daha iyidir
       // Ama supabase genelde "rate limit" dışında hata dönmez (security through obscurity)
-      toast.success('Eğer kayıtlıysa e-postanıza bağlantı gönderildi.'); 
+      toast.success('Eğer kayıtlıysa e-postanıza bağlantı gönderildi.', {
+        id: 'password-reset-email',
+      });
     } finally {
       endLoading();
     }
@@ -213,8 +217,8 @@ export default function GirisSayfasi() {
 
        // ✅ 6. ADIM: BAŞARILI KAYIT - MAIL ONAYI BEKLEME MODU
 // Kullanıcıyı hemen içeri almıyoruz, cookie basmıyoruz.
-toast.success('Kayıt oluşturuldu! 🚀', { duration: 4000 });
 toast('Lütfen mail kutunuza (Spam dahil) gelen onay linkine tıklayarak hesabınızı doğrulayın.', {
+  id: 'email-verification-required',
   icon: '✉️',
   duration: 8000, // Mesaj ekranda uzun kalsın
   style: {
@@ -285,7 +289,6 @@ setAgreed(false);
         }
 
         document.cookie = "site_erisim=acik; path=/; max-age=604800; SameSite=Strict";
-        toast.success('Giriş başarılı.');
         
         loginSucceeded = true;
         window.location.replace('/');

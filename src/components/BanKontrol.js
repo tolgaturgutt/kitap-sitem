@@ -26,7 +26,10 @@ export default function BanKontrol() {
       // 3. Eğer BANLANMIŞSA
       if (profile && profile.is_banned) {
         await supabase.auth.signOut(); // Oturumu kapat
-        toast.error('HESABINIZ YASAKLANDI! Sistemden atılıyorsunuz...');
+        toast.error('HESABINIZ YASAKLANDI! Sistemden atılıyorsunuz...', {
+          id: 'account-banned',
+          duration: 7000,
+        });
         
         // 4. Giriş sayfasına fırlat
         router.replace('/giris'); 

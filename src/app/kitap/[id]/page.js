@@ -3,7 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import YorumAlani from '@/components/YorumAlani';
 import { useRouter } from 'next/navigation';
 import Username from '@/components/Username';
@@ -252,11 +252,9 @@ export default function KitapDetay({ params }) {
       );
 
       await Promise.all(updates);
-      toast.dismiss(toastId);
-      toast.success('✅ Sıralama kaydedildi');
+      toast.remove(toastId);
     } catch (error) {
-      toast.dismiss(toastId);
-      toast.error('Hata: ' + error.message);
+      toast.error('Hata: ' + error.message, { id: toastId });
     }
   }
 
@@ -285,8 +283,6 @@ export default function KitapDetay({ params }) {
       toast.error("Hata: " + error.message);
     } else {
       setData(prev => ({ ...prev, book: { ...prev.book, is_completed: newStatus } }));
-      if (newStatus) toast.success("Kitap 'TAMAMLANDI' olarak işaretlendi. 🎉");
-      else toast.success("Kitap tekrar 'DEVAM EDİYOR' moduna geçti.");
     }
   }
 
@@ -298,8 +294,6 @@ export default function KitapDetay({ params }) {
       toast.error("İşlem başarısız: " + error.message);
     } else {
       setData(prev => ({ ...prev, book: { ...prev.book, is_editors_choice: newStatus } }));
-      if (newStatus) toast.success("👑 Editörün Seçimi listesine eklendi!");
-      else toast.success("Listeden çıkarıldı.");
     }
   }
 
@@ -308,7 +302,6 @@ export default function KitapDetay({ params }) {
      if (data.isFollowing) {
        await supabase.from('follows').delete().eq('book_id', id).eq('user_email', data.user.email);
        setData(prev => ({ ...prev, isFollowing: false, stats: { ...prev.stats, follows: prev.stats.follows - 1 } }));
-       toast.success("Kütüphaneden çıkarıldı");
      } else {
        const { error } = await supabase
          .from('follows')
@@ -320,7 +313,6 @@ export default function KitapDetay({ params }) {
        }
 
        setData(prev => ({ ...prev, isFollowing: true, stats: { ...prev.stats, follows: prev.stats.follows + 1 } }));
-       toast.success("Kütüphaneye eklendi");
        await createLibraryAddNotification(id);
      }
   }
@@ -341,16 +333,13 @@ export default function KitapDetay({ params }) {
       const { error } = await supabase.from('books').delete().eq('id', id);
       
       if (error) {
-        toast.dismiss(toastId);
-        toast.error('Ana kitap kaydı silinemedi: ' + error.message);
+        toast.error('Ana kitap kaydı silinemedi: ' + error.message, { id: toastId });
       } else {
-        toast.dismiss(toastId);
-        toast.success('KİTAP VE TÜM VERİLER SİLİNDİ ✅');
+        toast.remove(toastId);
         router.push('/profil'); 
       }
     } catch (error) {
-      toast.dismiss(toastId);
-      toast.error(error.message, { duration: 6000 });
+      toast.error(error.message, { id: toastId, duration: 6000 });
     }
   }
 
@@ -364,7 +353,6 @@ export default function KitapDetay({ params }) {
         chapters: prev.chapters.filter(c => c.id !== chapterId),
         stats: { ...prev.stats, chapters: prev.stats.chapters - 1 }
       }));
-      toast.success('Bölüm silindi');
     } catch (error) {
       toast.error('Hata: ' + error.message);
     }
@@ -422,7 +410,6 @@ export default function KitapDetay({ params }) {
 
   return (
     <div className="min-h-screen py-8 md:py-16 px-4 md:px-6 bg-[#fafafa] dark:bg-[#080808] transition-colors duration-1000">
-      <Toaster />
       <div className="max-w-6xl mx-auto">
         
         {/* ÜST BÖLÜM */}
