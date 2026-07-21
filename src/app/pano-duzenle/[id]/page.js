@@ -75,14 +75,14 @@ export default function PanoDuzenle({ params }) {
      // D) KİTAPLARI GETİR - ✅ KENDİ KİTAPLARI + ORTAK YAZAR OLDUĞU KİTAPLARI GETİR
       let { data: allBooks } = await supabase
         .from('books')
-        .select('id, title, cover_url, user_email, username, chapters(id)') 
+        .select('id, title, cover_url, user_email, username, chapters(id, is_draft)')
         .eq('is_draft', false)
         // 👇 DEĞİŞEN KISIM: Ya sahibi benim, ya da onaylanmış ortak yazarım
         .or(`user_id.eq.${activeUser.id},and(co_author_id.eq.${activeUser.id},co_author_status.eq.accepted)`)
         .order('title');
       // Hayalet Filtresi: Bölümü olmayanları at
       if (allBooks) {
-        allBooks = allBooks.filter(book => book.chapters && book.chapters.length > 0);
+        allBooks = allBooks.filter(book => book.chapters?.some(chapter => !chapter.is_draft));
         
         // Profil resimlerini ekle
         const booksWithProfiles = await Promise.all(
@@ -112,6 +112,7 @@ export default function PanoDuzenle({ params }) {
             .from('chapters')
             .select('id, title, order_no') 
             .eq('book_id', currentBook.id)
+            .eq('is_draft', false)
             .order('order_no', { ascending: true });
             
           setChapters(chapData || []);
@@ -139,6 +140,7 @@ export default function PanoDuzenle({ params }) {
         .from('chapters')
         .select('id, title, order_no') 
         .eq('book_id', selectedBook.id)
+        .eq('is_draft', false)
         .order('order_no', { ascending: true });
       
       setChapters(data || []);

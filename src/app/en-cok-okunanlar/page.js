@@ -34,13 +34,13 @@ async function fetchBooks(currentOffset) {
       // ✅ 1. 'total_votes' SÜTUNUNU EKLEDİM (DİKKAT)
     let { data: newBooks } = await supabase
         .from('books')
-        .select('*, total_comment_count, total_votes, chapters(id, views), profiles:user_id(username, role), co_author:profiles!co_author_id(username, role)');
+        .select('*, total_comment_count, total_votes, chapters(id, views, is_draft), profiles:user_id(username, role), co_author:profiles!co_author_id(username, role)');
 
       // ✅ HAYALET FİLTRESİ
       if (newBooks) {
         newBooks = newBooks.filter(book => 
           book.chapters && 
-          book.chapters.length > 0 && 
+          book.chapters.some(chapter => !chapter.is_draft) &&
           !book.is_draft
         );
       }
@@ -71,7 +71,7 @@ async function fetchBooks(currentOffset) {
 
         // 3. Toplam Okunma
         const totalViews = book.chapters
-          .filter(c => c.id)
+          .filter(c => c.id && !c.is_draft)
           .reduce((sum, c) => sum + (c.views || 0), 0);
 
       return { 

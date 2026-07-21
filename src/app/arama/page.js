@@ -20,6 +20,8 @@ async function fetchMatchingBooks(searchTerm) {
       .from('books')
       .select(BOOK_SEARCH_SELECT)
       .ilike('title', `%${searchTerm}%`)
+      .eq('is_draft', false)
+      .eq('chapters.is_draft', false)
       .order('created_at', { ascending: false })
       .range(from, from + BOOK_SEARCH_PAGE_SIZE - 1);
 

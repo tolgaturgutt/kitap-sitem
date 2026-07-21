@@ -36,7 +36,9 @@ export default async function sitemap() {
   // Not: 'kitaplar' tablo ismini kendi veritabanındaki isme göre ayarla (örn: 'books' olabilir)
   const { data: kitaplar } = await supabase
     .from('books')
-    .select('id, created_at')
+    .select('id, created_at, chapters!inner(id)')
+    .eq('is_draft', false)
+    .eq('chapters.is_draft', false)
     .order('created_at', { ascending: false })
     .limit(1000); // Google için ilk 1000 kitabı çekiyoruz, artırılabilir.
 
@@ -66,8 +68,14 @@ export default async function sitemap() {
   }));
 
   // D) Panolar (/pano/[id])
-  const { data: panolar } = await supabase.from('panolar').select('id');
-  const panoRoutes = (panolar || []).map((pano) => ({
+  const { data: panolar } = await supabase
+    .from('panolar')
+    .select('id, book_id, chapter_id, books(is_draft), chapters(is_draft)');
+  const publicPanolar = (panolar || []).filter(pano =>
+    (!pano.book_id || (pano.books && !pano.books.is_draft)) &&
+    (!pano.chapter_id || (pano.chapters && !pano.chapters.is_draft))
+  );
+  const panoRoutes = publicPanolar.map((pano) => ({
     url: `${baseUrl}/pano/${pano.id}`,
     lastModified: new Date(),
     changeFrequency: 'daily',

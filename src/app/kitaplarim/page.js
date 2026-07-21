@@ -40,7 +40,7 @@ export default function KitaplarimSayfasi() {
       // 👇 ARTIK 'total_votes' SÜTUNUNU DİREKT İSTİYORUZ
      const { data: written } = await supabase
         .from('books')
-        .select('*, total_comment_count, total_votes, chapters(id, views)') 
+        .select('*, total_comment_count, total_votes, chapters(id, title, views, word_count, order_no, is_draft)')
         .or(`user_id.eq.${activeUser.id},and(co_author_id.eq.${activeUser.id},co_author_status.eq.accepted)`)
         .order('created_at', { ascending: false });
 
@@ -67,7 +67,9 @@ export default function KitaplarimSayfasi() {
       // Verileri birleştirme fonksiyonu
       const mergeStats = (list) => {
         return list.map(book => {
-          const totalBookViews = book.chapters?.reduce((acc, c) => acc + (c.views || 0), 0) || 0;
+          const totalBookViews = book.chapters
+            ?.filter(chapter => !chapter.is_draft)
+            .reduce((acc, c) => acc + (c.views || 0), 0) || 0;
           
           // ✅ Veritabanından gelen hazır sayıları kullanıyoruz
           const totalComments = book.total_comment_count || 0;
@@ -81,7 +83,25 @@ export default function KitaplarimSayfasi() {
       if (written) {
         const enrichedWritten = mergeStats(written);
         setMyBooks(enrichedWritten.filter(b => !b.is_draft));
-        setMyDrafts(enrichedWritten.filter(b => b.is_draft === true));
+        const draftBooks = enrichedWritten.filter(book => book.is_draft === true);
+        const draftChapters = enrichedWritten
+          .filter(book => !book.is_draft)
+          .flatMap(book => (book.chapters || [])
+            .filter(chapter => chapter.is_draft)
+            .map(chapter => ({
+              ...book,
+              id: `chapter-${chapter.id}`,
+              sourceBookId: book.id,
+              draftChapterId: chapter.id,
+              title: chapter.title,
+              bookTitle: book.title,
+              totalViews: chapter.views || 0,
+              totalVotes: 0,
+              totalComments: 0,
+              is_draft: true
+            }))
+          );
+        setMyDrafts([...draftBooks, ...draftChapters]);
       }
 
       // KÜTÜPHANE KİTAPLARINI AYARLA
@@ -252,7 +272,12 @@ export default function KitaplarimSayfasi() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 md:gap-6">
             {currentBooks.map(k => (
               <div key={k.id} className="group relative">
-                <Link href={`/kitap/${k.id}`} className="block">
+                <Link
+                  href={k.draftChapterId
+                    ? `/kitap/${k.sourceBookId}/bolum-duzenle/${k.draftChapterId}`
+                    : `/kitap/${k.id}`}
+                  className="block"
+                >
                   <div className="aspect-[2/3] rounded-xl md:rounded-[2rem] overflow-hidden border dark:border-white/5 mb-2 md:mb-3 shadow-md group-hover:-translate-y-1 transition-all relative">
                     {k.cover_url ? (
                       <BookCoverImage
@@ -269,7 +294,7 @@ export default function KitaplarimSayfasi() {
                     {/* Taslak Rozeti */}
                     {k.is_draft && (
                       <div className="absolute top-2 right-2 bg-gray-500 text-white text-[7px] md:text-[8px] font-black px-1.5 md:px-2 py-0.5 md:py-1 rounded-full shadow-lg z-10 uppercase tracking-wider">
-                        TASLAK
+                        {k.draftChapterId ? 'BÖLÜM TASLAĞI' : 'KİTAP TASLAĞI'}
                       </div>
                     )}
                   </div>
@@ -277,6 +302,11 @@ export default function KitaplarimSayfasi() {
                   <h3 className="text-[10px] md:text-[11px] font-black uppercase dark:text-white group-hover:text-red-600 transition-colors line-clamp-2 leading-tight mb-1">
                     {k.title}
                   </h3>
+                  {k.draftChapterId && (
+                    <p className="text-[8px] md:text-[9px] text-gray-400 font-bold line-clamp-1 mb-1">
+                      {k.bookTitle}
+                    </p>
+                  )}
                   
                 {/* Kütüphane için yazar adı */}
                   {activeTab === 'kutuphane' && (

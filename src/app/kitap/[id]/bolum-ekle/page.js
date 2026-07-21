@@ -9,7 +9,7 @@ export default function BolumEkle({ params }) {
   const { id } = use(params);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [savingMode, setSavingMode] = useState(null);
   const [bannedWords, setBannedWords] = useState([]);
   const [activeFormats, setActiveFormats] = useState({
     bold: false,
@@ -206,7 +206,7 @@ function findBannedWords(text) {
     return censored;
   }
 
-  async function bolumKaydet(e) {
+  async function bolumKaydet(e, isDraft = false) {
     e.preventDefault();
     
     // ✅ innerHTML kullan - formatlar korunacak
@@ -229,7 +229,7 @@ function findBannedWords(text) {
       return;
     }
 
-    setLoading(true);
+    setSavingMode(isDraft ? 'draft' : 'publish');
 
     try {
       const { data: book } = await supabase
@@ -255,34 +255,39 @@ function findBannedWords(text) {
           title: censoredTitle,
           content: censoredContent,
           order_no: sirasi,
-          word_count: wordCount // ✅ ARTIK KELİME SAYISI KAYDEDİLİYOR
+          word_count: wordCount, // ✅ ARTIK KELİME SAYISI KAYDEDİLİYOR
+          is_draft: isDraft
         }])
         .select()
         .single();
 
       if (error) throw error;
 
-      const { data: followers } = await supabase
-        .from('follows')
-        .select('user_email')
-        .eq('book_id', id);
+      // Taslaklar kimseye duyurulmaz. Takipçilere bildirim yalnızca bölüm
+      // gerçekten yayına alındığında gönderilir.
+      if (!isDraft) {
+        const { data: followers } = await supabase
+          .from('follows')
+          .select('user_email')
+          .eq('book_id', id);
 
-      if (followers && followers.length > 0) {
-        const notifications = followers.map(f => ({
-          recipient_email: f.user_email,
-          actor_username: book.username,
-          type: 'new_chapter',
-          book_title: book.title,
-          book_id: parseInt(id),
-          chapter_id: newChapter.id,
-          is_read: false,
-          created_at: new Date()
-        }));
+        if (followers && followers.length > 0) {
+          const notifications = followers.map(f => ({
+            recipient_email: f.user_email,
+            actor_username: book.username,
+            type: 'new_chapter',
+            book_title: book.title,
+            book_id: parseInt(id),
+            chapter_id: newChapter.id,
+            is_read: false,
+            created_at: new Date()
+          }));
 
-        await supabase.from('notifications').insert(notifications);
+          await supabase.from('notifications').insert(notifications);
+        }
       }
 
-      toast.success('Bölüm başarıyla yayınlandı!');
+      toast.success(isDraft ? 'Bölüm taslaklara kaydedildi! 🔒' : 'Bölüm başarıyla yayınlandı!');
       setTimeout(() => {
         router.push(`/kitap/${id}`);
         router.refresh();
@@ -292,7 +297,7 @@ function findBannedWords(text) {
       console.error(error);
       toast.error('Bir hata oluştu.');
     } finally {
-      setLoading(false);
+      setSavingMode(null);
     }
   }
 
@@ -450,11 +455,19 @@ function findBannedWords(text) {
               İptal
             </button>
             <button
+              type="button"
+              onClick={(e) => bolumKaydet(e, true)}
+              disabled={savingMode !== null || hasBannedWords}
+              className="flex-[2] h-14 rounded-full bg-gray-700 text-white text-[10px] font-black uppercase tracking-widest hover:bg-gray-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {savingMode === 'draft' ? 'KAYDEDİLİYOR...' : '🔒 TASLAK OLARAK KAYDET'}
+            </button>
+            <button
               type="submit"
-              disabled={loading || hasBannedWords}
+              disabled={savingMode !== null || hasBannedWords}
               className="flex-[2] h-14 rounded-full bg-black dark:bg-white text-white dark:text-black text-[10px] font-black uppercase tracking-widest shadow-xl shadow-red-600/10 hover:bg-red-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'YAYINLANIYOR...' : hasBannedWords ? '🚫 Yayınlanamaz' : 'YAYINLA 🚀'}
+              {savingMode === 'publish' ? 'YAYINLANIYOR...' : hasBannedWords ? '🚫 Yayınlanamaz' : 'YAYINLA 🚀'}
             </button>
           </div>
         </form>

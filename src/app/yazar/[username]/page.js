@@ -107,7 +107,7 @@ export default function YazarProfili() {
         if (b) {
           b = b.filter(book =>
             book.chapters &&
-            book.chapters.length > 0 &&
+            book.chapters.some(chapter => !chapter.is_draft) &&
             !book.is_draft
           );
 
@@ -118,7 +118,9 @@ export default function YazarProfili() {
             const totalVotes = book.total_votes || 0;
 
             // Okunma sayısı bölüm toplamlarından gelmeye devam edebilir (performansı etkilemez)
-            const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
+            const totalViews = book.chapters
+              .filter(chapter => !chapter.is_draft)
+              .reduce((sum, c) => sum + (c.views || 0), 0);
 
             return { ...book, totalComments, totalVotes, totalViews };
           });
@@ -131,11 +133,16 @@ export default function YazarProfili() {
         // --- PANOLARI ÇEK ---
         const { data: authorPanos } = await supabase
           .from('panolar')
-          .select('*, books(title, cover_url), chapters(id, title)')
+          .select('*, books(title, cover_url, is_draft), chapters(id, title, is_draft)')
           .eq('user_email', p.email)
           .order('created_at', { ascending: false });
 
-        const panosWithProfile = authorPanos?.map(pano => ({
+        const publicPanos = authorPanos?.filter(pano =>
+          (!pano.book_id || (pano.books && !pano.books.is_draft)) &&
+          (!pano.chapter_id || (pano.chapters && !pano.chapters.is_draft))
+        );
+
+        const panosWithProfile = publicPanos?.map(pano => ({
           ...pano,
           profiles: p
         })) || [];
@@ -214,6 +221,7 @@ export default function YazarProfili() {
         .from('chapters')
         .select('id, title, order_no')
         .eq('book_id', selectedBookForPano.id)
+        .eq('is_draft', false)
         .order('order_no', { ascending: true });
       setPanoChapters(data || []);
     }

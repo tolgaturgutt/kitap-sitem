@@ -41,7 +41,12 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
           books (
             id,
             title,
-            cover_url
+            cover_url,
+            is_draft
+          ),
+          chapters (
+            id,
+            is_draft
           )
         `)
         .gte('created_at', yesterday.toISOString())
@@ -66,7 +71,12 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
             books (
               id,
               title,
-              cover_url
+              cover_url,
+              is_draft
+            ),
+            chapters (
+              id,
+              is_draft
             )
           `)
           .gte('created_at', yesterday.toISOString())
@@ -85,7 +95,12 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
         return;
       }
       
-      if (rawPanolar && rawPanolar.length > 0) {
+      rawPanolar = (rawPanolar || []).filter(pano =>
+        (!pano.book_id || (pano.books && !pano.books.is_draft)) &&
+        (!pano.chapter_id || (pano.chapters && !pano.chapters.is_draft))
+      );
+
+      if (rawPanolar.length > 0) {
         // 🔥🔥🔥 OPTİMİZASYON BURADA 🔥🔥🔥
         // Hamallık bitti! Tek tek sormak yerine, e-postaları toplayıp toplu soruyoruz.
         

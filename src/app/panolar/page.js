@@ -39,14 +39,19 @@ export default function TumPanolar() {
 
       const { data: panosData } = await supabase
         .from('panolar')
-        .select('*, books(title, cover_url), chapters(id, title)')
+        .select('*, books(title, cover_url, is_draft), chapters(id, title, is_draft)')
         .gte('created_at', yesterday.toISOString())
         .order('created_at', { ascending: false });
 
       // Her pano için profil bilgisini ayrı çek (Modalda resim görünsün diye)
-      if (panosData && panosData.length > 0) {
+      const publicPanos = (panosData || []).filter(pano =>
+        (!pano.book_id || (pano.books && !pano.books.is_draft)) &&
+        (!pano.chapter_id || (pano.chapters && !pano.chapters.is_draft))
+      );
+
+      if (publicPanos.length > 0) {
         const panosWithProfiles = await Promise.all(
-          panosData.map(async (pano) => {
+          publicPanos.map(async (pano) => {
             const { data: profile } = await supabase
               .from('profiles')
               .select('username, avatar_url,role')

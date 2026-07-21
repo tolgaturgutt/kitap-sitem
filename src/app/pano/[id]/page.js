@@ -30,7 +30,12 @@ export default function PanoPage({ params }) {
               books (
                 id,
                 title,
-                cover_url
+                cover_url,
+                is_draft
+              ),
+              chapters (
+                id,
+                is_draft
               ),
               profiles:user_id (
                 username,
@@ -46,7 +51,18 @@ export default function PanoPage({ params }) {
       if (session?.user) setUser(session.user);
       setAdminEmails(admins);
 
-      if (panoData) {
+      const activeUser = session?.user;
+      const canSeeDraft = activeUser && (
+        activeUser.id === panoData?.user_id ||
+        activeUser.email === panoData?.user_email ||
+        admins.includes(activeUser.email)
+      );
+      const referencesDraft = panoData && (
+        (panoData.book_id && (!panoData.books || panoData.books.is_draft)) ||
+        (panoData.chapter_id && (!panoData.chapters || panoData.chapters.is_draft))
+      );
+
+      if (panoData && (!referencesDraft || canSeeDraft)) {
         setPano(panoData);
       } else {
         router.push('/');

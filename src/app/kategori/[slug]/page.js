@@ -48,7 +48,7 @@ export default function CategoryPage() {
       // 3️⃣ Bu kategorideki kitapları çek
      let { data: allBooks } = await supabase
         .from('books')
-        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email, role), co_author:profiles!co_author_id(username, email, role), chapters(id, views)')
+        .select('*, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email, role), co_author:profiles!co_author_id(username, email, role), chapters(id, views, is_draft)')
         .eq('category', categoryData.name)
         .eq('is_draft', false);
       if (!allBooks) {
@@ -57,14 +57,16 @@ export default function CategoryPage() {
       }
 
       // Sadece bölümü olan kitapları filtrele
-      allBooks = allBooks.filter(book => book.chapters && book.chapters.length > 0);
+      allBooks = allBooks.filter(book => book.chapters?.some(chapter => !chapter.is_draft));
 
       // 4️⃣ İstatistikleri hesapla
       
       // ❌ SİLİNDİ: const { data: allVotes }... (Artık siteyi yavaşlatmıyoruz)
 
       const booksWithStats = allBooks.map(book => {
-        const totalViews = book.chapters.reduce((sum, c) => sum + (c.views || 0), 0);
+        const totalViews = book.chapters
+          .filter(chapter => !chapter.is_draft)
+          .reduce((sum, c) => sum + (c.views || 0), 0);
         
         // 👇 ARTIK HESAPLAMA YOK, DİREKT ALIYORUZ
         const totalVotes = book.total_votes || 0;

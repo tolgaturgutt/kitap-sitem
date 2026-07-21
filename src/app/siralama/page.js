@@ -15,7 +15,7 @@ async function fetchChapterViewsSince(startDate) {
   for (let from = 0; ; from += CHAPTER_VIEWS_PAGE_SIZE) {
     const { data, error } = await supabase
       .from('chapter_views')
-      .select(`chapter_id, created_at, chapters!inner (book_id, books!inner (id, title, cover_url, view_count, user_id, username, is_draft, profiles:user_id (username, email, role)))`)
+      .select(`chapter_id, created_at, chapters!inner (book_id, is_draft, books!inner (id, title, cover_url, view_count, user_id, username, is_draft, profiles:user_id (username, email, role)))`)
       .gte('created_at', startDate.toISOString())
       .order('created_at', { ascending: true })
       .range(from, from + CHAPTER_VIEWS_PAGE_SIZE - 1);
@@ -39,7 +39,7 @@ function rankBooksByViews(views, metricName) {
   views.forEach(item => {
     const book = item.chapters?.books;
 
-    if (!book || book.is_draft) return;
+    if (!book || item.chapters?.is_draft || book.is_draft) return;
 
     const current = booksById.get(book.id) || { ...book, [metricName]: 0 };
     current[metricName] += 1;
@@ -273,7 +273,7 @@ const ikiHaftaOnce = getLastWeekMonday();
           user_id, 
           username,
           is_draft,
-          chapters (views), 
+          chapters (views, is_draft),
           profiles:user_id (username, email,role)
         `)
         .eq('is_draft', false); // Taslakları gizle
@@ -282,8 +282,10 @@ const ikiHaftaOnce = getLastWeekMonday();
         // Javascript ile bölümleri toplayıp 'totalViews' hesaplıyoruz
         const calculatedBooks = allBooksRaw.map(book => {
            // Bölüm izlenmelerini topla
-           const totalViews = book.chapters 
-              ? book.chapters.reduce((sum, c) => sum + (c.views || 0), 0) 
+           const totalViews = book.chapters
+              ? book.chapters
+                  .filter(chapter => !chapter.is_draft)
+                  .reduce((sum, c) => sum + (c.views || 0), 0)
               : 0;
            
            // Profil eşleştirmesi (Yazar adı düzgün görünsün)

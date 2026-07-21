@@ -168,6 +168,8 @@ export default function Navbar() {
             .from('books')
             .select('id, title, cover_url, username, user_email, co_author_id, co_author_status, chapters!inner(id), profiles:user_id(username, email, role), co_author:profiles!co_author_id(username, email, role)')
             .ilike('title', `%${searchTerm}%`)
+            .eq('is_draft', false)
+            .eq('chapters.is_draft', false)
             .limit(5),
           supabase
             .from('profiles')
