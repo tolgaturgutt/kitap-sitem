@@ -175,10 +175,12 @@ export default function ProfilSayfasi() {
       setMyFollowersCount(cleanFollowers.length);
 
       // PANOLAR
+      const oneWeekAgo = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString();
       const { data: panos } = await supabase
         .from('panolar')
         .select('*, books(title, cover_url), chapters(id, title)')
         .eq('user_email', activeUser.email)
+        .gte('created_at', oneWeekAgo)
         .order('created_at', { ascending: false });
 
       const panosWithProfile = panos?.map(p => ({
@@ -515,7 +517,7 @@ export default function ProfilSayfasi() {
           ) : activeTab === 'panolar' ? (
             <div className="space-y-4 md:space-y-6">
               {myPanos.length === 0 ? (
-                <div className="text-center py-8 md:py-10 text-sm text-gray-500">Henüz hiç pano oluşturmamışsın.</div>
+                <div className="text-center py-8 md:py-10 text-sm text-gray-500">Son 1 haftada gösterilecek panon yok.</div>
               ) : (
                 myPanos.map(pano => (
                   <div

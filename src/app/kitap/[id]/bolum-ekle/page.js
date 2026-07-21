@@ -256,7 +256,8 @@ function findBannedWords(text) {
           content: censoredContent,
           order_no: sirasi,
           word_count: wordCount, // ✅ ARTIK KELİME SAYISI KAYDEDİLİYOR
-          is_draft: isDraft
+          is_draft: isDraft,
+          published_at: isDraft ? null : new Date().toISOString()
         }])
         .select()
         .single();

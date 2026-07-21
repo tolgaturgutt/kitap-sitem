@@ -186,10 +186,22 @@ export default function KitapDetay({ params }) {
     if (!chapter) return;
 
     const newDraftStatus = !chapter.is_draft;
-    const { error } = await supabase
-      .from('chapters')
-      .update({ is_draft: newDraftStatus })
-      .eq('id', chapterId);
+    let error = null;
+    let firstPublication = false;
+
+    if (newDraftStatus) {
+      const result = await supabase
+        .from('chapters')
+        .update({ is_draft: true })
+        .eq('id', chapterId);
+      error = result.error;
+    } else {
+      const result = await supabase.rpc('publish_chapter', {
+        target_chapter_id: Number(chapterId)
+      });
+      error = result.error;
+      firstPublication = result.data === true;
+    }
 
     if (error) {
       toast.error("Hata: " + error.message);
@@ -204,7 +216,11 @@ export default function KitapDetay({ params }) {
       if (newDraftStatus) {
         toast.success("📝 Bölüm taslağa alındı");
       } else {
-        toast.success("🌍 Bölüm yayına alındı");
+        toast.success(
+          firstPublication
+            ? "🌍 Bölüm yayınlandı, takipçilere bildirim gönderildi"
+            : "🌍 Bölüm yeniden yayına alındı"
+        );
       }
     }
   }

@@ -169,6 +169,11 @@ export default function PanoEkle() {
 
   function getPanoSaveErrorMessage(error) {
     const errorText = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
+
+    if (errorText.includes('pano_daily_limit_reached')) {
+      return 'Bugünkü 5 pano hakkın doldu. Yarın tekrar pano oluşturabilirsin.';
+    }
+
     const schemaNeedsUpdate =
       error?.code === '42703' ||
       error?.code === 'PGRST204' ||

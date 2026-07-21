@@ -75,6 +75,7 @@ export default function Navbar() {
   const mobileSearchRef = useRef(null);
 
   const [notifications, setNotifications] = useState([]);
+  const [isClearingNotifications, setIsClearingNotifications] = useState(false);
   const [invites, setInvites] = useState([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const notifRef = useRef(null);
@@ -316,7 +317,8 @@ export default function Navbar() {
     const { error } = await supabase
       .from('notifications')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('recipient_email', user.email);
 
     if (error) {
       toast.error('Silinemedi');
@@ -324,6 +326,27 @@ export default function Navbar() {
     } else {
       toast.success('Bildirim silindi');
     }
+  }
+
+  async function clearNotifications() {
+    if (!user || notifications.length === 0 || isClearingNotifications) return;
+
+    setIsClearingNotifications(true);
+    setNotifications([]);
+
+    const { error } = await supabase
+      .from('notifications')
+      .delete()
+      .eq('recipient_email', user.email);
+
+    if (error) {
+      toast.error('Bildirimler temizlenemedi');
+      setNotifications(await fetchNotifications(user.email));
+    } else {
+      toast.success('Tüm bildirimler temizlendi');
+    }
+
+    setIsClearingNotifications(false);
   }
 
   if (!mounted || hideNavbar) return null;
@@ -644,12 +667,24 @@ export default function Navbar() {
                           {notifications.length} bildirim
                         </p>
                       </div>
-                      <button
-                        onClick={() => setShowNotifs(false)}
-                        className="text-[10px] font-black text-gray-400 hover:text-red-600 transition-colors"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {(notifications.length > 0 || isClearingNotifications) && (
+                          <button
+                            type="button"
+                            onClick={clearNotifications}
+                            disabled={isClearingNotifications}
+                            className="rounded-lg border border-red-200 bg-white/80 px-2 py-1.5 text-[8px] font-black uppercase tracking-wide text-red-600 transition-colors hover:bg-red-600 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:bg-black/30"
+                          >
+                            {isClearingNotifications ? 'Temizleniyor...' : 'Bildirimleri Temizle'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setShowNotifs(false)}
+                          className="text-[10px] font-black text-gray-400 hover:text-red-600 transition-colors"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                     {/* --- YENİ: BEKLEYEN DAVETLER VİTRİNİ --- */}
                     {invites.length > 0 && (

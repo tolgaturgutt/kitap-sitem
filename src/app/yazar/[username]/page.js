@@ -131,10 +131,12 @@ export default function YazarProfili() {
         setBadgeStats(buildBadgeStats(b || [], badgeCounts));
 
         // --- PANOLARI ÇEK ---
+        const oneWeekAgo = new Date(Date.now() - (7 * 24 * 60 * 60 * 1000)).toISOString();
         const { data: authorPanos } = await supabase
           .from('panolar')
           .select('*, books(title, cover_url, is_draft), chapters(id, title, is_draft)')
           .eq('user_email', p.email)
+          .gte('created_at', oneWeekAgo)
           .order('created_at', { ascending: false });
 
         const publicPanos = authorPanos?.filter(pano =>
@@ -251,7 +253,12 @@ export default function YazarProfili() {
       setShowAddPano(false);
       toast.success("Pano paylaşıldı! 🚀");
     } else {
-      toast.error("Hata: " + error.message);
+      const errorText = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+      toast.error(
+        errorText.includes('pano_daily_limit_reached')
+          ? "Bugünkü 5 pano hakkın doldu. Yarın tekrar pano oluşturabilirsin."
+          : "Hata: " + error.message
+      );
     }
     setIsSubmitting(false);
   }
