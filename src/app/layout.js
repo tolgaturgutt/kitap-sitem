@@ -100,6 +100,7 @@ useEffect(() => {
     else if (pathname === "/profil") baslik = "Profilim | KitapLab";
     else if (pathname === "/arama") baslik = "Kitap Ara & Keşfet | KitapLab";
     else if (pathname === "/admin") baslik = "Yönetici Paneli | KitapLab";
+    else if (pathname === "/bakim") baslik = "Kısa Bir Bakım Molası | KitapLab";
     else if (pathname === "/kitap-ekle") baslik = "Yeni Kitap Yaz | KitapLab";
     else if (pathname.startsWith("/kitap-duzenle/")) baslik = "Kitap Düzenle | KitapLab";
     else if (pathname.startsWith("/yazar/")) baslik = "Yazar Profili | KitapLab";
@@ -113,7 +114,12 @@ useEffect(() => {
     document.title = baslik;
   }, [pathname]);
 
-  const hideNavbar = pathname === "/giris" || pathname === "/kayit" || pathname === "/yakinda";
+  const isMaintenancePage = pathname === "/bakim";
+  const hideNavbar =
+    pathname === "/giris" ||
+    pathname === "/kayit" ||
+    pathname === "/yakinda" ||
+    isMaintenancePage;
 
   return (
     <html lang="tr" suppressHydrationWarning>
@@ -141,16 +147,20 @@ useEffect(() => {
               },
             }}
           />
-          <PushSetup />
-          <BanKontrol />
-          <WarningSystem />
+          {!isMaintenancePage && <PushSetup />}
+          {!isMaintenancePage && <BanKontrol />}
+          {!isMaintenancePage && <WarningSystem />}
 
          {!hideNavbar && <Navbar />}
-          <DesktopSidebar />
+          {!isMaintenancePage && <DesktopSidebar />}
           <main className={!hideNavbar ? "pt-20 min-h-[100dvh] pb-16 md:pb-0" : "min-h-[100dvh]"}>
-            <RefreshWrapper>
-              {children}
-            </RefreshWrapper>
+            {isMaintenancePage ? (
+              children
+            ) : (
+              <RefreshWrapper>
+                {children}
+              </RefreshWrapper>
+            )}
           </main>
           {!hideNavbar && <Footer />}
           {!hideNavbar && <MobileNav />}

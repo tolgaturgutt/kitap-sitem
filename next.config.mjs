@@ -26,6 +26,10 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'supabase.kitaplab.com',
+      },
+      {
+        protocol: 'https',
         hostname: 'api.dicebear.com',
       },
     ],

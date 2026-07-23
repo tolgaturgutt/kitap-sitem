@@ -1,49 +1,56 @@
 import { NextResponse } from 'next/server';
 
+const MAINTENANCE_PATH = '/bakim';
+
 export default function proxy(request) {
   const { pathname } = request.nextUrl;
-  
-  // Site Bakım Modunda mı?
-  const isMaintenanceMode = false;
+  const maintenanceMode = process.env.MAINTENANCE_MODE?.trim().toLowerCase();
+  const isMaintenanceMode = maintenanceMode !== 'false';
 
-  // Yönetici Şifresi
-  const GIZLI_ANAHTAR = "kitaplab_x99_erisim"; 
-  
-  // 1. İZİNLİ GİRİŞ NOKTALARI (teknik dosyalar)
-  const isAllowedPath = 
-    pathname.startsWith('/_next') || 
-    pathname.includes('/api/') ||
-    pathname.includes('.') ||
-    pathname === '/yakinda'; // ← Yakında sayfası herkese açık
-
-  if (isAllowedPath) return NextResponse.next();
-
-  // 2. KİMLİK KONTROLLERİ (DAMGALAR)
-  
-  // A) Yönetici misin? (URL'den veya Cookie'den)
-  const hasAdminQuery = request.nextUrl.searchParams.get('access') === GIZLI_ANAHTAR;
-  const hasAdminCookie = request.cookies.get('admin_access')?.value === GIZLI_ANAHTAR;
-
-  // B) Davetiye ile girmiş normal üye misin?
-  const hasUserCookie = request.cookies.get('site_erisim')?.value === 'acik';
-
-  // 3. EĞER YÖNETİCİ VEYA ÜYE İSE GEÇİŞ İZNİ VER
-  if (hasAdminQuery || hasAdminCookie || hasUserCookie) {
-    const response = NextResponse.next();
-    
-    // Yönetici linkiyle geldiyse admin cookie'si ver
-    if (hasAdminQuery) {
-      response.cookies.set('admin_access', GIZLI_ANAHTAR, { path: '/', maxAge: 60 * 60 * 24 * 7 });
-    }
-    return response;
+  if (!isMaintenanceMode) {
+    return NextResponse.next();
   }
 
-  // 4. KİMSE DEĞİLSE VE BAKIM MODUNDAYSA -> YAKINDA SAYFASINA YÖNLENDIR
-  
+  const isTechnicalAsset =
+    pathname.startsWith('/_next/') ||
+    pathname === '/favicon.ico' ||
+    pathname === '/icon.png' ||
+    pathname.includes('.');
 
-  return NextResponse.next();
+  if (pathname === MAINTENANCE_PATH || isTechnicalAsset) {
+    return NextResponse.next();
+  }
+
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.json(
+      {
+        error: 'KitapLab kısa süreliğine bakımda.',
+        maintenance: true,
+      },
+      {
+        status: 503,
+        headers: {
+          'Cache-Control': 'no-store',
+          'Retry-After': '900',
+        },
+      }
+    );
+  }
+
+  const maintenanceUrl = request.nextUrl.clone();
+  maintenanceUrl.pathname = MAINTENANCE_PATH;
+  maintenanceUrl.search = '';
+
+  return NextResponse.rewrite(maintenanceUrl, {
+    status: 503,
+    headers: {
+      'Cache-Control': 'no-store',
+      'Retry-After': '900',
+      'X-Robots-Tag': 'noindex, nofollow',
+    },
+  });
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };
