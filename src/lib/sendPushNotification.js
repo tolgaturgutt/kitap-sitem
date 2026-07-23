@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { firebaseMessaging } from '@/lib/firebaseAdmin';
+import { getFirebaseMessaging } from '@/lib/firebaseAdmin';
 
 function getSupabaseAdmin() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -72,7 +72,7 @@ export async function sendPushToUserEmail({
     };
   }
 
-  const response = await firebaseMessaging.sendEachForMulticast({
+  const response = await getFirebaseMessaging().sendEachForMulticast({
     tokens,
     data: cleanData({
       ...data,
