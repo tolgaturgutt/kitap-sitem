@@ -21,57 +21,69 @@ export default function TumPanolar() {
 
   useEffect(() => {
     async function loadData() {
-      const { data: { user: activeUser } } = await supabase.auth.getUser();
-      setUser(activeUser);
-
-      // Admin kontrolü
-      const { data: admins } = await supabase.from('announcement_admins').select('user_email');
-      const emails = admins?.map(a => a.user_email) || [];
-      setAdminEmails(emails);
-      
-      if (activeUser && emails.includes(activeUser.email)) {
-        setIsAdmin(true);
-      }
-
-      // Son 24 saatin panoları
+      // Bağımsız istekleri aynı anda başlat; sayfanın üç ayrı ağ turu
+      // beklemesini engelle.
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
-      const { data: panosData } = await supabase
-        .from('panolar')
-        .select('*, books(title, cover_url, is_draft), chapters(id, title, is_draft)')
-        .gte('created_at', yesterday.toISOString())
-        .order('created_at', { ascending: false });
+      const [
+        { data: { session } },
+        { data: admins },
+        { data: panosData, error: panosError },
+      ] = await Promise.all([
+        supabase.auth.getSession(),
+        supabase.from('announcement_admins').select('user_email'),
+        supabase
+          .from('panolar')
+          .select('*, books(title, cover_url, is_draft), chapters(id, title, is_draft)')
+          .gte('created_at', yesterday.toISOString())
+          .order('created_at', { ascending: false }),
+      ]);
 
-      // Her pano için profil bilgisini ayrı çek (Modalda resim görünsün diye)
+      const activeUser = session?.user || null;
+      setUser(activeUser);
+
+      const emails = admins?.map(a => a.user_email) || [];
+      setAdminEmails(emails);
+      setIsAdmin(Boolean(activeUser && emails.includes(activeUser.email)));
+
+      if (panosError) throw panosError;
+
       const publicPanos = (panosData || []).filter(pano =>
         (!pano.book_id || (pano.books && !pano.books.is_draft)) &&
         (!pano.chapter_id || (pano.chapters && !pano.chapters.is_draft))
       );
 
       if (publicPanos.length > 0) {
-        const panosWithProfiles = await Promise.all(
-          publicPanos.map(async (pano) => {
-            const { data: profile } = await supabase
-              .from('profiles')
-              .select('username, avatar_url,role')
-              .eq('email', pano.user_email)
-              .single();
-            
-            return {
-              ...pano,
-              profiles: profile
-            };
-          })
+        const userEmails = [
+          ...new Set(publicPanos.map(pano => pano.user_email).filter(Boolean)),
+        ];
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('email, username, avatar_url, role')
+          .in('email', userEmails);
+
+        if (profilesError) throw profilesError;
+
+        const profilesByEmail = new Map(
+          (profiles || []).map(profile => [profile.email, profile])
         );
-        setPanos(panosWithProfiles);
+        setPanos(
+          publicPanos.map(pano => ({
+            ...pano,
+            profiles: profilesByEmail.get(pano.user_email) || null,
+          }))
+        );
       } else {
         setPanos([]);
       }
-      
-      setLoading(false);
     }
-    loadData();
+    loadData()
+      .catch(error => {
+        console.error('Panolar yüklenemedi:', error);
+        setPanos([]);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   // Listeden Silme Fonksiyonu (Kart üzerindeki buton için)

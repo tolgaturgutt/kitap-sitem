@@ -9,6 +9,10 @@ import Username from '@/components/Username';
 import PanoCarousel from '@/components/PanoCarousel';
 import BookCoverImage from '@/components/BookCoverImage';
 import { getAdminEmails } from '@/lib/admins';
+import {
+  BOOK_LIST_STATS_SELECT,
+  normalizeBookStat,
+} from '@/lib/bookStats';
 
 function Link(props) {
   return <NextLink prefetch={false} {...props} />;
@@ -24,16 +28,6 @@ function formatNumber(num) {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num;
-}
-
-// --- YARDIMCI: DİZİYİ RASTGELE KARIŞTIR ---
-function shuffleArray(array) {
-  const shuffled = [...array];
-  for (let i = shuffled.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-  }
-  return shuffled;
 }
 
 function DuyuruPaneli({ isAdmin }) {
@@ -433,247 +427,200 @@ export default function Home() {
   const [adminEmails, setAdminEmails] = useState([]);
   const [selectedPano, setSelectedPano] = useState(null);
   const [latestChapters, setLatestChapters] = useState([]);
-  const [topCategories, setTopCategories] = useState([]);
 
   useEffect(() => {
- async function fetchData() {
-      const tenDaysAgo = new Date();
-      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+    async function fetchData() {
+      try {
+        const [
+          emails,
+          { data: categoriesData, error: categoriesError },
+          { data: recentChaps, error: recentChaptersError },
+          { data: sessionData },
+          { data: editorsData, error: editorsError },
+          { data: topReadData, error: topReadError },
+          { data: featuredData, error: featuredError },
+        ] = await Promise.all([
+          getAdminEmails(),
+          supabase
+            .from('categories')
+            .select('name')
+            .order('priority', { ascending: false })
+            .limit(5),
+          supabase
+            .from('chapters')
+            .select('id, title, created_at, published_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, co_author_id, co_author_status, profiles:user_id(username, avatar_url, email,role), co_author:profiles!co_author_id(username, email, role))')
+            .eq('books.is_draft', false)
+            .eq('is_draft', false)
+            .order('published_at', { ascending: false, nullsFirst: false })
+            .limit(20),
+          supabase.auth.getSession(),
+          supabase
+            .from('book_list_stats')
+            .select(BOOK_LIST_STATS_SELECT)
+            .eq('is_editors_choice', true)
+            .order('total_views', { ascending: false })
+            .limit(10),
+          supabase
+            .from('book_list_stats')
+            .select(BOOK_LIST_STATS_SELECT)
+            .order('total_views', { ascending: false })
+            .limit(20),
+          supabase
+            .from('book_list_stats')
+            .select(BOOK_LIST_STATS_SELECT)
+            .order('interaction_score', { ascending: false })
+            .order('total_views', { ascending: false })
+            .limit(15),
+        ]);
 
-      // Kullanıcı kontrolü sürerken herkese açık verileri de bekletmeden başlat.
-      const publicDataRequest = Promise.all([
-        getAdminEmails(),
-        supabase
-          .from('categories')
-          .select('name')
-          .order('priority', { ascending: false })
-          .limit(5),
-        supabase
-          .from('chapters')
-          .select('id, title, created_at, published_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, co_author_id, co_author_status, profiles:user_id(username, avatar_url, email,role), co_author:profiles!co_author_id(username, email, role))')
-          .eq('books.is_draft', false)
-          .eq('is_draft', false)
-          .order('published_at', { ascending: false, nullsFirst: false })
-          .limit(20),
-        supabase
-          .from('books')
-          .select('id, title, cover_url, category, is_draft, is_completed, is_editors_choice, user_id, user_email, username, co_author_id, co_author_status, total_comment_count, total_votes, profiles:user_id(username, avatar_url, email, role), co_author:profiles!co_author_id(username, email, role), chapters(id, views, is_draft)'),
-        supabase
-          .from('comments')
-          .select('book_id')
-          .gte('created_at', tenDaysAgo.toISOString())
-          .limit(100),
-        supabase
-          .from('follows')
-          .select('book_id')
-          .gte('created_at', tenDaysAgo.toISOString())
-          .limit(100),
-        supabase
-          .from('chapter_votes')
-          .select('chapter_id')
-          .gte('created_at', tenDaysAgo.toISOString())
-          .limit(100),
-      ]);
+        const requestError =
+          categoriesError ||
+          recentChaptersError ||
+          editorsError ||
+          topReadError ||
+          featuredError;
+        if (requestError) throw requestError;
 
-      // Kullanıcı bilgisi yalnızca kişisel okuma geçmişini belirler.
-      const { data: { user: activeUser } } = await supabase.auth.getUser();
-      setUser(activeUser);
+        const activeUser = sessionData?.session?.user || null;
+        const topCategoryNames = categoriesData?.map(category => category.name) || [];
 
-      const historyRequest = activeUser
-        ? supabase
-            .from('reading_history')
-            .select(`
-              id,
-              book_id,
-              chapter_id,
-              updated_at,
-              books!reading_history_book_id_fkey1 (
+        setUser(activeUser);
+        setAdminEmails(emails);
+        setIsAdmin(Boolean(activeUser && emails.includes(activeUser.email)));
+        setEditorsChoiceBooks(
+          (editorsData || []).map(book => normalizeBookStat(book, emails))
+        );
+        setTopReadBooks(
+          (topReadData || []).map(book => normalizeBookStat(book, emails))
+        );
+        setFeaturedBooks(
+          (featuredData || []).map(book => normalizeBookStat(book, emails))
+        );
+
+        const recentChapsWithAdmin = (recentChaps || []).map(chapter => {
+          const bookOwnerEmail =
+            chapter.books?.profiles?.email || chapter.books?.user_email;
+          const hasAcceptedCoAuthor =
+            chapter.books?.co_author_id &&
+            chapter.books?.co_author_status === 'accepted' &&
+            chapter.books?.co_author;
+          const coAuthorEmail = chapter.books?.co_author?.email;
+
+          return {
+            ...chapter,
+            books: {
+              ...chapter.books,
+              username:
+                chapter.books?.profiles?.username || chapter.books?.username,
+              role: chapter.books?.profiles?.role,
+              co_author_name: hasAcceptedCoAuthor
+                ? chapter.books.co_author.username
+                : null,
+              co_author_role: hasAcceptedCoAuthor
+                ? chapter.books.co_author.role
+                : null,
+              co_author_is_admin: Boolean(
+                coAuthorEmail && emails.includes(coAuthorEmail)
+              ),
+            },
+            is_admin: emails.includes(bookOwnerEmail),
+          };
+        });
+        setLatestChapters(recentChapsWithAdmin);
+
+        const historyRequest = activeUser
+          ? supabase
+              .from('reading_history')
+              .select(`
                 id,
-                title,
-                cover_url,
-                total_comment_count,
-                total_votes,
-                profiles:user_id(username, avatar_url, email, role),
-                chapters (
+                book_id,
+                chapter_id,
+                updated_at,
+                books!reading_history_book_id_fkey1 (
                   id,
                   title,
-                  views
+                  cover_url,
+                  total_comment_count,
+                  total_votes,
+                  profiles:user_id(username, avatar_url, email, role),
+                  chapters (
+                    id,
+                    title,
+                    views
+                  )
                 )
-              )
-            `)
-            .eq('user_email', activeUser.email)
-            .order('updated_at', { ascending: false })
-            .limit(5)
-        : Promise.resolve({ data: [] });
+              `)
+              .eq('user_email', activeUser.email)
+              .order('updated_at', { ascending: false })
+              .limit(5)
+          : Promise.resolve({ data: [], error: null });
 
-      const [
-        [
-          emails,
-          { data: categoriesData },
-          { data: recentChaps },
-          { data: fetchedBooks, error: booksError },
-          { data: recentComments },
-          { data: recentFollows },
-          { data: recentVotes },
-        ],
-        { data: history },
-      ] = await Promise.all([publicDataRequest, historyRequest]);
+        const [
+          { data: categoryData, error: categoryBooksError },
+          { data: history, error: historyError },
+        ] = await Promise.all([
+          topCategoryNames.length
+            ? supabase.rpc('get_home_category_books', {
+                p_categories: topCategoryNames,
+                p_per_category: 10,
+              })
+            : Promise.resolve({ data: [], error: null }),
+          historyRequest,
+        ]);
 
-      setAdminEmails(emails);
-      setIsAdmin(Boolean(activeUser && emails.includes(activeUser.email)));
+        if (categoryBooksError || historyError) {
+          throw categoryBooksError || historyError;
+        }
 
-      if (booksError) {
-        setLoading(false);
-        return;
-      }
-
-      let allBooks = fetchedBooks;
-
-      const topCategoryNames = categoriesData?.map(c => c.name) || [];
-      setTopCategories(topCategoryNames);
-
-      if (activeUser) {
-        const historyWithChapters = (history || []).map((item) => {
-          const chapterData = item.books?.chapters?.find(c => c.id === item.chapter_id);
-          return {
-            ...item,
-            chapters: chapterData ? { id: chapterData.id, title: chapterData.title } : null
-          };
-        });
-
-        const historyWithStats = historyWithChapters?.map(item => {
-          if (!item.chapters) return null;
-          if (!item.books) return item;
-          
-          const book = item.books;
-          const totalViews = book.chapters?.reduce((sum, c) => sum + (c.views || 0), 0) || 0;
-          const totalVotes = book.total_votes || 0;
-
-          return {
-            ...item,
-            books: {
-              ...book,
-             username: book.profiles?.username || book.username,
-              role: book.profiles?.role, // 👈 EKLE
-              totalViews,
-              totalVotes, 
-              totalComments: book.total_comment_count || 0
-            }
-          };
-        }).filter(item => item !== null);
-        setContinueReading(historyWithStats || []);
-      }
-
-      const recentChapsWithAdmin = recentChaps?.map(c => {
-        const bookOwnerEmail = c.books?.profiles?.email || c.books?.user_email;
-        const hasAcceptedCoAuthor = c.books?.co_author_id && c.books?.co_author_status === 'accepted' && c.books?.co_author;
-        const coAuthorEmail = c.books?.co_author?.email;
-        return {
-          ...c,
-          books: {
-            ...c.books,
-            username: c.books.profiles?.username || c.books.username,
-            role: c.books.profiles?.role,
-            // ORTAK YAZAR VERİLERİ
-            co_author_name: hasAcceptedCoAuthor ? c.books.co_author.username : null,
-            co_author_role: hasAcceptedCoAuthor ? c.books.co_author.role : null,
-            co_author_is_admin: coAuthorEmail ? emails.includes(coAuthorEmail) : false,
-          },
-          is_admin: emails.includes(bookOwnerEmail)
-        };
-      }) || [];
-
-      setLatestChapters(recentChapsWithAdmin);
-
-      if (allBooks) {
-        allBooks = allBooks.filter(book => {
-          if (book.is_draft) return false;
-          const publishedChapters = book.chapters?.filter(c => c.id && !c.is_draft) || [];
-          return publishedChapters.length > 0;
-        });
-
-        allBooks = allBooks.map(book => {
-          const publishedChapters = book.chapters?.filter(c => c.id && !c.is_draft) || [];
-          const totalViews = publishedChapters.reduce((sum, c) => sum + (c.views || 0), 0);
-
-          // ✅ YENİ: Veritabanındaki hazır sayıyı kullan
-          const totalVotes = book.total_votes || 0;
-          
-          // ✅ YENİ: Veritabanındaki hazır sayıyı kullan
-          const totalComments = book.total_comment_count || 0;
-
-          const bookOwnerEmail = book.profiles?.email || book.user_email;
-
-       const hasAcceptedCoAuthor = book.co_author_id && book.co_author_status === 'accepted' && book.co_author;
-          const coAuthorEmail = book.co_author?.email;
-
-          return {
-            ...book,
-            username: book.profiles?.username || book.username,
-            role: book.profiles?.role,
-            is_admin: emails.includes(bookOwnerEmail),
-            // ORTAK YAZAR VERİLERİ
-            co_author_name: hasAcceptedCoAuthor ? book.co_author.username : null,
-            co_author_role: hasAcceptedCoAuthor ? book.co_author.role : null,
-            co_author_is_admin: coAuthorEmail ? emails.includes(coAuthorEmail) : false,
-            totalViews,
-            totalVotes,
-            totalComments
-          };
-        });
-      }
-
-      // İstatistikler (Trend Hesaplama - Son 10 gün)
-      const editorsPicks = allBooks?.filter(b => b.is_editors_choice).slice(0, 10);
-      setEditorsChoiceBooks(editorsPicks || []);
-
-      if (allBooks) {
-        const countBy = (items, getKey) => {
-          const counts = new Map();
-
-          (items || []).forEach(item => {
-            const key = getKey(item);
-            counts.set(key, (counts.get(key) || 0) + 1);
-          });
-
-          return counts;
-        };
-        const recentCommentsByBook = countBy(recentComments, item => item.book_id);
-        const recentFollowsByBook = countBy(recentFollows, item => item.book_id);
-        const recentVotesByChapter = countBy(recentVotes, item => item.chapter_id);
-
-        const scored = allBooks.map(b => {
-          // Trend algoritması (Sadece son 10 günün verisiyle puanlama)
-          const rVotesCount = (b.chapters || []).reduce(
-            (sum, chapter) => sum + (recentVotesByChapter.get(chapter.id) || 0),
-            0
-          );
-          const rCommentsCount = recentCommentsByBook.get(b.id) || 0;
-          const rFollowsCount = recentFollowsByBook.get(b.id) || 0;
-
-          // --- DÜZELTME 2: (b.totalViews) KISMINI SİLDİK ---
-          // Artık eski popüler kitaplar değil, son 10 günde etkileşim alanlar üste çıkacak.
-          // Takip etmek: 20 puan, Oy: 5 puan, Yorum: 3 puan
-          const score = (rFollowsCount * 20) + (rCommentsCount * 3) + (rVotesCount * 5);
-
-          return { ...b, interactionScore: score };
-        });
-
-        // Puanı 0 olanları listeden eleyebiliriz (İsteğe bağlı, şimdilik kalsın)
-        setFeaturedBooks(scored.sort((a, b) => b.interactionScore - a.interactionScore).slice(0, 15));
-
-        const mostRead = [...scored].sort((a, b) => b.totalViews - a.totalViews).slice(0, 20);
-        setTopReadBooks(mostRead);
-
-        const grouped = {};
-        topCategoryNames.forEach(cat => {
-          const categoryBooks = scored.filter(b => b.category === cat);
-          const shuffled = shuffleArray(categoryBooks);
-          grouped[cat] = shuffled.slice(0, 10);
+        const grouped = Object.fromEntries(
+          topCategoryNames.map(category => [category, []])
+        );
+        (categoryData || []).forEach(book => {
+          if (grouped[book.category]) {
+            grouped[book.category].push(normalizeBookStat(book, emails));
+          }
         });
         setBooksByCategory(grouped);
+
+        if (activeUser) {
+          const historyWithStats = (history || [])
+            .map(item => {
+              const chapterData = item.books?.chapters?.find(
+                chapter => chapter.id === item.chapter_id
+              );
+              if (!chapterData || !item.books) return null;
+
+              const book = item.books;
+              return {
+                ...item,
+                chapters: {
+                  id: chapterData.id,
+                  title: chapterData.title,
+                },
+                books: {
+                  ...book,
+                  username: book.profiles?.username || book.username,
+                  role: book.profiles?.role,
+                  totalViews:
+                    book.chapters?.reduce(
+                      (sum, chapter) => sum + (chapter.views || 0),
+                      0
+                    ) || 0,
+                  totalVotes: book.total_votes || 0,
+                  totalComments: book.total_comment_count || 0,
+                },
+              };
+            })
+            .filter(Boolean);
+          setContinueReading(historyWithStats);
+        } else {
+          setContinueReading([]);
+        }
+      } catch (error) {
+        console.error('Ana sayfa verileri yüklenemedi:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     fetchData();
   }, []);

@@ -5,6 +5,10 @@ import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import Username from '@/components/Username';
 import BookCoverImage from '@/components/BookCoverImage';
+import {
+  BOOK_LIST_STATS_SELECT,
+  normalizeBookStat,
+} from '@/lib/bookStats';
 // --- YARDIMCI: SAYI FORMATLAMA (1200 -> 1.2K) ---
 function formatNumber(num) {
   if (!num) return 0;
@@ -31,19 +35,24 @@ export default function Top100Page() {
 
 async function fetchBooks(currentOffset) {
     try {
-      // ✅ 1. 'total_votes' SÜTUNUNU EKLEDİM (DİKKAT)
-    let { data: newBooks } = await supabase
-        .from('books')
-        .select('*, total_comment_count, total_votes, chapters(id, views, is_draft), profiles:user_id(username, role), co_author:profiles!co_author_id(username, role)');
+      const pageEnd = Math.min(
+        currentOffset + LIMIT_PER_PAGE - 1,
+        MAX_BOOKS - 1
+      );
+      const {
+        data,
+        error,
+        count,
+      } = await supabase
+        .from('book_list_stats')
+        .select(BOOK_LIST_STATS_SELECT, { count: 'exact' })
+        .order('total_views', { ascending: false })
+        .order('id', { ascending: true })
+        .range(currentOffset, pageEnd);
 
-      // ✅ HAYALET FİLTRESİ
-      if (newBooks) {
-        newBooks = newBooks.filter(book => 
-          book.chapters && 
-          book.chapters.some(chapter => !chapter.is_draft) &&
-          !book.is_draft
-        );
-      }
+      if (error) throw error;
+
+      const newBooks = (data || []).map(book => normalizeBookStat(book));
 
       if (!newBooks || newBooks.length === 0) {
         setHasMore(false);
@@ -51,46 +60,6 @@ async function fetchBooks(currentOffset) {
         setLoadingMore(false);
         return;
       }
-
-      // ❌ ESKİ 'chapter_votes' ÇEKME KODU SİLİNDİ (Siteyi yavaşlatıyordu)
-
-    // --- VERİLERİ BİRLEŞTİR ---
-      newBooks = newBooks.map(book => {
-        const profile = book.profiles;
-        const displayUsername = profile?.username || book.username;
-        const displayRole = profile?.role;
-        
-        // YENİ: Ortak yazar onaylıysa bilgilerini hazırla
-        const hasAcceptedCoAuthor = book.co_author_id && book.co_author_status === 'accepted' && book.co_author;
-        
-        // ✅ 1. Toplam Yorum
-        const totalComments = book.total_comment_count || 0;
-
-        // ✅ 2. Toplam Beğeni (ARTIK VERİTABANINDAN GELİYOR - HIZLI)
-        const totalVotes = book.total_votes || 0;
-
-        // 3. Toplam Okunma
-        const totalViews = book.chapters
-          .filter(c => c.id && !c.is_draft)
-          .reduce((sum, c) => sum + (c.views || 0), 0);
-
-      return { 
-          ...book, 
-          username: displayUsername,
-          author_role: displayRole,
-          // --- ORTAK YAZAR VERİLERİ ---
-          co_author_name: hasAcceptedCoAuthor ? book.co_author.username : null,
-          co_author_role: hasAcceptedCoAuthor ? book.co_author.role : null,
-          totalComments,
-          totalVotes,
-          totalViews
-        };
-      });
-
-      // ... (Sıralama ve sayfalama kodları aynı) ...
-      
-      newBooks.sort((a, b) => b.totalViews - a.totalViews);
-      newBooks = newBooks.slice(currentOffset, currentOffset + LIMIT_PER_PAGE);
 
       setBooks(prev => {
         if (currentOffset === 0) return newBooks;
@@ -104,9 +73,8 @@ async function fetchBooks(currentOffset) {
         return combined;
       });
 
-      if (newBooks.length < LIMIT_PER_PAGE) {
-        setHasMore(false);
-      }
+      const cappedTotal = Math.min(count || 0, MAX_BOOKS);
+      setHasMore(currentOffset + newBooks.length < cappedTotal);
 
     } catch (error) {
       console.error('Hata:', error);
