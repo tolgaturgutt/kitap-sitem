@@ -26,6 +26,7 @@ export default function ClientRootLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const isInitialLoadRef = useRef(true);
 
   // ✅ anlık path'i ref'te tut
   const pathnameRef = useRef(pathname);
@@ -33,7 +34,38 @@ export default function ClientRootLayout({
     pathnameRef.current = pathname;
   }, [pathname]);
 
-// ✅ Back handler (Android exit, iOS toast)
+  useEffect(() => {
+    if (isInitialLoadRef.current) {
+      isInitialLoadRef.current = false;
+      return;
+    }
+
+    const ignoredPaths = ['/giris', '/kayit', '/bakim'];
+    if (ignoredPaths.some((ignored) => pathname.startsWith(ignored))) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const maybeShowInterstitial = async () => {
+      try {
+        const { showInterstitialIfReady } = await import('@/lib/admobHelper');
+
+        if (cancelled) return;
+        await showInterstitialIfReady();
+      } catch (error) {
+        console.error('[ClientRootLayout] interstitial hatası:', error);
+      }
+    };
+
+    maybeShowInterstitial();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  // ✅ Back handler (Android exit, iOS toast)
 useEffect(() => {
   if (!Capacitor.isNativePlatform()) return;
 
