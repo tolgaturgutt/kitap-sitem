@@ -66,24 +66,66 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
   useEffect(() => {
     const resetTimer = window.setTimeout(() => setComments([]), 0);
 
+    let cancelled = false;
+
     async function load() {
       const { data: { user: u } } = await supabase.auth.getUser();
-      setUser(u);
+      if (!cancelled) setUser(u);
 
       if (u) {
         const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', u.email).maybeSingle();
-        if (adminData) setIsAdmin(true);
+        if (adminData && !cancelled) setIsAdmin(true);
 
         if (bookId) {
           const { data: book } = await supabase.from('books').select('user_email').eq('id', bookId).single();
-          if (book && book.user_email === u.email) setIsOwner(true);
+          if (book && book.user_email === u.email && !cancelled) setIsOwner(true);
         }
       }
-      fetchComments();
+
+      await fetchComments();
     }
+
     load();
 
-    return () => window.clearTimeout(resetTimer);
+    // Auth state listener: güncel oturum değişikliklerinde `user`'ı anlık güncelle
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      const newUser = session?.user || null;
+      setUser(newUser);
+
+      if (!newUser) {
+        setIsAdmin(false);
+        setIsOwner(false);
+        return;
+      }
+
+      // Oturum açıldığında admin/owner durumlarını tekrar kontrol et
+      (async () => {
+        try {
+          const { data: adminData } = await supabase.from('announcement_admins').select('*').eq('user_email', newUser.email).maybeSingle();
+          if (adminData) setIsAdmin(true);
+
+          if (bookId) {
+            const { data: book } = await supabase.from('books').select('user_email').eq('id', bookId).single();
+            if (book && book.user_email === newUser.email) setIsOwner(true);
+          }
+
+          // Oturum açıldığında yorumları yeniden yükle ki input ve liste güncellensin
+          try {
+            await fetchComments();
+          } catch (e) {
+            console.error('[YorumAlani] fetchComments on login error:', e);
+          }
+        } catch (e) {
+          console.error('[YorumAlani] auth listener check error:', e);
+        }
+      })();
+    });
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(resetTimer);
+      authListener?.subscription?.unsubscribe();
+    };
   }, [bookId, fetchComments]);
 
   useEffect(() => {
