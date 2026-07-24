@@ -358,8 +358,8 @@ function findBannedWords(text) {
               )}
             </label>
             
-            {/* 🎨 FORMATLAMA TOOLBAR */}
-            <div className="mb-3 flex gap-2 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+            {/* 🎨 FORMATLAMA TOOLBAR (sticky) */}
+            <div className="mb-3 sticky top-24 z-40 flex gap-2 p-3 bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur rounded-lg border border-gray-200 dark:border-gray-700">
               <button
                 type="button"
                 onClick={() => formatText('bold')}
