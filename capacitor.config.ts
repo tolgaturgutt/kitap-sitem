@@ -11,6 +11,9 @@ const config: CapacitorConfig = {
     cleartext: true
   },
   plugins: {
+    AdMob: {
+      appId: 'ca-app-pub-9356201064551661~8341430531'
+    },
     LocalNotifications: {
       smallIcon: 'ic_stat_kitaplab_push_v3',
       iconColor: '#D71920'
