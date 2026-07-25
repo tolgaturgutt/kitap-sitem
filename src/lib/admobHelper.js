@@ -1,18 +1,21 @@
 import { Capacitor } from '@capacitor/core';
 
 const LAST_AD_TIME_KEY = 'lastAdTime';
-const INTERSTITIAL_COOLDOWN_MS = 900_000; // 15 dakika
+const INTERSTITIAL_COOLDOWN_MS = 60_000; // Test için 1 dakikaya düşürdüm (Normalde 15dk)
 
-// Use env AD unit if provided, otherwise use official AdMob test interstitial ID
-const INTERSTITIAL_AD_UNIT_ID =
-  process.env.NEXT_PUBLIC_ADMOB_INTERSTITIAL_ID ||
-  'ca-app-pub-3940256099942544/1033173712';
+// Resmi Google Test Interstitial ID'si
+const TEST_INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712';
 
-// Default to testing mode unless explicitly disabled by setting
-// NEXT_PUBLIC_ADMOB_IS_TESTING=false in the environment.
-const IS_TESTING = process.env.NEXT_PUBLIC_ADMOB_IS_TESTING === 'false' ? false : true;
+const INTERSTITIAL_AD_UNIT_ID = TEST_INTERSTITIAL_ID; // Şimdilik testi garantilemek için direkt test ID koydum
+
+const IS_TESTING = true; // Test modunu zorla aktif ettim
 
 let isAdMobInitialized = false;
+let isAdMobPreparing = false;
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export function getLastAdTime() {
   if (typeof window === 'undefined') return 0;
@@ -29,34 +32,59 @@ export function shouldShowInterstitial() {
   if (!Capacitor.isNativePlatform()) return false;
 
   const lastAdTime = getLastAdTime();
-  return Date.now() - lastAdTime >= INTERSTITIAL_COOLDOWN_MS;
+  const diff = Date.now() - lastAdTime;
+  console.log('[admobHelper] Süre kontrolü:', { diff, cooldown: INTERSTITIAL_COOLDOWN_MS });
+  return diff >= INTERSTITIAL_COOLDOWN_MS;
 }
 
 export async function showInterstitialIfReady() {
   if (typeof window === 'undefined') return false;
   if (!Capacitor.isNativePlatform()) return false;
-  if (!shouldShowInterstitial()) return false;
+  
+  // Test aşamasında süreyi bazen görmezden gelebiliriz ama şimdilik loglayalım
+  if (!shouldShowInterstitial()) {
+     console.log('[admobHelper] Bekleme süresi dolmadı.');
+     return false;
+  }
+  
+  if (isAdMobPreparing) return false;
 
+  isAdMobPreparing = true;
   try {
     const { AdMob } = await import('@capacitor-community/admob');
-    console.log('[admobHelper] initializing AdMob', {
+    console.log('[admobHelper] Reklam başlatılıyor...', {
       adId: INTERSTITIAL_AD_UNIT_ID,
-      isTesting: IS_TESTING,
-      initialized: isAdMobInitialized,
+      isTesting: IS_TESTING
     });
 
     if (!isAdMobInitialized) {
-      await AdMob.initialize();
+      await AdMob.initialize({
+        initializeForTesting: true,
+      });
       isAdMobInitialized = true;
-      await new Promise((resolve) => setTimeout(resolve, 150));
+      await sleep(1000);
     }
 
-    await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_UNIT_ID, isTesting: IS_TESTING });
-    await AdMob.showInterstitial();
-    setLastAdTime(Date.now());
-    return true;
+    try {
+      await AdMob.prepareInterstitial({ 
+        adId: INTERSTITIAL_AD_UNIT_ID, 
+        isTesting: IS_TESTING 
+      });
+      
+      await sleep(500); // Hazırlanması için kısa bir süre
+      
+      await AdMob.showInterstitial();
+      console.log('[admobHelper] Reklam başarıyla gösterildi');
+      setLastAdTime(Date.now());
+      return true;
+    } catch (error) {
+      console.error('[admobHelper] Reklam hazırlama/gösterme hatası:', error);
+      throw error;
+    }
   } catch (error) {
-    console.error('[admobHelper] Interstitial reklam gösterilemedi:', error);
+    console.error('[admobHelper] Kritik hata:', error);
     return false;
+  } finally {
+    isAdMobPreparing = false;
   }
 }

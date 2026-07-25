@@ -9,12 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^8.0.0",
     "@capacitor/android": "^8.0.0",
     "@capacitor/app": "^8.0.0",
     "@capacitor/cli": "^8.0.0",
     "@capacitor/core": "^8.0.0",
     "@capacitor/push-notifications": "^8.1.1",
-    "@capacitor-community/admob": "^5.0.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.110.0",
     "browser-image-compression": "^2.0.2",

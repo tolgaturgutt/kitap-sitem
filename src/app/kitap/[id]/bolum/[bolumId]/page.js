@@ -8,7 +8,8 @@ import { toast } from 'react-hot-toast';
 import { createChapterVoteNotification } from '@/lib/notifications';
 import Username from '@/components/Username';
 import Image from 'next/image';
-import { useSearchParams } from 'next/navigation'; // 👈 1. BUNU EKLE
+import { useSearchParams } from 'next/navigation';
+import { showInterstitialIfReady } from '@/lib/admobHelper'; // 👈 ADMOB EKLE
 
 function hasSearchParamValue(value) {
   return value !== null && value !== undefined && value !== '' && value !== 'null' && value !== 'undefined';
@@ -40,7 +41,14 @@ export default function BolumDetay({ params }) {
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const searchParams = useSearchParams(); // 👈 2. BUNU EKLE
+  const searchParams = useSearchParams();
+
+  // 👈 REKLAM GÖSTERME TETİKLEYİCİSİ
+  useEffect(() => {
+    if (!loading && data.chapter) {
+      showInterstitialIfReady();
+    }
+  }, [loading, data.chapter]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -112,7 +120,7 @@ export default function BolumDetay({ params }) {
 
           setIsAdmin(!!adminData);
         }
-        // YENİ: Ortak Yazar verilerini işle
+
         if (book?.co_author_id && book?.co_author_status === 'accepted' && book?.co_author) {
           setCoAuthorProfile(book.co_author);
 
@@ -130,9 +138,6 @@ export default function BolumDetay({ params }) {
           const hasViewed = localStorage.getItem(viewKey);
 
         if (!hasViewed) {
-            // 🛑 KİLİDİ ÖNCE VURUYORUZ!
-            // Kod daha veritabanına gitmeden "Bu okundu" diye işaretliyoruz.
-            // Böylece ikinci istek gelirse "Zaten okunmuş" deyip iptal ediyor.
             localStorage.setItem(viewKey, 'true');
 
             await supabase.rpc('increment_view_count', {
@@ -213,7 +218,6 @@ export default function BolumDetay({ params }) {
     };
   }, []);
 
-  // 👇 3. BU YENİ useEffect'İ EKLE
   useEffect(() => {
     if (loading || !data.chapter) return;
 
@@ -287,7 +291,6 @@ export default function BolumDetay({ params }) {
 
     return () => clearTimeout(timer);
   }, [loading, data.chapter, searchParams]);
-  // 👆 3. BURAYA KADAR EKLE
 
   const handleLike = async () => {
     if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
@@ -513,7 +516,6 @@ export default function BolumDetay({ params }) {
        {authorProfile && (
             <div className="mt-8 flex items-center justify-between gap-4 p-5 rounded-2xl bg-current/5 transition-all border border-current/10">
               <div className="flex items-center gap-3 md:gap-4 flex-1 min-w-0">
-                {/* 1. GRUP: ASIL YAZAR (PP + İSİM) */}
                 <Link href={authorLink} className="flex items-center gap-3 md:gap-4 min-w-0 group/author">
                   <div className={`w-12 h-12 rounded-full overflow-hidden shrink-0 border-2 border-transparent group-hover/author:border-red-600 transition-all ${readerSettings.theme.includes('bg-[#f4ecd8]')
                     ? 'bg-[#e8d9c3]'
@@ -558,7 +560,6 @@ export default function BolumDetay({ params }) {
                   <span className="text-[12px] opacity-40 font-black">&</span>
                 )}
 
-                {/* 2. GRUP: ORTAK YAZAR (İSİM + PP) */}
                 {coAuthorProfile && (
                   <Link 
                     href={`/yazar/${coAuthorProfile.username}`} 
@@ -621,7 +622,7 @@ export default function BolumDetay({ params }) {
 
             <div className="flex-1 overflow-hidden relative bg-gray-50 dark:bg-black/20">
               <YorumAlani
-                key={`paragraph-${activePara}`} // 🔥 Key ekle - paraId değişince yeniden mount olsun
+                key={`paragraph-${activePara}`}
                 type="paragraph"
                 targetId={bolumId}
                 bookId={id}
