@@ -1,10 +1,5 @@
--- Panolara ozel gorsel ve kitaptan bagimsiz pano destegi.
-alter table public.panolar
-  add column if not exists image_url text;
-
-alter table public.panolar
-  alter column book_id drop not null;
-
+-- Giris yapmis tum kullanicilar kendi panolarina ozel gorsel ekleyebilir.
+-- Kitabi olmayan kullanicilar gorsel ekleyerek kitaptan bagimsiz pano olusturabilir.
 create or replace function public.enforce_pano_admin_media_rules()
 returns trigger
 language plpgsql
@@ -46,13 +41,4 @@ begin
 end;
 $$;
 
-drop trigger if exists enforce_pano_admin_media_rules on public.panolar;
-
-create trigger enforce_pano_admin_media_rules
-before insert or update of user_email, book_id, chapter_id, image_url
-on public.panolar
-for each row
-execute function public.enforce_pano_admin_media_rules();
-
--- PostgREST schema cache'i hemen yenile.
 notify pgrst, 'reload schema';

@@ -633,7 +633,7 @@ export default function Home() {
         </div>
       )}
 
-      <div className={`${loading ? 'hidden' : ''} min-h-screen py-8 md:py-16 px-4 md:px-6 lg:px-16 bg-[#fafafa] dark:bg-black`}>
+      <div className={`${loading ? 'hidden' : ''} min-h-screen pt-0 pb-8 md:pt-3 md:pb-16 px-4 md:px-6 lg:px-16 bg-[#fafafa] dark:bg-black`}>
       {selectedPano && (
         <PanoModal
           selectedPano={selectedPano}

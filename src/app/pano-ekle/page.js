@@ -117,11 +117,9 @@ export default function PanoEkle() {
     b.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const isAdmin = user && adminEmails.includes(user.email);
-
   async function handlePanoImageUpload(e) {
     const file = e.target.files?.[0];
-    if (!file || !isAdmin) return;
+    if (!file || !user) return;
 
     if (!file.type.startsWith('image/')) {
       toast.error('Sadece görsel yükleyebilirsin!');
@@ -200,11 +198,7 @@ export default function PanoEkle() {
       toast.error('İçerik gerekli!');
       return;
     }
-    if (!isAdmin && !selectedBook) {
-      toast.error('Bir kitap seçmelisin!');
-      return;
-    }
-    if (isAdmin && !selectedBook && !panoImageUrl) {
+    if (!selectedBook && !panoImageUrl) {
       toast.error('Kitap seçmezsen bir pano görseli eklemelisin!');
       return;
     }
@@ -221,7 +215,7 @@ export default function PanoEkle() {
       chapter_id: selectedBook ? selectedChapter?.id || null : null
     };
 
-    if (isAdmin && panoImageUrl) {
+    if (panoImageUrl) {
       payload.image_url = panoImageUrl;
     }
 
@@ -292,8 +286,7 @@ export default function PanoEkle() {
             <p className="text-xs text-gray-400 mt-2">{content.length} karakter</p>
           </div>
 
-          {isAdmin && (
-            <div>
+          <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
                 Pano Görseli {selectedBook ? '(Opsiyonel)' : '*'}
               </label>
@@ -310,7 +303,7 @@ export default function PanoEkle() {
                     <BookCoverImage src={panoImageUrl} alt="Pano görseli" className="w-24 h-24 rounded-xl object-cover bg-gray-200 dark:bg-white/10" />
                     <div className="flex-1">
                       <p className="text-sm font-black dark:text-white">Görsel seçildi</p>
-                      <p className="text-xs text-gray-500 mt-1">Kitap seçmezsen pano bu görselle yayınlanır.</p>
+                      <p className="text-xs text-gray-500 mt-1">Panoda kitap kapağı yerine bu görsel gösterilir.</p>
                     </div>
                     <button
                       type="button"
@@ -327,18 +320,17 @@ export default function PanoEkle() {
                       {uploadingImage ? 'Yükleniyor...' : 'Tek görsel ekle'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      Sadece adminler kitapsız pano için görsel kullanabilir.
+                      Panonda kitap kapağı yerine kendi görselini kullanabilirsin.
                     </p>
                   </div>
                 )}
               </div>
-            </div>
-          )}
+          </div>
 
           {/* KİTAP SEÇİMİ */}
           <div className="relative">
             <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
-              Kitap Seç {isAdmin ? '(Opsiyonel)' : '*'} {selectedBook && '✔'}
+              Kitap Seç (Opsiyonel) {selectedBook && '✔'}
             </label>
             
             <div className="relative">
@@ -481,7 +473,7 @@ export default function PanoEkle() {
             <button
               type="submit"
               className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase text-sm shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50"
-              disabled={saving || uploadingImage || !title.trim() || !content.trim() || (!selectedBook && (!isAdmin || !panoImageUrl))}
+              disabled={saving || uploadingImage || !title.trim() || !content.trim() || (!selectedBook && !panoImageUrl)}
             >
               {saving ? 'Oluşturuluyor...' : '📋 Panoyu Yayınla'}
             </button>

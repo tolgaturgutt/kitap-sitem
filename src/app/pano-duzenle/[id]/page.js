@@ -28,7 +28,6 @@ export default function PanoDuzenle({ params }) {
   const [showBookDropdown, setShowBookDropdown] = useState(false);
   const [saving, setSaving] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
-  const [isAdminUser, setIsAdminUser] = useState(false);
   const [panoImageUrl, setPanoImageUrl] = useState('');
   const [panoImageTouched, setPanoImageTouched] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -58,7 +57,6 @@ export default function PanoDuzenle({ params }) {
       setAdminEmails(emails);
 
       const isAdmin = emails.includes(activeUser.email);
-      setIsAdminUser(isAdmin);
       const isOwner = pano.user_email === activeUser.email;
 
       if (!isOwner && !isAdmin) {
@@ -154,7 +152,7 @@ export default function PanoDuzenle({ params }) {
 
   async function handlePanoImageUpload(e) {
     const file = e.target.files?.[0];
-    if (!file || !isAdminUser) return;
+    if (!file || !user) return;
 
     if (!file.type.startsWith('image/')) {
       toast.error('Sadece görsel yükleyebilirsin!');
@@ -223,8 +221,7 @@ export default function PanoDuzenle({ params }) {
 
     if (!title.trim()) { toast.error('Başlık gerekli!'); return; }
     if (!content.trim()) { toast.error('İçerik gerekli!'); return; }
-    if (!isAdminUser && !selectedBook) { toast.error('Bir kitap seçmelisin!'); return; }
-    if (isAdminUser && !selectedBook && !panoImageUrl) {
+    if (!selectedBook && !panoImageUrl) {
       toast.error('Kitap seçmezsen bir pano görseli eklemelisin!');
       return;
     }
@@ -240,7 +237,7 @@ export default function PanoDuzenle({ params }) {
       updated_at: new Date()
     };
 
-    if (isAdminUser && (panoImageTouched || panoImageUrl || !selectedBook)) {
+    if (panoImageTouched || panoImageUrl || !selectedBook) {
       updatePayload.image_url = panoImageUrl || null;
     }
 
@@ -313,8 +310,7 @@ export default function PanoDuzenle({ params }) {
             <p className="text-xs text-gray-400 mt-2">{content.length} karakter</p>
           </div>
 
-          {isAdminUser && (
-            <div>
+          <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
                 Pano Görseli {selectedBook ? '(Opsiyonel)' : '*'}
               </label>
@@ -331,7 +327,7 @@ export default function PanoDuzenle({ params }) {
                     <BookCoverImage src={panoImageUrl} alt="Pano görseli" className="w-24 h-24 rounded-xl object-cover bg-gray-200 dark:bg-white/10" />
                     <div className="flex-1">
                       <p className="text-sm font-black dark:text-white">Görsel seçildi</p>
-                      <p className="text-xs text-gray-500 mt-1">Kitap seçmezsen pano bu görselle yayınlanır.</p>
+                      <p className="text-xs text-gray-500 mt-1">Panoda kitap kapağı yerine bu görsel gösterilir.</p>
                     </div>
                     <button
                       type="button"
@@ -351,18 +347,17 @@ export default function PanoDuzenle({ params }) {
                       {uploadingImage ? 'Yükleniyor...' : 'Tek görsel ekle'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      Sadece adminler kitapsız pano için görsel kullanabilir.
+                      Panonda kitap kapağı yerine kendi görselini kullanabilirsin.
                     </p>
                   </div>
                 )}
               </div>
-            </div>
-          )}
+          </div>
 
           {/* KİTAP SEÇİMİ */}
           <div className="relative">
             <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
-              Kitap Seç {isAdminUser ? '(Opsiyonel)' : '*'} {selectedBook && '✓'}
+              Kitap Seç (Opsiyonel) {selectedBook && '✓'}
             </label>
             
             <div className="relative">
@@ -483,7 +478,7 @@ export default function PanoDuzenle({ params }) {
             <button
               type="submit"
               className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase text-sm shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50"
-              disabled={saving || uploadingImage || !title.trim() || !content.trim() || (!selectedBook && (!isAdminUser || !panoImageUrl))}
+              disabled={saving || uploadingImage || !title.trim() || !content.trim() || (!selectedBook && !panoImageUrl)}
             >
               {saving ? 'Güncelleniyor...' : '💾 Panoyu Güncelle'}
             </button>

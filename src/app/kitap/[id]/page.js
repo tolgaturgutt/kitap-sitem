@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { useEffect, useRef, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -44,6 +44,23 @@ export default function KitapDetay({ params }) {
   const [loading, setLoading] = useState(true);
   const [reorderMode, setReorderMode] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
+  const [summaryOverflowing, setSummaryOverflowing] = useState(false);
+  const summaryRef = useRef(null);
+
+  useEffect(() => {
+    const summaryElement = summaryRef.current;
+    if (!summaryElement) return;
+
+    const measureSummary = () => {
+      setSummaryOverflowing(summaryElement.scrollHeight > 120);
+    };
+
+    measureSummary();
+    const resizeObserver = new ResizeObserver(measureSummary);
+    resizeObserver.observe(summaryElement);
+
+    return () => resizeObserver.disconnect();
+  }, [data.book?.summary]);
 
   useEffect(() => {
     async function fetchAll() {
@@ -546,6 +563,7 @@ export default function KitapDetay({ params }) {
 
             <div className="col-span-2 lg:col-span-1 mb-8 lg:mb-10 p-5 lg:p-8 bg-white dark:bg-white/5 rounded-2xl lg:rounded-[2rem] border dark:border-white/5">
   <p 
+    ref={summaryRef}
     className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed whitespace-pre-wrap transition-all duration-300"
     style={{ 
       fontFamily: 'Aptos, system-ui, -apple-system, sans-serif',
@@ -557,7 +575,7 @@ export default function KitapDetay({ params }) {
     {data.book.summary}
   </p>
   
-  {data.book.summary && data.book.summary.length > 300 && (
+  {data.book.summary && summaryOverflowing && (
     <button
       onClick={() => setSummaryExpanded(!summaryExpanded)}
       className="mt-4 text-[10px] font-black uppercase tracking-widest text-red-600 hover:text-red-700 transition-colors"
