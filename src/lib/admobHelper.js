@@ -12,6 +12,8 @@ const INTERSTITIAL_AD_UNIT_ID =
 // NEXT_PUBLIC_ADMOB_IS_TESTING=false in the environment.
 const IS_TESTING = process.env.NEXT_PUBLIC_ADMOB_IS_TESTING === 'false' ? false : true;
 
+let isAdMobInitialized = false;
+
 export function getLastAdTime() {
   if (typeof window === 'undefined') return 0;
   return Number(window.localStorage.getItem(LAST_AD_TIME_KEY) || '0');
@@ -37,11 +39,19 @@ export async function showInterstitialIfReady() {
 
   try {
     const { AdMob } = await import('@capacitor-community/admob');
-    console.log('[admobHelper] initializing AdMob', { adId: INTERSTITIAL_AD_UNIT_ID, isTesting: IS_TESTING });
+    console.log('[admobHelper] initializing AdMob', {
+      adId: INTERSTITIAL_AD_UNIT_ID,
+      isTesting: IS_TESTING,
+      initialized: isAdMobInitialized,
+    });
 
-    await AdMob.initialize();
+    if (!isAdMobInitialized) {
+      await AdMob.initialize();
+      isAdMobInitialized = true;
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+
     await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_UNIT_ID, isTesting: IS_TESTING });
-
     await AdMob.showInterstitial();
     setLastAdTime(Date.now());
     return true;
