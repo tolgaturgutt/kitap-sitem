@@ -10,6 +10,7 @@ import Image from 'next/image';
 
 import BookCoverImage from '@/components/BookCoverImage';
 
+// Bu yorum sadece commit için eklendi; çalışma mantığı değişmedi.
 export default function PanoModal({ 
   selectedPano, 
   onClose, 
@@ -561,3 +562,4 @@ export default function PanoModal({
     </div>
   );
 }
+//deneme yapıyoruz.
