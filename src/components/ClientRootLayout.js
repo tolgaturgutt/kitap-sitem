@@ -34,32 +34,28 @@ export default function ClientRootLayout({
   }, [pathname]);
 
   useEffect(() => {
-    // İlk açılışta da reklam gösterilsin (test amacıyla)
-
-    const ignoredPaths = ['/giris', '/kayit', '/bakim'];
-    if (ignoredPaths.some((ignored) => pathname.startsWith(ignored))) {
-      return;
-    }
+    if (!Capacitor.isNativePlatform()) return;
 
     let cancelled = false;
 
-    const maybeShowInterstitial = async () => {
+    const handleUserClick = async (event) => {
+      if (!event.isTrusted || cancelled) return;
+
       try {
         const { showInterstitialIfReady } = await import('@/lib/admobHelper');
-
-        if (cancelled) return;
-        await showInterstitialIfReady();
+        if (!cancelled) await showInterstitialIfReady();
       } catch (error) {
         console.error('[ClientRootLayout] interstitial hatası:', error);
       }
     };
 
-    maybeShowInterstitial();
+    document.addEventListener('click', handleUserClick, true);
 
     return () => {
       cancelled = true;
+      document.removeEventListener('click', handleUserClick, true);
     };
-  }, [pathname]);
+  }, []);
 
   // ✅ Back handler (Android exit, iOS toast)
 useEffect(() => {

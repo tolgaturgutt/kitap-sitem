@@ -9,7 +9,6 @@ import { createChapterVoteNotification } from '@/lib/notifications';
 import Username from '@/components/Username';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { showInterstitialIfReady } from '@/lib/admobHelper'; // 👈 ADMOB EKLE
 
 function hasSearchParamValue(value) {
   return value !== null && value !== undefined && value !== '' && value !== 'null' && value !== 'undefined';
@@ -42,13 +41,6 @@ export default function BolumDetay({ params }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const searchParams = useSearchParams();
-
-  // 👈 REKLAM GÖSTERME TETİKLEYİCİSİ
-  useEffect(() => {
-    if (!loading && data.chapter) {
-      showInterstitialIfReady();
-    }
-  }, [loading, data.chapter]);
 
   useEffect(() => {
     window.scrollTo(0, 0);

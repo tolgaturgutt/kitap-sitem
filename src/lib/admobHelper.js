@@ -1,50 +1,64 @@
 import { Capacitor } from '@capacitor/core';
 
-const LAST_AD_TIME_KEY = 'lastAdTime';
-const INTERSTITIAL_COOLDOWN_MS = 30_000; // Test için 30 saniye
+const LAST_AD_TIME_KEY = 'lastInterstitialAdTimeV2';
+const INTERSTITIAL_COOLDOWN_MS = 15 * 60 * 1000;
 
-// Google Resmi Test ID
-const TEST_ID = 'ca-app-pub-3940256099942544/1033173712';
+const INTERSTITIAL_AD_ID = 'ca-app-pub-9356201064551661/3044605897';
 
-let isAdMobInitialized = false;
+let initializationPromise = null;
+let interstitialPromise = null;
 
-export async function showInterstitialIfReady() {
-  if (!Capacitor.isNativePlatform()) {
-    console.log('[AdMob] Native platform değil, reklam atlanıyor.');
-    return false;
+function getInitializedAdMob() {
+  if (!initializationPromise) {
+    initializationPromise = (async () => {
+      const { AdMob } = await import('@capacitor-community/admob');
+      console.log('[AdMob] SDK başlatılıyor (production).');
+      await AdMob.initialize({
+        initializeForTesting: false,
+      });
+      return AdMob;
+    })().catch((error) => {
+      initializationPromise = null;
+      throw error;
+    });
   }
 
+  return initializationPromise;
+}
+
+async function loadAndShowInterstitial() {
   const lastAdTime = Number(localStorage.getItem(LAST_AD_TIME_KEY) || '0');
   if (Date.now() - lastAdTime < INTERSTITIAL_COOLDOWN_MS) {
-    console.log('[AdMob] Bekleme süresi dolmadı.');
+    console.log('[AdMob] Gösterim aralığı henüz dolmadı.');
     return false;
   }
 
   try {
-    const { AdMob } = await import('@capacitor-community/admob');
-    
-    if (!isAdMobInitialized) {
-      console.log('[AdMob] Initialize ediliyor...');
-      await AdMob.initialize({
-        initializeForTesting: true,
-      });
-      isAdMobInitialized = true;
-    }
-
-    console.log('[AdMob] Reklam hazırlanıyor: ', TEST_ID);
+    const AdMob = await getInitializedAdMob();
+    console.log('[AdMob] Geçiş reklamı hazırlanıyor (production).');
     await AdMob.prepareInterstitial({
-      adId: TEST_ID,
-      isTesting: true
+      adId: INTERSTITIAL_AD_ID,
+      isTesting: false,
     });
 
-    console.log('[AdMob] Reklam gösteriliyor...');
+    console.log('[AdMob] Geçiş reklamı gösteriliyor.');
     await AdMob.showInterstitial();
-    
     localStorage.setItem(LAST_AD_TIME_KEY, String(Date.now()));
     return true;
   } catch (error) {
-    console.error('[AdMob] KRİTİK HATA:', error);
-    // Hata detayını kullanıcıya toast ile gösterebiliriz (isteğe bağlı)
+    console.error('[AdMob] Geçiş reklamı gösterilemedi:', error);
     return false;
   }
+}
+
+export async function showInterstitialIfReady() {
+  if (!Capacitor.isNativePlatform()) return false;
+
+  if (!interstitialPromise) {
+    interstitialPromise = loadAndShowInterstitial().finally(() => {
+      interstitialPromise = null;
+    });
+  }
+
+  return interstitialPromise;
 }
