@@ -16,7 +16,7 @@ function getInitializedAdMob() {
       await AdMob.initialize({
         initializeForTesting: false,
       });
-      return AdMob;
+      return { AdMob };
     })().catch((error) => {
       initializationPromise = null;
       throw error;
@@ -34,7 +34,7 @@ async function loadAndShowInterstitial() {
   }
 
   try {
-    const AdMob = await getInitializedAdMob();
+    const { AdMob } = await getInitializedAdMob();
     console.log('[AdMob] Geçiş reklamı hazırlanıyor (production).');
     await AdMob.prepareInterstitial({
       adId: INTERSTITIAL_AD_ID,
