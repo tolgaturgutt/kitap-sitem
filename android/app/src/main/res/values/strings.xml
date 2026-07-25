@@ -4,4 +4,5 @@
     <string name="title_activity_main">KitapLab</string>
     <string name="package_name">com.kitaplab.app</string>
     <string name="custom_url_scheme">com.kitaplab.app</string>
+    <string name="admob_app_id">ca-app-pub-9356201064551661~8341430531</string>
 </resources>
