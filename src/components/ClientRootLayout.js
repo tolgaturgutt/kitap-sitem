@@ -12,6 +12,10 @@ import BanKontrol from "@/components/BanKontrol";
 import WarningSystem from "@/components/WarningSystem";
 import PushSetup from "@/components/PushSetup";
 import RefreshWrapper from "@/components/RefreshWrapper";
+import {
+  isInterstitialCooldownComplete,
+  showInterstitialIfReady,
+} from "@/lib/admobHelper";
 
 import { ThemeProvider } from "next-themes";
 import { Toaster, toast } from "react-hot-toast";
@@ -19,6 +23,22 @@ import { Toaster, toast } from "react-hot-toast";
 import { Capacitor } from "@capacitor/core";
 
 const inter = Inter({ subsets: ["latin"] });
+
+const AD_EXCLUDED_PATHS = [
+  "/giris",
+  "/kayit",
+  "/sifre-yenile",
+  "/auth",
+  "/bakim",
+  "/yakinda",
+];
+
+function isAdExcludedPath(pathname) {
+  return AD_EXCLUDED_PATHS.some(
+    (excludedPath) =>
+      pathname === excludedPath || pathname.startsWith(`${excludedPath}/`)
+  );
+}
 
 export default function ClientRootLayout({
   children,
@@ -37,25 +57,82 @@ export default function ClientRootLayout({
     if (!Capacitor.isNativePlatform()) return;
 
     let cancelled = false;
+    let navigationInProgress = false;
 
-    const handleUserClick = async (event) => {
-      if (!event.isTrusted || cancelled) return;
+    const handleNavigationClick = async (event) => {
+      if (
+        !event.isTrusted ||
+        event.defaultPrevented ||
+        event.button !== 0 ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.shiftKey ||
+        event.altKey ||
+        cancelled
+      ) {
+        return;
+      }
+
+      const target = event.target;
+      const anchor = target instanceof Element ? target.closest("a[href]") : null;
+      if (
+        !anchor ||
+        anchor.target === "_blank" ||
+        anchor.hasAttribute("download") ||
+        anchor.dataset.noInterstitial === "true"
+      ) {
+        return;
+      }
+
+      const destinationUrl = new URL(anchor.href, window.location.href);
+      if (
+        destinationUrl.origin !== window.location.origin ||
+        (destinationUrl.pathname === window.location.pathname &&
+          destinationUrl.search === window.location.search) ||
+        isAdExcludedPath(pathnameRef.current || "/") ||
+        isAdExcludedPath(destinationUrl.pathname)
+      ) {
+        return;
+      }
+
+      if (
+        cancelled ||
+        navigationInProgress ||
+        !isInterstitialCooldownComplete()
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      navigationInProgress = true;
 
       try {
-        const { showInterstitialIfReady } = await import('@/lib/admobHelper');
-        if (!cancelled) await showInterstitialIfReady();
+        await showInterstitialIfReady();
+
+        if (!cancelled) {
+          router.push(
+            `${destinationUrl.pathname}${destinationUrl.search}${destinationUrl.hash}`
+          );
+        }
       } catch (error) {
-        console.error('[ClientRootLayout] interstitial hatası:', error);
+        console.error("[ClientRootLayout] interstitial hatası:", error);
+        if (!cancelled) {
+          router.push(
+            `${destinationUrl.pathname}${destinationUrl.search}${destinationUrl.hash}`
+          );
+        }
+      } finally {
+        navigationInProgress = false;
       }
     };
 
-    document.addEventListener('click', handleUserClick, true);
+    document.addEventListener("click", handleNavigationClick, true);
 
     return () => {
       cancelled = true;
-      document.removeEventListener('click', handleUserClick, true);
+      document.removeEventListener("click", handleNavigationClick, true);
     };
-  }, []);
+  }, [router]);
 
   // ✅ Back handler (Android exit, iOS toast)
 useEffect(() => {

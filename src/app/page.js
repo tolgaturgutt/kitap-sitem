@@ -13,6 +13,7 @@ import {
   BOOK_LIST_STATS_SELECT,
   normalizeBookStat,
 } from '@/lib/bookStats';
+import { getCachedCategories } from '@/lib/categoryCache';
 
 function Link(props) {
   return <NextLink prefetch={false} {...props} />;
@@ -433,7 +434,7 @@ export default function Home() {
       try {
         const [
           emails,
-          { data: categoriesData, error: categoriesError },
+          categoriesData,
           { data: recentChaps, error: recentChaptersError },
           { data: sessionData },
           { data: editorsData, error: editorsError },
@@ -441,11 +442,7 @@ export default function Home() {
           { data: featuredData, error: featuredError },
         ] = await Promise.all([
           getAdminEmails(),
-          supabase
-            .from('categories')
-            .select('name')
-            .order('priority', { ascending: false })
-            .limit(5),
+          getCachedCategories(),
           supabase
             .from('chapters')
             .select('id, title, created_at, published_at, book_id, is_draft, books!inner(title, cover_url, username, is_draft, user_email, user_id, co_author_id, co_author_status, profiles:user_id(username, avatar_url, email,role), co_author:profiles!co_author_id(username, email, role))')
@@ -474,7 +471,6 @@ export default function Home() {
         ]);
 
         const requestError =
-          categoriesError ||
           recentChaptersError ||
           editorsError ||
           topReadError ||
@@ -482,7 +478,8 @@ export default function Home() {
         if (requestError) throw requestError;
 
         const activeUser = sessionData?.session?.user || null;
-        const topCategoryNames = categoriesData?.map(category => category.name) || [];
+        const topCategoryNames =
+          categoriesData.slice(0, 5).map(category => category.name);
 
         setUser(activeUser);
         setAdminEmails(emails);
@@ -527,6 +524,7 @@ export default function Home() {
           };
         });
         setLatestChapters(recentChapsWithAdmin);
+        setLoading(false);
 
         const historyRequest = activeUser
           ? supabase
@@ -627,13 +625,7 @@ export default function Home() {
 
   return (
     <>
-      {loading && (
-        <div className="py-40 flex justify-center items-center animate-pulse">
-          <div className="text-5xl font-black tracking-tighter"><span className="text-black dark:text-white">Kitap</span><span className="text-red-600">Lab</span></div>
-        </div>
-      )}
-
-      <div className={`${loading ? 'hidden' : ''} min-h-screen pt-0 pb-8 md:pt-3 md:pb-16 px-4 md:px-6 lg:px-16 bg-[#fafafa] dark:bg-black`}>
+      <div className="min-h-screen pt-0 pb-8 md:pt-3 md:pb-16 px-4 md:px-6 lg:px-16 bg-[#fafafa] dark:bg-black">
       {selectedPano && (
         <PanoModal
           selectedPano={selectedPano}
@@ -648,12 +640,28 @@ export default function Home() {
       <div className="max-w-7xl mx-auto">
         <DuyuruPaneli isAdmin={isAdmin} />
         <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} adminEmails={adminEmails} />
-        <RecentlyAddedChapters chapters={latestChapters} currentUser={user} />
-        <ContinueReadingCarousel books={continueReading} />
-        <EditorsChoiceSection books={editorsChoiceBooks} />
-        <TopReadRow books={topReadBooks} />
-        <CategoryRow title="Öne Çıkanlar" books={featuredBooks} isFeatured={true} />
-        {Object.entries(booksByCategory).map(([cat, books]) => <CategoryRow key={cat} title={cat} books={books} />)}
+        {loading ? (
+          <div className="space-y-6 py-8 animate-pulse" aria-label="Ana sayfa içeriği yükleniyor">
+            <div className="h-5 w-40 rounded-full bg-gray-200 dark:bg-white/10" />
+            <div className="flex gap-4 overflow-hidden">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-56 w-36 shrink-0 rounded-2xl bg-gray-200 dark:bg-white/10"
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <RecentlyAddedChapters chapters={latestChapters} currentUser={user} />
+            <ContinueReadingCarousel books={continueReading} />
+            <EditorsChoiceSection books={editorsChoiceBooks} />
+            <TopReadRow books={topReadBooks} />
+            <CategoryRow title="Öne Çıkanlar" books={featuredBooks} isFeatured={true} />
+            {Object.entries(booksByCategory).map(([cat, books]) => <CategoryRow key={cat} title={cat} books={books} />)}
+          </>
+        )}
       </div>
       </div>
     </>

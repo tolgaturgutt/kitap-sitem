@@ -1,24 +1,25 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
-import Image from 'next/image'; // 1. BURASI EKLENDİ
+import Image from 'next/image';
+import {
+  getCachedCategories,
+  getCachedCategoriesSnapshot,
+} from '@/lib/categoryCache';
 
 export default function KategoriPage() {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const initialCategories = getCachedCategoriesSnapshot();
+  const [categories, setCategories] = useState(initialCategories || []);
+  const [loading, setLoading] = useState(!initialCategories);
 
   useEffect(() => {
     async function fetchCategories() {
-      const { data } = await supabase
-        .from('categories')
-        .select('*')
-        .eq('is_active', true)
-        .order('priority', { ascending: false });
-      
-      setCategories(data || []);
-      setLoading(false);
+      try {
+        setCategories(await getCachedCategories());
+      } finally {
+        setLoading(false);
+      }
     }
     fetchCategories();
   }, []);
@@ -62,7 +63,6 @@ export default function KategoriPage() {
                   src={category.image_url} 
                   alt={category.name}
                   fill // Resmi kutuya tam sığdırır
-                  unoptimized
                   className="object-cover group-hover:scale-110 transition-transform duration-700"
                   sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw" // Telefondaysa küçük, PC'de büyük yükle emri
                 />

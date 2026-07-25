@@ -7,48 +7,19 @@ import Username from '@/components/Username';
 import BookCoverImage from '@/components/BookCoverImage';
 import { getAdminEmails } from '@/lib/admins';
 
-const CHAPTER_VIEWS_PAGE_SIZE = 1000;
-
-async function fetchChapterViewsSince(startDate) {
-  const allViews = [];
-
-  for (let from = 0; ; from += CHAPTER_VIEWS_PAGE_SIZE) {
-    const { data, error } = await supabase
-      .from('chapter_views')
-      .select(`chapter_id, created_at, chapters!inner (book_id, is_draft, books!inner (id, title, cover_url, view_count, user_id, username, is_draft, profiles:user_id (username, email, role)))`)
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: true })
-      .range(from, from + CHAPTER_VIEWS_PAGE_SIZE - 1);
-
-    if (error) {
-      console.error('Okuma verileri alınamadı:', error);
-      break;
-    }
-
-    allViews.push(...(data || []));
-
-    if (!data || data.length < CHAPTER_VIEWS_PAGE_SIZE) break;
-  }
-
-  return allViews;
-}
-
-function rankBooksByViews(views, metricName) {
-  const booksById = new Map();
-
-  views.forEach(item => {
-    const book = item.chapters?.books;
-
-    if (!book || item.chapters?.is_draft || book.is_draft) return;
-
-    const current = booksById.get(book.id) || { ...book, [metricName]: 0 };
-    current[metricName] += 1;
-    booksById.set(book.id, current);
-  });
-
-  return [...booksById.values()]
-    .sort((a, b) => b[metricName] - a[metricName])
-    .slice(0, 10);
+function normalizeRankedBook(book) {
+  return {
+    ...book,
+    profiles: {
+      username: book.author_username,
+      email: book.author_email,
+      role: book.author_role,
+    },
+    weekly_reads: Number(book.weekly_reads) || 0,
+    monthly_reads: Number(book.monthly_reads) || 0,
+    last_week_reads: Number(book.last_week_reads) || 0,
+    totalViews: Number(book.total_views) || 0,
+  };
 }
 
 function formatNumber(num) {
@@ -189,200 +160,115 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const admins = await getAdminEmails();
-      setAdminEmails(admins);
+      const now = new Date();
+      const day = now.getDay();
+      const dayOffset = day === 0 ? -6 : 1 - day;
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() + dayOffset);
+      weekStart.setHours(14, 0, 0, 0);
+      if (now < weekStart) weekStart.setDate(weekStart.getDate() - 7);
 
-      // ✅ TARIH HESAPLAMA FONKSİYONLARI
-function getThisWeekMonday() {
-  const now = new Date();
-  const day = now.getDay(); // 0=Pazar, 1=Pazartesi
-  const diff = day === 0 ? -6 : 1 - day; // Pazar ise 6 gün geriye git
-  
-  const monday = new Date(now);
-  monday.setDate(now.getDate() + diff);
-  monday.setHours(14, 0, 0, 0); // Saat 14:00
-  
-  // Eğer henüz bu haftanın Pazartesi 14:00'u gelmediyse, geçen haftayı al
-  if (now < monday) {
-    monday.setDate(monday.getDate() - 7);
-  }
-  
-  return monday;
-}
+      const lastWeekStart = new Date(weekStart);
+      lastWeekStart.setDate(weekStart.getDate() - 7);
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-function getLastWeekMonday() {
-  const thisMonday = getThisWeekMonday();
-  const lastMonday = new Date(thisMonday);
-  lastMonday.setDate(thisMonday.getDate() - 7);
-  return lastMonday;
-}
+      try {
+        const [
+          admins,
+          rankingsResult,
+          writersResult,
+          commentersResult,
+          championWriterResult,
+          championCommenterResult,
+        ] = await Promise.all([
+          getAdminEmails(),
+          supabase.rpc('get_leaderboard_book_rankings', {
+            p_week_start: weekStart.toISOString(),
+            p_month_start: monthStart.toISOString(),
+            p_last_week_start: lastWeekStart.toISOString(),
+            p_limit: 10,
+          }),
+          supabase.rpc('get_weekly_top_writers', {
+            start_date: weekStart.toISOString(),
+          }),
+          supabase.rpc('get_top_commenters', {
+            start_date: weekStart.toISOString(),
+          }),
+          supabase.rpc('get_period_top_writer', {
+            start_date: lastWeekStart.toISOString(),
+            end_date: weekStart.toISOString(),
+          }),
+          supabase.rpc('get_period_top_commenter', {
+            start_date: lastWeekStart.toISOString(),
+            end_date: weekStart.toISOString(),
+          }),
+        ]);
 
-function getThisMonthFirst() {
-  const now = new Date();
-  const first = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0);
-  
-  // Eğer henüz ayın 1'i gelmediyse, geçen ayı al
-  if (now.getDate() === 1 && now.getHours() === 0 && now.getMinutes() === 0) {
-    first.setMonth(first.getMonth() - 1);
-  }
-  
-  return first;
-}
+        const requestError =
+          rankingsResult.error ||
+          writersResult.error ||
+          commentersResult.error ||
+          championWriterResult.error ||
+          championCommenterResult.error;
+        if (requestError) throw requestError;
 
-// ✅ TARİHLERİ HESAPLA
-const birHaftaOnce = getThisWeekMonday();
-const birAyOnce = getThisMonthFirst();
-const ikiHaftaOnce = getLastWeekMonday();
-      // Haftalık, aylık ve geçen hafta liderini aynı gerçek okuma kayıtlarından üret.
-      const periodStart = new Date(
-        Math.min(ikiHaftaOnce.getTime(), birAyOnce.getTime())
-      );
-      const periodViews = await fetchChapterViewsSince(periodStart);
-      const thisWeekStart = birHaftaOnce.getTime();
-      const lastWeekStart = ikiHaftaOnce.getTime();
-      const monthStart = birAyOnce.getTime();
+        const rankings = rankingsResult.data || {};
+        const weeklyBooks = (rankings.weekly || []).map(normalizeRankedBook);
+        const monthlyBooks = (rankings.monthly || []).map(normalizeRankedBook);
+        const lastWeekBooks = (rankings.last_week || []).map(normalizeRankedBook);
+        const allTimeBooks = (rankings.all_time || []).map(normalizeRankedBook);
 
-      const weeklyBooks = rankBooksByViews(
-        periodViews.filter(view => new Date(view.created_at).getTime() >= thisWeekStart),
-        'weekly_reads'
-      );
-      const lastWeekBooks = rankBooksByViews(
-        periodViews.filter(view => {
-          const createdAt = new Date(view.created_at).getTime();
-          return createdAt >= lastWeekStart && createdAt < thisWeekStart;
-        }),
-        'weekly_reads'
-      );
-      const monthlyBooks = rankBooksByViews(
-        periodViews.filter(view => new Date(view.created_at).getTime() >= monthStart),
-        'monthly_reads'
-      );
+        setAdminEmails(admins);
+        setWeeklyTopBooks(weeklyBooks);
+        setMonthlyTopBooks(monthlyBooks);
+        setAllTimeTopBooks(allTimeBooks);
+        setTopWriters((writersResult.data || []).map(writer => ({
+          userId: writer.username,
+          username: writer.username,
+          email: writer.email,
+          avatar: writer.avatar_url,
+          role: writer.role,
+          totalWords: writer.total_words,
+        })));
+        setTopCommenters((commentersResult.data || []).map(user => ({
+          userId: user.username,
+          username: user.username,
+          email: user.email,
+          avatar: user.avatar_url,
+          role: user.role,
+          count: user.comment_count,
+        })));
 
-      setWeeklyTopBooks(weeklyBooks);
-      setMonthlyTopBooks(monthlyBooks);
-// Tüm zamanların en çok okunan kitapları (chapter_views'dan)
-// ✅ 1. TÜM ZAMANLAR (GARANTİ YÖNTEM: Top100 Mantığı)
-      // Kitapları ve bölümlerin izlenme sayılarını çekiyoruz
-      const { data: allBooksRaw } = await supabase
-        .from('books')
-        .select(`
-          id, 
-          title, 
-          cover_url, 
-          is_completed, 
-          user_id, 
-          username,
-          is_draft,
-          chapters (views, is_draft),
-          profiles:user_id (username, email,role)
-        `)
-        .eq('is_draft', false); // Taslakları gizle
-
-      if (allBooksRaw) {
-        // Javascript ile bölümleri toplayıp 'totalViews' hesaplıyoruz
-        const calculatedBooks = allBooksRaw.map(book => {
-           // Bölüm izlenmelerini topla
-           const totalViews = book.chapters
-              ? book.chapters
-                  .filter(chapter => !chapter.is_draft)
-                  .reduce((sum, c) => sum + (c.views || 0), 0)
-              : 0;
-           
-           // Profil eşleştirmesi (Yazar adı düzgün görünsün)
-           const displayUsername = book.profiles?.username || book.username;
-           
-           return { 
-             ...book, 
-             totalViews,
-             username: displayUsername 
-           };
+        const championWriter = championWriterResult.data?.[0];
+        const championCommenter = championCommenterResult.data?.[0];
+        const championBook = lastWeekBooks[0];
+        setLastWeekChampions({
+          writer: championWriter ? {
+            username: championWriter.username,
+            email: championWriter.email,
+            avatar: championWriter.avatar_url,
+            role: championWriter.role,
+            totalWords: championWriter.total_words,
+          } : null,
+          commenter: championCommenter ? {
+            username: championCommenter.username,
+            email: championCommenter.email,
+            avatar: championCommenter.avatar_url,
+            role: championCommenter.role,
+            count: championCommenter.count,
+          } : null,
+          book: championBook ? {
+            id: championBook.id,
+            title: championBook.title,
+            cover_url: championBook.cover_url,
+            weekly_reads: championBook.last_week_reads,
+          } : null,
         });
-
-        // En çok okunana göre sırala (Büyükten küçüğe)
-        calculatedBooks.sort((a, b) => b.totalViews - a.totalViews);
-
-        // İlk 10 tanesini al ve state'e at
-        setAllTimeTopBooks(calculatedBooks.slice(0, 10));
+      } catch (error) {
+        console.error('Sıralama verileri yüklenemedi:', error);
+      } finally {
+        setLoading(false);
       }
-
-      // Haftalık yazarlar
- // --- HAFTALIK EN ÇOK YAZANLAR (SQL - LİMİTSİZ) ---
-      const { data: rpcWriters, error: writerError } = await supabase
-        .rpc('get_weekly_top_writers', { 
-          start_date: birHaftaOnce.toISOString() 
-        });
-
-      if (writerError) console.error('Yazar verisi hatası:', writerError);
-
-      const formattedWriters = rpcWriters?.map(writer => ({
-        userId: writer.username, // Key niyetine username
-        username: writer.username,
-        email: writer.email,
-        avatar: writer.avatar_url,
-        role: writer.role,
-        totalWords: writer.total_words
-      })) || [];
-
-      setTopWriters(formattedWriters);
-
-      // Haftalık yorumcular
-     // --- EN ÇOK KONUŞANLAR (YENİ SİSTEM - LİMİTSİZ) ---
-const { data: topCommentersData, error: commentError } = await supabase
-  .rpc('get_top_commenters', { 
-    start_date: birHaftaOnce.toISOString() 
-  });
-
-      if (commentError) console.error('Yorum verisi hatası:', commentError);
-
-      const formattedCommenters = topCommentersData?.map(user => ({
-        userId: user.username, 
-        username: user.username,
-        email: user.email,
-        avatar: user.avatar_url,
-        role: user.role,
-        count: user.comment_count
-      })) || [];
-      
-      setTopCommenters(formattedCommenters);
-// --- GEÇEN HAFTANIN ŞAMPİYONLARI (SQL - LİMİTSİZ SİSTEM) ---
-      
-      // 1. En Çok Yazan (Geçen Hafta)
-      const { data: rpcChampionWriter } = await supabase.rpc('get_period_top_writer', {
-         start_date: ikiHaftaOnce.toISOString(),
-         end_date: birHaftaOnce.toISOString()
-      });
-
-      // 2. En Çok Yorum Yapan (Geçen Hafta)
-      const { data: rpcChampionCommenter } = await supabase.rpc('get_period_top_commenter', {
-         start_date: ikiHaftaOnce.toISOString(),
-         end_date: birHaftaOnce.toISOString()
-      });
-
-    setLastWeekChampions({
-        writer: rpcChampionWriter?.[0] ? {
-           username: rpcChampionWriter[0].username,
-           email: rpcChampionWriter[0].email,
-           avatar: rpcChampionWriter[0].avatar_url,
-           role: rpcChampionWriter[0].role, // 👈 DÜZELTİLDİ: Artık Yazarın (Writer) rolünü alıyor
-           totalWords: rpcChampionWriter[0].total_words
-        } : null,
-        
-       commenter: rpcChampionCommenter?.[0] ? {
-           username: rpcChampionCommenter[0].username,
-           email: rpcChampionCommenter[0].email,
-           avatar: rpcChampionCommenter[0].avatar_url,
-           role: rpcChampionCommenter[0].role, // 👈 BUNU EKLE
-           count: rpcChampionCommenter[0].count
-        } : null,
-        
-        book: lastWeekBooks[0] ? {
-           id: lastWeekBooks[0].id,
-           title: lastWeekBooks[0].title,
-           cover_url: lastWeekBooks[0].cover_url,
-           weekly_reads: lastWeekBooks[0].weekly_reads
-        } : null
-      });
-      setLoading(false);
     }
 
     fetchData();

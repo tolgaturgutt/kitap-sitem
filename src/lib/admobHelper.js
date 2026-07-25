@@ -8,6 +8,13 @@ const INTERSTITIAL_AD_ID = 'ca-app-pub-9356201064551661/3044605897';
 let initializationPromise = null;
 let interstitialPromise = null;
 
+export function isInterstitialCooldownComplete() {
+  if (!Capacitor.isNativePlatform()) return false;
+
+  const lastAdTime = Number(localStorage.getItem(LAST_AD_TIME_KEY) || '0');
+  return Date.now() - lastAdTime >= INTERSTITIAL_COOLDOWN_MS;
+}
+
 function getInitializedAdMob() {
   if (!initializationPromise) {
     initializationPromise = (async () => {
@@ -27,8 +34,7 @@ function getInitializedAdMob() {
 }
 
 async function loadAndShowInterstitial() {
-  const lastAdTime = Number(localStorage.getItem(LAST_AD_TIME_KEY) || '0');
-  if (Date.now() - lastAdTime < INTERSTITIAL_COOLDOWN_MS) {
+  if (!isInterstitialCooldownComplete()) {
     console.log('[AdMob] Gösterim aralığı henüz dolmadı.');
     return false;
   }
