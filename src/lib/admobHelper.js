@@ -2,9 +2,15 @@ import { Capacitor } from '@capacitor/core';
 
 const LAST_AD_TIME_KEY = 'lastAdTime';
 const INTERSTITIAL_COOLDOWN_MS = 900_000; // 15 dakika
+
+// Use env AD unit if provided, otherwise use official AdMob test interstitial ID
 const INTERSTITIAL_AD_UNIT_ID =
   process.env.NEXT_PUBLIC_ADMOB_INTERSTITIAL_ID ||
-  'ca-app-pub-xxxxxxxxxxxxxxxx/xxxxxxxxxx';
+  'ca-app-pub-3940256099942544/1033173712';
+
+// Default to testing mode unless explicitly disabled by setting
+// NEXT_PUBLIC_ADMOB_IS_TESTING=false in the environment.
+const IS_TESTING = process.env.NEXT_PUBLIC_ADMOB_IS_TESTING === 'false' ? false : true;
 
 export function getLastAdTime() {
   if (typeof window === 'undefined') return 0;
@@ -31,18 +37,16 @@ export async function showInterstitialIfReady() {
 
   try {
     const { AdMob } = await import('@capacitor-community/admob');
+    console.log('[admobHelper] initializing AdMob', { adId: INTERSTITIAL_AD_UNIT_ID, isTesting: IS_TESTING });
 
     await AdMob.initialize();
-    await AdMob.prepareInterstitial({
-      adId: INTERSTITIAL_AD_UNIT_ID,
-      isTesting: process.env.NODE_ENV !== 'production',
-    });
+    await AdMob.prepareInterstitial({ adId: INTERSTITIAL_AD_UNIT_ID, isTesting: IS_TESTING });
 
     await AdMob.showInterstitial();
     setLastAdTime(Date.now());
     return true;
   } catch (error) {
-    console.error('[admobHelper] Interstitial reklâm gösterilemedi:', error);
+    console.error('[admobHelper] Interstitial reklam gösterilemedi:', error);
     return false;
   }
 }

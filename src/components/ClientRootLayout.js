@@ -26,7 +26,6 @@ export default function ClientRootLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const isInitialLoadRef = useRef(true);
 
   // ✅ anlık path'i ref'te tut
   const pathnameRef = useRef(pathname);
@@ -35,10 +34,7 @@ export default function ClientRootLayout({
   }, [pathname]);
 
   useEffect(() => {
-    if (isInitialLoadRef.current) {
-      isInitialLoadRef.current = false;
-      return;
-    }
+    // İlk açılışta da reklam gösterilsin (test amacıyla)
 
     const ignoredPaths = ['/giris', '/kayit', '/bakim'];
     if (ignoredPaths.some((ignored) => pathname.startsWith(ignored))) {
