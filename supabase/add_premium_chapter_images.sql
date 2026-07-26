@@ -1,6 +1,9 @@
 -- Bolum icerigine satir ici gorsel ekleme yetkisi:
 -- yalnizca premium profiller ve duyuru adminleri.
 
+alter table public.profiles
+  add column if not exists premium_expires_at timestamptz;
+
 create or replace function public.can_use_chapter_images()
 returns boolean
 language sql
@@ -16,6 +19,10 @@ as $$
         from public.profiles profile
         where profile.id = auth.uid()
           and profile.role = 'premium'
+          and (
+            profile.premium_expires_at is null
+            or profile.premium_expires_at > now()
+          )
       )
       or exists (
         select 1

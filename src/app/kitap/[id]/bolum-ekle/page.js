@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import ChapterImageUploadButton from '@/components/ChapterImageUploadButton';
+import ChapterAudioUploadButton from '@/components/ChapterAudioUploadButton';
 import { sanitizeChapterHtml } from '@/lib/chapterContent';
 
 export default function BolumEkle({ params }) {
@@ -121,7 +122,10 @@ function findBannedWords(text) {
     
     // 2. HTML verisini al
     let html = e.clipboardData.getData('text/html');
-    html = html.replace(/<img[^>]*>/gi, '');
+    html = html
+      .replace(/<img[^>]*>/gi, '')
+      .replace(/<audio[^>]*>[\s\S]*?<\/audio>/gi, '')
+      .replace(/<audio[^>]*\/?>/gi, '');
 
     // Eğer HTML yoksa direkt düz metni yapıştır
     if (!html) {
@@ -295,8 +299,9 @@ function findBannedWords(text) {
     } catch (error) {
       console.error(error);
       toast.error(
-        `${error?.message || ''}`.includes('CHAPTER_IMAGES_REQUIRE_PREMIUM')
-          ? 'Bölüm görsellerini yalnızca premium kullanıcılar ve adminler değiştirebilir.'
+        `${error?.message || ''}`.includes('CHAPTER_MEDIA_REQUIRE_PREMIUM')
+          || `${error?.message || ''}`.includes('CHAPTER_IMAGES_REQUIRE_PREMIUM')
+          ? 'Bölüm görsel ve seslerini yalnızca premium kullanıcılar ve adminler değiştirebilir.'
           : 'Bir hata oluştu.'
       );
     } finally {
@@ -402,6 +407,11 @@ function findBannedWords(text) {
               </button>
 
               <ChapterImageUploadButton
+                bookId={id}
+                editorRef={editorRef}
+                onInserted={handleInput}
+              />
+              <ChapterAudioUploadButton
                 bookId={id}
                 editorRef={editorRef}
                 onInserted={handleInput}

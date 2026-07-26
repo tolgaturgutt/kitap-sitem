@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import ChapterImageUploadButton from '@/components/ChapterImageUploadButton';
+import ChapterAudioUploadButton from '@/components/ChapterAudioUploadButton';
 import { sanitizeChapterHtml } from '@/lib/chapterContent';
 
 export default function BolumDuzenle({ params }) {
@@ -118,7 +119,10 @@ export default function BolumDuzenle({ params }) {
 
     const plainText = e.clipboardData.getData('text/plain');
     let html = e.clipboardData.getData('text/html');
-    html = html.replace(/<img[^>]*>/gi, '');
+    html = html
+      .replace(/<img[^>]*>/gi, '')
+      .replace(/<audio[^>]*>[\s\S]*?<\/audio>/gi, '')
+      .replace(/<audio[^>]*\/?>/gi, '');
 
     if (!html) {
       document.execCommand("insertText", false, plainText);
@@ -311,8 +315,9 @@ export default function BolumDuzenle({ params }) {
     } catch (error) {
       console.error('Güncelleme hatası:', error);
       toast.error(
-        `${error?.message || ''}`.includes('CHAPTER_IMAGES_REQUIRE_PREMIUM')
-          ? 'Bölüm görsellerini yalnızca premium kullanıcılar ve adminler değiştirebilir.'
+        `${error?.message || ''}`.includes('CHAPTER_MEDIA_REQUIRE_PREMIUM')
+          || `${error?.message || ''}`.includes('CHAPTER_IMAGES_REQUIRE_PREMIUM')
+          ? 'Bölüm görsel ve seslerini yalnızca premium kullanıcılar ve adminler değiştirebilir.'
           : 'Bir hata oluştu.'
       );
     } finally {
@@ -426,6 +431,11 @@ export default function BolumDuzenle({ params }) {
               </button>
 
               <ChapterImageUploadButton
+                bookId={ids.kitapId}
+                editorRef={editorRef}
+                onInserted={handleInput}
+              />
+              <ChapterAudioUploadButton
                 bookId={ids.kitapId}
                 editorRef={editorRef}
                 onInserted={handleInput}

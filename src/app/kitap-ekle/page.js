@@ -2,14 +2,19 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import Username from '@/components/Username';
+import { usePremiumFeatureAccessState } from '@/hooks/usePremiumFeatureAccess';
+import { normalizeYouTubeUrl } from '@/lib/youtube';
 
 
 export default function KitapEkle() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isAudiobook = searchParams.get('tur') === 'sesli';
+  const { canUsePremiumFeatures, loading: premiumAccessLoading } = usePremiumFeatureAccessState();
   const [loading, setLoading] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -19,6 +24,7 @@ export default function KitapEkle() {
     title: '',
     category: '',
     summary: '',
+    trailer_url: '',
     cover_file: null
   });
 
@@ -57,6 +63,14 @@ export default function KitapEkle() {
       } 
     fetchCategories(); 
   }, []); 
+
+  useEffect(() => {
+    if (!isAudiobook || premiumAccessLoading || canUsePremiumFeatures) return;
+
+    toast.error('Sesli kitap yalnızca Premium üyeler ve adminler tarafından oluşturulabilir.');
+    router.replace('/premium');
+  }, [canUsePremiumFeatures, isAudiobook, premiumAccessLoading, router]);
+
 // Resim Sıkıştırma Fonksiyonu
   async function handleImageChange(event) {
     const file = event.target.files[0];
@@ -99,6 +113,10 @@ export default function KitapEkle() {
   }
   async function handleSubmit(e) {
     e.preventDefault();
+    if (isAudiobook && !canUsePremiumFeatures) {
+      toast.error('Sesli kitap yalnızca Premium üyeler ve adminler tarafından oluşturulabilir.');
+      return;
+    }
     if (!formData.cover_file) {
       toast.error("Lütfen kitabına bir kapak resmi yükle!");
       return; // Fonksiyonu burada bitir, aşağı inme.
@@ -113,6 +131,18 @@ export default function KitapEkle() {
       // 2. Profildeki Güncel Kullanıcı Adını Al
       const { data: profile } = await supabase.from('profiles').select('username').eq('id', user.id).single();
       const username = profile?.username || user.email.split('@')[0];
+      let trailerUrl = null;
+
+      if (formData.trailer_url.trim()) {
+        if (!canUsePremiumFeatures) {
+          throw new Error('PREMIUM_FEATURE_REQUIRED');
+        }
+
+        trailerUrl = normalizeYouTubeUrl(formData.trailer_url);
+        if (!trailerUrl) {
+          throw new Error('Geçerli bir YouTube video bağlantısı girmelisin.');
+        }
+      }
 
       let coverUrl = null;
 
@@ -159,10 +189,12 @@ export default function KitapEkle() {
           title: formData.title,
           category: formData.category,
           summary: formData.summary,
+          trailer_url: trailerUrl,
           cover_url: coverUrl,
           user_id: user.id,
           user_email: user.email,
           username: username,
+          book_type: isAudiobook ? 'audio' : 'text',
           co_author_id: coAuthorId,
           co_author_status: coAuthorStatus
         }
@@ -170,14 +202,20 @@ export default function KitapEkle() {
 
       if (error) throw error;
 
-      toast.success("Kitap başarıyla yayınlandı!");
+      toast.success(isAudiobook ? 'Sesli kitap oluşturuldu!' : "Kitap başarıyla yayınlandı!");
       
       setTimeout(() => {
         router.push(`/kitap/${data[0].id}`);
       }, 1000);
 
     } catch (error) {
-      toast.error(error.message || "Bir hata oluştu.");
+      toast.error(
+        `${error?.message || ''}`.includes('PREMIUM_FEATURE_REQUIRED')
+          ? isAudiobook
+            ? 'Sesli kitap yalnızca Premium üyeler ve adminler tarafından oluşturulabilir.'
+            : 'Kitap fragmanını yalnızca premium kullanıcılar ve adminler ekleyebilir.'
+          : error.message || "Bir hata oluştu."
+      );
     } finally {
       setLoading(false);
     }
@@ -188,15 +226,26 @@ export default function KitapEkle() {
       
       <div className="w-full max-w-2xl">
         <div className="text-center mb-10">
-          <h1 className="text-4xl font-black dark:text-white tracking-tighter mb-2">Yeni Kitap Yaz</h1>
-          <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Hayal gücünü serbest bırak</p>
+          {isAudiobook && (
+            <span className="mb-3 inline-flex rounded-full bg-amber-400 px-3 py-1 text-[9px] font-black uppercase tracking-widest text-black">
+              Premium
+            </span>
+          )}
+          <h1 className="text-4xl font-black dark:text-white tracking-tighter mb-2">
+            {isAudiobook ? 'Yeni Sesli Kitap Oluştur' : 'Yeni Kitap Yaz'}
+          </h1>
+          <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">
+            {isAudiobook ? 'Podcast tarzı sesli eserini oluştur' : 'Hayal gücünü serbest bırak'}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 p-8 md:p-12 rounded-3xl shadow-xl border dark:border-gray-800 space-y-6">
           
           {/* Kitap Adı */}
           <div>
-            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Kitap Adı</label>
+            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">
+              {isAudiobook ? 'Sesli Kitap Adı' : 'Kitap Adı'}
+            </label>
             <input 
               type="text" 
               required
@@ -279,6 +328,30 @@ export default function KitapEkle() {
             />
           </div>
 
+          {canUsePremiumFeatures && (
+            <div>
+              <label className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
+                YouTube Kitap Fragmanı
+                <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[8px] text-black">
+                  Premium
+                </span>
+              </label>
+              <input
+                type="url"
+                value={formData.trailer_url}
+                onChange={(e) => setFormData({
+                  ...formData,
+                  trailer_url: e.target.value,
+                })}
+                className="w-full rounded-2xl border bg-gray-50 p-4 text-sm outline-none transition-colors focus:border-red-600 dark:border-gray-800 dark:bg-black dark:text-white"
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+              <p className="mt-2 text-[10px] font-bold text-gray-400">
+                YouTube&apos;dan video bağlantısını kopyalayıp buraya yapıştır.
+              </p>
+            </div>
+          )}
+
           {/* Kapak Resmi Yükleme */}
           <div>
             <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Kapak Resmi</label>
@@ -308,7 +381,11 @@ export default function KitapEkle() {
             disabled={loading}
             className="w-full py-4 bg-black dark:bg-white text-white dark:text-black rounded-2xl font-black uppercase tracking-widest hover:bg-red-600 dark:hover:bg-red-600 dark:hover:text-white transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? 'Yayınlanıyor...' : 'Kitabı Yayınla'}
+            {loading
+              ? 'Oluşturuluyor...'
+              : isAudiobook
+                ? 'Sesli Kitabı Oluştur'
+                : 'Kitabı Yayınla'}
           </button>
 
         </form>

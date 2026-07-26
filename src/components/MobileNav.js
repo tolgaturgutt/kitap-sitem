@@ -84,7 +84,7 @@ return (
           onClick={() => setShowPlusMenu(false)}
         >
           <div
-            className="absolute left-1/2 -translate-x-1/2 w-[176px] bg-white dark:bg-[#141414] rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden animate-in slide-in-from-bottom-2 duration-200"
+            className="absolute left-1/2 -translate-x-1/2 w-[224px] bg-white dark:bg-[#141414] rounded-3xl shadow-2xl border border-black/5 dark:border-white/10 overflow-hidden animate-in slide-in-from-bottom-2 duration-200"
             style={{ bottom: plusMenuBottom, WebkitTextSizeAdjust: '100%' }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -109,6 +109,22 @@ return (
                   <NavIcon name="write" className="h-[17px] w-[17px]" />
                 </span>
                 <p className="font-black text-[11px] whitespace-nowrap text-gray-800 dark:text-white">Kitap Yaz</p>
+              </Link>
+
+              <Link
+                href="/kitap-ekle?tur=sesli"
+                onClick={() => setShowPlusMenu(false)}
+                className="flex items-center gap-3 p-3 rounded-2xl bg-amber-50 dark:bg-amber-500/10 hover:bg-amber-100 dark:hover:bg-amber-500/15 transition-all"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-400 text-black">
+                  🎙️
+                </span>
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2">
+                    <span className="font-black text-[11px] whitespace-nowrap text-gray-800 dark:text-white">Sesli Kitap Ekle</span>
+                    <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[6px] font-black uppercase text-black">Premium</span>
+                  </span>
+                </span>
               </Link>
             </div>
           </div>

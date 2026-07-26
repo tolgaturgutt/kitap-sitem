@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import Username from '@/components/Username';
 import BookCoverImage from '@/components/BookCoverImage';
 import { createLibraryAddNotification } from '@/lib/notifications';
+import { getYouTubeEmbedUrl } from '@/lib/youtube';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -16,6 +17,15 @@ function formatNumber(num) {
   if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num;
+}
+
+function formatAudioDuration(value) {
+  const totalSeconds = Number(value) || 0;
+  if (totalSeconds < 60) return `${totalSeconds} sn`;
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  return hours > 0 ? `${hours} sa ${minutes} dk` : `${minutes} dk`;
 }
 
 export default function KitapDetay({ params }) {
@@ -34,7 +44,8 @@ export default function KitapDetay({ params }) {
       follows: 0, 
       comments: 0,
       chapters: 0,
-      words: 0
+      words: 0,
+      duration: 0
     }, 
     isFollowing: false, 
     user: null,
@@ -162,6 +173,9 @@ export default function KitapDetay({ params }) {
       const totalWords = publishedChapters.reduce((acc, curr) => {
         return acc + (curr.word_count || 0);
       }, 0) || 0;
+      const totalDuration = publishedChapters.reduce((acc, curr) => {
+        return acc + (Number(curr.audio_duration_seconds) || 0);
+      }, 0) || 0;
 
       const { count: follows } = await supabase.from('follows').select('*', { count: 'exact', head: true }).eq('book_id', id);
      
@@ -185,7 +199,8 @@ export default function KitapDetay({ params }) {
           // ✅ Doğrudan books tablosundaki 'total_comment_count' verisini alıyoruz:
           comments: book.total_comment_count || 0, 
           chapters: publishedChapters.length,
-          words: totalWords
+          words: totalWords,
+          duration: totalDuration
         },
         isFollowing: following, 
         user,
@@ -391,6 +406,8 @@ export default function KitapDetay({ params }) {
   const isCoAuthor = data.user && data.book.co_author_id === data.user.id && data.book.co_author_status === 'accepted';
   // canEdit artık ikisini de kapsıyor
   const canEdit = isAuthor || isCoAuthor || data.isAdmin;
+  const isAudiobook = data.book.book_type === 'audio';
+  const trailerEmbedUrl = getYouTubeEmbedUrl(data.book.trailer_url);
 
   const visibleChapters = canEdit 
     ? data.chapters 
@@ -454,6 +471,11 @@ export default function KitapDetay({ params }) {
           {/* BİLGİLER */}
           <div className="contents lg:block lg:flex-1">
             <div className="col-start-2 row-start-1 min-w-0 space-y-2 lg:mb-6 lg:space-y-4">
+              {isAudiobook && (
+                <span className="inline-flex rounded-full bg-red-600 px-3 py-1 text-[8px] font-black uppercase tracking-widest text-white shadow-lg shadow-red-600/20">
+                  🎧 Sesli Kitap
+                </span>
+              )}
               <h1 className="min-w-0 break-words text-lg sm:text-2xl md:text-3xl lg:text-6xl font-black tracking-normal dark:text-white leading-tight uppercase">
                 {data.book.title}
               </h1>
@@ -556,8 +578,13 @@ export default function KitapDetay({ params }) {
               </div>
               
               <div className="text-center">
-                <p className="text-base sm:text-xl lg:text-3xl font-black dark:text-white mb-0.5 lg:mb-1">{formatNumber(data.stats.words)}</p>
-                <p className="text-[6px] sm:text-[7px] lg:text-[9px] uppercase text-gray-400 font-black tracking-[0.08em] lg:tracking-widest flex items-center justify-center gap-0.5 sm:gap-1 leading-tight whitespace-nowrap"><span className="hidden sm:inline">✍️</span> Kelime</p>
+                <p className="text-base sm:text-xl lg:text-3xl font-black dark:text-white mb-0.5 lg:mb-1">
+                  {isAudiobook ? formatAudioDuration(data.stats.duration) : formatNumber(data.stats.words)}
+                </p>
+                <p className="text-[6px] sm:text-[7px] lg:text-[9px] uppercase text-gray-400 font-black tracking-[0.08em] lg:tracking-widest flex items-center justify-center gap-0.5 sm:gap-1 leading-tight whitespace-nowrap">
+                  <span className="hidden sm:inline">{isAudiobook ? '🎧' : '✍️'}</span>
+                  {isAudiobook ? 'Toplam Süre' : 'Kelime'}
+                </p>
               </div>
             </div>
 
@@ -584,6 +611,28 @@ export default function KitapDetay({ params }) {
     </button>
   )}
 </div>
+            {trailerEmbedUrl && (
+              <section className="col-span-2 lg:col-span-1 mb-8 lg:mb-10 overflow-hidden rounded-2xl lg:rounded-[2rem] border border-red-600/15 bg-white shadow-xl dark:border-white/10 dark:bg-white/5">
+                <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-4 dark:border-white/10 lg:px-8">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-red-600 text-sm text-white">▶</span>
+                  <div>
+                    <h2 className="text-xs font-black uppercase tracking-widest dark:text-white">Kitap Fragmanı</h2>
+                    <p className="text-[9px] font-bold text-gray-400">Oynatmak için videoya dokun</p>
+                  </div>
+                </div>
+                <div className="aspect-video w-full bg-black">
+                  <iframe
+                    src={trailerEmbedUrl}
+                    title={`${data.book.title} kitap fragmanı`}
+                    className="h-full w-full"
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                  />
+                </div>
+              </section>
+            )}
             <div className="col-span-2 lg:col-span-1 flex flex-col sm:flex-row lg:flex-wrap gap-3 lg:gap-4">
                
                <button 
@@ -635,10 +684,10 @@ export default function KitapDetay({ params }) {
                    </button>
 
                    <Link 
-                     href={`/kitap/${id}/bolum-ekle`} 
+                     href={isAudiobook ? `/kitap/${id}/ses-bolumu-ekle` : `/kitap/${id}/bolum-ekle`}
                     className="inline-flex items-center justify-center w-full sm:w-auto px-8 lg:px-10 py-3.5 lg:py-4 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg shadow-blue-600/30 hover:shadow-blue-600/50 transition-all"
                    >
-                     + BÖLÜM EKLE
+                     {isAudiobook ? '+ SES BÖLÜMÜ EKLE' : '+ BÖLÜM EKLE'}
                    </Link>
                    
                    <Link 
@@ -664,7 +713,7 @@ export default function KitapDetay({ params }) {
         <div className="mb-32">
           <div className="flex items-center justify-between mb-10">
             <h2 className="text-3xl font-black dark:text-white uppercase tracking-tighter italic flex items-center gap-3">
-              📖 Eserin Bölümleri
+              {isAudiobook ? '🎙️ Ses Bölümleri' : '📖 Eserin Bölümleri'}
               <span className="text-sm text-gray-400 font-normal">({visibleChapters.length})</span>
             </h2>
             
@@ -686,7 +735,9 @@ export default function KitapDetay({ params }) {
             {visibleChapters.length === 0 ? (
               <div className="text-center py-20 bg-white dark:bg-white/5 rounded-[2rem] border dark:border-white/5">
                 <span className="text-5xl block mb-4">📝</span>
-                <p className="text-xl font-black text-gray-400">Henüz bölüm eklenmemiş</p>
+                <p className="text-xl font-black text-gray-400">
+                  {isAudiobook ? 'Henüz ses bölümü eklenmemiş' : 'Henüz bölüm eklenmemiş'}
+                </p>
               </div>
             ) : (
               visibleChapters.map((c, idx) => (
@@ -758,12 +809,12 @@ export default function KitapDetay({ params }) {
                               )}
                             </div>
                             <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">
-                              👁️ {c.views || 0} okuma
+                              {isAudiobook ? '🎧' : '👁️'} {c.views || 0} {isAudiobook ? 'dinleme' : 'okuma'}
                             </p>
                           </div>
                         </div>
                         <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">
-                          OKU →
+                          {isAudiobook ? 'DİNLE' : 'OKU'} →
                         </span>
                       </Link>
                       
@@ -780,7 +831,9 @@ export default function KitapDetay({ params }) {
                             {c.is_draft ? '🌍 Yayınla' : '📝 Taslağa Al'}
                           </button>
                           <Link 
-                            href={`/kitap/${id}/bolum-duzenle/${c.id}`}
+                            href={isAudiobook
+                              ? `/kitap/${id}/ses-bolumu-duzenle/${c.id}`
+                              : `/kitap/${id}/bolum-duzenle/${c.id}`}
                             className="text-[9px] font-black uppercase text-blue-600 hover:text-blue-700 transition-colors px-3 py-1 bg-blue-50 dark:bg-blue-950/20 rounded-full"
                           >
                             ✏️ Düzenle

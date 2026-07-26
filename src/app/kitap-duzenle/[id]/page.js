@@ -7,12 +7,16 @@ import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import Username from '@/components/Username';
 import BookCoverImage from '@/components/BookCoverImage';
+import { usePremiumFeatureAccess } from '@/hooks/usePremiumFeatureAccess';
+import { normalizeYouTubeUrl } from '@/lib/youtube';
 
 export default function KitapDuzenle({ params }) {
   const { id } = use(params);
+  const canUsePremiumFeatures = usePremiumFeatureAccess();
 
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
+  const [trailerUrl, setTrailerUrl] = useState('');
   const [category, setCategory] = useState('');
   const [categories, setCategories] = useState([]);
   const [currentCover, setCurrentCover] = useState(null);
@@ -80,6 +84,7 @@ export default function KitapDuzenle({ params }) {
 
       setTitle(book.title);
       setSummary(book.summary);
+      setTrailerUrl(book.trailer_url || '');
       setCategory(book.category || categoryNames[0] || '');
       setCurrentCover(book.cover_url);
       // --- YENİ: Ortak Yazar ve Admin Verilerini Çek ---
@@ -133,6 +138,15 @@ async function guncelle() {
       return;
     }
 
+    let normalizedTrailerUrl = null;
+    if (canUsePremiumFeatures && trailerUrl.trim()) {
+      normalizedTrailerUrl = normalizeYouTubeUrl(trailerUrl);
+      if (!normalizedTrailerUrl) {
+        toast.error('Geçerli bir YouTube video bağlantısı girmelisin.');
+        return;
+      }
+    }
+
     setUpdating(true);
     let finalCoverUrl = currentCover;
 
@@ -183,6 +197,10 @@ async function guncelle() {
         cover_url: finalCoverUrl
       };
 
+      if (canUsePremiumFeatures) {
+        updateData.trailer_url = normalizedTrailerUrl;
+      }
+
       // SADECE daha önceden bir ortak yazar yoksa ve KUTUYA yeni biri yazıldıysa işlem yap
       if (!initialCoAuthor && coAuthorInput.trim() !== "") {
         const { data: coUser } = await supabase
@@ -215,7 +233,11 @@ async function guncelle() {
       router.push(`/kitap/${id}`);
       router.refresh();
     } catch (error) {
-      toast.error('Güncelleme sırasında bir hata oluştu.');
+      toast.error(
+        `${error?.message || ''}`.includes('PREMIUM_FEATURE_REQUIRED')
+          ? 'Kitap fragmanını yalnızca premium kullanıcılar ve adminler değiştirebilir.'
+          : 'Güncelleme sırasında bir hata oluştu.'
+      );
       console.error(error);
     } finally {
       setUpdating(false);
@@ -340,6 +362,27 @@ async function guncelle() {
               className="w-full p-3 bg-white dark:bg-black border dark:border-gray-800 rounded-xl outline-none"
             ></textarea>
           </div>
+
+          {canUsePremiumFeatures && (
+            <div>
+              <label className="mb-2 flex items-center gap-2 text-sm font-bold opacity-70">
+                YouTube Kitap Fragmanı
+                <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[8px] font-black uppercase text-black opacity-100">
+                  Premium
+                </span>
+              </label>
+              <input
+                type="url"
+                value={trailerUrl}
+                onChange={(e) => setTrailerUrl(e.target.value)}
+                className="w-full rounded-xl border bg-white p-3 outline-none focus:border-blue-500 dark:border-gray-800 dark:bg-black"
+                placeholder="https://www.youtube.com/watch?v=..."
+              />
+              <p className="mt-2 text-[10px] font-bold text-gray-400">
+                Alanı boş bırakırsan mevcut fragman kaldırılır.
+              </p>
+            </div>
+          )}
 
           <div className="flex gap-3">
             <button

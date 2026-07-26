@@ -28,6 +28,24 @@ function isAllowedChapterImageUrl(src) {
   }
 }
 
+function isAllowedChapterAudioUrl(src) {
+  if (!src || typeof window === 'undefined') return false;
+
+  try {
+    const audioUrl = new URL(src, window.location.origin);
+    const supabaseUrl = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+
+    return (
+      audioUrl.origin === supabaseUrl.origin
+      && audioUrl.pathname.startsWith(
+        '/storage/v1/object/public/images/chapter-audio/'
+      )
+    );
+  } catch {
+    return false;
+  }
+}
+
 function unwrapElement(element) {
   const parent = element.parentNode;
   if (!parent) return;
@@ -45,7 +63,7 @@ export function sanitizeChapterHtml(html) {
   template.innerHTML = html;
 
   template.content
-    .querySelectorAll('script, style, iframe, object, embed, svg, form, input, button, video, audio, source')
+    .querySelectorAll('script, style, iframe, object, embed, svg, form, input, button, video, source')
     .forEach(element => element.remove());
 
   Array.from(template.content.querySelectorAll('*')).forEach(element => {
@@ -64,6 +82,24 @@ export function sanitizeChapterHtml(html) {
       element.setAttribute('alt', alt);
       element.setAttribute('data-chapter-image', 'true');
       element.setAttribute('loading', 'lazy');
+      return;
+    }
+
+    if (element.tagName === 'AUDIO') {
+      const src = element.getAttribute('src') || '';
+      if (!isAllowedChapterAudioUrl(src)) {
+        element.remove();
+        return;
+      }
+
+      Array.from(element.attributes).forEach(attribute => {
+        element.removeAttribute(attribute.name);
+      });
+      element.setAttribute('src', src);
+      element.setAttribute('controls', '');
+      element.setAttribute('preload', 'metadata');
+      element.setAttribute('data-chapter-audio', 'true');
+      element.setAttribute('aria-label', 'Bölüm ses kaydı');
       return;
     }
 
@@ -108,4 +144,3 @@ export function sanitizeChapterHtml(html) {
     .replace(/<div>/gi, '<br>')
     .replace(/<\/div>/gi, '');
 }
-

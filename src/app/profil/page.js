@@ -41,9 +41,10 @@ export default function ProfilSayfasi() {
   const [modalType, setModalType] = useState(null);
   const [selectedPano, setSelectedPano] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', instagram: '', role: '' });
+  const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', banner_url: '', instagram: '', role: '' });
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
+  const canUsePremiumFeatures = isAdmin || profileData.role === 'premium';
 
   // Listeler (Artık detaylı veriyi direkt çekiyoruz)
   const [followersWithProfiles, setFollowersWithProfiles] = useState([]);
@@ -71,6 +72,7 @@ export default function ProfilSayfasi() {
         username: profile?.username || currentUsername,
         bio: profile?.bio || '',
         avatar_url: profile?.avatar_url || '',
+        banner_url: profile?.banner_url || '',
         instagram: profile?.instagram || '',
         role: profile?.role
       });
@@ -210,7 +212,7 @@ export default function ProfilSayfasi() {
       }
     }
 
-    const { error } = await supabase.from('profiles').upsert({
+    const profileUpdate = {
       id: user.id,
       email: user.email,
       full_name: profileData.full_name,
@@ -219,7 +221,13 @@ export default function ProfilSayfasi() {
       avatar_url: profileData.avatar_url,
       bio: profileData.bio,
       updated_at: new Date()
-    });
+    };
+
+    if (canUsePremiumFeatures) {
+      profileUpdate.banner_url = profileData.banner_url || null;
+    }
+
+    const { error } = await supabase.from('profiles').upsert(profileUpdate);
 
     if (error) {
       console.log("HATA:", error);
@@ -247,6 +255,54 @@ export default function ProfilSayfasi() {
       setProfileData(prev => ({ ...prev, avatar_url: '' }));
     } else {
       toast.error("Hata oluştu");
+    }
+  }
+
+  async function handleBannerChange(event) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Lütfen bir resim dosyası seç.');
+      return;
+    }
+
+    const toastId = toast.loading('Kapak fotoğrafı hazırlanıyor...');
+
+    try {
+      const compressedFile = await imageCompression(file, {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 2000,
+        useWebWorker: false,
+        fileType: 'image/jpeg',
+        initialQuality: 0.82
+      });
+      const uniqueId = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const fileName = `profile-banners/${user.id}/${uniqueId}.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(fileName, compressedFile, {
+          cacheControl: '31536000',
+          contentType: 'image/jpeg',
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fileName);
+      setProfileData(prev => ({ ...prev, banner_url: publicUrl }));
+      toast.success('Kapak hazır. Kaydetmeyi unutma.', { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error(
+        error?.message?.includes('PREMIUM_FEATURE_REQUIRED')
+          ? 'Profil kapağı yalnızca Premium üyeler ve adminler içindir.'
+          : `Kapak yüklenemedi: ${error.message}`,
+        { id: toastId }
+      );
     }
   }
 
@@ -304,9 +360,25 @@ export default function ProfilSayfasi() {
 
       <div className="max-w-6xl mx-auto">
         {/* HEADER BÖLÜMÜ */}
-        <header className="mb-8 md:mb-12 bg-white dark:bg-white/5 p-6 md:p-10 rounded-3xl md:rounded-[4rem] border dark:border-white/5">
-          <div className="flex flex-col items-center md:flex-row md:items-center gap-6 md:gap-10">
-            <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-white/10 rounded-2xl md:rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0 mx-auto md:mx-0">
+        <header className="relative mb-8 md:mb-12 overflow-hidden bg-gradient-to-br from-red-700 via-red-600 to-black rounded-3xl md:rounded-[4rem] border dark:border-white/5">
+          <div className="absolute inset-0 overflow-hidden">
+            {profileData.banner_url && (
+              <Image
+                src={profileData.banner_url}
+                alt="Profil kapak fotoğrafı"
+                fill
+                sizes="(max-width: 768px) 100vw, 1152px"
+                className="object-cover"
+                unoptimized
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/80" />
+          </div>
+
+          <div className="relative h-36 md:h-52" />
+          <div className="relative p-6 pt-0 text-white md:p-10 md:pt-0">
+          <div className="flex flex-col items-center gap-5 md:gap-6">
+            <div className="relative z-10 -mt-12 md:-mt-16 w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-zinc-900 rounded-2xl md:rounded-[2.5rem] border-4 border-white dark:border-zinc-950 shadow-xl overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0 mx-auto">
               {profileData.avatar_url && profileData.avatar_url.includes('http') ? (
                 <img src={profileData.avatar_url} className="w-full h-full object-cover" alt="" />
               ) : (
@@ -314,16 +386,16 @@ export default function ProfilSayfasi() {
               )}
             </div>
 
-            <div className="flex-1 w-full">
+            <div className="w-full">
               {!isEditing ? (
                 <>
-                  <div className="flex flex-col md:flex-row md:items-end gap-2 md:gap-4 mb-2 justify-center md:justify-start">
-                    <h1 className="text-2xl md:text-3xl font-black uppercase dark:text-white leading-none text-center md:text-left">
+                  <div className="flex flex-col items-center gap-2 md:gap-4 mb-2 justify-center">
+                    <h1 className="text-2xl md:text-3xl font-black uppercase dark:text-white leading-none text-center">
                       {profileData.full_name || "İsim Soyisim"}
                     </h1>
                   </div>
 
-                  <div className="flex justify-center md:justify-start mb-3 md:mb-4">
+                  <div className="flex justify-center mb-3 md:mb-4">
                     <Username
                       username={profileData.username}
                       isAdmin={isAdmin}
@@ -332,7 +404,7 @@ export default function ProfilSayfasi() {
                     />
                   </div>
 
-                  <div className="flex flex-wrap gap-2 justify-center md:justify-start">
+                  <div className="flex flex-wrap gap-2 justify-center">
                     <button
                       onClick={() => setIsEditing(true)}
                       className="px-4 md:px-6 py-2 bg-gray-100 dark:bg-white/5 rounded-full text-[9px] md:text-[10px] font-black uppercase text-gray-500 hover:text-red-600 transition-all"
@@ -352,6 +424,36 @@ export default function ProfilSayfasi() {
                 </>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 animate-in fade-in zoom-in-95 duration-200">
+                  {canUsePremiumFeatures && (
+                    <div className="md:col-span-2 mb-2 p-4 bg-amber-50 dark:bg-amber-500/5 rounded-2xl md:rounded-3xl border border-dashed border-amber-300 dark:border-amber-500/30 text-center relative group hover:bg-amber-100 dark:hover:bg-amber-500/10 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleBannerChange}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      />
+                      <span className="text-xl md:text-2xl mb-1 block">🖼️</span>
+                      <p className="text-[9px] md:text-[10px] font-black uppercase text-amber-700 dark:text-amber-400">
+                        Profil Kapak Fotoğrafını Değiştir
+                      </p>
+                      <p className="mt-1 text-[8px] font-bold uppercase tracking-widest text-amber-600/60">
+                        Premium özellik
+                      </p>
+                      {profileData.banner_url && (
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setProfileData(prev => ({ ...prev, banner_url: '' }));
+                          }}
+                          className="relative z-20 mt-3 text-[9px] font-black uppercase text-red-600 hover:underline"
+                        >
+                          Kapağı Kaldır
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   <div className="md:col-span-2 mb-2 p-4 bg-gray-50 dark:bg-white/5 rounded-2xl md:rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 text-center relative group cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
 
                     <input
@@ -451,7 +553,7 @@ export default function ProfilSayfasi() {
                 </div>
               )}
 
-              <div className="flex justify-center md:justify-start gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6 w-full">
+              <div className="flex justify-center gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6 w-full">
                 <div className="text-center"><p className="text-xl md:text-2xl font-black">{myBooks.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40">Eser</p></div>
                 <div className="text-center"><p className="text-xl md:text-2xl font-black text-red-600">{formatNumber(totalViews)}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40">Okunma</p></div>
 
@@ -462,6 +564,7 @@ export default function ProfilSayfasi() {
                 <button onClick={() => setModalType('following')} className="text-center outline-none"><p className="text-xl md:text-2xl font-black">{followedAuthorsCount}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 underline decoration-red-600/20">Takip</p></button>
               </div>
             </div>
+          </div>
           </div>
         </header>
 

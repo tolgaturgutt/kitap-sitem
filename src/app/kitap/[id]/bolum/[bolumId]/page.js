@@ -10,6 +10,7 @@ import Username from '@/components/Username';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { sanitizeChapterHtml } from '@/lib/chapterContent';
+import PodcastAudioPlayer from '@/components/PodcastAudioPlayer';
 
 function hasSearchParamValue(value) {
   return value !== null && value !== undefined && value !== '' && value !== 'null' && value !== 'undefined';
@@ -403,6 +404,7 @@ export default function BolumDetay({ params }) {
   const authorLink = user && authorProfile?.email === user.email
     ? '/profil'
     : `/yazar/${authorProfile?.username || data.book?.username}`;
+  const isAudiobook = data.book?.book_type === 'audio';
 
   return (
     <div className="min-h-screen bg-[#fcfcfc] dark:bg-[#080808]">
@@ -411,10 +413,12 @@ export default function BolumDetay({ params }) {
         <Link href={`/kitap/${id}`} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-all">
           ← Geri
         </Link>
-        <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600">AYARLAR</button>
+        {!isAudiobook && (
+          <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600">AYARLAR</button>
+        )}
       </nav>
 
-      {isSettingsOpen && (
+      {!isAudiobook && isSettingsOpen && (
         <div className="fixed top-32 left-1/2 -translate-x-1/2 z-[60] w-[85%] max-w-md bg-white dark:bg-gray-900 border dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-200">
           <div className="flex justify-between items-center mb-8"><span className="text-[9px] font-black uppercase tracking-widest opacity-40">Okuma Ayarları</span><button onClick={() => setIsSettingsOpen(false)}>✕</button></div>
           <div className="space-y-8">
@@ -432,62 +436,74 @@ export default function BolumDetay({ params }) {
       )}
 
       <div className="flex justify-center min-h-screen relative">
-        <main className={`w-full max-w-2xl pt-48 pb-20 px-6 md:px-8 shrink-0 transition-colors duration-500 ${readerSettings.theme}`}>
+        <main className={`w-full max-w-2xl pt-48 pb-20 px-6 md:px-8 shrink-0 transition-colors duration-500 ${
+          isAudiobook ? 'bg-[#0b0b0b] text-white' : readerSettings.theme
+        }`}>
           <header 
-            className="mb-24 text-center select-none"
+            className={`${isAudiobook ? 'mb-10' : 'mb-24'} text-center select-none`}
             onCopy={(e) => e.preventDefault()}
             onContextMenu={(e) => e.preventDefault()}
           >
             <h1 className={`text-3xl md:text-5xl ${readerSettings.fontFamily} tracking-tight mb-4`}>{data.chapter?.title}</h1>
           </header>
 
-          <article 
-            className={`${readerSettings.fontFamily} leading-[2.1] select-none`} 
-            style={{ fontSize: `${readerSettings.fontSize}px` }}
-            onCopy={(e) => e.preventDefault()}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            {paragraphs.map((para, i) => {
-              const paraId = i.toString();
-              const count = paraCommentCounts[paraId] || 0;
+          {isAudiobook ? (
+            <PodcastAudioPlayer
+              src={data.chapter?.audio_url}
+              title={data.chapter?.title}
+              bookTitle={data.book?.title}
+              coverUrl={data.book?.cover_url}
+              storageKey={`kitaplab_audio_progress_${bolumId}`}
+            />
+          ) : (
+            <article
+              className={`${readerSettings.fontFamily} leading-[2.1] select-none`}
+              style={{ fontSize: `${readerSettings.fontSize}px` }}
+              onCopy={(e) => e.preventDefault()}
+              onContextMenu={(e) => e.preventDefault()}
+            >
+              {paragraphs.map((para, i) => {
+                const paraId = i.toString();
+                const count = paraCommentCounts[paraId] || 0;
 
-              return (
-                <div key={i} className="relative group mb-4 isolate" data-para-id={paraId}>
-                  <div className="relative">
-                    <div
-                      className={`
-                        chapter-reader-content
-                        transition-all duration-500
-                        pr-0 md:pr-7
-                        ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}
-                      `}
-                      dangerouslySetInnerHTML={{ __html: para }}
-                    />
+                return (
+                  <div key={i} className="relative group mb-4 isolate" data-para-id={paraId}>
+                    <div className="relative">
+                      <div
+                        className={`
+                          chapter-reader-content
+                          transition-all duration-500
+                          pr-0 md:pr-7
+                          ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}
+                        `}
+                        dangerouslySetInnerHTML={{ __html: para }}
+                      />
 
-                    <div
-                      onClick={() => setActivePara(activePara === paraId ? null : paraId)}
-                      className={`
-                        absolute right-[-12px] top-1/2 -translate-y-1/2
-                        w-[15px] h-[15px] md:w-[25px] md:h-[25px]
-                        rounded-full bg-gray-400 opacity-40
-                        z-10 cursor-pointer
-                        transition-all
-                        group-hover:w-4 group-hover:h-4
-                        group-hover:bg-red-600 group-hover:opacity-100
-                        ${count > 0 || activePara === paraId ? 'w-4 h-4 bg-red-600 opacity-100' : ''}
-                      `}
-                    >
-                      {(count > 0 || activePara === paraId) && (
-                        <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white scale-[0.7]">
-                          {count > 0 ? count : '+'}
-                        </span>
-                      )}
+                      <div
+                        onClick={() => setActivePara(activePara === paraId ? null : paraId)}
+                        className={`
+                          absolute right-[-12px] top-1/2 -translate-y-1/2
+                          w-[15px] h-[15px] md:w-[25px] md:h-[25px]
+                          rounded-full bg-gray-400 opacity-40
+                          z-10 cursor-pointer
+                          transition-all
+                          group-hover:w-4 group-hover:h-4
+                          group-hover:bg-red-600 group-hover:opacity-100
+                          ${count > 0 || activePara === paraId ? 'w-4 h-4 bg-red-600 opacity-100' : ''}
+                        `}
+                      >
+                        {(count > 0 || activePara === paraId) && (
+                          <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white scale-[0.7]">
+                            {count > 0 ? count : '+'}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </article>
+                );
+              })}
+            </article>
+          )}
 
           <div className="mt-16 flex items-center justify-between gap-6 border-t border-current/10 pt-8">
             {prevChapter ? (
@@ -594,6 +610,7 @@ export default function BolumDetay({ params }) {
           )}
         </main>
 
+        {!isAudiobook && (
         <aside className={`keyboard-safe-overlay fixed inset-0 md:inset-auto md:top-24 md:right-8 md:bottom-8 md:w-[400px] transition-all duration-500 z-[60] ${activePara !== null ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full md:translate-x-12 pointer-events-none'
           }`}>
           <div
@@ -629,6 +646,7 @@ export default function BolumDetay({ params }) {
             </div>
           </div>
         </aside>
+        )}
       </div>
 
       <section id="chapter-comments-section" className="bg-[#fcfcfc] dark:bg-[#080808] pt-12 pb-20">
@@ -692,7 +710,7 @@ export default function BolumDetay({ params }) {
                 bookId={id}
                 paraId={null}
                 onCommentAdded={handleCommentAdded}
-                includeParagraphs={true}
+                includeParagraphs={!isAudiobook}
                 onStatsUpdate={(newStats) => {
                   console.log('Kitap stats güncellendi (bölüm):', newStats);
                 }}

@@ -11,6 +11,7 @@ import PanoModal from '@/components/PanoModal';
 import Image from 'next/image';
 import BookCoverImage from '@/components/BookCoverImage';
 import { ProfileBadges } from '@/components/Badges';
+import AdminLabCoinManager from '@/components/AdminLabCoinManager';
 import { buildBadgeStats, EMPTY_BADGE_STATS, fetchProfileBadgeCounts } from '@/lib/badges';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
@@ -394,17 +395,33 @@ export default function YazarProfili() {
 
       <div className="max-w-6xl mx-auto">
         {/* HEADER */}
-        <header className="mb-8 md:mb-12 bg-white dark:bg-white/5 p-6 md:p-10 rounded-3xl md:rounded-[4rem] border dark:border-white/5 shadow-sm">
-          <div className="flex flex-col items-center md:flex-row md:items-center gap-6 md:gap-10">
-            <div className="w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-white/10 rounded-2xl md:rounded-[2.5rem] overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0 mx-auto md:mx-0">
+        <header className="relative mb-8 md:mb-12 overflow-hidden bg-gradient-to-br from-red-700 via-red-600 to-black rounded-3xl md:rounded-[4rem] border dark:border-white/5 shadow-sm">
+          <div className="absolute inset-0 overflow-hidden">
+            {author.banner_url && (
+              <Image
+                src={author.banner_url}
+                alt={`${author.username} profil kapak fotoğrafı`}
+                fill
+                sizes="(max-width: 768px) 100vw, 1152px"
+                className="object-cover"
+                unoptimized
+              />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/80" />
+          </div>
+
+          <div className="relative h-36 md:h-52" />
+          <div className="relative p-6 pt-0 text-white md:p-10 md:pt-0">
+          <div className="flex flex-col items-center gap-5 md:gap-6">
+            <div className="relative z-10 -mt-12 md:-mt-16 w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-zinc-900 rounded-2xl md:rounded-[2.5rem] border-4 border-white dark:border-zinc-950 shadow-xl overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0 mx-auto">
               {author.avatar_url ? <img src={author.avatar_url} className="w-full h-full object-cover" alt="" /> : author.username[0].toUpperCase()}
             </div>
 
-            <div className="flex-1 w-full">
-              <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
-                <div className="text-center md:text-left">
+            <div className="w-full">
+              <div className="flex flex-col items-center justify-center gap-4 mb-4">
+                <div className="text-center">
                   <h1 className="text-2xl md:text-3xl font-black uppercase dark:text-white tracking-tighter">{author.full_name || author.username}</h1>
-                  <div className="flex justify-center md:justify-start mt-1">
+                  <div className="flex justify-center mt-1">
                     <Username
                       username={author.username}
                       isAdmin={author.role === 'admin'}
@@ -414,7 +431,7 @@ export default function YazarProfili() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 justify-center md:justify-end">
+                <div className="flex flex-wrap gap-2 justify-center">
                   {currentUser && currentUser.id !== author.id && (
                     <button
                       onClick={isFollowing ? handleUnfollow : handleFollow}
@@ -492,7 +509,7 @@ export default function YazarProfili() {
                 </div>
               </div>
 
-              <div className="flex justify-center md:justify-start gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6 w-full">
+              <div className="flex justify-center gap-6 md:gap-12 border-t dark:border-white/5 pt-6 md:pt-8 mt-4 md:mt-6 w-full">
                 <div className="text-center"><p className="text-xl md:text-2xl font-black">{books.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest">Eser</p></div>
                 <div className="text-center"><p className="text-xl md:text-2xl font-black">{panos.length}</p><p className="text-[8px] md:text-[9px] uppercase opacity-40 tracking-widest">Pano</p></div>
 
@@ -504,7 +521,15 @@ export default function YazarProfili() {
               </div>
             </div>
           </div>
+          </div>
         </header>
+
+        {isAdmin && (
+          <AdminLabCoinManager
+            targetUserId={author.id}
+            targetUsername={author.username}
+          />
+        )}
 
         <div className="flex gap-4 md:gap-8 mb-6 md:mb-8 border-b dark:border-white/5 pb-4 overflow-x-auto">
           {['eserler', 'panolar', 'rozetler', 'kupalar', 'hakkında'].map(t => (

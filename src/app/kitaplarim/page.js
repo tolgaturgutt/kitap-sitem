@@ -376,6 +376,22 @@ export default function KitaplarimSayfasi() {
             </Link>
 
             <Link
+              href="/kitap-ekle?tur=sesli"
+              className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/15 transition-colors group"
+            >
+              <div className="w-10 h-10 bg-amber-400 rounded-xl flex items-center justify-center text-xl group-hover:scale-110 transition-transform">
+                🎙️
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs font-black uppercase dark:text-white">Sesli Kitap</p>
+                  <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[7px] font-black uppercase text-black">Premium</span>
+                </div>
+                <p className="text-[9px] text-gray-400">Podcast tarzı eser oluştur</p>
+              </div>
+            </Link>
+
+            <Link
               href="/pano-ekle"
               className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group"
             >

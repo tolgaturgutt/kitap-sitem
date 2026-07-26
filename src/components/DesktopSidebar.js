@@ -153,6 +153,23 @@ export default function DesktopSidebar() {
                     <span className="block text-[8px] text-gray-500">Hikayeni anlat</span>
                   </span>
                 </Link>
+
+                <Link
+                  href="/kitap-ekle?tur=sesli"
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 rounded-2xl bg-amber-50 p-3 transition-all hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/15"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-400 text-black">
+                    🎙️
+                  </span>
+                  <span>
+                    <span className="flex items-center gap-2">
+                      <span className="block text-xs font-black uppercase text-gray-800 dark:text-white">Sesli Kitap Ekle</span>
+                      <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[7px] font-black uppercase text-black">Premium</span>
+                    </span>
+                    <span className="block text-[8px] text-gray-500">Podcast tarzı eser oluştur</span>
+                  </span>
+                </Link>
               </div>
             )}
           </div>

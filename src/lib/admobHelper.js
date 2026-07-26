@@ -10,6 +10,7 @@ const REWARDED_TEST_AD_ID = 'ca-app-pub-3940256099942544/5224354917';
 const REWARDED_PRODUCTION_AD_ID =
   'ca-app-pub-9356201064551661/3856681616';
 const ADMOB_IS_TESTING =
+  process.env.NODE_ENV !== 'production' &&
   process.env.NEXT_PUBLIC_ADMOB_IS_TESTING === 'true';
 const REWARDED_AD_ID =
   process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID ||
@@ -49,9 +50,11 @@ function getInitializedAdMob() {
   if (!initializationPromise) {
     initializationPromise = (async () => {
       const { AdMob } = await import('@capacitor-community/admob');
-      console.log('[AdMob] SDK başlatılıyor (production).');
+      console.log(
+        `[AdMob] SDK başlatılıyor (${ADMOB_IS_TESTING ? 'test' : 'production'}).`
+      );
       await AdMob.initialize({
-        initializeForTesting: false,
+        initializeForTesting: ADMOB_IS_TESTING,
       });
       return { AdMob };
     })().catch((error) => {
