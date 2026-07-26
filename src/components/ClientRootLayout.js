@@ -13,6 +13,7 @@ import WarningSystem from "@/components/WarningSystem";
 import PushSetup from "@/components/PushSetup";
 import RefreshWrapper from "@/components/RefreshWrapper";
 import {
+  initializeInterstitialSchedule,
   isInterstitialCooldownComplete,
   showInterstitialIfReady,
 } from "@/lib/admobHelper";
@@ -46,6 +47,7 @@ export default function ClientRootLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const pendingInterstitialPathRef = useRef(null);
 
   // ✅ anlık path'i ref'te tut
   const pathnameRef = useRef(pathname);
@@ -54,12 +56,14 @@ export default function ClientRootLayout({
   }, [pathname]);
 
   useEffect(() => {
+    initializeInterstitialSchedule();
+  }, []);
+
+  useEffect(() => {
     if (!Capacitor.isNativePlatform()) return;
 
     let cancelled = false;
-    let navigationInProgress = false;
-
-    const handleNavigationClick = async (event) => {
+    const handleNavigationClick = (event) => {
       if (
         !event.isTrusted ||
         event.defaultPrevented ||
@@ -87,8 +91,7 @@ export default function ClientRootLayout({
       const destinationUrl = new URL(anchor.href, window.location.href);
       if (
         destinationUrl.origin !== window.location.origin ||
-        (destinationUrl.pathname === window.location.pathname &&
-          destinationUrl.search === window.location.search) ||
+        destinationUrl.pathname === window.location.pathname ||
         isAdExcludedPath(pathnameRef.current || "/") ||
         isAdExcludedPath(destinationUrl.pathname)
       ) {
@@ -97,33 +100,15 @@ export default function ClientRootLayout({
 
       if (
         cancelled ||
-        navigationInProgress ||
+        pendingInterstitialPathRef.current ||
         !isInterstitialCooldownComplete()
       ) {
         return;
       }
 
-      event.preventDefault();
-      navigationInProgress = true;
-
-      try {
-        await showInterstitialIfReady();
-
-        if (!cancelled) {
-          router.push(
-            `${destinationUrl.pathname}${destinationUrl.search}${destinationUrl.hash}`
-          );
-        }
-      } catch (error) {
-        console.error("[ClientRootLayout] interstitial hatası:", error);
-        if (!cancelled) {
-          router.push(
-            `${destinationUrl.pathname}${destinationUrl.search}${destinationUrl.hash}`
-          );
-        }
-      } finally {
-        navigationInProgress = false;
-      }
+      // Linkin normal şekilde açılmasına izin ver. Reklam hedef rota
+      // ekrana yerleştirildikten sonra pathname effect'i tarafından gösterilir.
+      pendingInterstitialPathRef.current = destinationUrl.pathname;
     };
 
     document.addEventListener("click", handleNavigationClick, true);
@@ -132,7 +117,33 @@ export default function ClientRootLayout({
       cancelled = true;
       document.removeEventListener("click", handleNavigationClick, true);
     };
-  }, [router]);
+  }, []);
+
+  useEffect(() => {
+    if (!Capacitor.isNativePlatform()) return;
+    if (pendingInterstitialPathRef.current !== pathname) return;
+
+    pendingInterstitialPathRef.current = null;
+    let cancelled = false;
+    let secondFrame = null;
+
+    // Yeni rotanın en az bir kez boyanmasına fırsat ver; reklam hazırlanırken
+    // kullanıcı eski ve donmuş sayfada beklemesin.
+    const firstFrame = window.requestAnimationFrame(() => {
+      secondFrame = window.requestAnimationFrame(() => {
+        if (cancelled) return;
+        showInterstitialIfReady().catch((error) => {
+          console.error("[ClientRootLayout] interstitial hatası:", error);
+        });
+      });
+    });
+
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(firstFrame);
+      if (secondFrame !== null) window.cancelAnimationFrame(secondFrame);
+    };
+  }, [pathname]);
 
   // ✅ Back handler (Android exit, iOS toast)
 useEffect(() => {

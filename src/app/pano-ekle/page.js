@@ -171,6 +171,9 @@ export default function PanoEkle() {
     if (errorText.includes('pano_daily_limit_reached')) {
       return 'Bugünkü 5 pano hakkın doldu. Yarın tekrar pano oluşturabilirsin.';
     }
+    if (errorText.includes('pano_requires_published_book')) {
+      return 'Pano paylaşabilmek için yayınlanmış ve en az bir bölümü olan bir kitabın bulunmalı.';
+    }
 
     const schemaNeedsUpdate =
       error?.code === '42703' ||
@@ -196,6 +199,10 @@ export default function PanoEkle() {
     }
     if (!content.trim()) {
       toast.error('İçerik gerekli!');
+      return;
+    }
+    if (books.length === 0) {
+      toast.error('Pano paylaşabilmek için yayınlanmış bir kitabın bulunmalı!');
       return;
     }
     if (!selectedBook && !panoImageUrl) {
@@ -240,6 +247,29 @@ export default function PanoEkle() {
       </div>
     </div>
   );
+
+  if (books.length === 0) {
+    return (
+      <div className="min-h-screen py-24 px-4 md:px-6 bg-[#fafafa] dark:bg-black">
+        <div className="max-w-xl mx-auto bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center shadow-xl">
+          <div className="text-5xl mb-5">📚</div>
+          <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight dark:text-white">
+            Önce Bir Kitap Yayınla
+          </h1>
+          <p className="mt-4 text-sm leading-6 text-gray-500 dark:text-gray-400">
+            Pano paylaşabilmek için yayınlanmış ve en az bir yayınlanmış bölümü olan bir kitabın bulunmalı.
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push('/kitap-ekle')}
+            className="mt-8 w-full py-4 bg-red-600 hover:bg-red-700 text-white rounded-2xl font-black uppercase text-sm transition-colors"
+          >
+            Kitap Oluştur
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen py-20 px-4 md:px-6 bg-[#fafafa] dark:bg-black">

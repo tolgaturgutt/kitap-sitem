@@ -638,8 +638,6 @@ export default function Home() {
       )}
 
       <div className="max-w-7xl mx-auto">
-        <DuyuruPaneli isAdmin={isAdmin} />
-        <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} adminEmails={adminEmails} />
         {loading ? (
           <div className="space-y-6 py-8 animate-pulse" aria-label="Ana sayfa içeriği yükleniyor">
             <div className="h-5 w-40 rounded-full bg-gray-200 dark:bg-white/10" />
@@ -654,6 +652,8 @@ export default function Home() {
           </div>
         ) : (
           <>
+            <DuyuruPaneli isAdmin={isAdmin} />
+            <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} adminEmails={adminEmails} />
             <RecentlyAddedChapters chapters={latestChapters} currentUser={user} />
             <ContinueReadingCarousel books={continueReading} />
             <EditorsChoiceSection books={editorsChoiceBooks} />
