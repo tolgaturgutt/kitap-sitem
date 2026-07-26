@@ -323,6 +323,38 @@ export default function PremiumPage() {
           </div>
         </section>
 
+        <section className="overflow-hidden rounded-[2rem] border border-fuchsia-300/60 bg-gradient-to-r from-purple-700 via-fuchsia-600 to-orange-500 p-[1px] shadow-xl shadow-fuchsia-600/15">
+          <div className="flex flex-col gap-5 rounded-[calc(2rem-1px)] bg-white/95 p-6 dark:bg-[#0b0b0b]/95 md:flex-row md:items-center md:justify-between md:p-8">
+            <div className="flex items-start gap-4">
+              <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-600 via-fuchsia-500 to-orange-400 text-2xl text-white shadow-lg shadow-fuchsia-500/25">
+                ◎
+              </span>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.24em] text-fuchsia-600">
+                  Instagram Bonusu · +50 LabCoin
+                </p>
+                <h2 className="mt-2 text-xl font-black text-gray-950 dark:text-white md:text-2xl">
+                  @kitaplabtr&apos;yi takip et, 50 LabCoin kazan
+                </h2>
+                <p className="mt-2 max-w-2xl text-xs font-medium leading-6 text-gray-600 dark:text-gray-300 md:text-sm">
+                  Instagram&apos;da @kitaplabtr hesabını takip et. Ardından DM&apos;den
+                  KitapLab kullanıcı adını gönder; takip doğrulandıktan sonra hesabına
+                  50 LabCoin eklensin.
+                </p>
+              </div>
+            </div>
+
+            <a
+              href="https://www.instagram.com/kitaplabtr/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-600 to-orange-500 px-7 py-4 text-center text-[10px] font-black uppercase tracking-wider text-white shadow-lg shadow-fuchsia-600/25 transition-transform hover:scale-[1.02]"
+            >
+              Instagram&apos;a Git →
+            </a>
+          </div>
+        </section>
+
         <div className="grid gap-6 md:grid-cols-[0.8fr_1.2fr]">
           <section className="rounded-[2rem] border border-gray-200 bg-white p-7 shadow-xl shadow-black/5 dark:border-white/10 dark:bg-white/5">
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-400">
