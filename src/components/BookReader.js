@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { sanitizeChapterHtml } from '@/lib/chapterContent';
 
 // İkonlar
 const Icons = {
@@ -30,13 +31,13 @@ export default function BookReader({ content, bookId, chapterId }) {
             .map(p => {
               let cleaned = p.replace(/<p[^>]*>/g, '').trim();
               cleaned = cleaned.replace(/\s*style=""\s*/g, '');
-              return cleaned;
+              return sanitizeChapterHtml(cleaned);
             })
             .filter(p => p !== '' && p !== '<br>' && p !== '<br/>');
         } else {
           return content
             .split(/\n\n+/)
-            .map(p => p.trim())
+            .map(p => sanitizeChapterHtml(p.trim()))
             .filter(p => p !== '');
         }
       })()
@@ -123,7 +124,7 @@ export default function BookReader({ content, bookId, chapterId }) {
             <div key={i} className="group relative mb-3 flex items-start justify-between gap-2">
               {/* ✅ HTML render için dangerouslySetInnerHTML */}
               <div 
-                className="flex-1 text-xl md:text-2xl leading-[1.8] text-gray-800 dark:text-gray-200 font-serif antialiased"
+                className="chapter-reader-content flex-1 text-xl md:text-2xl leading-[1.8] text-gray-800 dark:text-gray-200 font-serif antialiased"
                 dangerouslySetInnerHTML={{ __html: p }}
               />
               {/* ✅ Yuvarlak mini - mobilde 10px, PC'de aynı kalıyor */}

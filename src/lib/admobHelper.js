@@ -6,6 +6,14 @@ const FIRST_INTERSTITIAL_DELAY_MS = 5 * 60 * 1000;
 const INTERSTITIAL_COOLDOWN_MS = 15 * 60 * 1000;
 
 const INTERSTITIAL_AD_ID = 'ca-app-pub-9356201064551661/3044605897';
+const REWARDED_TEST_AD_ID = 'ca-app-pub-3940256099942544/5224354917';
+const REWARDED_PRODUCTION_AD_ID =
+  'ca-app-pub-9356201064551661/3856681616';
+const ADMOB_IS_TESTING =
+  process.env.NEXT_PUBLIC_ADMOB_IS_TESTING === 'true';
+const REWARDED_AD_ID =
+  process.env.NEXT_PUBLIC_ADMOB_REWARDED_ID ||
+  (ADMOB_IS_TESTING ? REWARDED_TEST_AD_ID : REWARDED_PRODUCTION_AD_ID);
 
 let initializationPromise = null;
 let interstitialPromise = null;
@@ -90,4 +98,32 @@ export async function showInterstitialIfReady() {
   }
 
   return interstitialPromise;
+}
+
+export function isRewardedAdAvailable() {
+  return Capacitor.isNativePlatform() && Boolean(REWARDED_AD_ID);
+}
+
+export async function showLabCoinRewardAd() {
+  if (!Capacitor.isNativePlatform()) {
+    throw new Error('LABCOIN_NATIVE_APP_REQUIRED');
+  }
+
+  if (!REWARDED_AD_ID) {
+    throw new Error('LABCOIN_REWARDED_AD_ID_MISSING');
+  }
+
+  const { AdMob } = await getInitializedAdMob();
+  await AdMob.prepareRewardVideoAd({
+    adId: REWARDED_AD_ID,
+    isTesting: ADMOB_IS_TESTING,
+    immersiveMode: true,
+  });
+
+  const reward = await AdMob.showRewardVideoAd();
+  if (!reward || Number(reward.amount || 0) <= 0) {
+    throw new Error('LABCOIN_REWARD_NOT_EARNED');
+  }
+
+  return reward;
 }

@@ -9,6 +9,7 @@ import { createChapterVoteNotification } from '@/lib/notifications';
 import Username from '@/components/Username';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
+import { sanitizeChapterHtml } from '@/lib/chapterContent';
 
 function hasSearchParamValue(value) {
   return value !== null && value !== undefined && value !== '' && value !== 'null' && value !== 'undefined';
@@ -387,13 +388,13 @@ export default function BolumDetay({ params }) {
           .map(p => {
             let cleaned = p.replace(/<p[^>]*>/g, '').trim();
             cleaned = cleaned.replace(/\s*style=""\s*/g, '');
-            return cleaned;
+            return sanitizeChapterHtml(cleaned);
           })
           .filter(p => p !== '' && p !== '<br>' && p !== '<br/>');
       } else {
         return content
           .split(/\n\n+/)
-          .map(p => p.trim())
+          .map(p => sanitizeChapterHtml(p.trim()))
           .filter(p => p !== '');
       }
     })()
@@ -455,6 +456,7 @@ export default function BolumDetay({ params }) {
                   <div className="relative">
                     <div
                       className={`
+                        chapter-reader-content
                         transition-all duration-500
                         pr-0 md:pr-7
                         ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}

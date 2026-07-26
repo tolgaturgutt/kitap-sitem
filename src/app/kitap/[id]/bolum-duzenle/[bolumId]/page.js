@@ -4,6 +4,8 @@ import { useEffect, useState, use, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import ChapterImageUploadButton from '@/components/ChapterImageUploadButton';
+import { sanitizeChapterHtml } from '@/lib/chapterContent';
 
 export default function BolumDuzenle({ params }) {
   const router = useRouter();
@@ -116,6 +118,7 @@ export default function BolumDuzenle({ params }) {
 
     const plainText = e.clipboardData.getData('text/plain');
     let html = e.clipboardData.getData('text/html');
+    html = html.replace(/<img[^>]*>/gi, '');
 
     if (!html) {
       document.execCommand("insertText", false, plainText);
@@ -262,12 +265,9 @@ export default function BolumDuzenle({ params }) {
   async function handleUpdate(e) {
     e.preventDefault();
     
-    let htmlContent = editorRef.current?.innerHTML || '';
-    
-    htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
-    htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
-    htmlContent = htmlContent.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
-    htmlContent = htmlContent.replace(/<div>/g, '<br>').replace(/<\/div>/g, '');
+    const htmlContent = sanitizeChapterHtml(
+      editorRef.current?.innerHTML || ''
+    );
     
     if (!formData.title.trim() || !formData.content.trim()) {
       toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
@@ -310,7 +310,11 @@ export default function BolumDuzenle({ params }) {
       }, 1000);
     } catch (error) {
       console.error('Güncelleme hatası:', error);
-      toast.error('Bir hata oluştu.');
+      toast.error(
+        `${error?.message || ''}`.includes('CHAPTER_IMAGES_REQUIRE_PREMIUM')
+          ? 'Bölüm görsellerini yalnızca premium kullanıcılar ve adminler değiştirebilir.'
+          : 'Bir hata oluştu.'
+      );
     } finally {
       setUpdating(false);
     }
@@ -381,7 +385,7 @@ export default function BolumDuzenle({ params }) {
             </label>
             
             {/* 🎨 FORMATLAMA TOOLBAR (sticky) */}
-            <div className="mb-3 sticky top-24 z-40 flex gap-2 p-3 bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="mb-3 sticky top-24 z-40 flex flex-wrap gap-2 p-3 bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur rounded-lg border border-gray-200 dark:border-gray-700">
               <button
                 type="button"
                 onClick={() => formatText('bold')}
@@ -420,6 +424,12 @@ export default function BolumDuzenle({ params }) {
               >
                 U
               </button>
+
+              <ChapterImageUploadButton
+                bookId={ids.kitapId}
+                editorRef={editorRef}
+                onInserted={handleInput}
+              />
             </div>
 
             {/* 🎨 WYSIWYG EDITOR */}
@@ -431,7 +441,7 @@ export default function BolumDuzenle({ params }) {
               onPaste={handlePaste}
               onMouseUp={updateFormatState}
               onKeyUp={updateFormatState}
-              className={`w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed overflow-auto ${
+              className={`chapter-content-editor w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed overflow-auto ${
                 detectedBannedInContent.length > 0 
                   ? 'border-red-500 dark:border-red-500' 
                   : 'dark:border-white/5'

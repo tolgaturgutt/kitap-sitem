@@ -440,6 +440,30 @@
   opacity: 0.8;
   display: block;
 }
+
+.chapter-content-editor img[data-chapter-image="true"] {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 75vh;
+  margin: 1.5rem auto;
+  object-fit: contain;
+  border-radius: 1rem;
+  cursor: default;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
+.chapter-reader-content img[data-chapter-image="true"] {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 85vh;
+  margin: 2rem auto;
+  object-fit: contain;
+  border-radius: 0.75rem;
+}
 html, body {
   height: 100%;
   width: 100%;

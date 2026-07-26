@@ -882,6 +882,17 @@ export default function Navbar() {
                       </Link>
 
                       <Link
+                        href="/premium"
+                        onClick={() => setShowProfileMenu(false)}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-black uppercase text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-500/10 rounded-xl transition-colors"
+                      >
+                        <span className="relative h-5 w-5 overflow-hidden rounded-full border border-amber-300">
+                          <Image src="/labcoin.jpg" alt="" fill sizes="20px" className="object-cover" />
+                        </span>
+                        Premium
+                      </Link>
+
+                      <Link
                         href="/ayarlar"
                         onClick={() => setShowProfileMenu(false)}
                         className="flex items-center gap-3 w-full px-4 py-3 text-[11px] font-bold uppercase text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/10 hover:text-red-600 rounded-xl transition-colors"

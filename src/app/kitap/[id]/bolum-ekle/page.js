@@ -4,6 +4,8 @@ import { useState, use, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import ChapterImageUploadButton from '@/components/ChapterImageUploadButton';
+import { sanitizeChapterHtml } from '@/lib/chapterContent';
 
 export default function BolumEkle({ params }) {
   const { id } = use(params);
@@ -119,6 +121,7 @@ function findBannedWords(text) {
     
     // 2. HTML verisini al
     let html = e.clipboardData.getData('text/html');
+    html = html.replace(/<img[^>]*>/gi, '');
 
     // Eğer HTML yoksa direkt düz metni yapıştır
     if (!html) {
@@ -131,7 +134,7 @@ function findBannedWords(text) {
       // --- TEMİZLİK BAŞLIYOR ---
       
       // Word'ün gereksiz meta taglarını temizle
-      html = html.replace(g, "")
+      html = html.replace(/<xml[^>]*>[\s\S]*?<\/xml>/gi, "")
                  .replace(/<meta[^>]*>/g, "")
                  .replace(/<link[^>]*>/g, "")
                  .replace(/<style[^>]*>[\s\S]*?<\/style>/g, "") // Style bloklarını içindekilerle sil
@@ -210,14 +213,9 @@ function findBannedWords(text) {
     e.preventDefault();
     
     // ✅ innerHTML kullan - formatlar korunacak
-    let htmlContent = editorRef.current?.innerHTML || '';
-    
-    // ✅ Sadece gereksiz style, font ve span taglarını temizle (Güvenlik Önlemi)
-    htmlContent = htmlContent.replace(/\s*style="[^"]*"/g, '');
-    htmlContent = htmlContent.replace(/<\/?font[^>]*>/g, '');
-    htmlContent = htmlContent.replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '');
-    // ✅ <div> taglarını <br> ile değiştir
-    htmlContent = htmlContent.replace(/<div>/g, '<br>').replace(/<\/div>/g, '');
+    const htmlContent = sanitizeChapterHtml(
+      editorRef.current?.innerHTML || ''
+    );
     
     if (!title.trim() || !content.trim()) {
       toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
@@ -296,7 +294,11 @@ function findBannedWords(text) {
 
     } catch (error) {
       console.error(error);
-      toast.error('Bir hata oluştu.');
+      toast.error(
+        `${error?.message || ''}`.includes('CHAPTER_IMAGES_REQUIRE_PREMIUM')
+          ? 'Bölüm görsellerini yalnızca premium kullanıcılar ve adminler değiştirebilir.'
+          : 'Bir hata oluştu.'
+      );
     } finally {
       setSavingMode(null);
     }
@@ -359,7 +361,7 @@ function findBannedWords(text) {
             </label>
             
             {/* 🎨 FORMATLAMA TOOLBAR (sticky) */}
-            <div className="mb-3 sticky top-24 z-40 flex gap-2 p-3 bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur rounded-lg border border-gray-200 dark:border-gray-700">
+            <div className="mb-3 sticky top-24 z-40 flex flex-wrap gap-2 p-3 bg-gray-100/95 dark:bg-gray-900/95 backdrop-blur rounded-lg border border-gray-200 dark:border-gray-700">
               <button
                 type="button"
                 onClick={() => formatText('bold')}
@@ -398,6 +400,12 @@ function findBannedWords(text) {
               >
                 U
               </button>
+
+              <ChapterImageUploadButton
+                bookId={id}
+                editorRef={editorRef}
+                onInserted={handleInput}
+              />
             </div>
 
             {/* 🎨 WYSIWYG EDITOR - ✅ ENTER sadece <br> ekler, PASTE düzeltildi */}
@@ -409,7 +417,7 @@ function findBannedWords(text) {
               onPaste={handlePaste}
               onMouseUp={updateFormatState}
               onKeyUp={updateFormatState}
-              className={`w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed overflow-auto ${
+              className={`chapter-content-editor w-full min-h-[400px] p-8 bg-gray-50 dark:bg-white/5 border rounded-[2.5rem] outline-none focus:ring-2 ring-red-600/20 dark:text-white font-serif text-lg leading-relaxed overflow-auto ${
                 detectedBannedInContent.length > 0 
                   ? 'border-red-500 dark:border-red-500' 
                   : 'dark:border-white/5'
