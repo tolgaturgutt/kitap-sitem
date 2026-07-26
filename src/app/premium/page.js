@@ -114,6 +114,7 @@ function getRewardErrorMessage(error) {
 export default function PremiumPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
+  const [profileUsername, setProfileUsername] = useState('');
   const [status, setStatus] = useState(EMPTY_STATUS);
   const [loading, setLoading] = useState(true);
   const [watchingAd, setWatchingAd] = useState(false);
@@ -157,7 +158,19 @@ export default function PremiumPage() {
       setUser(activeUser);
 
       try {
-        await loadStatus();
+        const [loadedStatus, profileResult] = await Promise.all([
+          loadStatus(),
+          supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', activeUser.id)
+            .maybeSingle(),
+        ]);
+
+        if (!cancelled) {
+          setStatus(loadedStatus);
+          setProfileUsername(profileResult.data?.username || '');
+        }
       } catch (error) {
         console.error('LabCoin status error:', error);
         toast.error('LabCoin bilgileri alınamadı.');
@@ -543,7 +556,8 @@ export default function PremiumPage() {
               <div className="mt-3 text-lg font-black text-gray-950 dark:text-white">
                 <Username
                   username={
-                    user?.user_metadata?.username
+                    profileUsername
+                    || user?.user_metadata?.username
                     || user?.email?.split('@')[0]
                     || 'kitaplabüyesi'
                   }
