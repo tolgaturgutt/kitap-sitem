@@ -18,30 +18,32 @@ const REWARDED_AD_ID =
 
 let initializationPromise = null;
 let interstitialPromise = null;
-let sessionInterstitialEligibleAt = 0;
 
 export function initializeInterstitialSchedule() {
   if (!Capacitor.isNativePlatform()) return 0;
 
-  if (sessionInterstitialEligibleAt === 0) {
-    sessionInterstitialEligibleAt = Date.now() + FIRST_INTERSTITIAL_DELAY_MS;
-    localStorage.removeItem(FIRST_AD_ELIGIBLE_AT_KEY);
-  }
+  const lastAdTime = Number(localStorage.getItem(LAST_AD_TIME_KEY) || '0');
+  if (lastAdTime > 0) return lastAdTime + INTERSTITIAL_COOLDOWN_MS;
 
-  return sessionInterstitialEligibleAt;
+  const storedEligibleAt = Number(
+    localStorage.getItem(FIRST_AD_ELIGIBLE_AT_KEY) || '0'
+  );
+  if (storedEligibleAt > 0) return storedEligibleAt;
+
+  const firstEligibleAt = Date.now() + FIRST_INTERSTITIAL_DELAY_MS;
+  localStorage.setItem(FIRST_AD_ELIGIBLE_AT_KEY, String(firstEligibleAt));
+  return firstEligibleAt;
 }
 
 export function isInterstitialCooldownComplete() {
   if (!Capacitor.isNativePlatform()) return false;
-
-  if (Date.now() < initializeInterstitialSchedule()) return false;
 
   const lastAdTime = Number(localStorage.getItem(LAST_AD_TIME_KEY) || '0');
   if (lastAdTime > 0) {
     return Date.now() - lastAdTime >= INTERSTITIAL_COOLDOWN_MS;
   }
 
-  return true;
+  return Date.now() >= initializeInterstitialSchedule();
 }
 
 function getInitializedAdMob() {
