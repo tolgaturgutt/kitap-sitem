@@ -2,7 +2,6 @@ import { Capacitor } from '@capacitor/core';
 
 const LAST_AD_TIME_KEY = 'lastInterstitialAdTimeV2';
 const FIRST_AD_ELIGIBLE_AT_KEY = 'firstInterstitialEligibleAtV1';
-const FIRST_INTERSTITIAL_DELAY_MS = 5 * 60 * 1000;
 const INTERSTITIAL_COOLDOWN_MS = 15 * 60 * 1000;
 
 const INTERSTITIAL_AD_ID = 'ca-app-pub-9356201064551661/3044605897';
@@ -18,32 +17,30 @@ const REWARDED_AD_ID =
 
 let initializationPromise = null;
 let interstitialPromise = null;
+let sessionInterstitialEligibleAt = 0;
 
 export function initializeInterstitialSchedule() {
   if (!Capacitor.isNativePlatform()) return 0;
 
-  const lastAdTime = Number(localStorage.getItem(LAST_AD_TIME_KEY) || '0');
-  if (lastAdTime > 0) return lastAdTime + INTERSTITIAL_COOLDOWN_MS;
+  if (sessionInterstitialEligibleAt === 0) {
+    sessionInterstitialEligibleAt = Date.now() + INTERSTITIAL_COOLDOWN_MS;
+    localStorage.removeItem(FIRST_AD_ELIGIBLE_AT_KEY);
+  }
 
-  const storedEligibleAt = Number(
-    localStorage.getItem(FIRST_AD_ELIGIBLE_AT_KEY) || '0'
-  );
-  if (storedEligibleAt > 0) return storedEligibleAt;
-
-  const firstEligibleAt = Date.now() + FIRST_INTERSTITIAL_DELAY_MS;
-  localStorage.setItem(FIRST_AD_ELIGIBLE_AT_KEY, String(firstEligibleAt));
-  return firstEligibleAt;
+  return sessionInterstitialEligibleAt;
 }
 
 export function isInterstitialCooldownComplete() {
   if (!Capacitor.isNativePlatform()) return false;
+
+  if (Date.now() < initializeInterstitialSchedule()) return false;
 
   const lastAdTime = Number(localStorage.getItem(LAST_AD_TIME_KEY) || '0');
   if (lastAdTime > 0) {
     return Date.now() - lastAdTime >= INTERSTITIAL_COOLDOWN_MS;
   }
 
-  return Date.now() >= initializeInterstitialSchedule();
+  return true;
 }
 
 function getInitializedAdMob() {

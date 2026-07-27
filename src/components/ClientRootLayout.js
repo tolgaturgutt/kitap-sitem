@@ -238,13 +238,6 @@ useEffect(() => {
 
   return (
     <html lang="tr" suppressHydrationWarning>
-      <head>
-        <title>KitapLab - Kendi Hikayeni Yaz, Oku ve Paylaş</title>
-        <meta name="description" content="KitapLab ile hayal gücünü serbest bırak." />
-        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
-        <link rel="apple-touch-icon" href="/logo.png" />
-      </head>
-
       <body className={`${inter.className} bg-[#fafafa] dark:bg-black text-black dark:text-white transition-colors duration-300`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Toaster
