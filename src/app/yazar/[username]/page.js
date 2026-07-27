@@ -618,8 +618,15 @@ export default function YazarProfili() {
                   onClick={() => setSelectedPano(pano)}
                   className="bg-white dark:bg-white/5 p-4 md:p-6 rounded-xl md:rounded-[2rem] border dark:border-white/10 flex gap-4 md:gap-6 relative group hover:border-red-600/30 transition-all cursor-pointer"
                 >
-                  <div className="w-16 h-24 md:w-20 md:h-28 shrink-0 rounded-lg md:rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
-                    {(pano.image_url || pano.books?.cover_url) && <BookCoverImage src={pano.image_url || pano.books.cover_url} className="w-full h-full object-cover" alt={pano.books?.title || pano.title || 'Pano görseli'} />}
+                  <div className={`flex w-16 h-24 md:w-20 md:h-28 shrink-0 items-center justify-center rounded-lg md:rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10 ${pano.image_url ? 'p-1' : ''}`}>
+                    {(pano.image_url || pano.books?.cover_url) && (
+                      <BookCoverImage
+                        src={pano.image_url || pano.books.cover_url}
+                        className={pano.image_url ? 'h-auto max-h-full w-auto max-w-full object-contain' : 'w-full h-full object-cover'}
+                        objectFit={pano.image_url ? 'contain' : 'cover'}
+                        alt={pano.books?.title || pano.title || 'Pano görseli'}
+                      />
+                    )}
                   </div>
                   <div className="flex-1">
                     <h3 className="text-base md:text-xl font-black dark:text-white mb-1 md:mb-2 line-clamp-1 uppercase tracking-tighter group-hover:text-red-600 transition-colors">{pano.title}</h3>

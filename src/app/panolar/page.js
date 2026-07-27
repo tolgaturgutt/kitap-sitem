@@ -158,8 +158,15 @@ export default function TumPanolar() {
                 className="bg-white dark:bg-white/5 p-6 rounded-[2rem] border dark:border-white/10 flex gap-6 relative group hover:border-red-600/30 transition-all cursor-pointer"
               >
                 {/* Kart Görseli */}
-                <div className="w-20 h-28 shrink-0 rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10">
-                  {(pano.image_url || pano.books?.cover_url) ? <BookCoverImage src={pano.image_url || pano.books.cover_url} className="w-full h-full object-cover" alt={pano.books?.title || pano.title || 'Pano görseli'} /> : null}
+                <div className={`flex w-20 h-28 shrink-0 items-center justify-center rounded-xl overflow-hidden bg-gray-200 dark:bg-white/10 ${pano.image_url ? 'p-1' : ''}`}>
+                  {(pano.image_url || pano.books?.cover_url) ? (
+                    <BookCoverImage
+                      src={pano.image_url || pano.books.cover_url}
+                      className={pano.image_url ? 'h-auto max-h-full w-auto max-w-full object-contain' : 'w-full h-full object-cover'}
+                      objectFit={pano.image_url ? 'contain' : 'cover'}
+                      alt={pano.books?.title || pano.title || 'Pano görseli'}
+                    />
+                  ) : null}
                 </div>
                 
                 <div className="flex-1">

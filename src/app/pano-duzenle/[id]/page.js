@@ -324,7 +324,14 @@ export default function PanoDuzenle({ params }) {
                 />
                 {panoImageUrl ? (
                   <div className="flex items-center gap-4">
-                    <BookCoverImage src={panoImageUrl} alt="Pano görseli" className="w-24 h-24 rounded-xl object-cover bg-gray-200 dark:bg-white/10" />
+                    <div className="flex h-24 w-24 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gray-200 p-1 dark:bg-white/10">
+                      <BookCoverImage
+                        src={panoImageUrl}
+                        alt="Pano görseli"
+                        className="h-auto max-h-full w-auto max-w-full rounded-lg object-contain"
+                        objectFit="contain"
+                      />
+                    </div>
                     <div className="flex-1">
                       <p className="text-sm font-black dark:text-white">Görsel seçildi</p>
                       <p className="text-xs text-gray-500 mt-1">Panoda kitap kapağı yerine bu görsel gösterilir.</p>

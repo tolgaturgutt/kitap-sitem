@@ -445,7 +445,7 @@ export default function PanoModal({
                 <BookCoverImage
                   src={panoVisualUrl}
                   alt={panoVisualAlt}
-                  className="shadow-[0_20px_60px_rgba(0,0,0,0.5)] object-contain rounded-xl h-[250px] w-auto"
+                  className="h-auto max-h-[70vh] w-auto max-w-full rounded-xl object-contain shadow-[0_20px_60px_rgba(0,0,0,0.5)]"
                   objectFit="contain"
                 />
               </div>
