@@ -56,6 +56,7 @@ export default function KitapDetay({ params }) {
   const [reorderMode, setReorderMode] = useState(false);
   const [summaryExpanded, setSummaryExpanded] = useState(false);
   const [summaryOverflowing, setSummaryOverflowing] = useState(false);
+  const [playingTrailerUrl, setPlayingTrailerUrl] = useState(null);
   const summaryRef = useRef(null);
 
   useEffect(() => {
@@ -408,6 +409,7 @@ export default function KitapDetay({ params }) {
   const canEdit = isAuthor || isCoAuthor || data.isAdmin;
   const isAudiobook = data.book.book_type === 'audio';
   const trailerEmbedUrl = getYouTubeEmbedUrl(data.book.trailer_url);
+  const trailerPlaying = playingTrailerUrl === trailerEmbedUrl;
 
   const visibleChapters = canEdit 
     ? data.chapters 
@@ -621,15 +623,31 @@ export default function KitapDetay({ params }) {
                   </div>
                 </div>
                 <div className="aspect-video w-full bg-black">
-                  <iframe
-                    src={trailerEmbedUrl}
-                    title={`${data.book.title} kitap fragmanı`}
-                    className="h-full w-full"
-                    loading="lazy"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                  />
+                  {trailerPlaying ? (
+                    <iframe
+                      src={`${trailerEmbedUrl}&autoplay=1`}
+                      title={`${data.book.title} kitap fragmanı`}
+                      className="h-full w-full"
+                      referrerPolicy="strict-origin-when-cross-origin"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setPlayingTrailerUrl(trailerEmbedUrl)}
+                      className="group relative flex h-full w-full items-center justify-center overflow-hidden bg-gradient-to-br from-zinc-950 via-zinc-900 to-red-950 text-white"
+                      aria-label={`${data.book.title} kitap fragmanını oynat`}
+                    >
+                      <div className="absolute inset-0 opacity-20 [background-image:radial-gradient(circle_at_center,rgba(239,68,68,0.7),transparent_55%)]" />
+                      <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-red-600 text-2xl shadow-2xl shadow-red-600/40 transition-transform group-hover:scale-110 group-active:scale-95">
+                        ▶
+                      </span>
+                      <span className="absolute bottom-5 text-[10px] font-black uppercase tracking-[0.2em] text-white/80">
+                        Fragmanı Oynat
+                      </span>
+                    </button>
+                  )}
                 </div>
               </section>
             )}
