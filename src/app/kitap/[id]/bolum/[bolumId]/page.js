@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, use } from 'react';
+import { memo, useEffect, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import YorumAlani from '@/components/YorumAlani';
@@ -15,6 +15,15 @@ import PodcastAudioPlayer from '@/components/PodcastAudioPlayer';
 function hasSearchParamValue(value) {
   return value !== null && value !== undefined && value !== '' && value !== 'null' && value !== 'undefined';
 }
+
+const ChapterParagraphContent = memo(function ChapterParagraphContent({ html }) {
+  return (
+    <div
+      className="chapter-reader-content"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  );
+});
 
 export default function BolumDetay({ params }) {
   const decodedParams = use(params);
@@ -471,13 +480,13 @@ export default function BolumDetay({ params }) {
                     <div className="relative">
                       <div
                         className={`
-                          chapter-reader-content
                           transition-all duration-500
                           pr-0 md:pr-7
                           ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}
                         `}
-                        dangerouslySetInnerHTML={{ __html: para }}
-                      />
+                      >
+                        <ChapterParagraphContent html={para} />
+                      </div>
 
                       <div
                         onClick={() => setActivePara(activePara === paraId ? null : paraId)}

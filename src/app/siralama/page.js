@@ -36,7 +36,7 @@ function getRankStyle(index) {
   return { color: 'text-gray-500', icon: `#${index + 1}`, border: 'border-transparent', bg: 'bg-gray-100 dark:bg-white/5' };
 }
 
-function BookCarousel({ books, adminEmails, color = 'red' }) {
+function BookCarousel({ books, adminEmails, color = 'red', metric = 'weekly' }) {
   const scrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -75,6 +75,12 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
   };
 
   const colors = colorMap[color] || colorMap.red;
+  const metricMap = {
+    weekly: { field: 'weekly_reads', label: 'bu hafta' },
+    monthly: { field: 'monthly_reads', label: 'bu ay' },
+    allTime: { field: 'totalViews', label: 'toplam' },
+  };
+  const activeMetric = metricMap[metric] || metricMap.weekly;
 
   return (
     <div className="relative">
@@ -122,11 +128,9 @@ function BookCarousel({ books, adminEmails, color = 'red' }) {
     isPremium={book.profiles?.role === 'premium'} // 👈 YENİ EKLENEN
     className="text-xs text-gray-400 font-bold uppercase tracking-wider" 
   />
-</div>
+                </div>
                 <p className="text-[10px] text-gray-500 mt-1">
-                  {book.weekly_reads ? `${formatNumber(book.weekly_reads)} okuma (bu hafta)` : 
-                   book.monthly_reads ? `${formatNumber(book.monthly_reads)} okuma (bu ay)` : 
-                   `${formatNumber(book.totalViews || book.view_count || 0)} okuma (toplam)`}
+                  {formatNumber(book[activeMetric.field])} okuma ({activeMetric.label})
                 </p>
               </div>
             );
@@ -439,7 +443,7 @@ export default function LeaderboardPage() {
           {weeklyTopBooks.length === 0 ? (
             <div className="text-gray-500 text-center py-10 border border-dashed border-gray-700 rounded-xl">Bu hafta okuma verisi bulunamadı.</div>
           ) : (
-            <BookCarousel books={weeklyTopBooks} adminEmails={adminEmails} color="red" />
+            <BookCarousel books={weeklyTopBooks} adminEmails={adminEmails} color="red" metric="weekly" />
           )}
         </div>
 
@@ -451,7 +455,7 @@ export default function LeaderboardPage() {
           {monthlyTopBooks.length === 0 ? (
             <div className="text-gray-500 text-center py-10 border border-dashed border-gray-700 rounded-xl">Veri yükleniyor veya bulunamadı.</div>
           ) : (
-            <BookCarousel books={monthlyTopBooks} adminEmails={adminEmails} color="yellow" />
+            <BookCarousel books={monthlyTopBooks} adminEmails={adminEmails} color="yellow" metric="monthly" />
           )}
         </div>
 
@@ -463,7 +467,7 @@ export default function LeaderboardPage() {
           {allTimeTopBooks.length === 0 ? (
             <div className="text-gray-500 text-center py-10 border border-dashed border-gray-700 rounded-xl">Veri yükleniyor veya bulunamadı.</div>
           ) : (
-            <BookCarousel books={allTimeTopBooks} adminEmails={adminEmails} color="purple" />
+            <BookCarousel books={allTimeTopBooks} adminEmails={adminEmails} color="purple" metric="allTime" />
           )}
         </div>
       </div>

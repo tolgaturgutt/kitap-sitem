@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 
 function formatTime(value) {
@@ -16,7 +16,7 @@ function formatTime(value) {
     : `${minutes}:${String(seconds).padStart(2, '0')}`;
 }
 
-export default function PodcastAudioPlayer({
+function PodcastAudioPlayer({
   src,
   title,
   bookTitle,
@@ -228,3 +228,5 @@ export default function PodcastAudioPlayer({
     </section>
   );
 }
+
+export default memo(PodcastAudioPlayer);

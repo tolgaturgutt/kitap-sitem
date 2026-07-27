@@ -1,8 +1,7 @@
--- Liderlik sayfasinin ham chapter_views kayitlarini istemciye indirmesini
--- engeller ve haftalik/aylik/gecen hafta listelerini tek sorguda uretir.
-create index if not exists idx_chapter_views_created_chapter
-  on public.chapter_views (created_at desc, chapter_id);
-
+-- Period rankings use timestamped chapter_views rows, while some chapters have
+-- an initial view in chapters.views that has no matching history row. Attribute
+-- that unlogged difference to the current period so recent reads do not
+-- disappear from weekly/monthly rankings.
 create index if not exists idx_chapter_views_chapter_created
   on public.chapter_views (chapter_id, created_at desc);
 
