@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 
 const LAST_AD_TIME_KEY = 'lastInterstitialAdTimeV2';
 const FIRST_AD_ELIGIBLE_AT_KEY = 'firstInterstitialEligibleAtV1';
+const FIRST_INTERSTITIAL_DELAY_MS = 5 * 60 * 1000;
 const INTERSTITIAL_COOLDOWN_MS = 15 * 60 * 1000;
 
 const INTERSTITIAL_AD_ID = 'ca-app-pub-9356201064551661/3044605897';
@@ -23,7 +24,7 @@ export function initializeInterstitialSchedule() {
   if (!Capacitor.isNativePlatform()) return 0;
 
   if (sessionInterstitialEligibleAt === 0) {
-    sessionInterstitialEligibleAt = Date.now() + INTERSTITIAL_COOLDOWN_MS;
+    sessionInterstitialEligibleAt = Date.now() + FIRST_INTERSTITIAL_DELAY_MS;
     localStorage.removeItem(FIRST_AD_ELIGIBLE_AT_KEY);
   }
 
