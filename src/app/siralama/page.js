@@ -7,19 +7,45 @@ import Username from '@/components/Username';
 import BookCoverImage from '@/components/BookCoverImage';
 import { getAdminEmails } from '@/lib/admins';
 
-function normalizeRankedBook(book) {
-  return {
-    ...book,
-    profiles: {
-      username: book.author_username,
-      email: book.author_email,
-      role: book.author_role,
-    },
-    weekly_reads: Number(book.weekly_reads) || 0,
-    monthly_reads: Number(book.monthly_reads) || 0,
-    last_week_reads: Number(book.last_week_reads) || 0,
-    totalViews: Number(book.total_views) || 0,
-  };
+const CHAPTER_VIEWS_PAGE_SIZE = 1000;
+
+async function fetchChapterViewsSince(startDate) {
+  const allViews = [];
+
+  for (let from = 0; ; from += CHAPTER_VIEWS_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('chapter_views')
+      .select('chapter_id, created_at, chapters!inner (book_id, is_draft, books!inner (id, title, cover_url, view_count, user_id, username, is_draft, profiles:user_id (username, email, role)))')
+      .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: true })
+      .range(from, from + CHAPTER_VIEWS_PAGE_SIZE - 1);
+
+    if (error) {
+      console.error('Okuma verileri alınamadı:', error);
+      break;
+    }
+
+    allViews.push(...(data || []));
+    if (!data || data.length < CHAPTER_VIEWS_PAGE_SIZE) break;
+  }
+
+  return allViews;
+}
+
+function rankBooksByViews(views, metricName) {
+  const booksById = new Map();
+
+  views.forEach(item => {
+    const book = item.chapters?.books;
+    if (!book || item.chapters?.is_draft || book.is_draft) return;
+
+    const current = booksById.get(book.id) || { ...book, [metricName]: 0 };
+    current[metricName] += 1;
+    booksById.set(book.id, current);
+  });
+
+  return [...booksById.values()]
+    .sort((left, right) => right[metricName] - left[metricName]);
 }
 
 function formatNumber(num) {
@@ -36,7 +62,7 @@ function getRankStyle(index) {
   return { color: 'text-gray-500', icon: `#${index + 1}`, border: 'border-transparent', bg: 'bg-gray-100 dark:bg-white/5' };
 }
 
-function BookCarousel({ books, adminEmails, color = 'red', metric = 'weekly' }) {
+function BookCarousel({ books, adminEmails, color = 'red' }) {
   const scrollRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
@@ -75,13 +101,6 @@ function BookCarousel({ books, adminEmails, color = 'red', metric = 'weekly' }) 
   };
 
   const colors = colorMap[color] || colorMap.red;
-  const metricMap = {
-    weekly: { field: 'weekly_reads', label: 'bu hafta' },
-    monthly: { field: 'monthly_reads', label: 'bu ay' },
-    allTime: { field: 'totalViews', label: 'toplam' },
-  };
-  const activeMetric = metricMap[metric] || metricMap.weekly;
-
   return (
     <div className="relative">
       {canScrollLeft && (
@@ -130,7 +149,9 @@ function BookCarousel({ books, adminEmails, color = 'red', metric = 'weekly' }) 
   />
                 </div>
                 <p className="text-[10px] text-gray-500 mt-1">
-                  {formatNumber(book[activeMetric.field])} okuma ({activeMetric.label})
+                  {book.weekly_reads ? `${formatNumber(book.weekly_reads)} okuma (bu hafta)` :
+                   book.monthly_reads ? `${formatNumber(book.monthly_reads)} okuma (bu ay)` :
+                   `${formatNumber(book.totalViews || book.view_count || 0)} okuma (toplam)`}
                 </p>
               </div>
             );
@@ -164,34 +185,110 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     async function fetchData() {
-      const now = new Date();
-      const day = now.getDay();
-      const dayOffset = day === 0 ? -6 : 1 - day;
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() + dayOffset);
-      weekStart.setHours(14, 0, 0, 0);
-      if (now < weekStart) weekStart.setDate(weekStart.getDate() - 7);
-
-      const lastWeekStart = new Date(weekStart);
-      lastWeekStart.setDate(weekStart.getDate() - 7);
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
       try {
+        const admins = await getAdminEmails();
+        setAdminEmails(admins);
+
+        const now = new Date();
+        const day = now.getDay();
+        const dayOffset = day === 0 ? -6 : 1 - day;
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() + dayOffset);
+        weekStart.setHours(14, 0, 0, 0);
+        if (now < weekStart) weekStart.setDate(weekStart.getDate() - 7);
+
+        const lastWeekStart = new Date(weekStart);
+        lastWeekStart.setDate(weekStart.getDate() - 7);
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+        const periodStart = new Date(
+          Math.min(lastWeekStart.getTime(), monthStart.getTime())
+        );
+        const periodViews = await fetchChapterViewsSince(periodStart);
+
+        let weeklyBooks = rankBooksByViews(
+          periodViews.filter(
+            view => new Date(view.created_at).getTime() >= weekStart.getTime()
+          ),
+          'weekly_reads'
+        );
+        const lastWeekBooks = rankBooksByViews(
+          periodViews.filter(view => {
+            const createdAt = new Date(view.created_at).getTime();
+            return (
+              createdAt >= lastWeekStart.getTime()
+              && createdAt < weekStart.getTime()
+            );
+          }),
+          'weekly_reads'
+        ).slice(0, 10);
+        let monthlyBooks = rankBooksByViews(
+          periodViews.filter(
+            view => new Date(view.created_at).getTime() >= monthStart.getTime()
+          ),
+          'monthly_reads'
+        );
+
+        const { data: allBooksRaw, error: allBooksError } = await supabase
+          .from('books')
+          .select('id, title, cover_url, created_at, is_completed, user_id, username, is_draft, chapters (views, is_draft), profiles:user_id (username, email, role)')
+          .eq('is_draft', false);
+        if (allBooksError) throw allBooksError;
+
+        const booksWithTotals = (allBooksRaw || [])
+          .map(book => ({
+            ...book,
+            totalViews: (book.chapters || [])
+              .filter(chapter => !chapter.is_draft)
+              .reduce((sum, chapter) => sum + (chapter.views || 0), 0),
+            username: book.profiles?.username || book.username,
+          }));
+
+        const monthlyById = new Map(monthlyBooks.map(book => [book.id, book]));
+        const weeklyById = new Map(weeklyBooks.map(book => [book.id, book]));
+
+        booksWithTotals.forEach(book => {
+          if (new Date(book.created_at).getTime() < monthStart.getTime()) return;
+
+          const monthlyBook = monthlyById.get(book.id);
+          const unloggedReads = Math.max(
+            book.totalViews - (monthlyBook?.monthly_reads || 0),
+            0
+          );
+          if (unloggedReads === 0) return;
+
+          monthlyById.set(book.id, {
+            ...(monthlyBook || book),
+            monthly_reads: (monthlyBook?.monthly_reads || 0) + unloggedReads,
+          });
+
+          const weeklyBook = weeklyById.get(book.id);
+          weeklyById.set(book.id, {
+            ...(weeklyBook || book),
+            weekly_reads: (weeklyBook?.weekly_reads || 0) + unloggedReads,
+          });
+        });
+
+        monthlyBooks = [...monthlyById.values()]
+          .sort((left, right) => right.monthly_reads - left.monthly_reads)
+          .slice(0, 10);
+        weeklyBooks = [...weeklyById.values()]
+          .sort((left, right) => right.weekly_reads - left.weekly_reads)
+          .slice(0, 10);
+
+        setWeeklyTopBooks(weeklyBooks);
+        setMonthlyTopBooks(monthlyBooks);
+
+        const allTimeBooks = booksWithTotals
+          .sort((left, right) => right.totalViews - left.totalViews)
+          .slice(0, 10);
+        setAllTimeTopBooks(allTimeBooks);
+
         const [
-          admins,
-          rankingsResult,
           writersResult,
           commentersResult,
           championWriterResult,
           championCommenterResult,
         ] = await Promise.all([
-          getAdminEmails(),
-          supabase.rpc('get_leaderboard_book_rankings', {
-            p_week_start: weekStart.toISOString(),
-            p_month_start: monthStart.toISOString(),
-            p_last_week_start: lastWeekStart.toISOString(),
-            p_limit: 10,
-          }),
           supabase.rpc('get_weekly_top_writers', {
             start_date: weekStart.toISOString(),
           }),
@@ -209,23 +306,12 @@ export default function LeaderboardPage() {
         ]);
 
         const requestError =
-          rankingsResult.error ||
           writersResult.error ||
           commentersResult.error ||
           championWriterResult.error ||
           championCommenterResult.error;
         if (requestError) throw requestError;
 
-        const rankings = rankingsResult.data || {};
-        const weeklyBooks = (rankings.weekly || []).map(normalizeRankedBook);
-        const monthlyBooks = (rankings.monthly || []).map(normalizeRankedBook);
-        const lastWeekBooks = (rankings.last_week || []).map(normalizeRankedBook);
-        const allTimeBooks = (rankings.all_time || []).map(normalizeRankedBook);
-
-        setAdminEmails(admins);
-        setWeeklyTopBooks(weeklyBooks);
-        setMonthlyTopBooks(monthlyBooks);
-        setAllTimeTopBooks(allTimeBooks);
         setTopWriters((writersResult.data || []).map(writer => ({
           userId: writer.username,
           username: writer.username,
@@ -265,7 +351,7 @@ export default function LeaderboardPage() {
             id: championBook.id,
             title: championBook.title,
             cover_url: championBook.cover_url,
-            weekly_reads: championBook.last_week_reads,
+            weekly_reads: championBook.weekly_reads,
           } : null,
         });
       } catch (error) {
@@ -443,7 +529,7 @@ export default function LeaderboardPage() {
           {weeklyTopBooks.length === 0 ? (
             <div className="text-gray-500 text-center py-10 border border-dashed border-gray-700 rounded-xl">Bu hafta okuma verisi bulunamadı.</div>
           ) : (
-            <BookCarousel books={weeklyTopBooks} adminEmails={adminEmails} color="red" metric="weekly" />
+            <BookCarousel books={weeklyTopBooks} adminEmails={adminEmails} color="red" />
           )}
         </div>
 
@@ -455,7 +541,7 @@ export default function LeaderboardPage() {
           {monthlyTopBooks.length === 0 ? (
             <div className="text-gray-500 text-center py-10 border border-dashed border-gray-700 rounded-xl">Veri yükleniyor veya bulunamadı.</div>
           ) : (
-            <BookCarousel books={monthlyTopBooks} adminEmails={adminEmails} color="yellow" metric="monthly" />
+            <BookCarousel books={monthlyTopBooks} adminEmails={adminEmails} color="yellow" />
           )}
         </div>
 
@@ -467,7 +553,7 @@ export default function LeaderboardPage() {
           {allTimeTopBooks.length === 0 ? (
             <div className="text-gray-500 text-center py-10 border border-dashed border-gray-700 rounded-xl">Veri yükleniyor veya bulunamadı.</div>
           ) : (
-            <BookCarousel books={allTimeTopBooks} adminEmails={adminEmails} color="purple" metric="allTime" />
+            <BookCarousel books={allTimeTopBooks} adminEmails={adminEmails} color="purple" />
           )}
         </div>
       </div>

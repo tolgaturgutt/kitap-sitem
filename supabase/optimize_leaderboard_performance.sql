@@ -3,9 +3,6 @@
 create index if not exists idx_chapter_views_created_chapter
   on public.chapter_views (created_at desc, chapter_id);
 
-create index if not exists idx_chapter_views_chapter_created
-  on public.chapter_views (chapter_id, created_at desc);
-
 create or replace function public.get_leaderboard_book_rankings(
   p_week_start timestamptz,
   p_month_start timestamptz,
@@ -18,55 +15,28 @@ stable
 security invoker
 set search_path = ''
 as $$
-  with chapter_read_counts as (
+  with period_counts as (
     select
-      chapters.id as chapter_id,
       chapters.book_id,
-      coalesce(chapters.views, 0)::bigint as total_reads,
-      count(chapter_views.chapter_id)::bigint as logged_reads,
-      count(chapter_views.chapter_id) filter (
+      count(*) filter (
         where chapter_views.created_at >= p_week_start
-      )::bigint as weekly_logged_reads,
-      count(chapter_views.chapter_id) filter (
+      )::bigint as weekly_reads,
+      count(*) filter (
         where chapter_views.created_at >= p_month_start
-      )::bigint as monthly_logged_reads,
-      count(chapter_views.chapter_id) filter (
+      )::bigint as monthly_reads,
+      count(*) filter (
         where chapter_views.created_at >= p_last_week_start
           and chapter_views.created_at < p_week_start
-      )::bigint as last_week_logged_reads
-    from public.chapters
+      )::bigint as last_week_reads
+    from public.chapter_views
+    join public.chapters
+      on chapters.id = chapter_views.chapter_id
     join public.books
       on books.id = chapters.book_id
-    left join public.chapter_views
-      on chapter_views.chapter_id = chapters.id
-    where chapters.is_draft = false
+    where chapter_views.created_at >= least(p_month_start, p_last_week_start)
+      and chapters.is_draft = false
       and books.is_draft = false
-    group by
-      chapters.id,
-      chapters.book_id,
-      chapters.views
-  ),
-  period_counts as (
-    select
-      chapter_read_counts.book_id,
-      sum(
-        chapter_read_counts.weekly_logged_reads
-        + greatest(
-          chapter_read_counts.total_reads - chapter_read_counts.logged_reads,
-          0
-        )
-      )::bigint as weekly_reads,
-      sum(
-        chapter_read_counts.monthly_logged_reads
-        + greatest(
-          chapter_read_counts.total_reads - chapter_read_counts.logged_reads,
-          0
-        )
-      )::bigint as monthly_reads,
-      sum(chapter_read_counts.last_week_logged_reads)::bigint
-        as last_week_reads
-    from chapter_read_counts
-    group by chapter_read_counts.book_id
+    group by chapters.book_id
   ),
   period_books as (
     select
