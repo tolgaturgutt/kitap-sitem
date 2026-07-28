@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
+import AdminRewardedAdStats from '@/components/AdminRewardedAdStats';
 
 // --- İKONLAR ---
 const Icons = {
@@ -477,9 +478,10 @@ const [loadingEvents, setLoadingEvents] = useState(false);
 
         <div className="mb-10 border-b dark:border-white/10 overflow-x-auto scrollbar-hide">
           <div className="flex justify-start md:justify-center min-w-max">
-            {['duyurular', 'kullanicilar', 'sikayetler', 'destek', 'yasakli', 'kategoriler', 'etkinlikler'].map(tab => (
+            {['duyurular', 'kullanicilar', 'reklamlar', 'sikayetler', 'destek', 'yasakli', 'kategoriler', 'etkinlikler'].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)} className={`px-4 md:px-6 py-4 font-black uppercase tracking-widest border-b-4 whitespace-nowrap text-xs md:text-sm ${activeTab === tab ? 'border-red-600 text-red-600' : 'border-transparent text-gray-400'}`}>
-                {tab === 'duyurular' ? '📣 Duyurular' :
+                {tab === 'reklamlar' ? '🎬 Reklamlar' :
+                  tab === 'duyurular' ? '📣 Duyurular' :
                   tab === 'kullanicilar' ? '👥 Kullanıcılar' :
                     tab === 'sikayetler' ? '⚠️ Şikayetler' :
                       tab === 'destek' ? '📧 Destek' :
@@ -837,6 +839,8 @@ const [loadingEvents, setLoadingEvents] = useState(false);
               )}
             </div>
           )}
+
+          {activeTab === 'reklamlar' && <AdminRewardedAdStats />}
 
           {activeTab === 'sikayetler' && (
             <div className="space-y-6">
