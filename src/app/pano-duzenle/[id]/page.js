@@ -149,10 +149,17 @@ export default function PanoDuzenle({ params }) {
   const filteredBooks = books.filter(b => 
     b.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  const isAdmin = Boolean(user?.email && adminEmails.includes(user.email));
 
   async function handlePanoImageUpload(e) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
+
+    if (!selectedBook && !isAdmin) {
+      e.target.value = '';
+      toast.error('Pano görseli eklemek için önce bir kitap seçmelisin!');
+      return;
+    }
 
     if (!file.type.startsWith('image/')) {
       toast.error('Sadece görsel yükleyebilirsin!');
@@ -201,6 +208,10 @@ export default function PanoDuzenle({ params }) {
 
   function getPanoSaveErrorMessage(error) {
     const errorText = `${error?.message || ''} ${error?.details || ''} ${error?.hint || ''}`.toLowerCase();
+    if (errorText.includes('pano_book_required')) {
+      return 'Pano paylaşmak için önce yayınlanmış kitabını seçmelisin.';
+    }
+
     const schemaNeedsUpdate =
       error?.code === '42703' ||
       error?.code === 'PGRST204' ||
@@ -221,8 +232,12 @@ export default function PanoDuzenle({ params }) {
 
     if (!title.trim()) { toast.error('Başlık gerekli!'); return; }
     if (!content.trim()) { toast.error('İçerik gerekli!'); return; }
+    if (!selectedBook && !isAdmin) {
+      toast.error('Panoyu güncellemek için bir kitap seçmelisin!');
+      return;
+    }
     if (!selectedBook && !panoImageUrl) {
-      toast.error('Kitap seçmezsen bir pano görseli eklemelisin!');
+      toast.error('Kitapsız admin panosu için bir pano görseli eklemelisin!');
       return;
     }
 
@@ -312,14 +327,18 @@ export default function PanoDuzenle({ params }) {
 
           <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
-                Pano Görseli {selectedBook ? '(Opsiyonel)' : '*'}
+                Pano Görseli {selectedBook ? '(Opsiyonel)' : isAdmin ? '*' : '(Önce kitap seç)'}
               </label>
-              <div className="relative overflow-hidden rounded-2xl border-2 border-dashed border-blue-200 dark:border-blue-900/40 bg-blue-50/50 dark:bg-blue-900/10 p-5">
+              <div className={`relative overflow-hidden rounded-2xl border-2 border-dashed p-5 ${
+                !selectedBook && !isAdmin
+                  ? 'border-gray-200 bg-gray-50 opacity-60 dark:border-white/10 dark:bg-white/5'
+                  : 'border-blue-200 bg-blue-50/50 dark:border-blue-900/40 dark:bg-blue-900/10'
+              }`}>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={handlePanoImageUpload}
-                  disabled={uploadingImage || saving}
+                  disabled={uploadingImage || saving || (!selectedBook && !isAdmin)}
                   className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
                 />
                 {panoImageUrl ? (
@@ -351,10 +370,16 @@ export default function PanoDuzenle({ params }) {
                   <div className="text-center py-4">
                     <p className="text-2xl mb-2">+</p>
                     <p className="text-[10px] font-black uppercase tracking-widest text-blue-600">
-                      {uploadingImage ? 'Yükleniyor...' : 'Tek görsel ekle'}
+                      {uploadingImage
+                        ? 'Yükleniyor...'
+                        : !selectedBook && !isAdmin
+                          ? 'Önce kitap seç'
+                          : 'Tek görsel ekle'}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      Panonda kitap kapağı yerine kendi görselini kullanabilirsin.
+                      {!selectedBook && !isAdmin
+                        ? 'Kitabını seçtikten sonra özel pano görseli ekleyebilirsin.'
+                        : 'Özel görsel eklemezsen panoda kitabının kapağı gösterilir.'}
                     </p>
                   </div>
                 )}
@@ -364,7 +389,7 @@ export default function PanoDuzenle({ params }) {
           {/* KİTAP SEÇİMİ */}
           <div className="relative">
             <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
-              Kitap Seç (Opsiyonel) {selectedBook && '✓'}
+              Kitap Seç {isAdmin ? '(Opsiyonel)' : '*'} {selectedBook && '✓'}
             </label>
             
             <div className="relative">
@@ -438,6 +463,10 @@ export default function PanoDuzenle({ params }) {
                     setSelectedBook(null);
                     setSearchQuery('');
                     setSelectedChapter(null);
+                    if (!isAdmin) {
+                      setPanoImageUrl('');
+                      setPanoImageTouched(true);
+                    }
                   }}
                   className="text-red-600 hover:text-red-700 font-black text-sm"
                 >
@@ -485,7 +514,13 @@ export default function PanoDuzenle({ params }) {
             <button
               type="submit"
               className="flex-[2] py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-black uppercase text-sm shadow-lg shadow-blue-600/30 transition-all disabled:opacity-50"
-              disabled={saving || uploadingImage || !title.trim() || !content.trim() || (!selectedBook && !panoImageUrl)}
+              disabled={
+                saving ||
+                uploadingImage ||
+                !title.trim() ||
+                !content.trim() ||
+                (!selectedBook && (!isAdmin || !panoImageUrl))
+              }
             >
               {saving ? 'Güncelleniyor...' : '💾 Panoyu Güncelle'}
             </button>
