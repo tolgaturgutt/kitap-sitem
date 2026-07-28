@@ -11,6 +11,7 @@ import BookCoverImage from '@/components/BookCoverImage';
 import imageCompression from 'browser-image-compression';
 import { ProfileBadges } from '@/components/Badges';
 import { buildBadgeStats, EMPTY_BADGE_STATS, fetchProfileBadgeCounts } from '@/lib/badges';
+import { usePlusFeatureAccess } from '@/hooks/usePlusFeatureAccess';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -21,6 +22,7 @@ function formatNumber(num) {
 }
 
 export default function ProfilSayfasi() {
+  const canUsePlusFeatures = usePlusFeatureAccess();
   const [user, setUser] = useState(null);
   const [myBooks, setMyBooks] = useState([]);
   const [myDrafts, setMyDrafts] = useState([]);
@@ -44,7 +46,6 @@ export default function ProfilSayfasi() {
   const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', banner_url: '', instagram: '', role: '' });
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
-  const canUsePremiumFeatures = isAdmin || profileData.role === 'premium';
 
   // Listeler (Artık detaylı veriyi direkt çekiyoruz)
   const [followersWithProfiles, setFollowersWithProfiles] = useState([]);
@@ -223,7 +224,7 @@ export default function ProfilSayfasi() {
       updated_at: new Date()
     };
 
-    if (canUsePremiumFeatures) {
+    if (canUsePlusFeatures) {
       profileUpdate.banner_url = profileData.banner_url || null;
     }
 
@@ -298,8 +299,11 @@ export default function ProfilSayfasi() {
     } catch (error) {
       console.error(error);
       toast.error(
-        error?.message?.includes('PREMIUM_FEATURE_REQUIRED')
-          ? 'Profil kapağı yalnızca Premium üyeler ve adminler içindir.'
+        (
+          error?.message?.includes('PREMIUM_FEATURE_REQUIRED')
+          || error?.message?.includes('PLUS_FEATURE_REQUIRED')
+        )
+          ? 'Profil kapağı yalnızca Plus, Premium üyeler ve adminler içindir.'
           : `Kapak yüklenemedi: ${error.message}`,
         { id: toastId }
       );
@@ -424,7 +428,7 @@ export default function ProfilSayfasi() {
                 </>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 animate-in fade-in zoom-in-95 duration-200">
-                  {canUsePremiumFeatures && (
+                  {canUsePlusFeatures && (
                     <div className="md:col-span-2 mb-2 p-4 bg-amber-50 dark:bg-amber-500/5 rounded-2xl md:rounded-3xl border border-dashed border-amber-300 dark:border-amber-500/30 text-center relative group hover:bg-amber-100 dark:hover:bg-amber-500/10 transition-colors">
                       <input
                         type="file"
@@ -437,7 +441,7 @@ export default function ProfilSayfasi() {
                         Profil Kapak Fotoğrafını Değiştir
                       </p>
                       <p className="mt-1 text-[8px] font-bold uppercase tracking-widest text-amber-600/60">
-                        Premium özellik
+                        Plus özellik
                       </p>
                       {profileData.banner_url && (
                         <button

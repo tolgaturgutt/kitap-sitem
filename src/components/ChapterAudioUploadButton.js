@@ -49,7 +49,7 @@ export default function ChapterAudioUploadButton({
     let cancelled = false;
 
     supabase
-      .rpc('can_use_chapter_images')
+      .rpc('can_use_premium_features')
       .then(({ data }) => {
         if (!cancelled) setCanUseAudio(Boolean(data));
       });

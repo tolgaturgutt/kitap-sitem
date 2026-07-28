@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import Username from '@/components/Username';
 import { usePremiumFeatureAccessState } from '@/hooks/usePremiumFeatureAccess';
+import { usePlusFeatureAccess } from '@/hooks/usePlusFeatureAccess';
 import { normalizeYouTubeUrl } from '@/lib/youtube';
 
 
@@ -15,6 +16,7 @@ export default function KitapEkle() {
   const searchParams = useSearchParams();
   const isAudiobook = searchParams.get('tur') === 'sesli';
   const { canUsePremiumFeatures, loading: premiumAccessLoading } = usePremiumFeatureAccessState();
+  const canUsePlusFeatures = usePlusFeatureAccess();
   const [loading, setLoading] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -134,8 +136,8 @@ export default function KitapEkle() {
       let trailerUrl = null;
 
       if (formData.trailer_url.trim()) {
-        if (!canUsePremiumFeatures) {
-          throw new Error('PREMIUM_FEATURE_REQUIRED');
+        if (!canUsePlusFeatures) {
+          throw new Error('PLUS_FEATURE_REQUIRED');
         }
 
         trailerUrl = normalizeYouTubeUrl(formData.trailer_url);
@@ -210,10 +212,13 @@ export default function KitapEkle() {
 
     } catch (error) {
       toast.error(
-        `${error?.message || ''}`.includes('PREMIUM_FEATURE_REQUIRED')
+        (
+          `${error?.message || ''}`.includes('PREMIUM_FEATURE_REQUIRED')
+          || `${error?.message || ''}`.includes('PLUS_FEATURE_REQUIRED')
+        )
           ? isAudiobook
             ? 'Sesli kitap yalnızca Premium üyeler ve adminler tarafından oluşturulabilir.'
-            : 'Kitap fragmanını yalnızca premium kullanıcılar ve adminler ekleyebilir.'
+            : 'Kitap fragmanını yalnızca Plus, Premium üyeler ve adminler ekleyebilir.'
           : error.message || "Bir hata oluştu."
       );
     } finally {
@@ -328,12 +333,12 @@ export default function KitapEkle() {
             />
           </div>
 
-          {canUsePremiumFeatures && (
+          {canUsePlusFeatures && (
             <div>
               <label className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-gray-400">
                 YouTube Kitap Fragmanı
                 <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[8px] text-black">
-                  Premium
+                  Plus
                 </span>
               </label>
               <input

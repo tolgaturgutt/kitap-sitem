@@ -889,7 +889,7 @@ export default function Navbar() {
                         <span className="relative h-5 w-5 overflow-hidden rounded-full border border-amber-300">
                           <Image src="/labcoin.jpg" alt="" fill sizes="20px" className="object-cover" />
                         </span>
-                        Premium
+                        Plus / Premium
                       </Link>
 
                       <Link

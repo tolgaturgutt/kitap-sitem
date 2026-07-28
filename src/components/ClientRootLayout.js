@@ -212,7 +212,7 @@ useEffect(() => {
     if (pathname === "/giris") baslik = "Giriş Yap | KitapLab";
     else if (pathname === "/kayit") baslik = "Kayıt Ol | KitapLab";
     else if (pathname === "/profil") baslik = "Profilim | KitapLab";
-    else if (pathname === "/premium") baslik = "Premium & LabCoin | KitapLab";
+    else if (pathname === "/premium") baslik = "Plus, Premium & LabCoin | KitapLab";
     else if (pathname === "/arama") baslik = "Kitap Ara & Keşfet | KitapLab";
     else if (pathname === "/admin") baslik = "Yönetici Paneli | KitapLab";
     else if (pathname === "/bakim") baslik = "Kısa Bir Bakım Molası | KitapLab";

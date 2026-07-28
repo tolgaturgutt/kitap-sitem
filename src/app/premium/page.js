@@ -28,6 +28,12 @@ const EMPTY_STATUS = {
   premium_price: 500,
   premium_duration_months: 1,
   can_purchase_premium: false,
+  is_plus: false,
+  plus_expires_at: null,
+  has_plus_access: false,
+  plus_price: 120,
+  plus_duration_months: 1,
+  can_purchase_plus: false,
   server_now: null,
 };
 
@@ -118,21 +124,25 @@ export default function PremiumPage() {
   const [status, setStatus] = useState(EMPTY_STATUS);
   const [loading, setLoading] = useState(true);
   const [watchingAd, setWatchingAd] = useState(false);
+  const [purchasingPlus, setPurchasingPlus] = useState(false);
   const [purchasingPremium, setPurchasingPremium] = useState(false);
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [nowTick, setNowTick] = useState(Date.now());
 
   const loadStatus = useCallback(async () => {
-    const [statusResult, rewardedAdsResult] = await Promise.all([
+    const [statusResult, plusStatusResult, rewardedAdsResult] = await Promise.all([
       supabase.rpc('get_labcoin_status'),
+      supabase.rpc('get_plus_status'),
       supabase.rpc('is_labcoin_rewarded_ads_enabled'),
     ]);
     if (statusResult.error) throw statusResult.error;
+    if (plusStatusResult.error) throw plusStatusResult.error;
     if (rewardedAdsResult.error) throw rewardedAdsResult.error;
 
     const nextStatus = {
       ...EMPTY_STATUS,
       ...(statusResult.data || {}),
+      ...(plusStatusResult.data || {}),
       rewarded_ads_enabled: Boolean(rewardedAdsResult.data),
     };
     setStatus(nextStatus);
@@ -240,7 +250,7 @@ export default function PremiumPage() {
       if (error) throw error;
 
       setStatus(previousStatus => ({
-        ...EMPTY_STATUS,
+        ...previousStatus,
         ...(data || {}),
         rewarded_ads_enabled: previousStatus.rewarded_ads_enabled,
       }));
@@ -254,6 +264,45 @@ export default function PremiumPage() {
       await loadStatus().catch(() => {});
     } finally {
       setWatchingAd(false);
+    }
+  }
+
+  async function handlePurchasePlus() {
+    if (status.has_plus_access || purchasingPlus) return;
+
+    const price = status.plus_price || 120;
+    if (status.balance < price) {
+      toast.error(`Plus için ${price - status.balance} LabCoin daha gerekiyor.`);
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `${price} LabCoin ödeyerek hesabını 1 aylığına Plus yapmak istiyor musun?`
+    );
+    if (!confirmed) return;
+
+    setPurchasingPlus(true);
+    const toastId = toast.loading('Plus üyeliğin etkinleştiriliyor...');
+
+    try {
+      const { data, error } = await supabase.rpc('purchase_plus_with_labcoin');
+      if (error) throw error;
+
+      setStatus(previousStatus => ({ ...previousStatus, ...(data || {}) }));
+      toast.success('1 aylık Plus üyeliğin aktif!', { id: toastId });
+      router.refresh();
+    } catch (error) {
+      console.error('Plus purchase error:', error);
+      const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+      toast.error(
+        message.includes('labcoin_insufficient_balance')
+          ? 'Plus için en az 120 LabCoin gerekiyor.'
+          : 'Plus üyelik şu anda etkinleştirilemedi.',
+        { id: toastId }
+      );
+      await loadStatus().catch(() => {});
+    } finally {
+      setPurchasingPlus(false);
     }
   }
 
@@ -278,7 +327,7 @@ export default function PremiumPage() {
       const { data, error } = await supabase.rpc('purchase_premium_with_labcoin');
       if (error) throw error;
 
-      setStatus({ ...EMPTY_STATUS, ...(data || {}) });
+      setStatus(previousStatus => ({ ...previousStatus, ...(data || {}) }));
       toast.success('1 aylık Premium üyeliğin aktif! Mavi tikin hazır. ✓', { id: toastId });
       router.refresh();
     } catch (error) {
@@ -305,16 +354,16 @@ export default function PremiumPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#fafafa] px-4 py-8 dark:bg-black md:px-6 md:py-14">
-      <div className="mx-auto max-w-5xl space-y-6">
-        <section className="relative overflow-hidden rounded-[2.5rem] border border-amber-200 bg-gradient-to-br from-[#fff9db] via-white to-[#fff1a8] p-7 shadow-2xl shadow-amber-500/10 dark:border-amber-500/20 dark:from-[#241900] dark:via-[#0d0d0d] dark:to-[#332300] md:p-12">
+    <div className="min-h-screen bg-[#fafafa] px-4 py-6 dark:bg-black md:px-6 md:py-9">
+      <div className="mx-auto max-w-5xl space-y-4">
+        <section className="relative overflow-hidden rounded-[2rem] border border-amber-200 bg-gradient-to-br from-[#fff9db] via-white to-[#fff1a8] p-6 shadow-xl shadow-amber-500/10 dark:border-amber-500/20 dark:from-[#241900] dark:via-[#0d0d0d] dark:to-[#332300] md:p-8">
           <div className="absolute -right-24 -top-24 h-72 w-72 rounded-full bg-amber-400/20 blur-3xl" />
-          <div className="relative grid items-center gap-8 md:grid-cols-[1fr_260px]">
+          <div className="relative grid items-center gap-5 md:grid-cols-[1fr_150px]">
             <div>
               <span className="inline-flex rounded-full border border-amber-300 bg-amber-100 px-4 py-2 text-[10px] font-black uppercase tracking-[0.25em] text-amber-800 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-300">
                 KitapLab Premium
               </span>
-              <h1 className="mt-5 text-4xl font-black uppercase tracking-[-0.05em] text-gray-950 dark:text-white md:text-6xl">
+              <h1 className="mt-4 text-3xl font-black uppercase tracking-[-0.05em] text-gray-950 dark:text-white md:text-4xl">
                 LabCoin Merkezi
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-7 text-gray-600 dark:text-gray-300 md:text-base">
@@ -323,13 +372,13 @@ export default function PremiumPage() {
               </p>
             </div>
 
-            <div className="relative mx-auto aspect-square w-full max-w-[240px] overflow-hidden rounded-full border-4 border-amber-300 bg-white shadow-2xl shadow-amber-600/25">
+            <div className="relative mx-auto aspect-square w-full max-w-[130px] overflow-hidden rounded-full border-4 border-amber-300 bg-white shadow-xl shadow-amber-600/25">
               <Image
                 src="/labcoin.jpg"
                 alt="LabCoin"
                 fill
                 priority
-                sizes="240px"
+                sizes="130px"
                 className="object-cover"
               />
             </div>
@@ -468,22 +517,99 @@ export default function PremiumPage() {
           </section>
         </div>
 
-        <section className="overflow-hidden rounded-[2.5rem] border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-amber-50 shadow-2xl shadow-blue-500/10 dark:border-blue-500/20 dark:from-blue-950/30 dark:via-[#0d0d0d] dark:to-amber-950/20">
-          <div className="grid gap-8 p-7 md:grid-cols-[1.25fr_0.75fr] md:p-10">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <section className="overflow-hidden rounded-[2rem] border border-violet-200 bg-gradient-to-br from-violet-50 via-white to-fuchsia-50 p-6 shadow-xl shadow-violet-500/10 dark:border-violet-500/20 dark:from-violet-950/30 dark:via-[#0d0d0d] dark:to-fuchsia-950/20 md:p-7">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-violet-600">
+              120 LabCoin · 1 Aylık Plus
+            </p>
+            <div className="mt-2 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-black tracking-tight text-gray-950 dark:text-white">
+                  Temel üretim araçlarını aç
+                </h2>
+                <p className="mt-2 text-xs leading-6 text-gray-600 dark:text-gray-300">
+                  Bölümlere fotoğraf, profil arka planı ve kitap fragmanı ekle.
+                </p>
+              </div>
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-600 text-xl font-black text-white">
+                +
+              </span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+              {['Bölüm fotoğrafı', 'Profil arka planı', 'Kitap fragmanı'].map(feature => (
+                <div key={feature} className="rounded-xl bg-white/80 px-2 py-3 text-[9px] font-black text-violet-800 dark:bg-white/5 dark:text-violet-300">
+                  {feature}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-4">
+              <div className="flex items-center justify-between text-[10px] font-black">
+                <span className="text-gray-500">Plus hedefi</span>
+                <span className="text-gray-950 dark:text-white">
+                  {Math.min(status.balance, status.plus_price || 120)}/{status.plus_price || 120}
+                </span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-violet-100 dark:bg-white/10">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-400 transition-all duration-500"
+                  style={{
+                    width: `${Math.min(
+                      100,
+                      (status.balance / (status.plus_price || 120)) * 100
+                    )}%`
+                  }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handlePurchasePlus}
+              disabled={
+                status.has_plus_access
+                || purchasingPlus
+                || status.balance < (status.plus_price || 120)
+              }
+              className="mt-5 w-full rounded-xl bg-violet-600 px-5 py-4 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {status.has_plus_access
+                ? status.is_plus
+                  ? 'Plus Aktif ✓'
+                  : status.is_admin
+                    ? 'Admin Yetkisi Aktif'
+                    : 'Premium ile Plus Aktif'
+                : purchasingPlus
+                  ? 'Plus Açılıyor...'
+                  : status.balance >= (status.plus_price || 120)
+                    ? `${status.plus_price || 120} LabCoin ile Plus Ol`
+                    : `${(status.plus_price || 120) - status.balance} LabCoin Daha Gerekli`}
+            </button>
+
+            {status.is_plus && (
+              <p className="mt-3 text-[10px] font-bold text-violet-700 dark:text-violet-300">
+                Plus bitişi: {formatPremiumExpiry(status.plus_expires_at)}
+              </p>
+            )}
+          </section>
+
+        <section className="overflow-hidden rounded-[2rem] border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-amber-50 shadow-xl shadow-blue-500/10 dark:border-blue-500/20 dark:from-blue-950/30 dark:via-[#0d0d0d] dark:to-amber-950/20">
+          <div className="grid gap-5 p-6 md:p-7">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-blue-600">
                 500 LabCoin · 1 Aylık Premium
               </p>
-              <h2 className="mt-3 text-3xl font-black tracking-tight text-gray-950 dark:text-white">
+              <h2 className="mt-2 text-2xl font-black tracking-tight text-gray-950 dark:text-white">
                 LabCoin&apos;lerini Premium&apos;a çevir
               </h2>
-              <p className="mt-3 max-w-xl text-sm leading-7 text-gray-600 dark:text-gray-300">
+              <p className="mt-2 max-w-xl text-xs leading-6 text-gray-600 dark:text-gray-300">
                 500 LabCoin biriktirdiğinde başka bir engel olmadan hesabını 1 aylığına
                 Premium yapabilir ve bütün ayrıcalıkları anında açabilirsin. Süre dolunca
                 yeniden 500 LabCoin ile üyeliğini yenileyebilirsin.
               </p>
 
-              <div className="mt-6 rounded-2xl border border-blue-100 bg-white/75 p-5 dark:border-white/10 dark:bg-white/5">
+              <div className="mt-4 rounded-2xl border border-blue-100 bg-white/75 p-4 dark:border-white/10 dark:bg-white/5">
                 <div className="flex items-center justify-between text-xs font-black">
                   <span className="text-gray-500">Premium hedefi</span>
                   <span className="text-gray-950 dark:text-white">
@@ -511,7 +637,7 @@ export default function PremiumPage() {
                   || purchasingPremium
                   || status.balance < (status.premium_price || 500)
                 }
-                className="mt-6 w-full rounded-2xl bg-blue-600 px-6 py-5 text-sm font-black uppercase tracking-wider text-white shadow-xl shadow-blue-600/25 transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto md:min-w-80"
+                className="mt-5 w-full rounded-xl bg-blue-600 px-5 py-4 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-600/20 transition-all hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {status.has_premium_access
                   ? status.is_admin
@@ -535,55 +661,58 @@ export default function PremiumPage() {
               )}
             </div>
 
-            <div className="flex flex-col items-center justify-center rounded-[2rem] border border-blue-200 bg-white/80 p-7 text-center dark:border-blue-500/20 dark:bg-blue-500/5">
-              <span className="flex h-20 w-20 items-center justify-center rounded-full bg-blue-500 text-4xl font-black text-white shadow-2xl shadow-blue-500/30">
+            <div className="flex items-center gap-4 rounded-2xl border border-blue-200 bg-white/80 p-4 dark:border-blue-500/20 dark:bg-blue-500/5">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-500 text-2xl font-black text-white shadow-lg shadow-blue-500/30">
                 ✓
               </span>
-              <p className="mt-5 text-[9px] font-black uppercase tracking-[0.25em] text-blue-600">
-                Premium Mavi Tik
-              </p>
-              <div className="mt-3 text-lg font-black text-gray-950 dark:text-white">
-                <Username
-                  username={
-                    profileUsername
-                    || user?.user_metadata?.username
-                    || user?.email?.split('@')[0]
-                    || 'kitaplabüyesi'
-                  }
-                  isAdmin={false}
-                  isPremium
-                />
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-[0.25em] text-blue-600">
+                  Premium Mavi Tik
+                </p>
+                <div className="mt-1 text-sm font-black text-gray-950 dark:text-white">
+                  <Username
+                    username={
+                      profileUsername
+                      || user?.user_metadata?.username
+                      || user?.email?.split('@')[0]
+                      || 'kitaplabüyesi'
+                    }
+                    isAdmin={false}
+                    isPremium
+                  />
+                </div>
+                <p className="mt-1 text-[10px] leading-4 text-gray-500">
+                  Premium olduğunda otomatik görünür.
+                </p>
               </div>
-              <p className="mt-3 text-xs leading-5 text-gray-500">
-                Premium olduğunda kullanıcı adının yanında otomatik görünür.
-              </p>
             </div>
           </div>
         </section>
+        </div>
 
-        <section className="rounded-[2.5rem] border border-gray-200 bg-white p-7 shadow-xl shadow-black/5 dark:border-white/10 dark:bg-white/[0.04] md:p-10">
+        <section className="rounded-[2rem] border border-gray-200 bg-white p-6 shadow-xl shadow-black/5 dark:border-white/10 dark:bg-white/[0.04] md:p-8">
           <div className="text-center">
             <p className="text-[10px] font-black uppercase tracking-[0.25em] text-amber-600">
               Premium Ayrıcalıkları
             </p>
-            <h2 className="mt-3 text-3xl font-black text-gray-950 dark:text-white">
+            <h2 className="mt-2 text-2xl font-black text-gray-950 dark:text-white">
               Premium ile açılan özellikler
             </h2>
           </div>
 
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {PREMIUM_FEATURES.map(feature => (
               <article
                 key={feature.title}
-                className="rounded-[1.75rem] border border-gray-100 bg-gray-50 p-6 transition-transform hover:-translate-y-1 dark:border-white/5 dark:bg-white/5"
+                className="rounded-2xl border border-gray-100 bg-gray-50 p-4 transition-transform hover:-translate-y-1 dark:border-white/5 dark:bg-white/5"
               >
                 <span className={`flex h-12 w-12 items-center justify-center rounded-2xl text-xl font-black text-white shadow-lg ${feature.accent}`}>
                   {feature.icon}
                 </span>
-                <h3 className="mt-5 text-lg font-black text-gray-950 dark:text-white">
+                <h3 className="mt-3 text-base font-black text-gray-950 dark:text-white">
                   {feature.title}
                 </h3>
-                <p className="mt-2 text-sm leading-6 text-gray-500 dark:text-gray-400">
+                <p className="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
                   {feature.description}
                 </p>
               </article>
