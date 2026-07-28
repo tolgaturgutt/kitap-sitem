@@ -238,6 +238,13 @@ useEffect(() => {
 
   return (
     <html lang="tr" suppressHydrationWarning>
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9356201064551661"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className={`${inter.className} bg-[#fafafa] dark:bg-black text-black dark:text-white transition-colors duration-300`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Toaster

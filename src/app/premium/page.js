@@ -12,6 +12,10 @@ import {
   isRewardedAdAvailable,
   showLabCoinRewardAd,
 } from '@/lib/admobHelper';
+import {
+  isWebRewardedAdAvailable,
+  showWebLabCoinRewardAd,
+} from '@/lib/webRewardedAdHelper';
 
 const EMPTY_STATUS = {
   balance: 0,
@@ -103,6 +107,18 @@ function getRewardErrorMessage(error) {
   }
   if (message.includes('labcoin_rewarded_ad_id_missing')) {
     return 'Ödüllü reklam kimliği henüz tanımlanmadı.';
+  }
+  if (message.includes('web_rewarded_ad_unit_missing')) {
+    return 'Web ödüllü reklam birimi henüz tanımlanmadı.';
+  }
+  if (message.includes('web_rewarded_no_fill')) {
+    return 'Şu anda web için uygun reklam bulunamadı. Lütfen daha sonra tekrar dene.';
+  }
+  if (
+    message.includes('web_rewarded_unsupported') ||
+    message.includes('web_rewarded_sdk_load_failed')
+  ) {
+    return 'Web reklamı bu tarayıcıda şu anda gösterilemedi.';
   }
   if (message.includes('labcoin_rewarded_disabled')) {
     return 'Ödüllü reklamlar şu anda kullanılamıyor.';
@@ -213,7 +229,9 @@ export default function PremiumPage() {
   const cooldownActive = secondsUntilNext > 0;
   const isNative = Capacitor.isNativePlatform();
   const rewardedFeatureEnabled = status.rewarded_ads_enabled;
-  const rewardedAdReady = isRewardedAdAvailable();
+  const rewardedAdReady = isNative
+    ? isRewardedAdAvailable()
+    : isWebRewardedAdAvailable();
   const canWatch =
     Boolean(user) &&
     rewardedFeatureEnabled &&
@@ -242,7 +260,11 @@ export default function PremiumPage() {
       }
 
       const rewardToken = crypto.randomUUID();
-      await showLabCoinRewardAd();
+      if (isNative) {
+        await showLabCoinRewardAd();
+      } else {
+        await showWebLabCoinRewardAd();
+      }
 
       const { data, error } = await supabase.rpc('claim_labcoin_reward', {
         p_reward_token: rewardToken,
@@ -504,10 +526,10 @@ export default function PremiumPage() {
                 ? 'Reklam hazırlanıyor...'
                 : !rewardedFeatureEnabled
                   ? 'Ödüllü Reklam Kullanılamıyor'
-                  : !isNative
-                  ? 'Mobil uygulamada kullanılabilir'
                   : !rewardedAdReady
-                    ? 'Reklam kimliği bekleniyor'
+                    ? isNative
+                      ? 'Reklam kimliği bekleniyor'
+                      : 'Web reklam kimliği bekleniyor'
                     : dailyLimitReached
                       ? 'Günlük hak tamamlandı'
                       : cooldownActive
