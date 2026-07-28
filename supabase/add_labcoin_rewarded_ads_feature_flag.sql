@@ -1,5 +1,4 @@
--- Odullu reklamlar AdMob onayi tamamlanana kadar kapali tutulur.
--- Bayrak daha sonra tek bir veritabani guncellemesiyle acilabilir.
+-- LabCoin odullu reklam ozellik bayragi.
 
 create table if not exists public.app_feature_flags (
   feature_key text primary key,
@@ -8,7 +7,7 @@ create table if not exists public.app_feature_flags (
 );
 
 insert into public.app_feature_flags (feature_key, enabled)
-values ('labcoin_rewarded_ads', false)
+values ('labcoin_rewarded_ads', true)
 on conflict (feature_key) do nothing;
 
 alter table public.app_feature_flags enable row level security;
@@ -42,7 +41,7 @@ begin
   if not public.is_labcoin_rewarded_ads_enabled() then
     raise exception using
       message = 'LABCOIN_REWARDED_DISABLED',
-      detail = 'Odullu reklamlar Google onayi tamamlanana kadar kapali.';
+      detail = 'Odullu reklamlar su anda kullanima kapali.';
   end if;
 
   return new;

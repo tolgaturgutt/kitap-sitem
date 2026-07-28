@@ -99,7 +99,7 @@ function getRewardErrorMessage(error) {
     return 'Ödüllü reklam kimliği henüz tanımlanmadı.';
   }
   if (message.includes('labcoin_rewarded_disabled')) {
-    return 'Ödüllü reklamlar Google onayından sonra aktif edilecek.';
+    return 'Ödüllü reklamlar şu anda kullanılamıyor.';
   }
   if (message.includes('labcoin_native_app_required')) {
     return 'LabCoin reklamları yalnızca mobil uygulamada izlenebilir.';
@@ -219,7 +219,7 @@ export default function PremiumPage() {
     try {
       const latestStatus = await loadStatus();
       if (!latestStatus.rewarded_ads_enabled) {
-        toast.error('Ödüllü reklamlar Google onayından sonra aktif edilecek.');
+        toast.error('Ödüllü reklamlar şu anda kullanılamıyor.');
         return;
       }
       if (!latestStatus.can_claim) {
@@ -454,7 +454,7 @@ export default function PremiumPage() {
               {watchingAd
                 ? 'Reklam hazırlanıyor...'
                 : !rewardedFeatureEnabled
-                  ? 'Google Onayı Bekleniyor'
+                  ? 'Ödüllü Reklam Kullanılamıyor'
                   : !isNative
                   ? 'Mobil uygulamada kullanılabilir'
                   : !rewardedAdReady
@@ -465,17 +465,6 @@ export default function PremiumPage() {
                         ? `${formatCountdown(secondsUntilNext)} bekle`
                         : 'Reklamı İzle • +1 LabCoin'}
             </button>
-
-            {!rewardedFeatureEnabled && (
-              <div className="mt-4 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 text-center dark:border-amber-500/25 dark:bg-amber-500/10">
-                <p className="text-xs font-black text-amber-800 dark:text-amber-300">
-                  Ödüllü reklamlar şu anda Google onayı bekliyor.
-                </p>
-                <p className="mt-1 text-[10px] font-bold leading-5 text-amber-700/80 dark:text-amber-200/70">
-                  Onay tamamlandığında video izleyerek LabCoin kazanma özelliği aktif edilecek.
-                </p>
-              </div>
-            )}
           </section>
         </div>
 
