@@ -27,7 +27,7 @@ export default function EtkinliklerSayfasi() {
       .from('events')
       .select(`
         *,
-        event_participants(
+        event_participants:event_participants!event_participants_event_id_fkey(
           id,
           user_email,
           username,

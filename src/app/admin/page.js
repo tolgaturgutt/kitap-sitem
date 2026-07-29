@@ -216,7 +216,7 @@ const [loadingEvents, setLoadingEvents] = useState(false);
     .from('events')
     .select(`
       *,
-      event_participants(count)
+      event_participants:event_participants!event_participants_event_id_fkey(count)
     `)
     .order('created_at', { ascending: false });
   
