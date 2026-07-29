@@ -25,6 +25,7 @@ export default function EtkinlikDetay({ params }) {
 
   const [showParticipateModal, setShowParticipateModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [rewardAction, setRewardAction] = useState(null);
 
   useEffect(() => {
     init();
@@ -247,9 +248,130 @@ export default function EtkinlikDetay({ params }) {
     }
   }
 
+  function getEventRewardError(error) {
+    const message = `${error?.message || ''}`;
+    if (message.includes('EVENT_RESULTS_NOT_OPEN')) {
+      return 'Dereceler yarışma bittikten veya yarışma pasife alındıktan sonra seçilebilir.';
+    }
+    if (message.includes('EVENT_REWARDS_ALREADY_DISTRIBUTED')) {
+      return 'Bu yarışmanın ödülleri daha önce dağıtılmış.';
+    }
+    if (message.includes('EVENT_PODIUM_INCOMPLETE')) {
+      return 'Önce 1., 2. ve 3. olan kitapları seçmelisin.';
+    }
+    if (message.includes('EVENT_REQUIRES_THREE_PARTICIPANTS')) {
+      return 'Derece ve ödül sistemi için en az 3 katılımcı gerekli.';
+    }
+    if (message.includes('EVENT_PARTICIPANT_PROFILE_MISSING')) {
+      return 'Katılımcılardan birinin kullanıcı profili bulunamadı. Ödül dağıtılmadı.';
+    }
+    return error?.message || 'İşlem tamamlanamadı.';
+  }
+
+  async function setEventPlacement(participant, placement) {
+    if (!isAdmin || !event?.reward_system_enabled || rewardAction) return;
+
+    const isClearing = participant.placement === placement;
+    const label = isClearing
+      ? `${placement}. derecesini kaldırmak`
+      : `${participant.book?.title || 'Bu kitabı'} ${placement}. seçmek`;
+    if (!confirm(`${label} istediğine emin misin?`)) return;
+
+    setRewardAction(`placement-${participant.id}`);
+    const { error } = isClearing
+      ? await supabase.rpc('admin_clear_event_placement', {
+          p_event_id: id,
+          p_participant_id: participant.id,
+        })
+      : await supabase.rpc('admin_set_event_placement', {
+          p_event_id: id,
+          p_participant_id: participant.id,
+          p_placement: placement,
+        });
+
+    if (error) {
+      toast.error(getEventRewardError(error));
+    } else {
+      toast.success(isClearing ? 'Derece kaldırıldı.' : `${placement}. seçildi!`);
+      await init();
+    }
+    setRewardAction(null);
+  }
+
+  async function removeEventParticipant(participant) {
+    if (!isAdmin || !event?.reward_system_enabled || rewardAction) return;
+    if (
+      !confirm(
+        `${participant.book?.title || 'Bu kitabı'} yarışmadan kaldırmak istediğine emin misin?`
+      )
+    ) return;
+
+    setRewardAction(`remove-${participant.id}`);
+    const { error } = await supabase.rpc('admin_remove_event_participant', {
+      p_event_id: id,
+      p_participant_id: participant.id,
+    });
+
+    if (error) {
+      toast.error(getEventRewardError(error));
+    } else {
+      toast.success('Kitap yarışmadan kaldırıldı.');
+      await init();
+    }
+    setRewardAction(null);
+  }
+
+  async function distributeEventRewards() {
+    if (!isAdmin || !event?.reward_system_enabled || rewardAction) return;
+
+    const first = participants.find((participant) => participant.placement === 1);
+    const second = participants.find((participant) => participant.placement === 2);
+    const third = participants.find((participant) => participant.placement === 3);
+    if (!first || !second || !third) {
+      toast.error('Önce 1., 2. ve 3. olan kitapları seçmelisin.');
+      return;
+    }
+
+    const totalReward = Math.max(participants.length - 3, 0) * 5 + 170;
+    if (
+      !confirm(
+        `Ödüller ${participants.length} katılımcıya dağıtılacak.\n\n` +
+        `1.: 100, 2.: 50, 3.: 20, diğer katılımcılar: 5 LabCoin\n` +
+        `Toplam: ${totalReward} LabCoin\n\nBu işlem geri alınamaz. Devam edilsin mi?`
+      )
+    ) return;
+
+    setRewardAction('distribute');
+    const { data, error } = await supabase.rpc(
+      'admin_distribute_event_rewards',
+      { p_event_id: id }
+    );
+
+    if (error) {
+      toast.error(getEventRewardError(error));
+    } else {
+      toast.success(
+        `${data?.rewarded_users || participants.length} katılımcıya ` +
+        `${data?.total_distributed || totalReward} LabCoin dağıtıldı!`
+      );
+      await init();
+    }
+    setRewardAction(null);
+  }
+
   const hasChampion = event && participants.some((p) => p.is_champion);
   const dateEnded = event && new Date(event.end_date) < new Date();
-  const isEventEnded = dateEnded || hasChampion;
+  const rewardSystemEnabled = Boolean(event?.reward_system_enabled);
+  const podium = [1, 2, 3].map((placement) =>
+    participants.find((participant) => participant.placement === placement)
+  );
+  const hasCompletePodium = podium.every(Boolean);
+  const rewardsDistributed = Boolean(event?.rewards_distributed_at);
+  const resultsCanBeManaged = Boolean(
+    rewardSystemEnabled && (dateEnded || event?.is_active === false)
+  );
+  const isEventEnded =
+    dateEnded || rewardsDistributed || (!rewardSystemEnabled && hasChampion);
   const isEventActive = event && new Date(event.start_date) <= new Date() && !isEventEnded;
   const isEventUpcoming = event && new Date(event.start_date) > new Date();
 
@@ -293,8 +415,63 @@ export default function EtkinlikDetay({ params }) {
           ← ETKİNLİKLERE DÖN
         </Link>
 
-        {/* ŞAMPİYON BANNER */}
-        {champion && (
+        {rewardSystemEnabled && hasCompletePodium && (
+          <div className="mb-5 sm:mb-8 rounded-[1.5rem] sm:rounded-[2.5rem] border border-amber-300/60 bg-gradient-to-br from-amber-50 via-white to-orange-50 p-4 shadow-xl dark:border-amber-500/20 dark:from-amber-950/30 dark:via-[#111] dark:to-orange-950/20 sm:p-8">
+            <div className="mb-6 text-center">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-600">
+                Yarışma Sonuçları
+              </p>
+              <h2 className="mt-2 text-2xl font-black uppercase dark:text-white sm:text-4xl">
+                🏆 Dereceye Girenler
+              </h2>
+              {rewardsDistributed && (
+                <p className="mt-2 text-xs font-bold text-green-600">
+                  Ödüller katılımcıların hesaplarına dağıtıldı.
+                </p>
+              )}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-3">
+              {podium.map((participant, index) => {
+                const placement = index + 1;
+                const colors = {
+                  1: 'border-yellow-400 bg-yellow-100/70 dark:bg-yellow-500/10',
+                  2: 'border-slate-300 bg-slate-100/70 dark:bg-slate-400/10',
+                  3: 'border-orange-300 bg-orange-100/70 dark:bg-orange-500/10',
+                };
+                const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+                const rewards = { 1: 100, 2: 50, 3: 20 };
+
+                return (
+                  <div
+                    key={participant.id}
+                    className={`rounded-2xl border-2 p-4 text-center ${colors[placement]}`}
+                  >
+                    <span className="text-4xl">{medals[placement]}</span>
+                    <p className="mt-2 text-xs font-black uppercase text-gray-500">
+                      {placement}. · {rewards[placement]} LabCoin
+                    </p>
+                    <Username
+                      username={participant.display_username}
+                      isAdmin={participant.is_admin}
+                      isPremium={participant.role === 'premium'}
+                      className="mt-2 justify-center text-base font-black dark:text-white"
+                    />
+                    <Link
+                      href={`/kitap/${participant.book_id}`}
+                      className="mt-2 block truncate text-sm font-bold text-red-600 hover:underline"
+                    >
+                      {participant.book?.title}
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ESKİ YARIŞMALARIN ŞAMPİYON BANNER'I */}
+        {champion && !rewardSystemEnabled && (
           <div className="mb-5 sm:mb-8 relative overflow-hidden rounded-[1.5rem] sm:rounded-[2.5rem] bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-600 p-4 sm:p-8 md:p-12 shadow-2xl">
             <div className="absolute top-0 right-0 text-[120px] sm:text-[200px] opacity-10">🏆</div>
 
@@ -437,6 +614,70 @@ export default function EtkinlikDetay({ params }) {
           )}
         </div>
 
+        {isAdmin && rewardSystemEnabled && (
+          <section className="mb-6 rounded-[1.5rem] border border-violet-200 bg-violet-50 p-4 shadow-sm dark:border-violet-500/20 dark:bg-violet-950/20 sm:mb-10 sm:p-6">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.25em] text-violet-600">
+                  Admin · Yarışma Ödülleri
+                </p>
+                <h2 className="mt-2 text-xl font-black dark:text-white">
+                  Dereceleri seç, sonra ödülleri dağıt
+                </h2>
+                <p className="mt-2 max-w-2xl text-sm font-medium text-gray-600 dark:text-gray-300">
+                  1. 100, 2. 50 ve 3. 20 LabCoin alır. Dereceye girmeyen
+                  diğer katılımcıların her biri 5 LabCoin kazanır.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs font-black">
+                  {[1, 2, 3].map((placement) => {
+                    const selected = podium[placement - 1];
+                    return (
+                      <span
+                        key={placement}
+                        className={`rounded-full px-3 py-1.5 ${
+                          selected
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-white text-gray-500 dark:bg-white/10 dark:text-gray-300'
+                        }`}
+                      >
+                        {placement}. {selected ? selected.book?.title : 'seçilmedi'}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {rewardsDistributed ? (
+                <div className="rounded-2xl bg-green-100 px-5 py-4 text-center text-green-800">
+                  <p className="font-black">✅ Ödüller dağıtıldı</p>
+                  <p className="mt-1 text-xs font-bold">
+                    {new Date(event.rewards_distributed_at).toLocaleString('tr-TR')}
+                  </p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={distributeEventRewards}
+                  disabled={
+                    !resultsCanBeManaged ||
+                    !hasCompletePodium ||
+                    rewardAction === 'distribute'
+                  }
+                  className="min-w-[230px] rounded-2xl bg-violet-600 px-6 py-4 text-xs font-black uppercase tracking-wider text-white shadow-xl shadow-violet-600/20 transition-all hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  {rewardAction === 'distribute'
+                    ? 'Dağıtılıyor...'
+                    : !resultsCanBeManaged
+                      ? 'Yarışma henüz bitmedi'
+                      : !hasCompletePodium
+                        ? 'Önce ilk 3’ü seç'
+                        : '🎁 Ödülleri Dağıt'}
+                </button>
+              )}
+            </div>
+          </section>
+        )}
+
         {/* TÜM KATILIMCILAR */}
         <div>
           {participants.length === 0 ? (
@@ -455,6 +696,18 @@ export default function EtkinlikDetay({ params }) {
                   key={participant.id}
                   className="bg-white dark:bg-white/5 rounded-2xl sm:rounded-[2rem] border dark:border-white/10 overflow-hidden hover:shadow-xl transition-all group relative"
                 >
+                  {rewardSystemEnabled && participant.placement && (
+                    <div className="absolute left-2 top-2 z-20 sm:left-4 sm:top-4">
+                      <span className="rounded-full bg-black px-2.5 py-1 text-[10px] font-black text-white shadow-lg">
+                        {participant.placement === 1
+                          ? '🥇 1.'
+                          : participant.placement === 2
+                            ? '🥈 2.'
+                            : '🥉 3.'}
+                      </span>
+                    </div>
+                  )}
+
                   {participant.is_finalist && (
                     <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10">
                       <span className="bg-yellow-500 text-black px-2 py-1 sm:px-3 sm:py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase shadow-lg">
@@ -528,7 +781,46 @@ export default function EtkinlikDetay({ params }) {
                         </Link>
                       </div>
 
-                      {isAdmin &&
+                      {isAdmin && rewardSystemEnabled && !rewardsDistributed && (
+                        <div className="space-y-2 border-t border-gray-100 pt-2 dark:border-white/10">
+                          <div className="grid grid-cols-3 gap-1.5">
+                            {[1, 2, 3].map((placement) => (
+                              <button
+                                key={placement}
+                                type="button"
+                                onClick={() => setEventPlacement(participant, placement)}
+                                disabled={
+                                  !resultsCanBeManaged ||
+                                  Boolean(rewardAction)
+                                }
+                                className={`rounded-lg py-2 text-[10px] font-black transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+                                  participant.placement === placement
+                                    ? 'bg-black text-white dark:bg-white dark:text-black'
+                                    : placement === 1
+                                      ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                                      : placement === 2
+                                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                        : 'bg-orange-100 text-orange-800 hover:bg-orange-200'
+                                }`}
+                              >
+                                {placement}.
+                              </button>
+                            ))}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeEventParticipant(participant)}
+                            disabled={Boolean(rewardAction)}
+                            className="w-full rounded-lg bg-red-50 py-2 text-[9px] font-black uppercase text-red-600 transition-all hover:bg-red-100 disabled:opacity-40 dark:bg-red-950/30"
+                          >
+                            {rewardAction === `remove-${participant.id}`
+                              ? 'Kaldırılıyor...'
+                              : '🗑️ Yarışmadan Kaldır'}
+                          </button>
+                        </div>
+                      )}
+
+                      {isAdmin && !rewardSystemEnabled &&
                         (participant.is_champion ? (
                           <button
                             onClick={() => removeChampion(participant.id)}

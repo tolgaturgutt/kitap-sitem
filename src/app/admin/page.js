@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import toast from 'react-hot-toast';
 import imageCompression from 'browser-image-compression';
 import AdminRewardedAdStats from '@/components/AdminRewardedAdStats';
@@ -1306,6 +1307,14 @@ const [loadingEvents, setLoadingEvents] = useState(false);
                     )}
                   </div>
                   <div className="flex gap-2 ml-2">
+                    {event.reward_system_enabled && (
+                      <Link
+                        href={`/etkinlikler/${event.id}`}
+                        className="flex items-center rounded-lg bg-violet-100 px-3 text-[10px] font-black uppercase text-violet-700"
+                      >
+                        Sonuçlar
+                      </Link>
+                    )}
                     <button
                       onClick={() => {
                         setEditingEventId(event.id);
