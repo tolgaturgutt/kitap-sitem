@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import ChapterImageUploadButton from '@/components/ChapterImageUploadButton';
 import ChapterAudioUploadButton from '@/components/ChapterAudioUploadButton';
-import { sanitizeChapterHtml } from '@/lib/chapterContent';
+import {
+  normalizeParagraphKeys,
+  sanitizeChapterHtml,
+  splitChapterParagraphs
+} from '@/lib/chapterContent';
 
 export default function BolumEkle({ params }) {
   const { id } = use(params);
@@ -249,6 +253,10 @@ function findBannedWords(text) {
 
       const censoredTitle = censorContent(title);
       const censoredContent = censorContent(htmlContent);
+      const paragraphKeys = normalizeParagraphKeys(
+        [],
+        splitChapterParagraphs(censoredContent).length
+      );
 
       const { data: newChapter, error } = await supabase
         .from('chapters')
@@ -256,6 +264,7 @@ function findBannedWords(text) {
           book_id: id,
           title: censoredTitle,
           content: censoredContent,
+          paragraph_keys: paragraphKeys,
           order_no: sirasi,
           word_count: wordCount, // ✅ ARTIK KELİME SAYISI KAYDEDİLİYOR
           is_draft: isDraft,

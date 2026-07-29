@@ -127,7 +127,9 @@ function buildNotificationUrl(notification) {
     if (notification.type === 'comment' || notification.type === 'reply') {
       const params = new URLSearchParams();
 
-      if (hasParagraphTarget(notification.paragraph_id)) {
+      if (hasParagraphTarget(notification.paragraph_key)) {
+        params.set('openParaKey', notification.paragraph_key);
+      } else if (hasParagraphTarget(notification.paragraph_id)) {
         params.set('openPara', notification.paragraph_id);
       } else {
         params.set('scrollTo', 'chapter-comments');
@@ -251,6 +253,7 @@ export async function POST(request) {
         chapter_id: notification.chapter_id,
         pano_id: notification.pano_id,
         paragraph_id: notification.paragraph_id,
+        paragraph_key: notification.paragraph_key,
         comment_id: notification.comment_id,
         url,
       },

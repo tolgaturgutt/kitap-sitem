@@ -9,7 +9,7 @@ import { createChapterVoteNotification } from '@/lib/notifications';
 import Username from '@/components/Username';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { sanitizeChapterHtml } from '@/lib/chapterContent';
+import { splitChapterParagraphs } from '@/lib/chapterContent';
 import PodcastAudioPlayer from '@/components/PodcastAudioPlayer';
 
 function hasSearchParamValue(value) {
@@ -173,11 +173,16 @@ export default function BolumDetay({ params }) {
 
         setLikes(likeCount || 0);
 
-        const { data: counts } = await supabase.from('comments').select('paragraph_id').eq('chapter_id', bolumId).not('paragraph_id', 'is', null);
+        const { data: counts } = await supabase
+          .from('comments')
+          .select('paragraph_id, paragraph_key')
+          .eq('chapter_id', bolumId)
+          .not('paragraph_id', 'is', null);
         const countMap = {};
         counts?.forEach(c => {
           if (c.paragraph_id !== null) {
-            countMap[c.paragraph_id] = (countMap[c.paragraph_id] || 0) + 1;
+            const paragraphTarget = c.paragraph_key || `${c.paragraph_id}`;
+            countMap[paragraphTarget] = (countMap[paragraphTarget] || 0) + 1;
           }
         });
 
@@ -225,15 +230,24 @@ export default function BolumDetay({ params }) {
     if (loading || !data.chapter) return;
 
     const openPara = searchParams.get('openPara');
+    const openParaKey = searchParams.get('openParaKey');
     const scrollTo = searchParams.get('scrollTo');
     const commentId = searchParams.get('commentId');
+    const currentParagraphKeys = Array.isArray(data.chapter?.paragraph_keys)
+      ? data.chapter.paragraph_keys
+      : [];
+    const paragraphTarget = hasSearchParamValue(openParaKey)
+      ? openParaKey
+      : hasSearchParamValue(openPara)
+        ? (currentParagraphKeys[Number(openPara)] || openPara)
+        : null;
 
     const timer = setTimeout(() => {
-      if (hasSearchParamValue(openPara)) {
-        setActivePara(openPara);
+      if (hasSearchParamValue(paragraphTarget)) {
+        setActivePara(paragraphTarget);
         
         setTimeout(() => {
-          const paraElement = document.querySelector(`[data-para-id="${openPara}"]`);
+          const paraElement = document.querySelector(`[data-para-key="${paragraphTarget}"]`);
           if (paraElement) {
             paraElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
@@ -265,7 +279,10 @@ export default function BolumDetay({ params }) {
             }
           }, 400);
         }
-      } else if (scrollTo === 'chapter-comments' || (openPara !== null && commentId)) {
+      } else if (
+        scrollTo === 'chapter-comments'
+        || ((openPara !== null || openParaKey !== null) && commentId)
+      ) {
         const commentsSection = document.getElementById('chapter-comments-section');
         if (commentsSection) {
           commentsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -387,27 +404,9 @@ export default function BolumDetay({ params }) {
   const prevChapter = visibleIndex > 0 ? visibleChapters[visibleIndex - 1] : null;
   const nextChapter = (visibleIndex !== -1 && visibleIndex < visibleChapters.length - 1) ? visibleChapters[visibleIndex + 1] : null;
 
-  const paragraphs = data.chapter?.content
-    ? (() => {
-      const content = data.chapter.content;
-      const hasHTML = /<br|<p|<\/p/i.test(content);
-
-      if (hasHTML) {
-        return content
-          .split(/<br\s*\/?>|<\/p>/)
-          .map(p => {
-            let cleaned = p.replace(/<p[^>]*>/g, '').trim();
-            cleaned = cleaned.replace(/\s*style=""\s*/g, '');
-            return sanitizeChapterHtml(cleaned);
-          })
-          .filter(p => p !== '' && p !== '<br>' && p !== '<br/>');
-      } else {
-        return content
-          .split(/\n\n+/)
-          .map(p => sanitizeChapterHtml(p.trim()))
-          .filter(p => p !== '');
-      }
-    })()
+  const paragraphs = splitChapterParagraphs(data.chapter?.content || '');
+  const paragraphKeys = Array.isArray(data.chapter?.paragraph_keys)
+    ? data.chapter.paragraph_keys
     : [];
 
   const authorLink = user && authorProfile?.email === user.email
@@ -473,23 +472,29 @@ export default function BolumDetay({ params }) {
             >
               {paragraphs.map((para, i) => {
                 const paraId = i.toString();
-                const count = paraCommentCounts[paraId] || 0;
+                const paraKey = paragraphKeys[i] || paraId;
+                const count = paraCommentCounts[paraKey] || 0;
 
                 return (
-                  <div key={i} className="relative group mb-4 isolate" data-para-id={paraId}>
+                  <div
+                    key={paraKey}
+                    className="relative group mb-4 isolate"
+                    data-para-id={paraId}
+                    data-para-key={paraKey}
+                  >
                     <div className="relative">
                       <div
                         className={`
                           transition-all duration-500
                           pr-0 md:pr-7
-                          ${activePara === paraId ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}
+                          ${activePara === paraKey ? 'bg-black/5 dark:bg-white/5 rounded-2xl px-3 py-2 -ml-3' : ''}
                         `}
                       >
                         <ChapterParagraphContent html={para} />
                       </div>
 
                       <div
-                        onClick={() => setActivePara(activePara === paraId ? null : paraId)}
+                        onClick={() => setActivePara(activePara === paraKey ? null : paraKey)}
                         className={`
                           absolute right-[-12px] top-1/2 -translate-y-1/2
                           w-[15px] h-[15px] md:w-[25px] md:h-[25px]
@@ -498,10 +503,10 @@ export default function BolumDetay({ params }) {
                           transition-all
                           group-hover:w-4 group-hover:h-4
                           group-hover:bg-red-600 group-hover:opacity-100
-                          ${count > 0 || activePara === paraId ? 'w-4 h-4 bg-red-600 opacity-100' : ''}
+                          ${count > 0 || activePara === paraKey ? 'w-4 h-4 bg-red-600 opacity-100' : ''}
                         `}
                       >
-                        {(count > 0 || activePara === paraId) && (
+                        {(count > 0 || activePara === paraKey) && (
                           <span className="absolute inset-0 flex items-center justify-center text-[8px] text-white scale-[0.7]">
                             {count > 0 ? count : '+'}
                           </span>
@@ -646,7 +651,12 @@ export default function BolumDetay({ params }) {
                 type="paragraph"
                 targetId={bolumId}
                 bookId={id}
-                paraId={activePara}
+                paraId={
+                  paragraphKeys.indexOf(activePara) >= 0
+                    ? paragraphKeys.indexOf(activePara)
+                    : Number(activePara)
+                }
+                paraKey={paragraphKeys.includes(activePara) ? activePara : null}
                 onCommentAdded={handleCommentAdded}
                 onStatsUpdate={(newStats) => {
                   console.log('Kitap stats güncellendi (paragraf):', newStats);

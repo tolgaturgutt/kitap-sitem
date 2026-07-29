@@ -7,7 +7,7 @@ import Username from '@/components/Username';
 import { CommentRankBadge } from '@/components/Badges';
 import { fetchCommentBadgeCounts } from '@/lib/badges';
 
-export default function YorumAlani({ type, targetId, bookId, paraId = null, onCommentAdded, includeParagraphs = false, onStatsUpdate }) {
+export default function YorumAlani({ type, targetId, bookId, paraId = null, paraKey = null, onCommentAdded, includeParagraphs = false, onStatsUpdate }) {
   const [comments, setComments] = useState([]);
   const [commentBadgeCounts, setCommentBadgeCounts] = useState({});
   const [newComment, setNewComment] = useState('');
@@ -42,7 +42,9 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     } else if (type === 'paragraph') {
       query = query.eq('chapter_id', targetId);
 
-      if (paraId === null || paraId === undefined) {
+      if (paraKey) {
+        query = query.eq('paragraph_key', paraKey);
+      } else if (paraId === null || paraId === undefined) {
         query = query.is('paragraph_id', null);
       } else {
         query = query.eq('paragraph_id', paraId);
@@ -61,7 +63,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     setComments(sortedData);
     const badgeCounts = await fetchCommentBadgeCounts(supabase, sortedData);
     setCommentBadgeCounts(badgeCounts);
-  }, [includeParagraphs, paraId, targetId, type]);
+  }, [includeParagraphs, paraId, paraKey, targetId, type]);
 
   useEffect(() => {
     const resetTimer = window.setTimeout(() => setComments([]), 0);
@@ -160,19 +162,23 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
     
     // 🔥 ÖNEMLİ: paragraph_id mantığını düzelt
     let finalParaId = null;
+    let finalParaKey = null;
     
     if (type === 'paragraph') {
         // Paragraf yorumu modundaysak
         if (targetComment) {
             // Yanıt ise, hedef yorumun paragraph_id'sini al
             finalParaId = targetComment.paragraph_id;
+            finalParaKey = targetComment.paragraph_key;
         } else {
             // Yeni yorum ise, mevcut paraId'yi al
             finalParaId = paraId;
+            finalParaKey = paraKey;
         }
     } else if (type === 'chapter' && includeParagraphs && targetComment) {
         // Bölüm sayfasında paragraf yorumuna yanıt veriyorsak
         finalParaId = targetComment.paragraph_id;
+        finalParaKey = targetComment.paragraph_key;
     }
     // type === 'chapter' veya 'book' ve yeni yorum ise finalParaId = null kalır
 
@@ -188,6 +194,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
       book_id: bookId, 
       chapter_id: type === 'book' ? null : targetId,
       paragraph_id: finalParaId,
+      paragraph_key: finalParaKey,
       parent_id: finalParentId
     };
 
@@ -212,7 +219,9 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, onCo
             setNewComment(''); 
         }
 
-        if (type === 'paragraph' && onCommentAdded) onCommentAdded(paraId);
+        if (type === 'paragraph' && onCommentAdded) {
+          onCommentAdded(paraKey || paraId);
+        }
 
         const updatedBadgeCounts = await fetchCommentBadgeCounts(supabase, [insertedData]);
         setCommentBadgeCounts(prev => ({ ...prev, ...updatedBadgeCounts }));

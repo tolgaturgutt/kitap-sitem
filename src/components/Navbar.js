@@ -31,7 +31,7 @@ async function fetchNotifications(email) {
 
   const { data: notifications } = await supabase
     .from('notifications')
-    .select('id, actor_username, type, book_title, book_id, chapter_id, paragraph_id, comment_id, pano_id, is_read, created_at')
+    .select('id, actor_username, type, book_title, book_id, chapter_id, paragraph_id, paragraph_key, comment_id, pano_id, is_read, created_at')
     .eq('recipient_email', email)
     .gte('created_at', sevenDaysAgo.toISOString())
     .order('created_at', { ascending: false });
@@ -394,6 +394,7 @@ export default function Navbar() {
     console.log('📢 Bildirim verisi:', {
       type: n.type,
       paragraph_id: n.paragraph_id,
+      paragraph_key: n.paragraph_key,
       paragraph_id_type: typeof n.paragraph_id,
       comment_id: n.comment_id,
       book_id: n.book_id,
@@ -410,7 +411,9 @@ export default function Navbar() {
       case 'comment':
         if (n.chapter_id && n.book_id) {
           // 🔥 PARAGRAF YORUMU MU KONTROL ET - null string de kontrol et
-          if (hasParagraphTarget(n.paragraph_id)) {
+          if (hasParagraphTarget(n.paragraph_key)) {
+            return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openParaKey=${n.paragraph_key}&commentId=${n.comment_id || ''}`;
+          } else if (hasParagraphTarget(n.paragraph_id)) {
             console.log('✅ Paragraf yorumuna gidiliyor:', n.paragraph_id);
             // Paragraf yorumu - paragrafa git ve aç
             return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;
@@ -439,7 +442,9 @@ export default function Navbar() {
           return `/pano/${n.pano_id}`;
         } else if (n.chapter_id && n.book_id) {
           // 🔥 PARAGRAF YORUMU YANITI MI YOKSA BÖLÜM YORUMU YANITI MI?
-          if (hasParagraphTarget(n.paragraph_id)) {
+          if (hasParagraphTarget(n.paragraph_key)) {
+            return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openParaKey=${n.paragraph_key}&commentId=${n.comment_id || ''}`;
+          } else if (hasParagraphTarget(n.paragraph_id)) {
             console.log('✅ Paragraf yorumu yanıtına gidiliyor:', n.paragraph_id);
             // Paragraf yorumu yanıtı - paragrafa git ve aç
             return `/kitap/${n.book_id}/bolum/${n.chapter_id}?openPara=${n.paragraph_id}&commentId=${n.comment_id || ''}`;

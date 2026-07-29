@@ -6,7 +6,11 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import ChapterImageUploadButton from '@/components/ChapterImageUploadButton';
 import ChapterAudioUploadButton from '@/components/ChapterAudioUploadButton';
-import { sanitizeChapterHtml } from '@/lib/chapterContent';
+import {
+  reconcileParagraphKeys,
+  sanitizeChapterHtml,
+  splitChapterParagraphs
+} from '@/lib/chapterContent';
 
 export default function BolumDuzenle({ params }) {
   const router = useRouter();
@@ -21,6 +25,7 @@ export default function BolumDuzenle({ params }) {
     underline: false
   });
   const editorRef = useRef(null);
+  const originalChapterRef = useRef({ paragraphs: [], paragraphKeys: [] });
   const [editorLoaded, setEditorLoaded] = useState(false);
 
   // 🔴 YASAKLI KELİMELERİ VERİTABANINDAN ÇEK
@@ -234,6 +239,10 @@ export default function BolumDuzenle({ params }) {
 
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = chapter.content;
+        originalChapterRef.current = {
+          paragraphs: splitChapterParagraphs(chapter.content),
+          paragraphKeys: chapter.paragraph_keys || []
+        };
         
         setFormData({ 
           title: chapter.title, 
@@ -272,6 +281,12 @@ export default function BolumDuzenle({ params }) {
     const htmlContent = sanitizeChapterHtml(
       editorRef.current?.innerHTML || ''
     );
+    const nextParagraphs = splitChapterParagraphs(htmlContent);
+    const paragraphKeys = reconcileParagraphKeys(
+      originalChapterRef.current.paragraphs,
+      originalChapterRef.current.paragraphKeys,
+      nextParagraphs
+    );
     
     if (!formData.title.trim() || !formData.content.trim()) {
       toast.error('Bölüm başlığı ve içeriği boş bırakılamaz.');
@@ -294,6 +309,7 @@ export default function BolumDuzenle({ params }) {
         .update({ 
           title: censoredTitle,
           content: censoredContent,
+          paragraph_keys: paragraphKeys,
           updated_at: new Date(),
           word_count: wordCount // ✅ EKLENEN SATIR: Yeni sayıyı kaydet
         })

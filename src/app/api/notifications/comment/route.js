@@ -53,7 +53,7 @@ export async function POST(request) {
 
     const { data: comment, error: commentError } = await admin
       .from('comments')
-      .select('id, user_id, user_email, book_id, chapter_id, paragraph_id, parent_id')
+      .select('id, user_id, user_email, book_id, chapter_id, paragraph_id, paragraph_key, parent_id')
       .eq('id', commentId)
       .single();
 
@@ -144,6 +144,7 @@ export async function POST(request) {
         book_id: comment.book_id,
         chapter_id: comment.chapter_id,
         paragraph_id: comment.paragraph_id,
+        paragraph_key: comment.paragraph_key,
         comment_id: comment.id,
         is_read: false,
       })
