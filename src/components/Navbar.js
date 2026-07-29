@@ -354,10 +354,12 @@ export default function Navbar() {
     n.type === 'vote' ||
     n.type === 'chapter_vote' ||
     n.type === 'comment' ||
+    n.type === 'comment_like' ||
     n.type === 'new_chapter' ||
     n.type === 'library_add' ||
     n.type === 'pano_vote' ||
     n.type === 'pano_comment' ||
+    n.type === 'pano_comment_like' ||
     (n.type === 'reply' && !n.pano_id)
   );
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -409,6 +411,7 @@ export default function Navbar() {
         return n.book_id && n.chapter_id ? `/kitap/${n.book_id}/bolum/${n.chapter_id}` : '#';
 
       case 'comment':
+      case 'comment_like':
         if (n.chapter_id && n.book_id) {
           // 🔥 PARAGRAF YORUMU MU KONTROL ET - null string de kontrol et
           if (hasParagraphTarget(n.paragraph_key)) {
@@ -435,6 +438,7 @@ export default function Navbar() {
 
       case 'pano_vote':
       case 'pano_comment':
+      case 'pano_comment_like':
         return n.pano_id ? `/pano/${n.pano_id}` : '#';
 
       case 'reply':
@@ -475,6 +479,8 @@ export default function Navbar() {
       case 'library_add': return 'kitabını kütüphanesine ekledi';
       case 'pano_vote': return 'panonuzu beğendi';
       case 'pano_comment': return 'panonuza yorum yaptı';
+      case 'comment_like': return 'yorumunu beğendi';
+      case 'pano_comment_like': return 'pano yorumunu beğendi';
       case 'reply': return 'yorumunuza yanıt verdi';
       case 'follow': return 'seni takip etti';
       default: return 'bir aktivite gerçekleştirdi';
@@ -483,7 +489,7 @@ export default function Navbar() {
 
   function getNotificationIcon(n) {
     switch (n.type) {
-      case 'vote': case 'chapter_vote': case 'pano_vote': return '⭐';
+      case 'vote': case 'chapter_vote': case 'pano_vote': case 'comment_like': case 'pano_comment_like': return '❤️';
       case 'comment': case 'pano_comment': return '💬';
       case 'new_chapter': return '🆕';
       case 'library_add': return '📚';

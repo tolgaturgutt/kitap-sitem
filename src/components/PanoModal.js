@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ import { createPanoVoteNotification, createPanoCommentNotification } from '@/lib
 import Image from 'next/image';
 
 import BookCoverImage from '@/components/BookCoverImage';
+import CommentLikeButton from '@/components/CommentLikeButton';
 
 // Bu yorum sadece commit için eklendi; çalışma mantığı değişmedi.
 export default function PanoModal({ 
@@ -23,6 +24,8 @@ export default function PanoModal({
   const [panoLikes, setPanoLikes] = useState(0);
   const [hasLiked, setHasLiked] = useState(false);
   const [panoComments, setPanoComments] = useState([]);
+  const [commentLikes, setCommentLikes] = useState({});
+  const [pendingLikeIds, setPendingLikeIds] = useState(() => new Set());
   const [newComment, setNewComment] = useState('');
   const [replyTo, setReplyTo] = useState(null);
   const [replyToUsername, setReplyToUsername] = useState(null);
@@ -32,6 +35,43 @@ export default function PanoModal({
   
   // Pano sahibinin güncel profilini tutacak state
   const [panoOwnerProfile, setPanoOwnerProfile] = useState(null);
+
+  const fetchPanoCommentLikes = useCallback(async (commentRows) => {
+    const commentIds = (commentRows || [])
+      .map(comment => String(comment.id))
+      .filter(Boolean);
+
+    if (commentIds.length === 0) {
+      setCommentLikes({});
+      return;
+    }
+
+    const emptyLikes = Object.fromEntries(
+      commentIds.map(commentId => [
+        commentId,
+        { count: 0, liked: false },
+      ])
+    );
+
+    const { data, error } = await supabase.rpc(
+      'get_pano_comment_like_summaries',
+      { p_comment_ids: commentIds }
+    );
+
+    if (error) {
+      setCommentLikes(emptyLikes);
+      return;
+    }
+
+    const nextLikes = { ...emptyLikes };
+    (data || []).forEach(item => {
+      nextLikes[String(item.comment_id)] = {
+        count: Number(item.like_count || 0),
+        liked: Boolean(item.liked_by_me),
+      };
+    });
+    setCommentLikes(nextLikes);
+  }, []);
 
   // --- 1. VERİLERİ YÜKLE (OPTİMİZE EDİLDİ) ---
 // --- 1. VERİLERİ YÜKLE (OPTİMİZE EDİLDİ) ---
@@ -53,6 +93,8 @@ export default function PanoModal({
       setPanoLikes(0);
       setHasLiked(false);
       setPanoComments([]);
+      setCommentLikes({});
+      setPendingLikeIds(new Set());
       setChapterTitle(null);
       setReplyTo(null);
       setReplyToUsername(null);
@@ -114,7 +156,11 @@ export default function PanoModal({
         if (res.type === 'chapter' && res.data) setChapterTitle(res.data.title);
         if (res.type === 'likes') setPanoLikes(res.count || 0);
         if (res.type === 'hasLiked') setHasLiked(!!res.data);
-        if (res.type === 'comments') setPanoComments(res.data || []);
+        if (res.type === 'comments') {
+          const loadedComments = res.data || [];
+          setPanoComments(loadedComments);
+          fetchPanoCommentLikes(loadedComments);
+        }
       });
     }
 
@@ -150,7 +196,7 @@ export default function PanoModal({
         supabase.removeChannel(chapterSubscription);
       }
     };
-  }, [selectedPano, user]);
+  }, [fetchPanoCommentLikes, selectedPano, user]);
 
   // --- 2. FONKSİYONLAR ---
   async function handleLike() {
@@ -227,6 +273,10 @@ export default function PanoModal({
         if (prev.some(comment => String(comment.id) === String(insertedComment.id))) return prev;
         return [...prev, insertedComment].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
       });
+      setCommentLikes(prev => ({
+        ...prev,
+        [String(insertedComment.id)]: { count: 0, liked: false },
+      }));
 
       if (insertedComment?.id) {
         createPanoCommentNotification(insertedComment.id).catch((notificationError) => {
@@ -267,7 +317,53 @@ export default function PanoModal({
     const { error } = await supabase.from('pano_comments').delete().eq('id', commentId);
     if (!error) {
       setPanoComments(prev => prev.filter(c => c.id !== commentId));
+      setCommentLikes(prev => {
+        const next = { ...prev };
+        delete next[String(commentId)];
+        return next;
+      });
     }
+  }
+
+  async function handlePanoCommentLike(comment) {
+    if (!user) return toast.error('Giriş yapmalısın!');
+    if (String(user.id) === String(comment.user_id)) return;
+
+    const commentId = String(comment.id);
+    if (pendingLikeIds.has(commentId)) return;
+
+    const previous = commentLikes[commentId] || { count: 0, liked: false };
+    const optimistic = {
+      count: Math.max(0, previous.count + (previous.liked ? -1 : 1)),
+      liked: !previous.liked,
+    };
+
+    setPendingLikeIds(prev => new Set(prev).add(commentId));
+    setCommentLikes(prev => ({ ...prev, [commentId]: optimistic }));
+
+    const { data, error } = await supabase.rpc('toggle_pano_comment_like', {
+      p_comment_id: commentId,
+    });
+
+    if (error) {
+      console.error('Pano comment like error:', error);
+      setCommentLikes(prev => ({ ...prev, [commentId]: previous }));
+      toast.error('Beğeni kaydedilemedi.');
+    } else {
+      setCommentLikes(prev => ({
+        ...prev,
+        [commentId]: {
+          count: Number(data?.like_count ?? optimistic.count),
+          liked: Boolean(data?.liked_by_me ?? optimistic.liked),
+        },
+      }));
+    }
+
+    setPendingLikeIds(prev => {
+      const next = new Set(prev);
+      next.delete(commentId);
+      return next;
+    });
   }
 
   async function handleDeletePano(e) {
@@ -380,17 +476,29 @@ export default function PanoModal({
               return <span key={i}>{word} </span>;
             })}
           </p>
-          <button 
-            onClick={() => {
-              // Bildirim doğrudan yanıtlanan yorumun sahibine gitmeli.
-              setReplyTo(comment.id);
-              setReplyToUsername(displayUsername);
-              setNewComment(`@${displayUsername}  `);
-            }} 
-            className="text-[9px] text-gray-400 hover:text-red-600 font-bold mt-1 uppercase"
-          >
-            Yanıtla
-          </button>
+          <div className="mt-1 flex items-center gap-1">
+            <CommentLikeButton
+              count={commentLikes[String(comment.id)]?.count || 0}
+              liked={Boolean(commentLikes[String(comment.id)]?.liked)}
+              pending={pendingLikeIds.has(String(comment.id))}
+              disabled={Boolean(user && String(user.id) === String(comment.user_id))}
+              compact={isReply}
+              onClick={() => handlePanoCommentLike(comment)}
+            />
+            {user && (
+              <button
+                onClick={() => {
+                  // Bildirim doğrudan yanıtlanan yorumun sahibine gitmeli.
+                  setReplyTo(comment.id);
+                  setReplyToUsername(displayUsername);
+                  setNewComment(`@${displayUsername}  `);
+                }}
+                className="min-h-7 rounded-full px-1.5 text-[9px] font-bold uppercase text-gray-400 transition-colors hover:text-red-600"
+              >
+                Yanıtla
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

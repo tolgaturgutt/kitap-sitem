@@ -6,10 +6,13 @@ import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import { CommentRankBadge } from '@/components/Badges';
 import { fetchCommentBadgeCounts } from '@/lib/badges';
+import CommentLikeButton from '@/components/CommentLikeButton';
 
 export default function YorumAlani({ type, targetId, bookId, paraId = null, paraKey = null, onCommentAdded, includeParagraphs = false, onStatsUpdate }) {
   const [comments, setComments] = useState([]);
   const [commentBadgeCounts, setCommentBadgeCounts] = useState({});
+  const [commentLikes, setCommentLikes] = useState({});
+  const [pendingLikeIds, setPendingLikeIds] = useState(() => new Set());
   const [newComment, setNewComment] = useState('');
   const commentsEndRef = useRef(null);
   const shouldScrollToBottomRef = useRef(false);
@@ -21,6 +24,42 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
   const [isSending, setIsSending] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+
+  const fetchCommentLikes = useCallback(async (commentRows) => {
+    const commentIds = (commentRows || [])
+      .map(comment => Number(comment.id))
+      .filter(Number.isFinite);
+
+    if (commentIds.length === 0) {
+      setCommentLikes({});
+      return;
+    }
+
+    const emptyLikes = Object.fromEntries(
+      commentIds.map(commentId => [
+        String(commentId),
+        { count: 0, liked: false },
+      ])
+    );
+
+    const { data, error } = await supabase.rpc('get_comment_like_summaries', {
+      p_comment_ids: commentIds,
+    });
+
+    if (error) {
+      setCommentLikes(emptyLikes);
+      return;
+    }
+
+    const nextLikes = { ...emptyLikes };
+    (data || []).forEach(item => {
+      nextLikes[String(item.comment_id)] = {
+        count: Number(item.like_count || 0),
+        liked: Boolean(item.liked_by_me),
+      };
+    });
+    setCommentLikes(nextLikes);
+  }, []);
 
   const fetchComments = useCallback(async () => {
     let query = supabase
@@ -63,7 +102,8 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
     setComments(sortedData);
     const badgeCounts = await fetchCommentBadgeCounts(supabase, sortedData);
     setCommentBadgeCounts(badgeCounts);
-  }, [includeParagraphs, paraId, paraKey, targetId, type]);
+    await fetchCommentLikes(sortedData);
+  }, [fetchCommentLikes, includeParagraphs, paraId, paraKey, targetId, type]);
 
   useEffect(() => {
     const resetTimer = window.setTimeout(() => setComments([]), 0);
@@ -225,6 +265,10 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
 
         const updatedBadgeCounts = await fetchCommentBadgeCounts(supabase, [insertedData]);
         setCommentBadgeCounts(prev => ({ ...prev, ...updatedBadgeCounts }));
+        setCommentLikes(prev => ({
+          ...prev,
+          [String(insertedData.id)]: { count: 0, liked: false },
+        }));
         
         await createNotification(insertedData, targetComment);
 
@@ -296,6 +340,11 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
     const { error } = await supabase.from('comments').delete().eq('id', id);
     if (!error) { 
         setComments(prev => prev.filter(c => c.id !== id)); 
+        setCommentLikes(prev => {
+          const next = { ...prev };
+          delete next[String(id)];
+          return next;
+        });
         if (deletedComment?.user_id) {
           setCommentBadgeCounts(prev => ({
             ...prev,
@@ -317,6 +366,55 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
             });
           }
         }
+    }
+  }
+
+  async function handleCommentLike(comment) {
+    if (!user) {
+      toast.error('Beğenmek için giriş yapmalısın.');
+      return;
+    }
+
+    if (String(user.id) === String(comment.user_id)) return;
+
+    const commentKey = String(comment.id);
+    if (pendingLikeIds.has(commentKey)) return;
+
+    const previousLike = commentLikes[commentKey] || { count: 0, liked: false };
+    const optimisticLike = {
+      liked: !previousLike.liked,
+      count: Math.max(
+        0,
+        previousLike.count + (previousLike.liked ? -1 : 1)
+      ),
+    };
+
+    setCommentLikes(prev => ({ ...prev, [commentKey]: optimisticLike }));
+    setPendingLikeIds(prev => new Set(prev).add(commentKey));
+
+    try {
+      const { data, error } = await supabase.rpc('toggle_comment_like', {
+        p_comment_id: Number(comment.id),
+      });
+      if (error) throw error;
+
+      setCommentLikes(prev => ({
+        ...prev,
+        [commentKey]: {
+          count: Number(data?.like_count || 0),
+          liked: Boolean(data?.liked_by_me),
+        },
+      }));
+    } catch (error) {
+      console.error('Comment like error:', error);
+      setCommentLikes(prev => ({ ...prev, [commentKey]: previousLike }));
+      toast.error('Beğeni kaydedilemedi.');
+    } finally {
+      setPendingLikeIds(prev => {
+        const next = new Set(prev);
+        next.delete(commentKey);
+        return next;
+      });
     }
   }
 
@@ -371,6 +469,9 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
                 isSending={isSending}
                 isMain={true}
                 commentCount={commentBadgeCounts[c.user_id] || 0}
+                likeInfo={commentLikes[String(c.id)]}
+                isLikePending={pendingLikeIds.has(String(c.id))}
+                onLike={() => handleCommentLike(c)}
             />
             <div className="pl-12 mt-3 space-y-4 border-l-2 border-gray-100 dark:border-white/5 ml-2">
                 {getReplies(c.id).map(reply => (
@@ -390,6 +491,9 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
                         isSending={isSending}
                         isMain={false}
                         commentCount={commentBadgeCounts[reply.user_id] || 0}
+                        likeInfo={commentLikes[String(reply.id)]}
+                        isLikePending={pendingLikeIds.has(String(reply.id))}
+                        onLike={() => handleCommentLike(reply)}
                     />
                 ))}
             </div>
@@ -424,7 +528,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
   );
 }
 
-function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain, commentCount }) {
+function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onDelete, onReport, replyText, setReplyText, onSendReply, isSending, isMain, commentCount, likeInfo, isLikePending, onLike }) {
     const canDelete = user && (isAdmin || isOwner || user.id === comment.user_id);
     const isOwnComment = user && user.id === comment.user_id;
     const commentUsername = comment.profiles?.username || comment.username || "Anonim";
@@ -457,7 +561,6 @@ function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onD
                     </div>
                     {user && (
                         <div className="flex gap-2 opacity-60 hover:opacity-100">
-                             {!isReplying && <button onClick={onReply} className="text-[9px] text-gray-400 hover:text-blue-500 font-bold uppercase">Yanıtla</button>}
                             {canDelete ? (
                                 <button onClick={() => onDelete(comment.id)} className="text-[9px] text-gray-400 hover:text-red-500 font-bold uppercase">Sil</button>
                             ) : (
@@ -468,6 +571,26 @@ function CommentCard({ comment, user, isAdmin, isOwner, onReply, isReplying, onD
                 </div>
                 <div className="text-[13px] text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap break-words">
                     {comment.content.split(' ').map((word, i) => word.startsWith('@') ? <span key={i} className="text-blue-500 font-bold">{word} </span> : word + ' ')}
+                </div>
+
+                <div className="mt-1 flex items-center gap-1">
+                    <CommentLikeButton
+                        count={likeInfo?.count || 0}
+                        liked={Boolean(likeInfo?.liked)}
+                        pending={isLikePending}
+                        disabled={Boolean(isOwnComment)}
+                        compact={!isMain}
+                        onClick={onLike}
+                    />
+                    {!isReplying && user && (
+                        <button
+                            type="button"
+                            onClick={onReply}
+                            className="min-h-7 rounded-full px-1.5 text-[9px] font-bold uppercase text-gray-400 transition-colors hover:text-blue-500"
+                        >
+                            Yanıtla
+                        </button>
+                    )}
                 </div>
                 
                 {isReplying && (

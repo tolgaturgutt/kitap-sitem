@@ -156,7 +156,7 @@ export default function YazarProfili() {
           .from('event_participants')
           .select(`
             id,
-            event:events(id, title, image_url, end_date)
+            event:events!event_participants_event_id_fkey(id, title, image_url, end_date)
           `)
           .eq('user_email', p.email)
           .eq('is_champion', true);

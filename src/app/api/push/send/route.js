@@ -67,6 +67,12 @@ function buildNotificationText(notification) {
         body: actor + ', ' + bookTitle + ' için yorum yaptı.',
       };
 
+    case 'comment_like':
+      return {
+        title: 'Yorumun beğenildi',
+        body: actor + ', yorumunu beğendi.',
+      };
+
     case 'reply':
       return {
         title: 'Yorumuna yanıt geldi',
@@ -83,6 +89,12 @@ function buildNotificationText(notification) {
       return {
         title: 'Pano gönderine yorum geldi',
         body: actor + ', pano gönderine yorum yaptı.',
+      };
+
+    case 'pano_comment_like':
+      return {
+        title: 'Pano yorumun beğenildi',
+        body: actor + ', pano yorumunu beğendi.',
       };
 
     case 'new_chapter':
@@ -124,7 +136,11 @@ function buildNotificationUrl(notification) {
     const chapterUrl =
       '/kitap/' + notification.book_id + '/bolum/' + notification.chapter_id;
 
-    if (notification.type === 'comment' || notification.type === 'reply') {
+    if (
+      notification.type === 'comment' ||
+      notification.type === 'comment_like' ||
+      notification.type === 'reply'
+    ) {
       const params = new URLSearchParams();
 
       if (hasParagraphTarget(notification.paragraph_key)) {

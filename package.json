@@ -19,7 +19,7 @@
     "@supabase/supabase-js": "^2.110.0",
     "browser-image-compression": "^2.0.2",
     "firebase-admin": "^14.1.0",
-    "next": "16.1.0",
+    "next": "16.2.12",
     "next-themes": "^0.4.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -30,7 +30,7 @@
     "@capacitor/assets": "^3.0.5",
     "autoprefixer": "^10.4.23",
     "eslint": "^9",
-    "eslint-config-next": "16.1.0",
+    "eslint-config-next": "16.2.12",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19"
   }
