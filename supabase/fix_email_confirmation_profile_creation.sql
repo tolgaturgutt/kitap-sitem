@@ -7,7 +7,7 @@ create or replace function public.create_profile_for_new_auth_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = ''
+set search_path = public, pg_temp
 as $$
 declare
   profile_username text;
@@ -131,6 +131,7 @@ select
   null
 from auth.users auth_user
 where auth_user.email_confirmed_at is not null
+  and auth_user.created_at >= timestamp with time zone '2026-07-28 12:41:00+00'
   and not exists (
     select 1
     from public.profiles profile
