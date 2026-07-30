@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { ensureUserProfile } from '@/lib/ensureUserProfile';
 
 export async function GET(request) {
   const requestUrl = new URL(request.url);
@@ -29,7 +30,22 @@ export async function GET(request) {
     );
     
     // 1. Mailden gelen kodu kullanarak kullanıcının oturumunu aç
-    await supabase.auth.exchangeCodeForSession(code);
+    const { error: exchangeError } =
+      await supabase.auth.exchangeCodeForSession(code);
+
+    if (!exchangeError) {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        try {
+          await ensureUserProfile(supabase, user);
+        } catch (profileError) {
+          console.error('Doğrulama sonrası profil oluşturulamadı:', profileError);
+        }
+      }
+    }
   }
 
   // 2. Eğer linkte "şuraya git" (next) denmişse oraya fırlat

@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { ensureUserProfile } from '@/lib/ensureUserProfile';
 import toast from 'react-hot-toast';
 
 // MODAL BİLEŞENİ
@@ -197,24 +198,6 @@ export default function GirisSayfasi() {
           throw new Error('Kayıt oluşturulamadı. Lütfen tekrar deneyin.');
         }
 
-        // ✅ 4. ADIM: PROFILES TABLOSUNA EKLE
-        const user = authData.user;
-        const { error: profileError } = await supabase.from('profiles').insert({
-          id: user.id,
-          email: user.email,
-          username: finalUsername,
-          full_name: cleanFullName,
-          avatar_url: `https://api.dicebear.com/7.x/avataaars/svg?seed=${finalUsername}`,
-        });
-
-        if (profileError) {
-          // Eğer profile oluşturulamazsa, durumu logla (ama auth'daki kullanıcı kalacak)
-          console.error('Profile oluşturulamadı:', profileError);
-          throw new Error('Profil oluşturulamadı. Lütfen destek ile iletişime geçin.');
-        }
-
-        
-
        // ✅ 6. ADIM: BAŞARILI KAYIT - MAIL ONAYI BEKLEME MODU
 // Kullanıcıyı hemen içeri almıyoruz, cookie basmıyoruz.
 toast('Lütfen mail kutunuza (Spam dahil) gelen onay linkine tıklayarak hesabınızı doğrulayın.', {
@@ -277,11 +260,7 @@ setAgreed(false);
           throw new Error('Giriş bilgileri hatalı.');
         }
 
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('is_banned')
-          .eq('id', data.user.id)
-          .single();
+        const profile = await ensureUserProfile(supabase, data.user);
 
         if (profile?.is_banned) {
           await supabase.auth.signOut();
