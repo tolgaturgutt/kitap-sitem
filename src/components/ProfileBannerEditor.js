@@ -110,8 +110,8 @@ export default function ProfileBannerEditor({ imageUrl, isSaving = false, onCanc
         </div>
 
         <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400">
-          <span>{isDesktop ? 'PC önizleme · 16:9' : 'Mobil önizleme · 16:7'}</span>
-          <span>{isDesktop ? '2048 × 1152' : '1600 × 700'}</span>
+          <span>{isDesktop ? 'PC önizleme · 16:9' : 'Mobil profil kartı önizlemesi'}</span>
+          <span>{isDesktop ? '2048 × 1152' : '1080 × 1300'}</span>
         </div>
         <div
           ref={previewRef}
@@ -123,7 +123,7 @@ export default function ProfileBannerEditor({ imageUrl, isSaving = false, onCanc
             event.preventDefault();
             updateZoom(activeTransform.zoom + (event.deltaY < 0 ? 0.1 : -0.1));
           }}
-          className={`relative w-full touch-none cursor-grab select-none overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-black/10 active:cursor-grabbing dark:ring-white/10 ${isDesktop ? 'aspect-video' : 'aspect-[16/7]'}`}
+          className={`relative touch-none cursor-grab select-none overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-black/10 active:cursor-grabbing dark:ring-white/10 ${isDesktop ? 'aspect-video w-full' : 'mx-auto aspect-[1080/1300] w-full max-w-sm'}`}
         >
           <img
             src={imageUrl}
