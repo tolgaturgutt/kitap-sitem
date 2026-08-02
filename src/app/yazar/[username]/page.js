@@ -13,6 +13,7 @@ import BookCoverImage from '@/components/BookCoverImage';
 import { ProfileBadges } from '@/components/Badges';
 import AdminLabCoinManager from '@/components/AdminLabCoinManager';
 import { buildBadgeStats, EMPTY_BADGE_STATS, fetchProfileBadgeCounts } from '@/lib/badges';
+import { getMobileProfileBannerUrl } from '@/lib/profileBannerUrls';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -398,14 +399,24 @@ export default function YazarProfili() {
         <header className="relative mb-8 md:mb-12 overflow-hidden bg-gradient-to-br from-red-700 via-red-600 to-black rounded-3xl md:rounded-[4rem] border dark:border-white/5 shadow-sm">
           <div className="absolute inset-0 overflow-hidden">
             {author.banner_url && (
-              <Image
-                src={author.banner_url}
-                alt={`${author.username} profil kapak fotoğrafı`}
-                fill
-                sizes="(max-width: 768px) 100vw, 1152px"
-                className="object-cover"
-                unoptimized
-              />
+              <>
+                <Image
+                  src={getMobileProfileBannerUrl(author.banner_url)}
+                  alt={`${author.username} mobil profil kapak fotoğrafı`}
+                  fill
+                  sizes="100vw"
+                  className="object-cover md:hidden"
+                  unoptimized
+                />
+                <Image
+                  src={author.banner_url}
+                  alt={`${author.username} profil kapak fotoğrafı`}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 1152px"
+                  className="hidden object-cover md:block"
+                  unoptimized
+                />
+              </>
             )}
             <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/80" />
           </div>

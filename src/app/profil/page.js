@@ -12,6 +12,9 @@ import imageCompression from 'browser-image-compression';
 import { ProfileBadges } from '@/components/Badges';
 import { buildBadgeStats, EMPTY_BADGE_STATS, fetchProfileBadgeCounts } from '@/lib/badges';
 import { usePlusFeatureAccess } from '@/hooks/usePlusFeatureAccess';
+import ProfileBannerEditor from '@/components/ProfileBannerEditor';
+import { cropProfileBanner } from '@/lib/profileBannerCrop';
+import { getMobileProfileBannerUrl, getSourceProfileBannerUrl } from '@/lib/profileBannerUrls';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -44,6 +47,8 @@ export default function ProfilSayfasi() {
   const [selectedPano, setSelectedPano] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', banner_url: '', instagram: '', role: '' });
+  const [bannerEditor, setBannerEditor] = useState(null);
+  const [isBannerSaving, setIsBannerSaving] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
 
@@ -259,7 +264,7 @@ export default function ProfilSayfasi() {
     }
   }
 
-  async function handleBannerChange(event) {
+  function handleBannerChange(event) {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -269,32 +274,77 @@ export default function ProfilSayfasi() {
       return;
     }
 
+    setBannerEditor({
+      file,
+      previewUrl: URL.createObjectURL(file)
+    });
+  }
+
+  function closeBannerEditor() {
+    if (bannerEditor?.file && bannerEditor.previewUrl) URL.revokeObjectURL(bannerEditor.previewUrl);
+    setBannerEditor(null);
+  }
+
+  async function editCurrentBannerPosition() {
+    if (!profileData.banner_url) return;
+    const toastId = toast.loading('Mevcut kapak hazırlanıyor...');
+    try {
+      const sourceUrl = getSourceProfileBannerUrl(profileData.banner_url);
+      let response = await fetch(sourceUrl);
+      if (!response.ok && sourceUrl !== profileData.banner_url) response = await fetch(profileData.banner_url);
+      if (!response.ok) throw new Error('Mevcut kapak indirilemedi.');
+      const sourceFile = await response.blob();
+      setBannerEditor({ file: sourceFile, previewUrl: URL.createObjectURL(sourceFile) });
+      toast.remove(toastId);
+    } catch (error) {
+      toast.error(error.message, { id: toastId });
+    }
+  }
+
+  async function handleBannerConfirm(transforms) {
+    if (!bannerEditor) return;
+
+    setIsBannerSaving(true);
     const toastId = toast.loading('Kapak fotoğrafı hazırlanıyor...');
 
     try {
-      const compressedFile = await imageCompression(file, {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 2000,
-        useWebWorker: false,
-        fileType: 'image/jpeg',
-        initialQuality: 0.82
-      });
+      const sourceFile = bannerEditor.file;
+      const sourceForCompression = sourceFile instanceof File
+        ? sourceFile
+        : new File([sourceFile], 'profile-banner-source.jpg', { type: sourceFile.type || 'image/jpeg' });
+      const [desktopCrop, mobileCrop] = await Promise.all([
+        cropProfileBanner(sourceFile, transforms.desktop, { width: 2048, height: 1152, fileName: 'desktop.jpg' }),
+        cropProfileBanner(sourceFile, transforms.mobile, { width: 1600, height: 700, fileName: 'mobile.jpg' })
+      ]);
+      const compressionOptions = {
+        maxSizeMB: 1, useWebWorker: false, fileType: 'image/jpeg', initialQuality: 0.84
+      };
+      const [desktopFile, mobileFile, preservedSource] = await Promise.all([
+        imageCompression(desktopCrop, { ...compressionOptions, maxWidthOrHeight: 2048 }),
+        imageCompression(mobileCrop, { ...compressionOptions, maxWidthOrHeight: 1600 }),
+        imageCompression(sourceForCompression, { ...compressionOptions, maxSizeMB: 2, maxWidthOrHeight: 4096 })
+      ]);
       const uniqueId = typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      const fileName = `profile-banners/${user.id}/${uniqueId}.jpg`;
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(fileName, compressedFile, {
+      const baseName = `profile-banners/${user.id}/${uniqueId}`;
+      const uploadBannerFile = (suffix, file) => supabase.storage
+        .from('images').upload(`${baseName}-${suffix}.jpg`, file, {
           cacheControl: '31536000',
           contentType: 'image/jpeg',
           upsert: false
         });
+      const uploadResults = await Promise.all([
+        uploadBannerFile('desktop', desktopFile),
+        uploadBannerFile('mobile', mobileFile),
+        uploadBannerFile('source', preservedSource)
+      ]);
+      const failedUpload = uploadResults.find((result) => result.error);
+      if (failedUpload?.error) throw failedUpload.error;
 
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(fileName);
+      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(`${baseName}-desktop.jpg`);
       setProfileData(prev => ({ ...prev, banner_url: publicUrl }));
+      closeBannerEditor();
       toast.success('Kapak hazır. Kaydetmeyi unutma.', { id: toastId });
     } catch (error) {
       console.error(error);
@@ -307,6 +357,8 @@ export default function ProfilSayfasi() {
           : `Kapak yüklenemedi: ${error.message}`,
         { id: toastId }
       );
+    } finally {
+      setIsBannerSaving(false);
     }
   }
 
@@ -362,19 +414,38 @@ export default function ProfilSayfasi() {
         onDelete={(deletedId) => setMyPanos(prev => prev.filter(p => p.id !== deletedId))}
       />
 
+      {bannerEditor && (
+        <ProfileBannerEditor
+          imageUrl={bannerEditor.previewUrl}
+          isSaving={isBannerSaving}
+          onCancel={closeBannerEditor}
+          onConfirm={handleBannerConfirm}
+        />
+      )}
+
       <div className="max-w-6xl mx-auto">
         {/* HEADER BÖLÜMÜ */}
         <header className="relative mb-8 md:mb-12 overflow-hidden bg-gradient-to-br from-red-700 via-red-600 to-black rounded-3xl md:rounded-[4rem] border dark:border-white/5">
           <div className="absolute inset-0 overflow-hidden">
             {profileData.banner_url && (
-              <Image
-                src={profileData.banner_url}
-                alt="Profil kapak fotoğrafı"
-                fill
-                sizes="(max-width: 768px) 100vw, 1152px"
-                className="object-cover"
-                unoptimized
-              />
+              <>
+                <Image
+                  src={getMobileProfileBannerUrl(profileData.banner_url)}
+                  alt="Mobil profil kapak fotoğrafı"
+                  fill
+                  sizes="100vw"
+                  className="object-cover md:hidden"
+                  unoptimized
+                />
+                <Image
+                  src={profileData.banner_url}
+                  alt="Profil kapak fotoğrafı"
+                  fill
+                  sizes="(max-width: 768px) 100vw, 1152px"
+                  className="hidden object-cover md:block"
+                  unoptimized
+                />
+              </>
             )}
             <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/80" />
           </div>
@@ -441,19 +512,31 @@ export default function ProfilSayfasi() {
                         Profil Kapak Fotoğrafını Değiştir
                       </p>
                       <p className="mt-1 text-[8px] font-bold uppercase tracking-widest text-amber-600/60">
-                        Plus özellik
+                        PC: 2048 × 1152 · Mobil: 1600 × 700 · Plus özellik
                       </p>
                       {profileData.banner_url && (
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setProfileData(prev => ({ ...prev, banner_url: '' }));
-                          }}
-                          className="relative z-20 mt-3 text-[9px] font-black uppercase text-red-600 hover:underline"
-                        >
-                          Kapağı Kaldır
-                        </button>
+                        <div className="relative z-20 mt-3 flex justify-center gap-4">
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              editCurrentBannerPosition();
+                            }}
+                            className="text-[9px] font-black uppercase text-amber-700 hover:underline dark:text-amber-400"
+                          >
+                            Kadrajı Düzenle
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setProfileData(prev => ({ ...prev, banner_url: '' }));
+                            }}
+                            className="text-[9px] font-black uppercase text-red-600 hover:underline"
+                          >
+                            Kapağı Kaldır
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
