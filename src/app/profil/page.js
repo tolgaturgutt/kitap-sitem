@@ -24,6 +24,17 @@ function formatNumber(num) {
   return num;
 }
 
+function preloadProfileImages(urls) {
+  return Promise.all(
+    urls.filter(Boolean).map((url) => new Promise((resolve) => {
+      const image = new window.Image();
+      image.onload = resolve;
+      image.onerror = resolve;
+      image.src = url;
+    }))
+  );
+}
+
 export default function ProfilSayfasi() {
   const canUsePlusFeatures = usePlusFeatureAccess();
   const [user, setUser] = useState(null);
@@ -49,6 +60,7 @@ export default function ProfilSayfasi() {
   const [profileData, setProfileData] = useState({ full_name: '', username: '', bio: '', avatar_url: '', banner_url: '', instagram: '', role: '' });
   const [bannerEditor, setBannerEditor] = useState(null);
   const [isBannerSaving, setIsBannerSaving] = useState(false);
+  const [loadedBannerUrl, setLoadedBannerUrl] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
 
@@ -82,6 +94,15 @@ export default function ProfilSayfasi() {
         instagram: profile?.instagram || '',
         role: profile?.role
       });
+      const desktopBannerUrl = profile?.banner_url || '';
+      const mobileBannerUrl = getMobileProfileBannerUrl(desktopBannerUrl);
+      const activeBannerUrl = window.matchMedia('(min-width: 768px)').matches
+        ? desktopBannerUrl
+        : mobileBannerUrl;
+      const profileImagesReady = preloadProfileImages([
+        profile?.avatar_url,
+        activeBannerUrl
+      ]);
 
       const { data: adminData } = await supabase
         .from('announcement_admins')
@@ -197,6 +218,8 @@ export default function ProfilSayfasi() {
       })) || [];
 
       setMyPanos(panosWithProfile);
+      await profileImagesReady;
+      setLoadedBannerUrl(desktopBannerUrl);
       setLoading(false);
     }
     getData();
@@ -425,27 +448,21 @@ export default function ProfilSayfasi() {
 
       <div className="max-w-6xl mx-auto">
         {/* HEADER BÖLÜMÜ */}
-        <header className="relative mb-8 md:mb-12 overflow-hidden bg-gradient-to-br from-red-700 via-red-600 to-black rounded-3xl md:rounded-[4rem] border dark:border-white/5">
+        <header className={`relative mb-8 overflow-hidden rounded-3xl border md:mb-12 md:rounded-[4rem] dark:border-white/5 ${profileData.banner_url ? 'bg-zinc-950' : 'bg-gradient-to-br from-red-700 via-red-600 to-black'}`}>
           <div className="absolute inset-0 overflow-hidden">
             {profileData.banner_url && (
-              <>
-                <Image
+              <picture className="absolute inset-0 block">
+                <source media="(min-width: 768px)" srcSet={profileData.banner_url} />
+                <img
                   src={getMobileProfileBannerUrl(profileData.banner_url)}
-                  alt="Mobil profil kapak fotoğrafı"
-                  fill
-                  sizes="100vw"
-                  className="object-cover md:hidden"
-                  unoptimized
-                />
-                <Image
-                  src={profileData.banner_url}
                   alt="Profil kapak fotoğrafı"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 1152px"
-                  className="hidden object-cover md:block"
-                  unoptimized
+                  loading="eager"
+                  fetchPriority="high"
+                  decoding="async"
+                  onLoad={() => setLoadedBannerUrl(profileData.banner_url)}
+                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ${loadedBannerUrl === profileData.banner_url ? 'opacity-100' : 'opacity-0'}`}
                 />
-              </>
+              </picture>
             )}
             <div className="absolute inset-0 bg-gradient-to-b from-black/5 via-black/20 to-black/80" />
           </div>
@@ -455,7 +472,7 @@ export default function ProfilSayfasi() {
           <div className="flex flex-col items-center gap-5 md:gap-6">
             <div className="relative z-10 -mt-12 md:-mt-16 w-24 h-24 md:w-32 md:h-32 bg-gray-100 dark:bg-zinc-900 rounded-2xl md:rounded-[2.5rem] border-4 border-white dark:border-zinc-950 shadow-xl overflow-hidden flex items-center justify-center font-black text-2xl md:text-3xl shrink-0 mx-auto">
               {profileData.avatar_url && profileData.avatar_url.includes('http') ? (
-                <img src={profileData.avatar_url} className="w-full h-full object-cover" alt="" />
+                <img src={profileData.avatar_url} loading="eager" fetchPriority="high" decoding="async" className="w-full h-full object-cover" alt="" />
               ) : (
                 user.email[0].toUpperCase()
               )}
