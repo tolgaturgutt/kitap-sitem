@@ -314,14 +314,14 @@ export default function ProfilSayfasi() {
         : new File([sourceFile], 'profile-banner-source.jpg', { type: sourceFile.type || 'image/jpeg' });
       const [desktopCrop, mobileCrop] = await Promise.all([
         cropProfileBanner(sourceFile, transforms.desktop, { width: 2048, height: 1152, fileName: 'desktop.jpg' }),
-        cropProfileBanner(sourceFile, transforms.mobile, { width: 1080, height: 1350, fileName: 'mobile.jpg' })
+        cropProfileBanner(sourceFile, transforms.mobile, { width: 1600, height: 700, fileName: 'mobile.jpg' })
       ]);
       const compressionOptions = {
         maxSizeMB: 1, useWebWorker: false, fileType: 'image/jpeg', initialQuality: 0.84
       };
       const [desktopFile, mobileFile, preservedSource] = await Promise.all([
         imageCompression(desktopCrop, { ...compressionOptions, maxWidthOrHeight: 2048 }),
-        imageCompression(mobileCrop, { ...compressionOptions, maxWidthOrHeight: 1350 }),
+        imageCompression(mobileCrop, { ...compressionOptions, maxWidthOrHeight: 1600 }),
         imageCompression(sourceForCompression, { ...compressionOptions, maxSizeMB: 2, maxWidthOrHeight: 4096 })
       ]);
       const uniqueId = typeof crypto !== 'undefined' && crypto.randomUUID
@@ -512,7 +512,7 @@ export default function ProfilSayfasi() {
                         Profil Kapak Fotoğrafını Değiştir
                       </p>
                       <p className="mt-1 text-[8px] font-bold uppercase tracking-widest text-amber-600/60">
-                        PC: 2048 × 1152 · Mobil: 1080 × 1350 · Plus özellik
+                        PC: 2048 × 1152 · Mobil: 1600 × 700 · Plus özellik
                       </p>
                       {profileData.banner_url && (
                         <div className="relative z-20 mt-3 flex justify-center gap-4">

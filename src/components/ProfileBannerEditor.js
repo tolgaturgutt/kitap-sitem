@@ -32,12 +32,6 @@ export default function ProfileBannerEditor({ imageUrl, isSaving = false, onCanc
     () => getGeometry(imageSize, previewSize, activeTransform),
     [imageSize, previewSize, activeTransform]
   );
-  const fitZoom = useMemo(() => {
-    if (!imageSize.width || !imageSize.height || !previewSize.width || !previewSize.height) return 1;
-    const coverScale = Math.max(previewSize.width / imageSize.width, previewSize.height / imageSize.height);
-    const containScale = Math.min(previewSize.width / imageSize.width, previewSize.height / imageSize.height);
-    return containScale / coverScale;
-  }, [imageSize, previewSize]);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -94,7 +88,7 @@ export default function ProfileBannerEditor({ imageUrl, isSaving = false, onCanc
   }
 
   function updateZoom(value) {
-    updateActiveTransform((current) => ({ ...current, zoom: clamp(value, fitZoom, 3) }));
+    updateActiveTransform((current) => ({ ...current, zoom: clamp(value, 1, 3) }));
   }
 
   const isDesktop = activeDevice === 'desktop';
@@ -116,8 +110,8 @@ export default function ProfileBannerEditor({ imageUrl, isSaving = false, onCanc
         </div>
 
         <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-[0.16em] text-zinc-400">
-          <span>{isDesktop ? 'PC önizleme · 16:9' : 'Mobil kart önizlemesi · 4:5'}</span>
-          <span>{isDesktop ? '2048 × 1152' : '1080 × 1350'}</span>
+          <span>{isDesktop ? 'PC önizleme · 16:9' : 'Mobil önizleme · 16:7'}</span>
+          <span>{isDesktop ? '2048 × 1152' : '1600 × 700'}</span>
         </div>
         <div
           ref={previewRef}
@@ -129,7 +123,7 @@ export default function ProfileBannerEditor({ imageUrl, isSaving = false, onCanc
             event.preventDefault();
             updateZoom(activeTransform.zoom + (event.deltaY < 0 ? 0.1 : -0.1));
           }}
-          className={`relative touch-none cursor-grab select-none overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-black/10 active:cursor-grabbing dark:ring-white/10 ${isDesktop ? 'aspect-video w-full' : 'mx-auto aspect-[4/5] w-full max-w-sm'}`}
+          className={`relative w-full touch-none cursor-grab select-none overflow-hidden rounded-2xl bg-zinc-900 ring-1 ring-black/10 active:cursor-grabbing dark:ring-white/10 ${isDesktop ? 'aspect-video' : 'aspect-[16/7]'}`}
         >
           <img
             src={imageUrl}
@@ -149,11 +143,10 @@ export default function ProfileBannerEditor({ imageUrl, isSaving = false, onCanc
 
         <div className="mt-4 rounded-2xl bg-zinc-50 p-4 dark:bg-white/5">
           <div className="mb-2 flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-zinc-500"><span>🔍 Yakınlaştır</span><span>%{Math.round(activeTransform.zoom * 100)}</span></div>
-          <input type="range" min={fitZoom} max="3" step="0.01" value={activeTransform.zoom} onChange={(event) => updateZoom(Number(event.target.value))} className="w-full accent-red-600" />
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <button type="button" onClick={() => updateActiveTransform({ zoom: fitZoom, x: 0, y: 0 })} className="rounded-lg bg-white px-2 py-2.5 text-[8px] font-black uppercase text-zinc-600 shadow-sm dark:bg-black dark:text-zinc-300">↔ Tamamını Sığdır</button>
-            <button type="button" onClick={() => updateActiveTransform({ ...EMPTY_TRANSFORM })} className="rounded-lg bg-white px-2 py-2.5 text-[8px] font-black uppercase text-zinc-600 shadow-sm dark:bg-black dark:text-zinc-300">▣ Alanı Doldur</button>
-            <button type="button" onClick={() => updateActiveTransform({ ...EMPTY_TRANSFORM })} className="rounded-lg bg-white px-2 py-2.5 text-[8px] font-black uppercase text-zinc-600 shadow-sm dark:bg-black dark:text-zinc-300">↺ Sıfırla</button>
+          <input type="range" min="1" max="3" step="0.01" value={activeTransform.zoom} onChange={(event) => updateZoom(Number(event.target.value))} className="w-full accent-red-600" />
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <p className="text-[11px] leading-relaxed text-zinc-500 dark:text-zinc-400">Minimum seviyede fotoğraf alanı boşluksuz doldurur. Daha fazla küçültülemez.</p>
+            <button type="button" onClick={() => updateActiveTransform({ ...EMPTY_TRANSFORM })} className="shrink-0 rounded-lg bg-white px-3 py-2.5 text-[8px] font-black uppercase text-zinc-600 shadow-sm dark:bg-black dark:text-zinc-300">↺ Alana Sığdır</button>
           </div>
         </div>
 
