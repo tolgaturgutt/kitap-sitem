@@ -17,6 +17,8 @@ import {
   showWebLabCoinRewardAd,
 } from '@/lib/webRewardedAdHelper';
 
+const REWARDED_ADS_UNDER_MAINTENANCE = true;
+
 const EMPTY_STATUS = {
   balance: 0,
   claims_today: 0,
@@ -229,11 +231,12 @@ export default function PremiumPage() {
   const cooldownActive = secondsUntilNext > 0;
   const isNative = Capacitor.isNativePlatform();
   const rewardedFeatureEnabled = status.rewarded_ads_enabled;
-  const rewardedAdReady = isNative
-    ? isRewardedAdAvailable()
-    : isWebRewardedAdAvailable();
+  const rewardedAdReady = !REWARDED_ADS_UNDER_MAINTENANCE && (
+    isNative ? isRewardedAdAvailable() : isWebRewardedAdAvailable()
+  );
   const canWatch =
     Boolean(user) &&
+    !REWARDED_ADS_UNDER_MAINTENANCE &&
     rewardedFeatureEnabled &&
     rewardedAdReady &&
     !watchingAd &&
@@ -241,6 +244,10 @@ export default function PremiumPage() {
     !cooldownActive;
 
   async function handleWatchRewardedAd() {
+    if (REWARDED_ADS_UNDER_MAINTENANCE) {
+      toast('Reklam özelliği şu anda bakımda. Bir ay içinde yeniden kullanıma açılacaktır.');
+      return;
+    }
     if (!canWatch) return;
     setWatchingAd(true);
 
@@ -496,7 +503,11 @@ export default function PremiumPage() {
             </div>
 
             <div className="mt-7 rounded-2xl bg-gray-50 p-5 dark:bg-black/30">
-              {dailyLimitReached ? (
+              {REWARDED_ADS_UNDER_MAINTENANCE ? (
+                <p className="text-sm font-bold text-amber-700 dark:text-amber-300">
+                  Reklam özelliği şu anda bakımda. Bir ay içinde yeniden kullanıma açılacaktır.
+                </p>
+              ) : dailyLimitReached ? (
                 <p className="text-sm font-bold text-gray-600 dark:text-gray-300">
                   Bugünkü 4 hakkını tamamladın. Hakların gece yenilenir.
                 </p>
@@ -522,7 +533,9 @@ export default function PremiumPage() {
               disabled={!canWatch}
               className="mt-6 w-full rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 px-6 py-5 text-sm font-black uppercase tracking-wider text-black shadow-xl shadow-amber-500/20 transition-all hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:scale-100"
             >
-              {watchingAd
+              {REWARDED_ADS_UNDER_MAINTENANCE
+                ? 'Reklam Özelliği Bakımda'
+                : watchingAd
                 ? 'Reklam hazırlanıyor...'
                 : !rewardedFeatureEnabled
                   ? 'Ödüllü Reklam Kullanılamıyor'
