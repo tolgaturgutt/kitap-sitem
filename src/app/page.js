@@ -419,23 +419,23 @@ function HomeFeaturedBook({ book }) {
   if (!book) return null;
 
   return (
-    <section className="relative mb-20 overflow-hidden border-y border-stone-300/80 bg-[#d8cdbb] dark:border-white/10 dark:bg-[#211f1b]">
+    <section className="relative mb-14 overflow-hidden border-y border-stone-300/80 bg-[#d8cdbb] dark:border-white/10 dark:bg-[#211f1b] sm:mb-20">
       <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(68,58,48,.16)_1px,transparent_1px),linear-gradient(90deg,rgba(68,58,48,.16)_1px,transparent_1px)] [background-size:32px_32px]" />
-      <Link href={`/kitap/${book.id}`} className="group relative grid min-h-[360px] grid-cols-[120px_1fr] items-center gap-6 px-6 py-10 sm:grid-cols-[180px_1fr] sm:gap-10 sm:px-12 md:min-h-[440px] md:grid-cols-[220px_1fr] md:px-20">
+      <Link href={`/kitap/${book.id}`} className="group relative grid min-h-[220px] grid-cols-[88px_1fr] items-center gap-4 px-5 py-6 sm:min-h-[360px] sm:grid-cols-[180px_1fr] sm:gap-10 sm:px-12 sm:py-10 md:min-h-[440px] md:grid-cols-[220px_1fr] md:px-20">
           <div className="relative aspect-[2/3] overflow-hidden border border-black/15 bg-stone-200 shadow-[12px_16px_0_rgba(75,55,38,0.16)] transition-transform duration-300 group-hover:-translate-y-1 dark:border-white/10">
             <BookCoverImage src={book.cover_url} alt={book.title} fill sizes="(max-width: 640px) 120px, (max-width: 768px) 180px, 220px" className="object-cover" priority />
           </div>
           <div className="min-w-0 max-w-xl">
-            <div className="mb-5 flex items-center gap-3 text-[9px] font-semibold uppercase tracking-[0.22em] text-[#7f1d1d] dark:text-red-300">
+            <div className="mb-3 flex items-center gap-2 text-[8px] font-semibold uppercase tracking-[0.18em] text-[#7f1d1d] dark:text-red-300 sm:mb-5 sm:gap-3 sm:text-[9px] sm:tracking-[0.22em]">
               <span>Günün kitabı</span>
-              <span className="h-px w-10 bg-[#7f1d1d] dark:bg-red-300" />
-              <span>KitapLab seçkisi</span>
+              <span className="hidden h-px w-10 bg-[#7f1d1d] dark:bg-red-300 sm:block" />
+              <span className="hidden sm:inline">KitapLab seçkisi</span>
             </div>
-            <h2 className="font-serif text-3xl leading-tight tracking-[-0.02em] text-stone-950 dark:text-white sm:text-5xl md:text-6xl">{book.title}</h2>
-            <div className="mt-5 text-xs text-stone-600 dark:text-stone-300 sm:text-sm">
+            <h2 className="line-clamp-3 font-serif text-2xl leading-[1.05] tracking-[-0.02em] text-stone-950 dark:text-white sm:text-5xl sm:leading-tight md:text-6xl">{book.title}</h2>
+            <div className="mt-3 truncate text-[10px] text-stone-600 dark:text-stone-300 sm:mt-5 sm:text-sm">
               <Username username={book.username} isAdmin={book.is_admin} isPremium={book.role === 'premium'} />
             </div>
-            <p className="mt-8 text-xs font-semibold text-stone-900 dark:text-stone-100">Kitaba git <span aria-hidden="true">→</span></p>
+            <p className="mt-4 text-[10px] font-semibold text-stone-900 dark:text-stone-100 sm:mt-8 sm:text-xs">Kitaba git <span aria-hidden="true">→</span></p>
           </div>
       </Link>
     </section>
