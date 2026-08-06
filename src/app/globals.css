@@ -465,6 +465,23 @@
   border-radius: 0.75rem;
 }
 
+.chapter-reader-content img[data-deferred-src]:not([data-image-loaded="true"]) {
+  width: min(100%, 720px);
+  height: auto;
+  background: linear-gradient(110deg, rgba(148, 163, 184, 0.08) 25%, rgba(148, 163, 184, 0.18) 45%, rgba(148, 163, 184, 0.08) 65%);
+  background-size: 200% 100%;
+  animation: chapter-image-loading 1.4s ease-in-out infinite;
+}
+
+.chapter-reader-content img[data-deferred-src]:not([width]):not([height]) {
+  aspect-ratio: 4 / 3;
+}
+
+@keyframes chapter-image-loading {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
 .chapter-content-editor audio[data-chapter-audio="true"],
 .chapter-reader-content audio[data-chapter-audio="true"] {
   display: block;

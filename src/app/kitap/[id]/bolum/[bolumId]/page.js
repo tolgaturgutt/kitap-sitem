@@ -1,6 +1,6 @@
 'use client';
 
-import { memo, useEffect, useState, use } from 'react';
+import { memo, useEffect, useRef, useState, use } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 import YorumAlani from '@/components/YorumAlani';
@@ -16,11 +16,96 @@ function hasSearchParamValue(value) {
   return value !== null && value !== undefined && value !== '' && value !== 'null' && value !== 'undefined';
 }
 
+const imageLoadQueue = [];
+let imageLoadInProgress = false;
+
+function runNextImageLoad() {
+  if (imageLoadInProgress) return;
+
+  const nextItem = imageLoadQueue.shift();
+  if (!nextItem) return;
+  if (nextItem.cancelled || !nextItem.image.isConnected) {
+    runNextImageLoad();
+    return;
+  }
+
+  imageLoadInProgress = true;
+  const { image } = nextItem;
+  let finished = false;
+  const finish = () => {
+    if (finished) return;
+    finished = true;
+    image.removeEventListener('load', finish);
+    image.removeEventListener('error', finish);
+    image.dataset.imageLoaded = 'true';
+    imageLoadInProgress = false;
+    runNextImageLoad();
+  };
+  nextItem.finish = finish;
+
+  image.addEventListener('load', finish);
+  image.addEventListener('error', finish);
+  image.loading = 'eager';
+  image.src = image.dataset.deferredSrc;
+}
+
+function queueImageLoad(image) {
+  if (!image?.dataset.deferredSrc || image.dataset.imageQueued === 'true') {
+    return () => {};
+  }
+
+  image.dataset.imageQueued = 'true';
+  const item = { image, cancelled: false };
+  imageLoadQueue.push(item);
+  runNextImageLoad();
+
+  return () => {
+    item.cancelled = true;
+    item.finish?.();
+  };
+}
+
+function deferChapterImageSources(html) {
+  return html.replace(
+    /<img\b([^>]*?)\bsrc=(["'])(.*?)\2([^>]*)>/gi,
+    '<img$1data-deferred-src=$2$3$2$4>'
+  );
+}
+
 const ChapterParagraphContent = memo(function ChapterParagraphContent({ html }) {
+  const contentRef = useRef(null);
+
+  useEffect(() => {
+    const images = Array.from(
+      contentRef.current?.querySelectorAll('img[data-deferred-src]') || []
+    );
+    const cancelLoads = [];
+
+    if (!('IntersectionObserver' in window)) {
+      images.forEach(image => cancelLoads.push(queueImageLoad(image)));
+      return () => cancelLoads.forEach(cancel => cancel());
+    }
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+        observer.unobserve(entry.target);
+        cancelLoads.push(queueImageLoad(entry.target));
+      });
+    }, { rootMargin: '600px 0px' });
+
+    images.forEach(image => observer.observe(image));
+    return () => {
+      observer.disconnect();
+      cancelLoads.forEach(cancel => cancel());
+    };
+  }, [html]);
+
   return (
     <div
+      ref={contentRef}
       className="chapter-reader-content"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: deferChapterImageSources(html) }}
     />
   );
 });

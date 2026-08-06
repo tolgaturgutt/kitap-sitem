@@ -7,12 +7,37 @@ import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 
 function getFileExtension(file) {
+  if (file.type === 'image/webp') return 'webp';
+  if (file.type === 'image/jpeg') return 'jpg';
+  if (file.type === 'image/png') return 'png';
+
   const extension = file.name.split('.').pop()?.toLowerCase();
   if (extension && /^[a-z0-9]{2,5}$/.test(extension)) return extension;
 
-  if (file.type === 'image/png') return 'png';
-  if (file.type === 'image/webp') return 'webp';
   return 'jpg';
+}
+
+async function getImageDimensions(file) {
+  if (typeof createImageBitmap === 'function') {
+    const bitmap = await createImageBitmap(file);
+    const dimensions = { width: bitmap.width, height: bitmap.height };
+    bitmap.close();
+    return dimensions;
+  }
+
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      resolve({ width: image.naturalWidth, height: image.naturalHeight });
+      URL.revokeObjectURL(objectUrl);
+    };
+    image.onerror = () => {
+      reject(new Error('Görsel boyutları okunamadı.'));
+      URL.revokeObjectURL(objectUrl);
+    };
+    image.src = objectUrl;
+  });
 }
 
 export default function ChapterImageUploadButton({
@@ -57,7 +82,7 @@ export default function ChapterImageUploadButton({
     inputRef.current?.click();
   }
 
-  function insertImageAtSelection(publicUrl) {
+  function insertImageAtSelection(publicUrl, dimensions) {
     const editor = editorRef.current;
     if (!editor) return;
 
@@ -80,6 +105,8 @@ export default function ChapterImageUploadButton({
     image.dataset.chapterImage = 'true';
     image.contentEditable = 'false';
     image.loading = 'lazy';
+    image.width = dimensions.width;
+    image.height = dimensions.height;
 
     range.deleteContents();
     range.insertNode(cursorAnchor);
@@ -113,10 +140,13 @@ export default function ChapterImageUploadButton({
       if (!user) throw new Error('Oturum bulunamadı.');
 
       const compressedFile = await imageCompression(file, {
-        maxSizeMB: 1.5,
-        maxWidthOrHeight: 1800,
-        useWebWorker: false,
+        maxSizeMB: 0.65,
+        maxWidthOrHeight: 1600,
+        fileType: 'image/webp',
+        initialQuality: 0.88,
+        useWebWorker: true,
       });
+      const dimensions = await getImageDimensions(compressedFile);
       const extension = getFileExtension(compressedFile);
       const filePath =
         `chapter-images/${user.id}/${bookId}/` +
@@ -135,7 +165,7 @@ export default function ChapterImageUploadButton({
         .from('images')
         .getPublicUrl(filePath);
 
-      insertImageAtSelection(publicUrl);
+      insertImageAtSelection(publicUrl, dimensions);
       toast.success('Görsel imlecin bulunduğu yere eklendi.', { id: toastId });
     } catch (error) {
       console.error('Chapter image upload error:', error);
@@ -167,4 +197,3 @@ export default function ChapterImageUploadButton({
     </>
   );
 }
-

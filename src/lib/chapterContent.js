@@ -75,6 +75,8 @@ export function sanitizeChapterHtml(html) {
       }
 
       const alt = (element.getAttribute('alt') || 'Bölüm görseli').slice(0, 160);
+      const width = Number.parseInt(element.getAttribute('width') || '', 10);
+      const height = Number.parseInt(element.getAttribute('height') || '', 10);
       Array.from(element.attributes).forEach(attribute => {
         element.removeAttribute(attribute.name);
       });
@@ -82,6 +84,10 @@ export function sanitizeChapterHtml(html) {
       element.setAttribute('alt', alt);
       element.setAttribute('data-chapter-image', 'true');
       element.setAttribute('loading', 'lazy');
+      if (Number.isFinite(width) && width > 0 && Number.isFinite(height) && height > 0) {
+        element.setAttribute('width', `${width}`);
+        element.setAttribute('height', `${height}`);
+      }
       return;
     }
 

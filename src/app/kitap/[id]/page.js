@@ -153,7 +153,7 @@ export default function KitapDetay({ params }) {
       
       // 5. BÖLÜMLERİ ÇEK
       const { data: chapters } = await supabase.from('chapters')
-        .select('*')
+        .select('id, title, is_draft, order_no, views, word_count, audio_duration_seconds')
         .eq('book_id', id)
         .order('order_no', { ascending: true });
       
