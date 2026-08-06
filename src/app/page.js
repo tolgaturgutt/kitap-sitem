@@ -415,6 +415,33 @@ function TopReadRow({ books }) {
   );
 }
 
+function HomeFeaturedBook({ book }) {
+  if (!book) return null;
+
+  return (
+    <section className="relative mb-20 overflow-hidden border-y border-stone-300/80 bg-[#d8cdbb] dark:border-white/10 dark:bg-[#211f1b]">
+      <div className="absolute inset-0 opacity-25 [background-image:linear-gradient(rgba(68,58,48,.16)_1px,transparent_1px),linear-gradient(90deg,rgba(68,58,48,.16)_1px,transparent_1px)] [background-size:32px_32px]" />
+      <Link href={`/kitap/${book.id}`} className="group relative grid min-h-[360px] grid-cols-[120px_1fr] items-center gap-6 px-6 py-10 sm:grid-cols-[180px_1fr] sm:gap-10 sm:px-12 md:min-h-[440px] md:grid-cols-[220px_1fr] md:px-20">
+          <div className="relative aspect-[2/3] overflow-hidden border border-black/15 bg-stone-200 shadow-[12px_16px_0_rgba(75,55,38,0.16)] transition-transform duration-300 group-hover:-translate-y-1 dark:border-white/10">
+            <BookCoverImage src={book.cover_url} alt={book.title} fill sizes="(max-width: 640px) 120px, (max-width: 768px) 180px, 220px" className="object-cover" priority />
+          </div>
+          <div className="min-w-0 max-w-xl">
+            <div className="mb-5 flex items-center gap-3 text-[9px] font-semibold uppercase tracking-[0.22em] text-[#7f1d1d] dark:text-red-300">
+              <span>Günün kitabı</span>
+              <span className="h-px w-10 bg-[#7f1d1d] dark:bg-red-300" />
+              <span>KitapLab seçkisi</span>
+            </div>
+            <h2 className="font-serif text-3xl leading-tight tracking-[-0.02em] text-stone-950 dark:text-white sm:text-5xl md:text-6xl">{book.title}</h2>
+            <div className="mt-5 text-xs text-stone-600 dark:text-stone-300 sm:text-sm">
+              <Username username={book.username} isAdmin={book.is_admin} isPremium={book.role === 'premium'} />
+            </div>
+            <p className="mt-8 text-xs font-semibold text-stone-900 dark:text-stone-100">Kitaba git <span aria-hidden="true">→</span></p>
+          </div>
+      </Link>
+    </section>
+  );
+}
+
 // --- ANA SAYFA ---
 export default function Home() {
   const [user, setUser] = useState(null);
@@ -428,6 +455,7 @@ export default function Home() {
   const [adminEmails, setAdminEmails] = useState([]);
   const [selectedPano, setSelectedPano] = useState(null);
   const [latestChapters, setLatestChapters] = useState([]);
+  const [homeFeaturedBook, setHomeFeaturedBook] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
@@ -440,6 +468,7 @@ export default function Home() {
           { data: editorsData, error: editorsError },
           { data: topReadData, error: topReadError },
           { data: featuredData, error: featuredError },
+          { data: homeFeaturedData, error: homeFeaturedError },
         ] = await Promise.all([
           getAdminEmails(),
           getCachedCategories(),
@@ -468,6 +497,12 @@ export default function Home() {
             .order('interaction_score', { ascending: false })
             .order('total_views', { ascending: false })
             .limit(15),
+          supabase
+            .from('books')
+            .select('id, title, cover_url, username, user_email, profiles:user_id(username, email, role)')
+            .eq('is_home_featured', true)
+            .eq('is_draft', false)
+            .maybeSingle(),
         ]);
 
         const requestError =
@@ -493,6 +528,12 @@ export default function Home() {
         setFeaturedBooks(
           (featuredData || []).map(book => normalizeBookStat(book, emails))
         );
+        setHomeFeaturedBook(!homeFeaturedError && homeFeaturedData ? {
+          ...homeFeaturedData,
+          username: homeFeaturedData.profiles?.username || homeFeaturedData.username,
+          role: homeFeaturedData.profiles?.role,
+          is_admin: emails.includes(homeFeaturedData.profiles?.email || homeFeaturedData.user_email),
+        } : null);
 
         const recentChapsWithAdmin = (recentChaps || []).map(chapter => {
           const bookOwnerEmail =
@@ -654,6 +695,7 @@ export default function Home() {
           <>
             <DuyuruPaneli isAdmin={isAdmin} />
             <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} adminEmails={adminEmails} />
+            <HomeFeaturedBook book={homeFeaturedBook} />
             <RecentlyAddedChapters chapters={latestChapters} currentUser={user} />
             <ContinueReadingCarousel books={continueReading} />
             <EditorsChoiceSection books={editorsChoiceBooks} />

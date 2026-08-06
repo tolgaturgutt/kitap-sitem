@@ -330,6 +330,25 @@ export default function KitapDetay({ params }) {
     }
   }
 
+  async function handleToggleHomeFeatured() {
+    if (!data.isAdmin) return;
+    const nextBookId = data.book.is_home_featured ? null : Number(id);
+    const { error } = await supabase.rpc('set_home_featured_book', {
+      target_book_id: nextBookId
+    });
+
+    if (error) {
+      toast.error('Günün kitabı seçilemedi: ' + error.message);
+      return;
+    }
+
+    setData(prev => ({
+      ...prev,
+      book: { ...prev.book, is_home_featured: Boolean(nextBookId) }
+    }));
+    toast.success(nextBookId ? 'Günün kitabı seçildi.' : 'Günün kitabı kaldırıldı.');
+  }
+
   async function handleLibrary() {
      if (!data.user) return toast.error("Giriş yapmalısın.");
      if (data.isFollowing) {
@@ -674,6 +693,19 @@ export default function KitapDetay({ params }) {
                    }`}
                  >
                    {data.book.is_editors_choice ? '👑 SEÇİLDİ (Kaldır)' : '👑 EDİTÖRÜN SEÇİMİ YAP'}
+                 </button>
+               )}
+
+               {data.isAdmin && (
+                 <button
+                   onClick={handleToggleHomeFeatured}
+                   className={`inline-flex items-center justify-center w-full sm:w-auto px-8 lg:px-10 py-3.5 lg:py-4 rounded-full font-black text-[10px] uppercase tracking-widest transition-all shadow-lg ${
+                     data.book.is_home_featured
+                       ? 'bg-red-700 text-white hover:bg-red-800 shadow-red-700/30'
+                       : 'bg-stone-100 text-red-800 border border-red-800/30 hover:bg-red-50 dark:bg-stone-900 dark:text-red-300'
+                   }`}
+                 >
+                   {data.book.is_home_featured ? 'GÜNÜN KİTABI (KALDIR)' : 'GÜNÜN KİTABI YAP'}
                  </button>
                )}
                

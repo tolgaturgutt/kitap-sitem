@@ -7,6 +7,8 @@ export const metadata = {
   title: "KitapLab - Kendi Hikayeni Yaz, Oku ve Paylaş",
   description: "KitapLab ile hayal gücünü serbest bırak.",
   icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
     apple: "/logo.png",
   },
 };
