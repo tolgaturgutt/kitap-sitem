@@ -15,6 +15,12 @@ import { usePlusFeatureAccess } from '@/hooks/usePlusFeatureAccess';
 import ProfileBannerEditor from '@/components/ProfileBannerEditor';
 import { cropProfileBanner } from '@/lib/profileBannerCrop';
 import { getMobileProfileBannerUrl, getSourceProfileBannerUrl } from '@/lib/profileBannerUrls';
+import {
+  isValidUsername,
+  normalizeUsername,
+  sanitizeUsernameInput,
+  USERNAME_ERROR_MESSAGE,
+} from '@/lib/username';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -226,12 +232,19 @@ export default function ProfilSayfasi() {
   }, []);
 
   async function handleSaveProfile() {
+    const finalUsername = normalizeUsername(profileData.username);
+
+    if (!isValidUsername(finalUsername)) {
+      toast.error(USERNAME_ERROR_MESSAGE);
+      return;
+    }
+
     // Önce kullanıcı adı dolu mu kontrolü yapalım (Kendi ismimiz değilse)
-    if (profileData.username !== user.user_metadata?.username) {
+    if (finalUsername !== user.user_metadata?.username) {
       const { data: existingUser } = await supabase
         .from('profiles')
         .select('id')
-        .eq('username', profileData.username)
+        .eq('username', finalUsername)
         .neq('id', user.id)
         .single();
 
@@ -245,7 +258,7 @@ export default function ProfilSayfasi() {
       id: user.id,
       email: user.email,
       full_name: profileData.full_name,
-      username: profileData.username,
+      username: finalUsername,
       instagram: profileData.instagram,
       avatar_url: profileData.avatar_url,
       bio: profileData.bio,
@@ -263,12 +276,15 @@ export default function ProfilSayfasi() {
 
       if (error.message.includes('unique_username_case_insensitive')) {
         toast.error('Bu kullanıcı adı zaten kullanımda. Lütfen başka bir tane seçin.');
+      } else if (error.code === '23514' || error.message.includes('profiles_username_format_check')) {
+        toast.error(USERNAME_ERROR_MESSAGE);
       } else {
         toast.error("Kaydedilemedi: " + error.message);
       }
     } else {
       setIsEditing(false);
-      setUser(prev => ({ ...prev, user_metadata: { ...prev.user_metadata, username: profileData.username } }));
+      setProfileData(prev => ({ ...prev, username: finalUsername }));
+      setUser(prev => ({ ...prev, user_metadata: { ...prev.user_metadata, username: finalUsername } }));
     }
   }
 
@@ -626,12 +642,19 @@ export default function ProfilSayfasi() {
                     placeholder="Ad Soyad"
                   />
 
-                  <input
-                    value={profileData.username}
-                    onChange={e => setProfileData({ ...profileData, username: e.target.value.replace(/\s/g, '') })}
-                    className="p-3 md:p-4 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600"
-                    placeholder="Kullanıcı Adı"
-                  />
+                  <div>
+                    <input
+                      value={profileData.username}
+                      onChange={e => setProfileData({ ...profileData, username: sanitizeUsernameInput(e.target.value) })}
+                      maxLength={20}
+                      pattern="[a-z0-9_-]{3,20}"
+                      className="w-full p-3 md:p-4 bg-white dark:bg-black border dark:border-white/10 rounded-xl md:rounded-2xl text-xs outline-none focus:border-red-600"
+                      placeholder="Kullanıcı Adı"
+                    />
+                    <p className="mt-1 text-[9px] text-gray-500 md:text-[10px]">
+                      3-20 karakter; İngilizce harf, rakam, - ve _. Türkçe karakter ve emoji kullanılamaz.
+                    </p>
+                  </div>
 
                   <div className="relative">
                     <span className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-black">@</span>

@@ -1,15 +1,12 @@
-const USERNAME_PATTERN = /^[a-z0-9_-]{3,20}$/;
+import { isValidUsername, normalizeUsername } from '@/lib/username';
 
 function getProfileIdentity(user) {
-  const username = String(user?.user_metadata?.username || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, '');
+  const username = normalizeUsername(user?.user_metadata?.username);
   const fullName =
     String(user?.user_metadata?.full_name || '').trim().slice(0, 255) ||
     username;
 
-  if (!user?.id || !user?.email || !USERNAME_PATTERN.test(username)) {
+  if (!user?.id || !user?.email || !isValidUsername(username)) {
     throw new Error('Hesap bilgileriyle profil oluşturulamadı.');
   }
 

@@ -3,6 +3,12 @@
 import { useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ensureUserProfile } from '@/lib/ensureUserProfile';
+import {
+  isValidUsername,
+  normalizeUsername,
+  sanitizeUsernameInput,
+  USERNAME_ERROR_MESSAGE,
+} from '@/lib/username';
 import toast from 'react-hot-toast';
 
 // MODAL BİLEŞENİ
@@ -144,9 +150,9 @@ export default function GirisSayfasi() {
       }
 
       // ✅ Boşluk ve karakter kontrolü
-      const finalUsername = cleanUsername.toLowerCase().replace(/\s+/g, '');
-      if (!/^[a-z0-9_-]{3,20}$/.test(finalUsername)) {
-        return toast.error('Kullanıcı adı 3-20 karakter arası, boşluksuz, sadece harf, rakam, - ve _ içerebilir.');
+      const finalUsername = normalizeUsername(cleanUsername);
+      if (!isValidUsername(finalUsername)) {
+        return toast.error(USERNAME_ERROR_MESSAGE);
       }
 
       if (!beginLoading()) return;
@@ -325,18 +331,14 @@ setAgreed(false);
                   value={username}
                   onChange={(e) => {
                     // ✅ Boşlukları otomatik sil, sadece geçerli karakterler
-                    const cleaned = e.target.value
-                      .toLowerCase()
-                      .replace(/\s+/g, '') // Boşlukları sil
-                      .replace(/[^a-z0-9_-]/g, ''); // Sadece harf, rakam, - ve _
-                    setUsername(cleaned);
+                    setUsername(sanitizeUsernameInput(e.target.value));
                   }}
                   maxLength={20}
                   pattern="[a-zA-Z0-9_-]+"
                   className="w-full p-3 bg-white dark:bg-black border border-gray-300 dark:border-gray-700 rounded-lg outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-all"
                   placeholder="kullaniciadi"
                 />
-                <p className="text-xs text-gray-500 mt-1">3-20 karakter, boşluksuz, sadece harf, rakam, - ve _</p>
+                <p className="text-xs text-gray-500 mt-1">3-20 karakter; İngilizce harf, rakam, - ve _. Türkçe karakter ve emoji kullanılamaz.</p>
               </div>
             </>
           )}
