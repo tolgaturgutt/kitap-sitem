@@ -122,6 +122,10 @@ export default function PanoEkle() {
   );
   const isAdmin = Boolean(user?.email && adminEmails.includes(user.email));
 
+  function normalizePollOptions(values = []) {
+    return values.map(value => value.trim()).filter(value => value.length > 0);
+  }
+
   async function handlePanoImageUpload(e) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -189,7 +193,7 @@ export default function PanoEkle() {
       return 'Pano paylaşmak için önce yayınlanmış kitabını seçmelisin.';
     }
     if (errorText.includes('pano_poll_')) {
-      return 'Anket bilgileri kaydedilemedi. Soruyu ve seçenekleri kontrol et.';
+      return error?.message || 'Anket bilgileri kaydedilemedi. Soruyu ve seçenekleri kontrol et.';
     }
 
     const schemaNeedsUpdate =
@@ -232,13 +236,13 @@ export default function PanoEkle() {
       return;
     }
 
-    const cleanedPollOptions = pollOptions.map(option => option.trim()).filter(Boolean);
+    const cleanedPollOptions = normalizePollOptions(pollOptions);
     if (hasPoll && pollQuestion.trim().length < 3) {
       toast.error('Anket sorusu en az 3 karakter olmalı!');
       return;
     }
     if (hasPoll && cleanedPollOptions.length < 2) {
-      toast.error('Ankete en az 2 seçenek eklemelisin!');
+      toast.error('Ankete en az 2 dolu seçenek eklemelisin!');
       return;
     }
     if (hasPoll && new Set(cleanedPollOptions.map(option => option.toLocaleLowerCase('tr-TR'))).size !== cleanedPollOptions.length) {
@@ -246,8 +250,20 @@ export default function PanoEkle() {
       return;
     }
 
+    if (hasPoll) {
+      setPollOptions(cleanedPollOptions.length > 0 ? cleanedPollOptions : ['', '']);
+    }
+
     setSaving(true);
     const toastId = toast.loading('Pano oluşturuluyor...');
+
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      toast.error('Oturumun sona ermiş. Lütfen tekrar giriş yap.', { id: toastId });
+      setSaving(false);
+      router.push('/giris');
+      return;
+    }
 
     const payload = {
       user_email: user.email,
@@ -278,7 +294,8 @@ export default function PanoEkle() {
 
     if (error) {
       console.error('Pano insert error:', error);
-      toast.error(getPanoSaveErrorMessage(error), { id: toastId });
+      const rawMessage = error?.message || getPanoSaveErrorMessage(error);
+      toast.error(rawMessage, { id: toastId });
       setSaving(false);
       return;
     }
@@ -656,7 +673,11 @@ export default function PanoEkle() {
                 !content.trim() ||
                 (!selectedBook && !isAdmin) ||
                 (!selectedBook && isAdmin && !panoImageUrl && !hasPoll) ||
-                (hasPoll && (pollQuestion.trim().length < 3 || pollOptions.filter(option => option.trim()).length < 2))
+                (hasPoll && (
+                  pollQuestion.trim().length < 3 ||
+                  normalizePollOptions(pollOptions).length < 2 ||
+                  new Set(normalizePollOptions(pollOptions).map(option => option.toLocaleLowerCase('tr-TR'))).size !== normalizePollOptions(pollOptions).length
+                ))
               }
             >
               {saving ? 'Oluşturuluyor...' : '📋 Panoyu Yayınla'}

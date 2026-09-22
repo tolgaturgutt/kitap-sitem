@@ -29,6 +29,14 @@ create table if not exists public.pano_poll_options (
 alter table public.pano_poll_options
   add column if not exists display_order integer;
 
+-- Older installations used the required "position" column. Keep it in sync
+-- while migrating those databases to display_order.
+alter table public.pano_poll_options
+  add column if not exists "position" integer;
+
+alter table public.pano_poll_options
+  add column if not exists sort_order integer;
+
 with ranked_options as (
   select
     option_row.id,
@@ -39,13 +47,26 @@ with ranked_options as (
   from public.pano_poll_options option_row
 )
 update public.pano_poll_options option_row
-set display_order = ranked.generated_order
+set
+  display_order = coalesce(option_row.display_order, ranked.generated_order),
+  "position" = coalesce(option_row."position", ranked.generated_order),
+  sort_order = coalesce(option_row.sort_order, ranked.generated_order)
 from ranked_options ranked
 where option_row.id = ranked.id
-  and option_row.display_order is null;
+  and (
+    option_row.display_order is null
+    or option_row."position" is null
+    or option_row.sort_order is null
+  );
 
 alter table public.pano_poll_options
   alter column display_order set not null;
+
+alter table public.pano_poll_options
+  alter column "position" set not null;
+
+alter table public.pano_poll_options
+  alter column sort_order set not null;
 
 create unique index if not exists pano_poll_options_pano_order_uidx
   on public.pano_poll_options (pano_id, display_order);
@@ -314,10 +335,18 @@ begin
   )
   returning id into created_pano_id;
 
-  insert into public.pano_poll_options (pano_id, label, display_order)
+  insert into public.pano_poll_options (
+    pano_id,
+    label,
+    display_order,
+    "position",
+    sort_order
+  )
   select
     created_pano_id,
     option_item.option_label,
+    (option_item.item_order - 1)::integer,
+    (option_item.item_order - 1)::integer,
     (option_item.item_order - 1)::integer
   from unnest(cleaned_options) with ordinality
     as option_item(option_label, item_order);
