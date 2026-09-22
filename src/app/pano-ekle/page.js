@@ -27,6 +27,10 @@ export default function PanoEkle() {
   const [adminEmails, setAdminEmails] = useState([]);
   const [panoImageUrl, setPanoImageUrl] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [hasPoll, setHasPoll] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
+  const [pollAllowsMultiple, setPollAllowsMultiple] = useState(false);
 
   useEffect(() => {
     async function init() {
@@ -184,6 +188,9 @@ export default function PanoEkle() {
     if (errorText.includes('pano_book_required')) {
       return 'Pano paylaşmak için önce yayınlanmış kitabını seçmelisin.';
     }
+    if (errorText.includes('pano_poll_')) {
+      return 'Anket bilgileri kaydedilemedi. Soruyu ve seçenekleri kontrol et.';
+    }
 
     const schemaNeedsUpdate =
       error?.code === '42703' ||
@@ -191,10 +198,11 @@ export default function PanoEkle() {
       error?.code === '23502' ||
       errorText.includes('image_url') ||
       errorText.includes('book_id') ||
-      errorText.includes('null value');
+      errorText.includes('null value') ||
+      errorText.includes('create_pano_poll');
 
     if (schemaNeedsUpdate) {
-      return 'Veritabanı güncellemesi eksik: add_pano_image_url.sql çalışmalı.';
+      return 'Veritabanı güncellemesi eksik: add_pano_polls.sql çalışmalı.';
     }
 
     return error?.message ? `Hata: ${error.message}` : 'Hata oluştu!';
@@ -211,7 +219,7 @@ export default function PanoEkle() {
       toast.error('İçerik gerekli!');
       return;
     }
-    if (books.length === 0) {
+    if (books.length === 0 && !isAdmin) {
       toast.error('Pano paylaşabilmek için yayınlanmış bir kitabın bulunmalı!');
       return;
     }
@@ -219,8 +227,22 @@ export default function PanoEkle() {
       toast.error('Pano paylaşmak için bir kitap seçmelisin!');
       return;
     }
-    if (!selectedBook && !panoImageUrl) {
-      toast.error('Kitapsız admin panosu için bir pano görseli eklemelisin!');
+    if (!selectedBook && !panoImageUrl && !hasPoll) {
+      toast.error('Kitapsız admin panosu için bir görsel veya anket eklemelisin!');
+      return;
+    }
+
+    const cleanedPollOptions = pollOptions.map(option => option.trim()).filter(Boolean);
+    if (hasPoll && pollQuestion.trim().length < 3) {
+      toast.error('Anket sorusu en az 3 karakter olmalı!');
+      return;
+    }
+    if (hasPoll && cleanedPollOptions.length < 2) {
+      toast.error('Ankete en az 2 seçenek eklemelisin!');
+      return;
+    }
+    if (hasPoll && new Set(cleanedPollOptions.map(option => option.toLocaleLowerCase('tr-TR'))).size !== cleanedPollOptions.length) {
+      toast.error('Anket seçenekleri birbirinden farklı olmalı!');
       return;
     }
 
@@ -240,7 +262,19 @@ export default function PanoEkle() {
       payload.image_url = panoImageUrl;
     }
 
-    const { error } = await supabase.from('panolar').insert(payload);
+    const { error } = hasPoll
+      ? await supabase.rpc('create_pano_poll', {
+          p_title: payload.title,
+          p_content: payload.content,
+          p_username: payload.username,
+          p_book_id: payload.book_id,
+          p_chapter_id: payload.chapter_id,
+          p_image_url: panoImageUrl || null,
+          p_question: pollQuestion.trim(),
+          p_allows_multiple: pollAllowsMultiple,
+          p_options: cleanedPollOptions
+        })
+      : await supabase.from('panolar').insert(payload);
 
     if (error) {
       console.error('Pano insert error:', error);
@@ -262,7 +296,7 @@ export default function PanoEkle() {
     </div>
   );
 
-  if (books.length === 0) {
+  if (books.length === 0 && !isAdmin) {
     return (
       <div className="min-h-screen py-24 px-4 md:px-6 bg-[#fafafa] dark:bg-black">
         <div className="max-w-xl mx-auto bg-white dark:bg-white/5 border dark:border-white/10 rounded-[2.5rem] p-8 md:p-12 text-center shadow-xl">
@@ -330,9 +364,87 @@ export default function PanoEkle() {
             <p className="text-xs text-gray-400 mt-2">{content.length} karakter</p>
           </div>
 
+          {/* ANKET */}
+          <div className="rounded-3xl border border-purple-200 bg-purple-50/60 p-5 dark:border-purple-900/40 dark:bg-purple-900/10">
+            <label className="flex cursor-pointer items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-purple-700 dark:text-purple-300">Anket Ekle</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Oy yüzdeleri herkese görünür.</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={hasPoll}
+                onChange={(e) => setHasPoll(e.target.checked)}
+                className="h-5 w-5 accent-purple-600"
+              />
+            </label>
+
+            {hasPoll && (
+              <div className="mt-5 space-y-4 border-t border-purple-200 pt-5 dark:border-purple-900/40">
+                <div>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-500">Anket Sorusu *</label>
+                  <input
+                    value={pollQuestion}
+                    onChange={(e) => setPollQuestion(e.target.value)}
+                    maxLength={200}
+                    placeholder="Okurlara ne sormak istersin?"
+                    className="w-full rounded-2xl border bg-white p-4 text-sm outline-none focus:border-purple-600 dark:border-white/10 dark:bg-black"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500">Seçenekler *</label>
+                  {pollOptions.map((option, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        value={option}
+                        onChange={(e) => setPollOptions(current => current.map((item, itemIndex) => itemIndex === index ? e.target.value : item))}
+                        maxLength={100}
+                        placeholder={`${index + 1}. seçenek`}
+                        className="flex-1 rounded-xl border bg-white p-3 text-sm outline-none focus:border-purple-600 dark:border-white/10 dark:bg-black"
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setPollOptions(current => current.filter((_, itemIndex) => itemIndex !== index))}
+                          className="rounded-xl px-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                          aria-label="Seçeneği kaldır"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {pollOptions.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => setPollOptions(current => [...current, ''])}
+                      className="text-xs font-black text-purple-600 hover:text-purple-700"
+                    >
+                      + Seçenek ekle
+                    </button>
+                  )}
+                </div>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-white p-4 dark:bg-black/40">
+                  <input
+                    type="checkbox"
+                    checked={pollAllowsMultiple}
+                    onChange={(e) => setPollAllowsMultiple(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-purple-600"
+                  />
+                  <span>
+                    <span className="block text-xs font-black dark:text-white">Birden fazla seçenek seçilebilsin</span>
+                    <span className="mt-1 block text-[11px] text-gray-500">Kapalıysa herkes yalnızca bir seçeneğe oy verebilir.</span>
+                  </span>
+                </label>
+              </div>
+            )}
+          </div>
+
           <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
-                Pano Görseli {selectedBook ? '(Opsiyonel)' : isAdmin ? '*' : '(Önce kitap seç)'}
+                Pano Görseli {selectedBook || hasPoll ? '(Opsiyonel)' : isAdmin ? '*' : '(Önce kitap seç)'}
               </label>
               <div className={`relative overflow-hidden rounded-2xl border-2 border-dashed p-5 ${
                 !selectedBook && !isAdmin
@@ -381,6 +493,8 @@ export default function PanoEkle() {
                     <p className="text-xs text-gray-400 mt-2">
                       {!selectedBook && !isAdmin
                         ? 'Kitabını seçtikten sonra özel pano görseli ekleyebilirsin.'
+                        : !selectedBook && hasPoll
+                          ? 'Anket panosu için görsel eklemek zorunda değilsin.'
                         : 'Özel görsel eklemezsen panoda kitabının kapağı gösterilir.'}
                     </p>
                   </div>
@@ -540,7 +654,9 @@ export default function PanoEkle() {
                 uploadingImage ||
                 !title.trim() ||
                 !content.trim() ||
-                (!selectedBook && (!isAdmin || !panoImageUrl))
+                (!selectedBook && !isAdmin) ||
+                (!selectedBook && isAdmin && !panoImageUrl && !hasPoll) ||
+                (hasPoll && (pollQuestion.trim().length < 3 || pollOptions.filter(option => option.trim()).length < 2))
               }
             >
               {saving ? 'Oluşturuluyor...' : '📋 Panoyu Yayınla'}

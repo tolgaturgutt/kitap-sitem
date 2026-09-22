@@ -172,7 +172,7 @@ export default function TumPanolar() {
                 <div className="flex-1">
                   <h3 className="text-xl font-black dark:text-white mb-2 line-clamp-1 group-hover:text-red-600 transition-colors">{pano.title}</h3>
                   <p className="text-[10px] text-red-600 font-bold uppercase mb-2 tracking-widest">
-                    {pano.books?.title ? `📖 ${pano.books.title}` : 'PANO GÖRSELİ'} {pano.chapter_id && '• ' + (pano.chapters?.title || 'Bölüm')}
+                    {pano.books?.title ? `📖 ${pano.books.title}` : pano.poll_question ? '📊 ANKET' : 'PANO GÖRSELİ'} {pano.chapter_id && '• ' + (pano.chapters?.title || 'Bölüm')}
                   </p>
                   <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">{pano.content}</p>
                   

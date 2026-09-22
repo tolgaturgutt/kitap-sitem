@@ -17,7 +17,8 @@ import {
   showWebLabCoinRewardAd,
 } from '@/lib/webRewardedAdHelper';
 
-const REWARDED_ADS_UNDER_MAINTENANCE = true;
+// Web reklam birimi hazir olana kadar web kapali kalir; native AdMob mobile aciktir.
+const WEB_REWARDED_ADS_UNDER_MAINTENANCE = true;
 
 const EMPTY_STATUS = {
   balance: 0,
@@ -230,13 +231,15 @@ export default function PremiumPage() {
   const dailyLimitReached = status.claims_today >= status.daily_limit;
   const cooldownActive = secondsUntilNext > 0;
   const isNative = Capacitor.isNativePlatform();
+  const rewardedAdsUnderMaintenance =
+    !isNative && WEB_REWARDED_ADS_UNDER_MAINTENANCE;
   const rewardedFeatureEnabled = status.rewarded_ads_enabled;
-  const rewardedAdReady = !REWARDED_ADS_UNDER_MAINTENANCE && (
+  const rewardedAdReady = !rewardedAdsUnderMaintenance && (
     isNative ? isRewardedAdAvailable() : isWebRewardedAdAvailable()
   );
   const canWatch =
     Boolean(user) &&
-    !REWARDED_ADS_UNDER_MAINTENANCE &&
+    !rewardedAdsUnderMaintenance &&
     rewardedFeatureEnabled &&
     rewardedAdReady &&
     !watchingAd &&
@@ -244,7 +247,7 @@ export default function PremiumPage() {
     !cooldownActive;
 
   async function handleWatchRewardedAd() {
-    if (REWARDED_ADS_UNDER_MAINTENANCE) {
+    if (rewardedAdsUnderMaintenance) {
       toast('Reklam özelliği şu anda bakımda. Bir ay içinde yeniden kullanıma açılacaktır.');
       return;
     }
@@ -503,7 +506,7 @@ export default function PremiumPage() {
             </div>
 
             <div className="mt-7 rounded-2xl bg-gray-50 p-5 dark:bg-black/30">
-              {REWARDED_ADS_UNDER_MAINTENANCE ? (
+              {rewardedAdsUnderMaintenance ? (
                 <p className="text-sm font-bold text-amber-700 dark:text-amber-300">
                   Reklam özelliği şu anda bakımda. Bir ay içinde yeniden kullanıma açılacaktır.
                 </p>
@@ -533,7 +536,7 @@ export default function PremiumPage() {
               disabled={!canWatch}
               className="mt-6 w-full rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-400 px-6 py-5 text-sm font-black uppercase tracking-wider text-black shadow-xl shadow-amber-500/20 transition-all hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:scale-100"
             >
-              {REWARDED_ADS_UNDER_MAINTENANCE
+              {rewardedAdsUnderMaintenance
                 ? 'Reklam Özelliği Bakımda'
                 : watchingAd
                 ? 'Reklam hazırlanıyor...'

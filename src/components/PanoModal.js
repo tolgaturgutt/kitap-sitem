@@ -31,6 +31,11 @@ export default function PanoModal({
   const [replyToUsername, setReplyToUsername] = useState(null);
   const [isCommentSending, setIsCommentSending] = useState(false);
   const [chapterTitle, setChapterTitle] = useState(null);
+  const [pollOptions, setPollOptions] = useState([]);
+  const [pollLoading, setPollLoading] = useState(false);
+  const [votingOptionId, setVotingOptionId] = useState(null);
+  const [pollVoters, setPollVoters] = useState([]);
+  const [showPollVoters, setShowPollVoters] = useState(false);
   const commentSubmitLockRef = useRef(false);
   
   // Pano sahibinin güncel profilini tutacak state
@@ -96,6 +101,11 @@ export default function PanoModal({
       setCommentLikes({});
       setPendingLikeIds(new Set());
       setChapterTitle(null);
+      setPollOptions([]);
+      setPollLoading(Boolean(selectedPano.poll_question));
+      setVotingOptionId(null);
+      setPollVoters([]);
+      setShowPollVoters(false);
       setReplyTo(null);
       setReplyToUsername(null);
       setIsCommentSending(false);
@@ -149,6 +159,14 @@ export default function PanoModal({
           .then(({ data }) => ({ type: 'comments', data }))
       );
 
+      // E) Anket sonuclari. RPC yalnizca sayilari ve kullanicinin kendi oyunu acar.
+      if (selectedPano.poll_question) {
+        promises.push(
+          supabase.rpc('get_pano_poll', { p_pano_id: selectedPano.id })
+            .then(({ data, error }) => ({ type: 'poll', data, error }))
+        );
+      }
+
       // HEPSİNİ BEKLE VE DAĞIT
       const results = await Promise.all(promises);
 
@@ -160,6 +178,10 @@ export default function PanoModal({
           const loadedComments = res.data || [];
           setPanoComments(loadedComments);
           fetchPanoCommentLikes(loadedComments);
+        }
+        if (res.type === 'poll') {
+          setPollLoading(false);
+          if (!res.error) setPollOptions(res.data || []);
         }
       });
     }
@@ -229,6 +251,49 @@ export default function PanoModal({
          await createPanoVoteNotification(insertedVote.id);
       }
     }
+  }
+
+  async function handlePollVote(optionId) {
+    if (!user) return toast.error('Oy vermek için giriş yapmalısın!');
+    if (votingOptionId) return;
+
+    setVotingOptionId(optionId);
+    const { data, error } = await supabase.rpc('toggle_pano_poll_vote', {
+      p_option_id: optionId,
+    });
+
+    if (error) {
+      console.error('Pano poll vote error:', error);
+      const message = error?.message || 'Oyun kaydedilemedi.';
+      toast.error(message);
+    } else {
+      setPollOptions(data || []);
+      if (showPollVoters && (isAdmin || isOwner)) {
+        await loadPollVoters();
+      }
+    }
+    setVotingOptionId(null);
+  }
+
+  async function loadPollVoters() {
+    if (!selectedPano || (!isAdmin && !isOwner)) return;
+    const { data, error } = await supabase.rpc('get_pano_poll_voters', {
+      p_pano_id: selectedPano.id,
+    });
+
+    if (error) {
+      console.error('Pano poll voters error:', error);
+      toast.error('Oy verenler yüklenemedi.');
+      return;
+    }
+
+    setPollVoters(data || []);
+  }
+
+  async function handleTogglePollVoters() {
+    const nextValue = !showPollVoters;
+    setShowPollVoters(nextValue);
+    if (nextValue) await loadPollVoters();
   }
 
   async function handleComment() {
@@ -561,10 +626,102 @@ export default function PanoModal({
 
             <div className="mb-8">
               <span className="text-xs font-black text-red-600 tracking-[0.3em] uppercase mb-4 block">
-                {selectedPano.books?.title ? `📖 ${selectedPano.books.title}` : 'PANO GÖRSELİ'}
+                {selectedPano.books?.title ? `📖 ${selectedPano.books.title}` : selectedPano.poll_question ? '📊 ANKET' : 'PANO GÖRSELİ'}
               </span>
               <h2 className="text-3xl md:text-4xl font-black mb-4 dark:text-white leading-tight">{selectedPano.title}</h2>
               <p className="text-base md:text-lg text-gray-500 dark:text-gray-400 whitespace-pre-wrap">{selectedPano.content}</p>
+
+              {selectedPano.poll_question && (
+                <div className="mt-6 rounded-3xl border border-purple-200 bg-purple-50/70 p-5 dark:border-purple-900/40 dark:bg-purple-900/10">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-600">Anket</p>
+                      <h3 className="mt-1 text-base font-black dark:text-white">{selectedPano.poll_question}</h3>
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        {selectedPano.poll_allows_multiple ? 'Birden fazla seçenek seçilebilir.' : 'Yalnızca bir seçenek seçilebilir.'}
+                      </p>
+                    </div>
+                    {(isAdmin || isOwner) && (
+                      <button
+                        type="button"
+                        onClick={handleTogglePollVoters}
+                        className="shrink-0 rounded-xl bg-purple-600 px-3 py-2 text-[9px] font-black uppercase text-white"
+                      >
+                        {showPollVoters ? 'Gizle' : 'Oy Verenler'}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="mt-4 space-y-2">
+                    {pollLoading ? (
+                      <p className="py-4 text-center text-xs text-gray-400">Anket yükleniyor...</p>
+                    ) : pollOptions.map(option => {
+                      const totalVoters = Number(option.total_voters || 0);
+                      const voteCount = Number(option.vote_count || 0);
+                      const percentage = totalVoters > 0 ? Math.round((voteCount / totalVoters) * 100) : 0;
+                      const optionVoters = pollVoters.filter(voter => String(voter.option_id) === String(option.option_id));
+
+                      return (
+                        <div key={option.option_id}>
+                          <button
+                            type="button"
+                            onClick={() => handlePollVote(option.option_id)}
+                            disabled={Boolean(votingOptionId)}
+                            className={`relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-colors disabled:cursor-wait ${
+                              option.selected_by_me
+                                ? 'border-purple-600 bg-purple-100 dark:bg-purple-900/30'
+                                : 'border-gray-200 bg-white hover:border-purple-400 dark:border-white/10 dark:bg-black/30'
+                            }`}
+                          >
+                            <span
+                              className="absolute inset-y-0 left-0 bg-purple-200/60 transition-all dark:bg-purple-700/20"
+                              style={{ width: `${Math.min(100, percentage)}%` }}
+                            />
+                            <span className="relative flex items-center justify-between gap-3">
+                              <span className="flex items-center gap-2 text-sm font-bold dark:text-white">
+                                <span className={`flex h-5 w-5 items-center justify-center border-2 border-purple-500 text-[10px] ${selectedPano.poll_allows_multiple ? 'rounded-md' : 'rounded-full'}`}>
+                                  {option.selected_by_me ? '✓' : ''}
+                                </span>
+                                {option.label}
+                              </span>
+                              <span className="text-xs font-black text-purple-700 dark:text-purple-300">%{percentage}</span>
+                            </span>
+                          </button>
+
+                          {showPollVoters && (isAdmin || isOwner) && optionVoters.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-1 px-2">
+                              {optionVoters.map(voter => (
+                                <Link
+                                  key={`${option.option_id}-${voter.user_id}`}
+                                  href={`/yazar/${voter.username}`}
+                                  className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-1 text-[10px] font-bold shadow-sm dark:bg-white/10"
+                                >
+                                  {voter.avatar_url && (
+                                    <Image
+                                      src={voter.avatar_url}
+                                      alt=""
+                                      width={16}
+                                      height={16}
+                                      unoptimized
+                                      className="h-4 w-4 rounded-full object-cover"
+                                    />
+                                  )}
+                                  @{voter.username}
+                                </Link>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between text-[10px] text-gray-500">
+                    <span>{Number(pollOptions[0]?.total_voters || 0)} kişi oy verdi</span>
+                    <span>Oy tercihleri yalnızca pano sahibi ve adminlere görünür.</span>
+                  </div>
+                </div>
+              )}
               
               <div className="flex items-center gap-4 mt-6 pb-6 border-b dark:border-white/5">
                 <button onClick={handleLike} className={`flex items-center gap-2 px-5 py-2 rounded-full font-black text-xs transition-all ${hasLiked ? 'bg-red-600 text-white' : 'bg-gray-100 dark:bg-white/5 text-gray-500'}`}>❤️ {panoLikes}</button>

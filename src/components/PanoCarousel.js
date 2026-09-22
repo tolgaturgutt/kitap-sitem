@@ -31,6 +31,8 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
           title,
           content,
           image_url,
+          poll_question,
+          poll_allows_multiple,
           created_at,
           is_pinned,
           user_id,
@@ -84,7 +86,12 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
           .order('created_at', { ascending: false })
           .limit(30);
 
-        rawPanolar = fallbackResult.data?.map(pano => ({ ...pano, image_url: null })) || [];
+        rawPanolar = fallbackResult.data?.map(pano => ({
+          ...pano,
+          image_url: null,
+          poll_question: null,
+          poll_allows_multiple: null
+        })) || [];
         error = fallbackResult.error;
       }
 
@@ -234,6 +241,11 @@ export default function PanoCarousel({ onPanoClick, adminEmails = [] }) {
                     {pano.is_pinned && (
                       <div className="absolute -top-1 -right-1 z-20 bg-white dark:bg-[#080808] rounded-full p-0.5 shadow-md flex items-center justify-center">
                         <span className="text-[14px]">📌</span>
+                      </div>
+                    )}
+                    {pano.poll_question && (
+                      <div className="absolute -bottom-1 -right-1 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-purple-600 text-[12px] text-white shadow-md">
+                        📊
                       </div>
                     )}
 
