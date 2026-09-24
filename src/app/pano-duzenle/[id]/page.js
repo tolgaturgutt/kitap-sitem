@@ -29,8 +29,12 @@ export default function PanoDuzenle({ params }) {
   const [saving, setSaving] = useState(false);
   const [adminEmails, setAdminEmails] = useState([]);
   const [panoImageUrl, setPanoImageUrl] = useState('');
-  const [panoImageTouched, setPanoImageTouched] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [hasPoll, setHasPoll] = useState(false);
+  const [pollQuestion, setPollQuestion] = useState('');
+  const [pollOptions, setPollOptions] = useState(['', '']);
+  const [pollAllowsMultiple, setPollAllowsMultiple] = useState(false);
+  const [initialPollSignature, setInitialPollSignature] = useState('');
 
   useEffect(() => {
     async function init() {
@@ -69,6 +73,38 @@ export default function PanoDuzenle({ params }) {
       setTitle(pano.title);
       setContent(pano.content);
       setPanoImageUrl(pano.image_url || '');
+
+      if (pano.poll_question) {
+        const { data: existingPollOptions, error: pollError } = await supabase.rpc('get_pano_poll', {
+          p_pano_id: pano.id
+        });
+
+        if (pollError) {
+          console.error('Pano poll load error:', pollError);
+          toast.error('Anket seçenekleri yüklenemedi. Lütfen tekrar dene.');
+          router.push('/profil');
+          return;
+        }
+
+        const optionLabels = (existingPollOptions || []).map(option => option.label);
+        setHasPoll(true);
+        setPollQuestion(pano.poll_question);
+        setPollOptions(optionLabels.length >= 2 ? optionLabels : ['', '']);
+        setPollAllowsMultiple(Boolean(pano.poll_allows_multiple));
+        setInitialPollSignature(JSON.stringify({
+          hasPoll: true,
+          question: pano.poll_question.trim(),
+          allowsMultiple: Boolean(pano.poll_allows_multiple),
+          options: optionLabels
+        }));
+      } else {
+        setInitialPollSignature(JSON.stringify({
+          hasPoll: false,
+          question: '',
+          allowsMultiple: false,
+          options: []
+        }));
+      }
 
      // D) KİTAPLARI GETİR - ✅ KENDİ KİTAPLARI + ORTAK YAZAR OLDUĞU KİTAPLARI GETİR
       let { data: allBooks } = await supabase
@@ -151,6 +187,21 @@ export default function PanoDuzenle({ params }) {
   );
   const isAdmin = Boolean(user?.email && adminEmails.includes(user.email));
 
+  function normalizePollOptions(values = []) {
+    return values.map(value => value.trim()).filter(value => value.length > 0);
+  }
+
+  function getPollSignature() {
+    return JSON.stringify({
+      hasPoll,
+      question: hasPoll ? pollQuestion.trim() : '',
+      allowsMultiple: hasPoll ? pollAllowsMultiple : false,
+      options: hasPoll ? normalizePollOptions(pollOptions) : []
+    });
+  }
+
+  const pollDefinitionChanged = initialPollSignature !== '' && initialPollSignature !== getPollSignature();
+
   async function handlePanoImageUpload(e) {
     const file = e.target.files?.[0];
     if (!file || !user) return;
@@ -195,7 +246,6 @@ export default function PanoDuzenle({ params }) {
 
       const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
       setPanoImageUrl(publicUrl);
-      setPanoImageTouched(true);
       toast.remove(toastId);
     } catch (error) {
       console.error('Pano image upload error:', error);
@@ -211,6 +261,9 @@ export default function PanoDuzenle({ params }) {
     if (errorText.includes('pano_book_required')) {
       return 'Pano paylaşmak için önce yayınlanmış kitabını seçmelisin.';
     }
+    if (errorText.includes('pano_poll_')) {
+      return error?.message || 'Anket bilgileri kaydedilemedi. Soruyu ve seçenekleri kontrol et.';
+    }
 
     const schemaNeedsUpdate =
       error?.code === '42703' ||
@@ -218,10 +271,11 @@ export default function PanoDuzenle({ params }) {
       error?.code === '23502' ||
       errorText.includes('image_url') ||
       errorText.includes('book_id') ||
-      errorText.includes('null value');
+      errorText.includes('null value') ||
+      errorText.includes('update_pano_with_poll');
 
     if (schemaNeedsUpdate) {
-      return 'Veritabanı güncellemesi eksik: add_pano_image_url.sql çalışmalı.';
+      return 'Veritabanı güncellemesi eksik: pano anket düzenleme migrationı çalışmalı.';
     }
 
     return error?.message ? `Hata: ${error.message}` : 'Hata oluştu!';
@@ -236,30 +290,42 @@ export default function PanoDuzenle({ params }) {
       toast.error('Panoyu güncellemek için bir kitap seçmelisin!');
       return;
     }
-    if (!selectedBook && !panoImageUrl) {
-      toast.error('Kitapsız admin panosu için bir pano görseli eklemelisin!');
+    if (!selectedBook && !panoImageUrl && !hasPoll) {
+      toast.error('Kitapsız admin panosu için bir görsel veya anket eklemelisin!');
       return;
     }
+
+    const cleanedPollOptions = normalizePollOptions(pollOptions);
+    if (hasPoll && pollQuestion.trim().length < 3) {
+      toast.error('Anket sorusu en az 3 karakter olmalı!');
+      return;
+    }
+    if (hasPoll && cleanedPollOptions.length < 2) {
+      toast.error('Ankete en az 2 dolu seçenek eklemelisin!');
+      return;
+    }
+    if (hasPoll && new Set(cleanedPollOptions.map(option => option.toLocaleLowerCase('tr-TR'))).size !== cleanedPollOptions.length) {
+      toast.error('Anket seçenekleri birbirinden farklı olmalı!');
+      return;
+    }
+
+    if (hasPoll) setPollOptions(cleanedPollOptions);
 
     setSaving(true);
     const toastId = toast.loading('Pano güncelleniyor...');
 
-    const updatePayload = {
-      title: title.trim(),
-      content: content.trim(),
-      book_id: selectedBook?.id || null,
-      chapter_id: selectedBook ? selectedChapter?.id || null : null,
-      updated_at: new Date()
-    };
-
-    if (panoImageTouched || panoImageUrl || !selectedBook) {
-      updatePayload.image_url = panoImageUrl || null;
-    }
-
-    const { error } = await supabase
-      .from('panolar')
-      .update(updatePayload)
-      .eq('id', id);
+    const { error } = await supabase.rpc('update_pano_with_poll', {
+      p_pano_id: id,
+      p_title: title.trim(),
+      p_content: content.trim(),
+      p_book_id: selectedBook?.id || null,
+      p_chapter_id: selectedBook ? selectedChapter?.id || null : null,
+      p_image_url: panoImageUrl || null,
+      p_has_poll: hasPoll,
+      p_question: hasPoll ? pollQuestion.trim() : null,
+      p_allows_multiple: hasPoll ? pollAllowsMultiple : null,
+      p_options: hasPoll ? cleanedPollOptions : []
+    });
 
     if (error) {
       console.error('Pano update error:', error);
@@ -325,9 +391,93 @@ export default function PanoDuzenle({ params }) {
             <p className="text-xs text-gray-400 mt-2">{content.length} karakter</p>
           </div>
 
+          {/* ANKET */}
+          <div className="rounded-3xl border border-purple-200 bg-purple-50/60 p-5 dark:border-purple-900/40 dark:bg-purple-900/10">
+            <label className="flex cursor-pointer items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-widest text-purple-700 dark:text-purple-300">Anket</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Panoya anket ekleyebilir veya mevcut anketi düzenleyebilirsin.</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={hasPoll}
+                onChange={(e) => setHasPoll(e.target.checked)}
+                className="h-5 w-5 accent-purple-600"
+              />
+            </label>
+
+            {hasPoll && (
+              <div className="mt-5 space-y-4 border-t border-purple-200 pt-5 dark:border-purple-900/40">
+                <div>
+                  <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-500">Anket Sorusu *</label>
+                  <input
+                    value={pollQuestion}
+                    onChange={(e) => setPollQuestion(e.target.value)}
+                    maxLength={200}
+                    placeholder="Okurlara ne sormak istersin?"
+                    className="w-full rounded-2xl border bg-white p-4 text-sm outline-none focus:border-purple-600 dark:border-white/10 dark:bg-black"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-black uppercase tracking-widest text-gray-500">Seçenekler *</label>
+                  {pollOptions.map((option, index) => (
+                    <div key={index} className="flex gap-2">
+                      <input
+                        value={option}
+                        onChange={(e) => setPollOptions(current => current.map((item, itemIndex) => itemIndex === index ? e.target.value : item))}
+                        maxLength={100}
+                        placeholder={`${index + 1}. seçenek`}
+                        className="flex-1 rounded-xl border bg-white p-3 text-sm outline-none focus:border-purple-600 dark:border-white/10 dark:bg-black"
+                      />
+                      {pollOptions.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => setPollOptions(current => current.filter((_, itemIndex) => itemIndex !== index))}
+                          className="rounded-xl px-3 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/20"
+                          aria-label="Seçeneği kaldır"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {pollOptions.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => setPollOptions(current => [...current, ''])}
+                      className="text-xs font-black text-purple-600 hover:text-purple-700"
+                    >
+                      + Seçenek ekle
+                    </button>
+                  )}
+                </div>
+
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl bg-white p-4 dark:bg-black/40">
+                  <input
+                    type="checkbox"
+                    checked={pollAllowsMultiple}
+                    onChange={(e) => setPollAllowsMultiple(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 accent-purple-600"
+                  />
+                  <span>
+                    <span className="block text-xs font-black dark:text-white">Birden fazla seçenek seçilebilsin</span>
+                    <span className="mt-1 block text-[11px] text-gray-500">Kapalıysa herkes yalnızca bir seçeneğe oy verebilir.</span>
+                  </span>
+                </label>
+              </div>
+            )}
+
+            {pollDefinitionChanged && (
+              <p className="mt-4 rounded-2xl bg-amber-100 px-4 py-3 text-[11px] font-bold text-amber-800 dark:bg-amber-500/10 dark:text-amber-300">
+                Anket yapısı değiştiği için mevcut oylar, panoyu güncellediğinde sıfırlanacak.
+              </p>
+            )}
+          </div>
+
           <div>
               <label className="block text-xs font-black uppercase tracking-widest text-gray-600 dark:text-gray-400 mb-3">
-                Pano Görseli {selectedBook ? '(Opsiyonel)' : isAdmin ? '*' : '(Önce kitap seç)'}
+                Pano Görseli {selectedBook || hasPoll ? '(Opsiyonel)' : isAdmin ? '*' : '(Önce kitap seç)'}
               </label>
               <div className={`relative overflow-hidden rounded-2xl border-2 border-dashed p-5 ${
                 !selectedBook && !isAdmin
@@ -357,10 +507,7 @@ export default function PanoDuzenle({ params }) {
                     </div>
                     <button
                       type="button"
-                      onClick={() => {
-                        setPanoImageUrl('');
-                        setPanoImageTouched(true);
-                      }}
+                      onClick={() => setPanoImageUrl('')}
                       className="relative z-10 text-red-600 hover:text-red-700 font-black text-sm"
                     >
                       Kaldır
@@ -379,6 +526,8 @@ export default function PanoDuzenle({ params }) {
                     <p className="text-xs text-gray-400 mt-2">
                       {!selectedBook && !isAdmin
                         ? 'Kitabını seçtikten sonra özel pano görseli ekleyebilirsin.'
+                        : !selectedBook && hasPoll
+                          ? 'Anket panosu için görsel eklemek zorunda değilsin.'
                         : 'Özel görsel eklemezsen panoda kitabının kapağı gösterilir.'}
                     </p>
                   </div>
@@ -465,7 +614,6 @@ export default function PanoDuzenle({ params }) {
                     setSelectedChapter(null);
                     if (!isAdmin) {
                       setPanoImageUrl('');
-                      setPanoImageTouched(true);
                     }
                   }}
                   className="text-red-600 hover:text-red-700 font-black text-sm"
@@ -519,7 +667,13 @@ export default function PanoDuzenle({ params }) {
                 uploadingImage ||
                 !title.trim() ||
                 !content.trim() ||
-                (!selectedBook && (!isAdmin || !panoImageUrl))
+                (!selectedBook && !isAdmin) ||
+                (!selectedBook && isAdmin && !panoImageUrl && !hasPoll) ||
+                (hasPoll && (
+                  pollQuestion.trim().length < 3 ||
+                  normalizePollOptions(pollOptions).length < 2 ||
+                  new Set(normalizePollOptions(pollOptions).map(option => option.toLocaleLowerCase('tr-TR'))).size !== normalizePollOptions(pollOptions).length
+                ))
               }
             >
               {saving ? 'Güncelleniyor...' : '💾 Panoyu Güncelle'}
