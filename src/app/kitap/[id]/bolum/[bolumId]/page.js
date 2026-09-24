@@ -560,7 +560,7 @@ export default function BolumDetay({ params }) {
 
       {isChapterListOpen && (
         <div
-          className="fixed inset-0 z-[80] flex items-end md:items-center justify-center p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:p-6"
+          className="fixed inset-0 z-[80] flex items-end md:items-center justify-center md:p-6"
           role="dialog"
           aria-modal="true"
           aria-labelledby="chapter-list-title"
@@ -572,7 +572,7 @@ export default function BolumDetay({ params }) {
             className="absolute inset-0 bg-black/55 backdrop-blur-sm animate-in fade-in duration-200"
           />
 
-          <div className="relative w-[96%] md:w-full md:max-w-lg max-h-[60dvh] md:max-h-[82vh] rounded-[1.4rem] md:rounded-[2rem] bg-[#fcfcfc] dark:bg-[#101010] border border-black/5 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 md:zoom-in-95 duration-300">
+          <div className="relative w-full md:max-w-lg max-h-[calc(100dvh-10rem)] md:max-h-[82vh] rounded-t-[1.6rem] md:rounded-[2rem] bg-[#fcfcfc] dark:bg-[#101010] border border-black/5 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 md:zoom-in-95 duration-300">
             <div className="md:hidden mx-auto mt-2 h-1 w-8 rounded-full bg-gray-300 dark:bg-white/20" />
 
             <div className="shrink-0 px-4 pt-2.5 pb-2.5 md:p-7 border-b border-black/5 dark:border-white/10">
@@ -646,7 +646,7 @@ export default function BolumDetay({ params }) {
               </div>
             </div>
 
-            <div className="shrink-0 px-4 py-2.5 md:px-6 md:py-4 border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 text-center">
+            <div className="shrink-0 px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-6 md:py-4 border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 text-center">
               <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
                 {visibleIndex + 1}. bölümdesin · {visibleChapters.length - visibleIndex - 1} bölüm kaldı
               </p>
