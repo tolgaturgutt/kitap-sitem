@@ -572,7 +572,7 @@ export default function BolumDetay({ params }) {
             className="absolute inset-0 bg-black/55 backdrop-blur-sm animate-in fade-in duration-200"
           />
 
-          <div className="relative w-full md:max-w-lg max-h-[calc(100dvh-10rem)] md:max-h-[82vh] rounded-t-[1.6rem] md:rounded-[2rem] bg-[#fcfcfc] dark:bg-[#101010] border border-black/5 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 md:zoom-in-95 duration-300">
+          <div className="absolute inset-x-0 top-20 bottom-[calc(68px+env(safe-area-inset-bottom))] w-full md:relative md:inset-auto md:max-w-lg md:max-h-[82vh] rounded-t-[1.6rem] md:rounded-[2rem] bg-[#fcfcfc] dark:bg-[#101010] border border-black/5 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 md:zoom-in-95 duration-300">
             <div className="md:hidden mx-auto mt-2 h-1 w-8 rounded-full bg-gray-300 dark:bg-white/20" />
 
             <div className="shrink-0 px-4 pt-2.5 pb-2.5 md:p-7 border-b border-black/5 dark:border-white/10">
@@ -599,7 +599,7 @@ export default function BolumDetay({ params }) {
               </div>
             </div>
 
-            <div className="overflow-y-auto overscroll-contain px-2 py-2 md:px-4 md:py-4 [scrollbar-width:thin] [scrollbar-color:rgba(220,38,38,.55)_transparent]">
+            <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-2 py-2 md:px-4 md:py-4 [scrollbar-width:thin] [scrollbar-color:rgba(220,38,38,.55)_transparent]">
               <div className="space-y-1 md:space-y-2">
                 {visibleChapters.map((chapter, index) => {
                   const isCurrent = Number(chapter.id) === Number(bolumId);
@@ -646,7 +646,7 @@ export default function BolumDetay({ params }) {
               </div>
             </div>
 
-            <div className="shrink-0 px-4 pt-2.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:px-6 md:py-4 border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 text-center">
+            <div className="shrink-0 px-4 py-2.5 md:px-6 md:py-4 border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 text-center">
               <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
                 {visibleIndex + 1}. bölümdesin · {visibleChapters.length - visibleIndex - 1} bölüm kaldı
               </p>
