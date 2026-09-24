@@ -572,26 +572,26 @@ export default function BolumDetay({ params }) {
             className="absolute inset-0 bg-black/55 backdrop-blur-sm animate-in fade-in duration-200"
           />
 
-          <div className="relative w-full md:max-w-lg max-h-[74dvh] md:max-h-[82vh] rounded-[1.6rem] md:rounded-[2rem] bg-[#fcfcfc] dark:bg-[#101010] border border-black/5 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 md:zoom-in-95 duration-300">
-            <div className="md:hidden mx-auto mt-2.5 h-1 w-9 rounded-full bg-gray-300 dark:bg-white/20" />
+          <div className="relative w-[96%] md:w-full md:max-w-lg max-h-[60dvh] md:max-h-[82vh] rounded-[1.4rem] md:rounded-[2rem] bg-[#fcfcfc] dark:bg-[#101010] border border-black/5 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 md:zoom-in-95 duration-300">
+            <div className="md:hidden mx-auto mt-2 h-1 w-8 rounded-full bg-gray-300 dark:bg-white/20" />
 
-            <div className="shrink-0 px-5 pt-3 pb-3 md:p-7 border-b border-black/5 dark:border-white/10">
+            <div className="shrink-0 px-4 pt-2.5 pb-2.5 md:p-7 border-b border-black/5 dark:border-white/10">
               <div className="flex items-start justify-between gap-5">
                 <div className="min-w-0">
-                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.24em] text-red-600">
+                  <p className="mb-0.5 text-[8px] md:text-[9px] font-black uppercase tracking-[0.24em] text-red-600">
                     {visibleChapters.length} Bölüm
                   </p>
-                  <h2 id="chapter-list-title" className="truncate text-lg md:text-2xl font-black tracking-tight text-gray-950 dark:text-white">
+                  <h2 id="chapter-list-title" className="truncate text-base md:text-2xl font-black tracking-tight text-gray-950 dark:text-white">
                     {data.book?.title}
                   </h2>
-                  <p className="mt-1 truncate text-xs font-medium text-gray-400">
+                  <p className="mt-0.5 hidden md:block truncate text-xs font-medium text-gray-400">
                     Bir bölüm seç ve okumaya devam et
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setIsChapterListOpen(false)}
-                  className="shrink-0 grid place-items-center w-9 h-9 md:w-10 md:h-10 rounded-full bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-300 hover:bg-red-600 hover:text-white transition-all"
+                  className="shrink-0 grid place-items-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-black/5 dark:bg-white/10 text-sm text-gray-500 dark:text-gray-300 hover:bg-red-600 hover:text-white transition-all"
                   aria-label="Kapat"
                 >
                   ✕
@@ -599,8 +599,8 @@ export default function BolumDetay({ params }) {
               </div>
             </div>
 
-            <div className="overflow-y-auto overscroll-contain px-2.5 py-2.5 md:px-4 md:py-4 [scrollbar-width:thin] [scrollbar-color:rgba(220,38,38,.55)_transparent]">
-              <div className="space-y-1.5 md:space-y-2">
+            <div className="overflow-y-auto overscroll-contain px-2 py-2 md:px-4 md:py-4 [scrollbar-width:thin] [scrollbar-color:rgba(220,38,38,.55)_transparent]">
+              <div className="space-y-1 md:space-y-2">
                 {visibleChapters.map((chapter, index) => {
                   const isCurrent = Number(chapter.id) === Number(bolumId);
 
@@ -611,12 +611,12 @@ export default function BolumDetay({ params }) {
                       href={`/kitap/${id}/bolum/${chapter.id}`}
                       onClick={() => setIsChapterListOpen(false)}
                       aria-current={isCurrent ? 'page' : undefined}
-                      className={`group flex items-center gap-3 md:gap-4 rounded-2xl px-3 py-3 md:px-4 md:py-4 border transition-all ${isCurrent
+                      className={`group flex items-center gap-2.5 md:gap-4 rounded-xl md:rounded-2xl px-3 py-2 md:px-4 md:py-4 border transition-all ${isCurrent
                         ? 'border-red-600 bg-red-600 text-white shadow-lg shadow-red-600/20'
                         : 'border-transparent bg-black/[0.025] dark:bg-white/[0.035] hover:border-red-600/25 hover:bg-red-600/[0.07] text-gray-800 dark:text-gray-200'
                       }`}
                     >
-                      <span className={`shrink-0 grid place-items-center w-9 h-9 md:w-10 md:h-10 rounded-xl text-[11px] md:text-xs font-black tabular-nums ${isCurrent
+                      <span className={`shrink-0 grid place-items-center w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black tabular-nums ${isCurrent
                         ? 'bg-white/20 text-white'
                         : 'bg-white dark:bg-white/10 text-gray-400 group-hover:text-red-600 shadow-sm'
                       }`}>
@@ -625,14 +625,14 @@ export default function BolumDetay({ params }) {
 
                       <span className="min-w-0 flex-1">
                         <span className="flex items-center gap-2">
-                          <span className="truncate text-sm font-bold">{chapter.title}</span>
+                          <span className="truncate text-[13px] md:text-sm font-bold">{chapter.title}</span>
                           {chapter.is_draft && (
                             <span className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-wider ${isCurrent ? 'bg-white/20' : 'bg-amber-500/10 text-amber-600'}`}>
                               Taslak
                             </span>
                           )}
                         </span>
-                        <span className={`mt-1 block text-[9px] font-black uppercase tracking-[0.18em] ${isCurrent ? 'text-white/70' : 'text-gray-400'}`}>
+                        <span className={`mt-0.5 block text-[8px] md:text-[9px] font-black uppercase tracking-[0.18em] ${isCurrent ? 'text-white/70' : 'text-gray-400'}`}>
                           {isCurrent ? 'Şu an okuyorsun' : `${index + 1}. bölüm`}
                         </span>
                       </span>
@@ -646,7 +646,7 @@ export default function BolumDetay({ params }) {
               </div>
             </div>
 
-            <div className="shrink-0 px-5 py-3 md:px-6 md:py-4 border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 text-center">
+            <div className="shrink-0 px-4 py-2.5 md:px-6 md:py-4 border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 text-center">
               <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
                 {visibleIndex + 1}. bölümdesin · {visibleChapters.length - visibleIndex - 1} bölüm kaldı
               </p>
