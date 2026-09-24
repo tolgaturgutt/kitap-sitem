@@ -135,6 +135,8 @@ export default function BolumDetay({ params }) {
     theme: 'bg-[#fdfdfd] text-gray-800'
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isChapterListOpen, setIsChapterListOpen] = useState(false);
+  const currentChapterRef = useRef(null);
 
   const searchParams = useSearchParams();
 
@@ -397,6 +399,28 @@ export default function BolumDetay({ params }) {
     return () => clearTimeout(timer);
   }, [loading, data.chapter, searchParams]);
 
+  useEffect(() => {
+    if (!isChapterListOpen) return;
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') setIsChapterListOpen(false);
+    };
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleEscape);
+
+    const scrollTimer = window.setTimeout(() => {
+      currentChapterRef.current?.scrollIntoView({ block: 'center' });
+    }, 100);
+
+    return () => {
+      window.clearTimeout(scrollTimer);
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isChapterListOpen]);
+
   const handleLike = async () => {
     if (!user) return toast.error("Beğenmek için giriş yapmalısın.");
     if (!user.email_confirmed_at) {
@@ -478,8 +502,6 @@ export default function BolumDetay({ params }) {
     );
   }
 
-  const currentIndex = data.allChapters.findIndex(c => Number(c.id) === Number(bolumId));
-  
   const isAuthor = user && data.book?.user_email === user.email;
   const visibleChapters = (isAuthor || isAdmin) 
     ? data.allChapters 
@@ -502,14 +524,136 @@ export default function BolumDetay({ params }) {
   return (
     <div className="min-h-screen bg-[#fcfcfc] dark:bg-[#080808]">
 
-      <nav className="fixed top-20 left-1/2 -translate-x-1/2 z-40 w-[85%] max-w-2xl h-11 bg-white/60 dark:bg-black/60 backdrop-blur-3xl border dark:border-white/5 rounded-full flex items-center justify-between px-6 shadow-sm">
-        <Link href={`/kitap/${id}`} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-all">
+      <nav className="fixed top-20 left-1/2 -translate-x-1/2 z-40 w-[88%] max-w-2xl h-12 bg-white/75 dark:bg-black/70 backdrop-blur-3xl border border-black/5 dark:border-white/10 rounded-full grid grid-cols-3 items-center px-4 md:px-6 shadow-lg shadow-black/5">
+        <Link href={`/kitap/${id}`} className="justify-self-start text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600 transition-all">
           ← Geri
         </Link>
+        <button
+          type="button"
+          onClick={() => {
+            setIsSettingsOpen(false);
+            setIsChapterListOpen(true);
+          }}
+          className="justify-self-center flex items-center gap-2 rounded-full px-3 py-2 text-[10px] font-black uppercase tracking-widest text-gray-600 dark:text-gray-300 hover:bg-red-600/10 hover:text-red-600 transition-all"
+          aria-haspopup="dialog"
+          aria-expanded={isChapterListOpen}
+        >
+          <span aria-hidden="true" className="grid gap-[2px]">
+            <span className="block h-[2px] w-3 rounded-full bg-current" />
+            <span className="block h-[2px] w-3 rounded-full bg-current" />
+            <span className="block h-[2px] w-3 rounded-full bg-current" />
+          </span>
+          Bölümler
+        </button>
         {!isAudiobook && (
-          <button onClick={() => setIsSettingsOpen(!isSettingsOpen)} className="text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600">AYARLAR</button>
+          <button
+            onClick={() => {
+              setIsChapterListOpen(false);
+              setIsSettingsOpen(!isSettingsOpen);
+            }}
+            className="justify-self-end text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-red-600"
+          >
+            AYARLAR
+          </button>
         )}
       </nav>
+
+      {isChapterListOpen && (
+        <div
+          className="fixed inset-0 z-[80] flex items-end md:items-center justify-center md:p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="chapter-list-title"
+        >
+          <button
+            type="button"
+            aria-label="Bölüm listesini kapat"
+            onClick={() => setIsChapterListOpen(false)}
+            className="absolute inset-0 bg-black/55 backdrop-blur-sm animate-in fade-in duration-200"
+          />
+
+          <div className="relative w-full md:max-w-lg max-h-[82vh] rounded-t-[2rem] md:rounded-[2rem] bg-[#fcfcfc] dark:bg-[#101010] border border-black/5 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 md:zoom-in-95 duration-300">
+            <div className="md:hidden mx-auto mt-3 h-1 w-10 rounded-full bg-gray-300 dark:bg-white/20" />
+
+            <div className="shrink-0 px-6 pt-5 pb-4 md:p-7 border-b border-black/5 dark:border-white/10">
+              <div className="flex items-start justify-between gap-5">
+                <div className="min-w-0">
+                  <p className="mb-1 text-[9px] font-black uppercase tracking-[0.24em] text-red-600">
+                    {visibleChapters.length} Bölüm
+                  </p>
+                  <h2 id="chapter-list-title" className="truncate text-xl md:text-2xl font-black tracking-tight text-gray-950 dark:text-white">
+                    {data.book?.title}
+                  </h2>
+                  <p className="mt-1 truncate text-xs font-medium text-gray-400">
+                    Bir bölüm seç ve okumaya devam et
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsChapterListOpen(false)}
+                  className="shrink-0 grid place-items-center w-10 h-10 rounded-full bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-300 hover:bg-red-600 hover:text-white transition-all"
+                  aria-label="Kapat"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto overscroll-contain px-3 py-3 md:px-4 md:py-4 [scrollbar-width:thin] [scrollbar-color:rgba(220,38,38,.55)_transparent]">
+              <div className="space-y-2">
+                {visibleChapters.map((chapter, index) => {
+                  const isCurrent = Number(chapter.id) === Number(bolumId);
+
+                  return (
+                    <Link
+                      key={chapter.id}
+                      ref={isCurrent ? currentChapterRef : null}
+                      href={`/kitap/${id}/bolum/${chapter.id}`}
+                      onClick={() => setIsChapterListOpen(false)}
+                      aria-current={isCurrent ? 'page' : undefined}
+                      className={`group flex items-center gap-4 rounded-2xl px-4 py-4 border transition-all ${isCurrent
+                        ? 'border-red-600 bg-red-600 text-white shadow-lg shadow-red-600/20'
+                        : 'border-transparent bg-black/[0.025] dark:bg-white/[0.035] hover:border-red-600/25 hover:bg-red-600/[0.07] text-gray-800 dark:text-gray-200'
+                      }`}
+                    >
+                      <span className={`shrink-0 grid place-items-center w-10 h-10 rounded-xl text-xs font-black tabular-nums ${isCurrent
+                        ? 'bg-white/20 text-white'
+                        : 'bg-white dark:bg-white/10 text-gray-400 group-hover:text-red-600 shadow-sm'
+                      }`}>
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-center gap-2">
+                          <span className="truncate text-sm font-bold">{chapter.title}</span>
+                          {chapter.is_draft && (
+                            <span className={`shrink-0 rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-wider ${isCurrent ? 'bg-white/20' : 'bg-amber-500/10 text-amber-600'}`}>
+                              Taslak
+                            </span>
+                          )}
+                        </span>
+                        <span className={`mt-1 block text-[9px] font-black uppercase tracking-[0.18em] ${isCurrent ? 'text-white/70' : 'text-gray-400'}`}>
+                          {isCurrent ? 'Şu an okuyorsun' : `${index + 1}. bölüm`}
+                        </span>
+                      </span>
+
+                      <span className={`shrink-0 text-lg transition-transform group-hover:translate-x-1 ${isCurrent ? 'text-white' : 'text-gray-300 dark:text-gray-600 group-hover:text-red-600'}`} aria-hidden="true">
+                        →
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="shrink-0 px-6 py-4 border-t border-black/5 dark:border-white/10 bg-white/60 dark:bg-black/20 text-center">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">
+                {visibleIndex + 1}. bölümdesin · {visibleChapters.length - visibleIndex - 1} bölüm kaldı
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {!isAudiobook && isSettingsOpen && (
         <div className="fixed top-32 left-1/2 -translate-x-1/2 z-[60] w-[85%] max-w-md bg-white dark:bg-gray-900 border dark:border-white/10 rounded-[2.5rem] p-8 shadow-2xl animate-in zoom-in duration-200">
