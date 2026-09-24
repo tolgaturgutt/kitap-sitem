@@ -572,7 +572,7 @@ export default function BolumDetay({ params }) {
             className="absolute inset-0 bg-black/40 backdrop-blur-[2px] animate-in fade-in duration-200"
           />
 
-          <div className="absolute inset-x-2 top-3 bottom-3 w-auto md:relative md:inset-auto md:w-full md:max-w-lg md:max-h-[82vh] rounded-[1.6rem] md:rounded-[2rem] bg-[#fcfcfc] dark:bg-[#101010] border border-black/5 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 md:zoom-in-95 duration-300">
+          <div className="absolute inset-4 w-auto md:relative md:inset-auto md:w-full md:max-w-lg md:max-h-[82vh] rounded-[1.6rem] md:rounded-[2rem] bg-[#fcfcfc] dark:bg-[#101010] border border-black/5 dark:border-white/10 shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-8 md:zoom-in-95 duration-300">
             <div className="md:hidden mx-auto mt-2 h-1 w-8 rounded-full bg-gray-300 dark:bg-white/20" />
 
             <div className="shrink-0 px-4 pt-2.5 pb-2.5 md:p-7 border-b border-black/5 dark:border-white/10">
