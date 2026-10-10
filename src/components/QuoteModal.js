@@ -317,7 +317,8 @@ export default function QuoteModal({ quote, user, isAdmin = false, ownerIsAdmin 
       aria-label="Kitaptan alıntı"
     >
       <div
-        className="relative isolate flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[3rem] border border-gray-100 bg-white text-gray-900 shadow-2xl dark:border-white/5 dark:bg-[#080808] dark:text-white md:flex-row max-md:!h-[72dvh] max-md:!max-h-[640px] max-md:!w-[calc(100vw-2.5rem)] max-md:!max-w-[26rem] max-md:!rounded-[2.5rem]"
+        className="quote-modal-shell relative isolate flex h-[90vh] w-full max-w-5xl flex-col overflow-hidden rounded-[3rem] border border-gray-100 bg-white text-gray-900 shadow-2xl dark:border-white/5 dark:bg-[#080808] dark:text-white md:flex-row"
+        data-quote-modal
         onClick={(event) => event.stopPropagation()}
       >
         <button

@@ -98,13 +98,24 @@
   
   @media (max-width: 768px) {
     /* Tüm modal container'ları mobilde tam ekran yap */
-    .fixed.inset-0 > div[class*="max-w"] {
+    .fixed.inset-0 > div[class*="max-w"]:not([data-quote-modal]) {
       max-width: 100% !important;
       width: 100% !important;
       height: 100% !important;
       max-height: 100vh !important;
       border-radius: 0 !important;
       margin: 0 !important;
+    }
+
+    /* Alıntı modalı mobilde pano kartı gibi ortada ve oval kalır. */
+    .fixed.inset-0 > div[class*="max-w"][data-quote-modal] {
+      width: calc(100vw - 2.5rem) !important;
+      max-width: 26rem !important;
+      height: min(72dvh, 640px) !important;
+      max-height: min(72dvh, 640px) !important;
+      border-radius: 2.5rem !important;
+      margin: auto !important;
+      overflow: hidden !important;
     }
 
     /* Modal içindeki flex layout'ları alt alta getir */
