@@ -109,11 +109,11 @@
 
     /* Alıntı modalı mobilde pano kartı gibi ortada ve oval kalır. */
     .fixed.inset-0 > div[class*="max-w"][data-quote-modal] {
-      width: calc(100vw - 2.5rem) !important;
-      max-width: 26rem !important;
-      height: min(72dvh, 640px) !important;
-      max-height: min(72dvh, 640px) !important;
-      border-radius: 2.5rem !important;
+      width: calc(100vw - 1rem) !important;
+      max-width: 42rem !important;
+      height: min(90dvh, 800px) !important;
+      max-height: min(90dvh, 800px) !important;
+      border-radius: 1.5rem !important;
       margin: auto !important;
       overflow: hidden !important;
     }
