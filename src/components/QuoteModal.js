@@ -310,20 +310,20 @@ export default function QuoteModal({ quote, user, isAdmin = false, ownerIsAdmin 
 
   return (
     <div
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 p-4 backdrop-blur-xl"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 p-5 backdrop-blur-xl md:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Kitaptan alıntı"
     >
       <div
-        className="relative flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-[3rem] border border-gray-100 bg-white text-gray-900 shadow-2xl dark:border-white/5 dark:bg-[#080808] dark:text-white md:h-[90vh] md:flex-row"
+        className="relative flex h-[76vh] w-full max-w-[26rem] flex-col overflow-hidden rounded-[2.25rem] border border-gray-100 bg-white text-gray-900 shadow-2xl dark:border-white/5 dark:bg-[#080808] dark:text-white md:h-[90vh] md:max-w-5xl md:flex-row md:rounded-[3rem]"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-5 top-5 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/10 text-lg font-black text-gray-700 backdrop-blur-md transition hover:bg-red-600 hover:text-white dark:bg-white/10 dark:text-white md:right-8 md:top-8"
+          className="absolute right-4 top-4 z-30 flex h-9 w-9 items-center justify-center rounded-full bg-black/10 text-sm font-black text-gray-700 backdrop-blur-md transition hover:bg-red-600 hover:text-white dark:bg-white/10 dark:text-white md:right-8 md:top-8 md:h-11 md:w-11 md:text-lg"
           aria-label="Kapat"
         >
           ✕
@@ -349,7 +349,7 @@ export default function QuoteModal({ quote, user, isAdmin = false, ownerIsAdmin 
         </aside>
 
         <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white dark:bg-[#080808]">
-          <div className="flex-1 overflow-y-auto p-6 pb-8 md:p-10 md:pb-8">
+          <div className="flex-1 overflow-y-auto p-5 pb-6 md:p-10 md:pb-8">
             <div className="pr-12 md:hidden">
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Kitaptan Alıntı</p>
               <div className="mt-4 flex gap-4">
@@ -397,7 +397,7 @@ export default function QuoteModal({ quote, user, isAdmin = false, ownerIsAdmin 
             </div>
           </div>
 
-          <div className="shrink-0 border-t border-gray-100 bg-white p-4 dark:border-white/5 dark:bg-[#080808] md:p-6">
+          <div className="shrink-0 border-t border-gray-100 bg-white p-3 dark:border-white/5 dark:bg-[#080808] md:p-6">
           {user && (
             <form onSubmit={submitComment} className="mb-3 rounded-[2rem] border border-gray-100 bg-gray-50 p-2 dark:border-white/5 dark:bg-white/5">
               {replyTo && replyToUsername && (
