@@ -27,7 +27,7 @@ export async function POST(request) {
 
     const { data: comment, error: commentError } = await admin
       .from('quote_comments')
-      .select('id, quote_id, user_id, created_at')
+      .select('id, quote_id, parent_id, user_id, created_at')
       .eq('id', commentId)
       .maybeSingle();
     if (commentError || !comment) return NextResponse.json({ error: 'Alıntı yorumu bulunamadı.' }, { status: 404 });
@@ -35,23 +35,42 @@ export async function POST(request) {
 
     const { data: quote, error: quoteError } = await admin.from('book_quotes').select('id, user_id').eq('id', comment.quote_id).single();
     if (quoteError || !quote) return NextResponse.json({ error: 'Alıntı bulunamadı.' }, { status: 404 });
-    const [{ data: owner }, { data: actor }] = await Promise.all([
-      admin.from('profiles').select('email').eq('id', quote.user_id).maybeSingle(),
-      admin.from('profiles').select('username').eq('id', user.id).maybeSingle(),
-    ]);
-    if (!owner?.email || owner.email.toLowerCase() === user.email.toLowerCase()) return NextResponse.json({ ok: true, skipped: 'self_notification' });
+    const { data: actor } = await admin.from('profiles').select('username').eq('id', user.id).maybeSingle();
+    let recipientEmail;
+    let type;
+
+    if (comment.parent_id) {
+      const { data: parentComment, error: parentError } = await admin
+        .from('quote_comments')
+        .select('quote_id, user_id')
+        .eq('id', comment.parent_id)
+        .single();
+      if (parentError || !parentComment || String(parentComment.quote_id) !== String(comment.quote_id)) {
+        return NextResponse.json({ error: 'Yanıtlanan alıntı yorumu bulunamadı.' }, { status: 404 });
+      }
+      const { data: parentOwner } = await admin.from('profiles').select('email').eq('id', parentComment.user_id).maybeSingle();
+      recipientEmail = parentOwner?.email;
+      type = 'quote_reply';
+    } else {
+      const { data: owner } = await admin.from('profiles').select('email').eq('id', quote.user_id).maybeSingle();
+      recipientEmail = owner?.email;
+      type = 'quote_comment';
+    }
+
+    if (!recipientEmail) return NextResponse.json({ error: 'Bildirim alıcısı bulunamadı.' }, { status: 404 });
+    if (recipientEmail.toLowerCase() === user.email.toLowerCase()) return NextResponse.json({ ok: true, skipped: 'self_notification' });
 
     const actorUsername = actor?.username || user.email.split('@')[0];
     const { data: existing } = await admin.from('notifications').select('id')
-      .eq('recipient_email', owner.email).eq('actor_username', actorUsername)
-      .eq('type', 'quote_comment').eq('quote_id', quote.id).eq('created_at', comment.created_at)
+      .eq('recipient_email', recipientEmail).eq('actor_username', actorUsername)
+      .eq('type', type).eq('quote_id', quote.id).eq('created_at', comment.created_at)
       .limit(1).maybeSingle();
     if (existing) return NextResponse.json({ ok: true, notification_id: existing.id });
 
     const { data: notification, error } = await admin.from('notifications').insert({
-      recipient_email: owner.email,
+      recipient_email: recipientEmail,
       actor_username: actorUsername,
-      type: 'quote_comment',
+      type,
       quote_id: quote.id,
       is_read: false,
       created_at: comment.created_at,

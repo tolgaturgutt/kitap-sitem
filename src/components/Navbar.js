@@ -362,6 +362,8 @@ export default function Navbar() {
     n.type === 'pano_comment_like' ||
     n.type === 'quote_vote' ||
     n.type === 'quote_comment' ||
+    n.type === 'quote_reply' ||
+    n.type === 'quote_comment_like' ||
     (n.type === 'reply' && !n.pano_id)
   );
   const unreadCount = notifications.filter(n => !n.is_read).length;
@@ -445,6 +447,8 @@ export default function Navbar() {
 
       case 'quote_vote':
       case 'quote_comment':
+      case 'quote_reply':
+      case 'quote_comment_like':
         return n.quote_id ? `/alintilar?quote=${n.quote_id}` : '/alintilar';
 
       case 'reply':
@@ -489,6 +493,8 @@ export default function Navbar() {
       case 'pano_comment_like': return 'pano yorumunu beğendi';
       case 'quote_vote': return 'alıntını beğendi';
       case 'quote_comment': return 'alıntına yorum yaptı';
+      case 'quote_reply': return 'alıntı yorumuna yanıt verdi';
+      case 'quote_comment_like': return 'alıntı yorumunu beğendi';
       case 'reply': return 'yorumunuza yanıt verdi';
       case 'follow': return 'seni takip etti';
       default: return 'bir aktivite gerçekleştirdi';
@@ -497,8 +503,8 @@ export default function Navbar() {
 
   function getNotificationIcon(n) {
     switch (n.type) {
-      case 'vote': case 'chapter_vote': case 'pano_vote': case 'quote_vote': case 'comment_like': case 'pano_comment_like': return '❤️';
-      case 'comment': case 'pano_comment': case 'quote_comment': return '💬';
+      case 'vote': case 'chapter_vote': case 'pano_vote': case 'quote_vote': case 'comment_like': case 'pano_comment_like': case 'quote_comment_like': return '❤️';
+      case 'comment': case 'pano_comment': case 'quote_comment': case 'quote_reply': return '💬';
       case 'new_chapter': return '🆕';
       case 'library_add': return '📚';
       case 'reply': return '↩️';

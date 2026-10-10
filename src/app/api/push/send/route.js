@@ -109,6 +109,18 @@ function buildNotificationText(notification) {
         body: actor + ', paylaştığın alıntıya yorum yaptı.',
       };
 
+    case 'quote_reply':
+      return {
+        title: 'Alıntı yorumuna yanıt geldi',
+        body: actor + ', alıntı yorumuna yanıt verdi.',
+      };
+
+    case 'quote_comment_like':
+      return {
+        title: 'Alıntı yorumun beğenildi',
+        body: actor + ', alıntı yorumunu beğendi.',
+      };
+
     case 'new_chapter':
       return {
         title: 'Yeni bölüm yayınlandı',
