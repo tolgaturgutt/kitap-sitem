@@ -310,82 +310,98 @@ export default function QuoteModal({ quote, user, isAdmin = false, ownerIsAdmin 
 
   return (
     <div
-      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/90 p-4 backdrop-blur-xl"
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-black/95 p-4 backdrop-blur-xl"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
       aria-label="Kitaptan alıntı"
     >
       <div
-        className="relative max-h-[84vh] w-full max-w-xl overflow-y-auto rounded-[2rem] border border-white/10 bg-[#080808] p-5 text-white shadow-2xl md:p-6"
+        className="relative flex h-[85vh] w-full max-w-5xl flex-col overflow-hidden rounded-[3rem] border border-gray-100 bg-white text-gray-900 shadow-2xl dark:border-white/5 dark:bg-[#080808] dark:text-white md:h-[90vh] md:flex-row"
         onClick={(event) => event.stopPropagation()}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-lg font-black text-white transition hover:bg-red-600"
+          className="absolute right-5 top-5 z-30 flex h-11 w-11 items-center justify-center rounded-full bg-black/10 text-lg font-black text-gray-700 backdrop-blur-md transition hover:bg-red-600 hover:text-white dark:bg-white/10 dark:text-white md:right-8 md:top-8"
           aria-label="Kapat"
         >
-          ×
+          ✕
         </button>
 
-        <h2 className="pr-12 text-xl font-black tracking-tight md:text-2xl">Kitaptan Alıntı</h2>
-        <blockquote className="mt-4 border-l-4 border-red-600 pl-4 text-base font-medium leading-7 text-gray-300 md:text-lg md:leading-8">
-          “{quote.content}”
-        </blockquote>
-
-        <div className="my-5 h-px bg-white/10" />
-
-        <h3 className="text-xl font-black">Kitap Bilgisi</h3>
-        <div className="mt-4 flex items-start gap-4">
-          <div className="relative h-32 w-20 shrink-0 overflow-hidden rounded-xl border border-white/25 bg-white/5 shadow-xl">
+        <aside className="relative hidden w-[42%] shrink-0 flex-col items-center justify-center overflow-hidden bg-zinc-950 p-10 md:flex">
+          <div className="absolute inset-0 bg-gradient-to-br from-red-950/50 via-black to-black" />
+          <div className="relative h-72 w-44 overflow-hidden rounded-2xl border border-white/20 bg-white/5 shadow-[0_24px_70px_rgba(0,0,0,0.65)]">
             <BookCoverImage
               src={quote.books?.cover_url}
               alt={quote.books?.title || 'Kitap kapağı'}
               fill
-              sizes="80px"
+              sizes="176px"
               className="object-cover"
             />
           </div>
-          <div className="min-w-0 pt-1">
-            <p className="text-lg font-black md:text-xl">{quote.books?.title}</p>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-gray-400">
-              <span>Kitap sahibi:</span>
-              <ProfileUsername profile={quote.bookAuthor} fallback={quote.books?.username} isAdmin={bookAuthorIsAdmin} isPremium={quote.bookAuthor?.role === 'premium'} />
-            </div>
-            {quote.books?.summary && (
-              <p className="mt-3 line-clamp-2 text-sm leading-5 text-gray-400">
-                {quote.books.summary}
-              </p>
-            )}
+          <div className="relative mt-8 w-full">
+            <p className="text-center text-xs font-black uppercase tracking-[0.2em] text-red-500">{quote.books?.title}</p>
+            <blockquote className="mt-5 border-l-4 border-red-600 pl-5 text-base font-medium leading-7 text-gray-200">
+              “{quote.content}”
+            </blockquote>
           </div>
-        </div>
+        </aside>
 
-        <div className="mt-4 flex items-center justify-between rounded-2xl bg-white/5 p-3">
-          <div className="min-w-0">
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-500">Alıntıyı paylaşan</p>
-            <div className="mt-1 truncate text-sm font-bold text-gray-300"><ProfileUsername profile={quote.profile} isAdmin={ownerIsAdmin} isPremium={quote.profile?.role === 'premium'} /></div>
-          </div>
-          <button type="button" onClick={toggleLike} className={`flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-black transition ${hasLiked ? 'bg-red-600 text-white' : 'bg-white/10 text-gray-200 hover:bg-white/15'}`}>
-            {hasLiked ? '♥' : '♡'} {likeCount}
-          </button>
-        </div>
-
-        <section className="mt-4 border-t border-white/10 pt-4">
-          <h3 className="text-lg font-black">Yorumlar <span className="text-sm text-gray-500">({comments.length})</span></h3>
-          <div className="mt-4 max-h-52 space-y-4 overflow-y-auto pr-1">
-            {comments.filter((comment) => !comment.parent_id).map((comment) => (
-              <div key={comment.id} className="space-y-3">
-                <CommentItem comment={comment} />
-                {getThreadReplies(comment.id).map((reply) => <CommentItem key={reply.id} comment={reply} isReply />)}
+        <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-white dark:bg-[#080808]">
+          <div className="flex-1 overflow-y-auto p-6 pb-8 md:p-10 md:pb-8">
+            <div className="pr-12 md:hidden">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-600">Kitaptan Alıntı</p>
+              <div className="mt-4 flex gap-4">
+                <div className="relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-lg dark:border-white/15 dark:bg-white/5">
+                  <BookCoverImage src={quote.books?.cover_url} alt={quote.books?.title || 'Kitap kapağı'} fill sizes="80px" className="object-cover" />
+                </div>
+                <blockquote className="border-l-4 border-red-600 pl-4 text-sm font-medium leading-6 text-gray-600 dark:text-gray-300">“{quote.content}”</blockquote>
               </div>
-            ))}
-            {!comments.length && <p className="py-5 text-sm italic text-gray-500">İlk yorumu sen yap...</p>}
+            </div>
+
+            <div className="mt-6 md:mt-0">
+              <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Kitap Bilgisi</p>
+              <h2 className="mt-2 pr-12 text-2xl font-black tracking-tight">{quote.books?.title}</h2>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-bold text-gray-500">
+                <span>Kitap sahibi:</span>
+                <ProfileUsername profile={quote.bookAuthor} fallback={quote.books?.username} isAdmin={bookAuthorIsAdmin} isPremium={quote.bookAuthor?.role === 'premium'} />
+              </div>
+            </div>
+
+            {quote.books?.summary && (
+              <p className="mt-4 line-clamp-2 text-sm leading-6 text-gray-500 dark:text-gray-400">{quote.books.summary}</p>
+            )}
+
+            <div className="mt-5 flex items-center justify-between border-y border-gray-100 py-4 dark:border-white/5">
+              <div className="min-w-0">
+                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Alıntıyı paylaşan</p>
+                <div className="mt-1 truncate text-sm font-bold"><ProfileUsername profile={quote.profile} isAdmin={ownerIsAdmin} isPremium={quote.profile?.role === 'premium'} /></div>
+              </div>
+              <button type="button" onClick={toggleLike} className={`flex min-h-10 items-center gap-2 rounded-full px-5 text-xs font-black transition ${hasLiked ? 'bg-red-600 text-white' : 'bg-gray-100 text-gray-500 dark:bg-white/5 dark:text-gray-300'}`}>
+                ❤️ {likeCount}
+              </button>
+            </div>
+
+            <div className="mt-6">
+              <h3 className="text-xs font-black uppercase tracking-wider text-gray-400">Yorumlar <span>({comments.length})</span></h3>
+              <div className="mt-4 space-y-5 pb-4">
+                {comments.filter((comment) => !comment.parent_id).map((comment) => (
+                  <div key={comment.id} className="space-y-3">
+                    <CommentItem comment={comment} />
+                    {getThreadReplies(comment.id).map((reply) => <CommentItem key={reply.id} comment={reply} isReply />)}
+                  </div>
+                ))}
+                {!comments.length && <p className="py-5 text-sm italic text-gray-500">İlk yorumu sen yap...</p>}
+              </div>
+            </div>
           </div>
+
+          <div className="shrink-0 border-t border-gray-100 bg-white p-4 dark:border-white/5 dark:bg-[#080808] md:p-6">
           {user && (
-            <form onSubmit={submitComment} className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-2">
+            <form onSubmit={submitComment} className="mb-3 rounded-[2rem] border border-gray-100 bg-gray-50 p-2 dark:border-white/5 dark:bg-white/5">
               {replyTo && replyToUsername && (
-                <div className="mb-2 flex items-center justify-between border-b border-white/10 px-3 py-2">
+                <div className="mb-2 flex items-center justify-between border-b border-gray-200 px-3 py-2 dark:border-white/10">
                   <p className="text-[10px] font-black uppercase text-red-500"><span className="text-gray-500">Yanıtlanıyor:</span> @{replyToUsername}</p>
                   <button type="button" onClick={() => { setReplyTo(null); setReplyToUsername(''); setCommentText(''); }} className="text-[9px] font-black uppercase text-gray-400 hover:text-red-500">İptal</button>
                 </div>
@@ -396,34 +412,14 @@ export default function QuoteModal({ quote, user, isAdmin = false, ownerIsAdmin 
               </div>
             </form>
           )}
+            <div className="flex flex-wrap gap-2">
+              <Link href={`/kitap/${quote.book_id}`} className="flex min-h-10 min-w-[110px] flex-1 items-center justify-center rounded-full bg-red-600 px-4 text-center text-[10px] font-black uppercase tracking-wide text-white transition hover:bg-red-700">Kitaba Git →</Link>
+              {isAdmin && <button type="button" onClick={togglePin} disabled={pinning} className="min-h-10 min-w-[100px] flex-1 rounded-full bg-yellow-400 px-4 text-[10px] font-black uppercase text-black disabled:opacity-60">{quote.is_pinned ? '📌 Kaldır' : '📌 Tuttur'}</button>}
+              {isOwner && <Link href={`/alinti-duzenle/${quote.id}`} className="flex min-h-10 min-w-[90px] flex-1 items-center justify-center rounded-full bg-blue-600 px-4 text-[10px] font-black uppercase text-white">Düzenle</Link>}
+              {(isOwner || isAdmin) && <button type="button" onClick={deleteQuote} disabled={deleting} className="min-h-10 min-w-[75px] flex-1 rounded-full bg-gray-100 px-4 text-[10px] font-black uppercase text-black disabled:opacity-60 dark:bg-white dark:text-black">{deleting ? 'Siliniyor' : 'Sil'}</button>}
+            </div>
+          </div>
         </section>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          <Link
-            href={`/kitap/${quote.book_id}`}
-            className="flex min-h-12 min-w-[120px] flex-1 items-center justify-center rounded-xl bg-red-600 px-3 text-center text-xs font-black uppercase tracking-wide text-white transition hover:bg-red-700"
-          >
-            Kitaba Git →
-          </Link>
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={togglePin}
-              disabled={pinning}
-              className="min-h-12 min-w-[110px] flex-1 rounded-xl bg-yellow-400 px-3 text-xs font-black uppercase tracking-wide text-black transition hover:bg-yellow-300 disabled:opacity-60"
-            >
-              {quote.is_pinned ? '📌 Kaldır' : '📌 Tuttur'}
-            </button>
-          )}
-          {isOwner && (
-            <Link href={`/alinti-duzenle/${quote.id}`} className="flex min-h-12 min-w-[100px] flex-1 items-center justify-center rounded-xl bg-blue-600 px-3 text-xs font-black uppercase tracking-wide text-white transition hover:bg-blue-700">Düzenle</Link>
-          )}
-          {(isOwner || isAdmin) && (
-            <button type="button" onClick={deleteQuote} disabled={deleting} className="min-h-12 min-w-[80px] flex-1 rounded-xl bg-white px-3 text-xs font-black uppercase tracking-wide text-black transition hover:bg-gray-200 disabled:opacity-60">
-              {deleting ? 'Siliniyor' : 'Sil'}
-            </button>
-          )}
-        </div>
       </div>
     </div>
   );
