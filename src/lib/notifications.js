@@ -170,6 +170,10 @@ export async function createPanoVoteNotification(voteId) {
   });
 }
 
+export async function createQuoteVoteNotification(voteId) {
+  return createActivityNotification('quote_vote', { vote_id: voteId });
+}
+
 /**
  * KÜTÜPHANEYE EKLEME BİLDİRİMİ
  */
@@ -184,6 +188,12 @@ export async function createLibraryAddNotification(bookId) {
  */
 export async function createPanoCommentNotification(commentId) {
   return postAuthenticatedNotification('/api/notifications/pano-comment', {
+    comment_id: Number(commentId),
+  });
+}
+
+export async function createQuoteCommentNotification(commentId) {
+  return postAuthenticatedNotification('/api/notifications/quote-comment', {
     comment_id: Number(commentId),
   });
 }

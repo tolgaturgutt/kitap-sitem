@@ -97,6 +97,18 @@ function buildNotificationText(notification) {
         body: actor + ', pano yorumunu beğendi.',
       };
 
+    case 'quote_vote':
+      return {
+        title: 'Alıntın beğenildi',
+        body: actor + ', paylaştığın alıntıyı beğendi.',
+      };
+
+    case 'quote_comment':
+      return {
+        title: 'Alıntına yorum geldi',
+        body: actor + ', paylaştığın alıntıya yorum yaptı.',
+      };
+
     case 'new_chapter':
       return {
         title: 'Yeni bölüm yayınlandı',
@@ -124,6 +136,10 @@ function buildNotificationText(notification) {
 }
 
 function buildNotificationUrl(notification) {
+  if (notification.quote_id) {
+    return '/alintilar?quote=' + notification.quote_id;
+  }
+
   if (notification.pano_id) {
     return '/pano/' + notification.pano_id;
   }
@@ -268,6 +284,7 @@ export async function POST(request) {
         book_id: notification.book_id,
         chapter_id: notification.chapter_id,
         pano_id: notification.pano_id,
+        quote_id: notification.quote_id,
         paragraph_id: notification.paragraph_id,
         paragraph_key: notification.paragraph_key,
         comment_id: notification.comment_id,

@@ -217,6 +217,9 @@ useEffect(() => {
     else if (pathname === "/admin") baslik = "Yönetici Paneli | KitapLab";
     else if (pathname === "/bakim") baslik = "Kısa Bir Bakım Molası | KitapLab";
     else if (pathname === "/kitap-ekle") baslik = "Yeni Kitap Yaz | KitapLab";
+    else if (pathname === "/alinti-ekle") baslik = "Alıntı Paylaş | KitapLab";
+    else if (pathname === "/alintilar") baslik = "Alıntılar | KitapLab";
+    else if (pathname.startsWith("/alinti-duzenle/")) baslik = "Alıntıyı Düzenle | KitapLab";
     else if (pathname.startsWith("/kitap-duzenle/")) baslik = "Kitap Düzenle | KitapLab";
     else if (pathname.startsWith("/yazar/")) baslik = "Yazar Profili | KitapLab";
     else if (pathname.startsWith("/kategori/")) baslik = "Kategori İncele | KitapLab";

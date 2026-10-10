@@ -14,6 +14,7 @@ import { ProfileBadges } from '@/components/Badges';
 import AdminLabCoinManager from '@/components/AdminLabCoinManager';
 import { buildBadgeStats, EMPTY_BADGE_STATS, fetchProfileBadgeCounts } from '@/lib/badges';
 import { getMobileProfileBannerUrl } from '@/lib/profileBannerUrls';
+import ProfileQuotes from '@/components/ProfileQuotes';
 
 // --- YARDIMCI: SAYI FORMATLAMA ---
 function formatNumber(num) {
@@ -561,7 +562,7 @@ export default function YazarProfili() {
         )}
 
         <div className="flex gap-4 md:gap-8 mb-6 md:mb-8 border-b dark:border-white/5 pb-4 overflow-x-auto">
-          {['eserler', 'panolar', 'rozetler', 'kupalar', 'hakkında'].map(t => (
+          {['eserler', 'panolar', 'alıntılar', 'rozetler', 'kupalar', 'hakkında'].map(t => (
             <button key={t} onClick={() => setActiveTab(t)} className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all relative whitespace-nowrap ${activeTab === t ? 'text-red-600' : 'text-gray-400'}`}>
               {t}
               {activeTab === t && <div className="absolute -bottom-4 left-0 right-0 h-[2px] bg-red-600" />}
@@ -596,6 +597,8 @@ export default function YazarProfili() {
                 </div>
               )}
             </div>
+          ) : activeTab === 'alıntılar' ? (
+            <ProfileQuotes profile={author} user={currentUser} adminEmails={adminEmails} />
           ) : activeTab === 'panolar' ? (
             <div className="space-y-4 md:space-y-6">
 

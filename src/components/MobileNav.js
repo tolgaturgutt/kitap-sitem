@@ -90,6 +90,17 @@ return (
           >
             <div className="p-2 space-y-1.5">
               <Link
+                href="/alinti-ekle"
+                onClick={() => setShowPlusMenu(false)}
+                className="flex items-center gap-3 p-3 rounded-2xl bg-red-50 dark:bg-red-950/25 hover:bg-red-100 dark:hover:bg-red-950/40 transition-all"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-600 text-lg font-black text-white">
+                  “
+                </span>
+                <p className="font-black text-[11px] whitespace-nowrap text-gray-800 dark:text-white">Alıntı Paylaş</p>
+              </Link>
+
+              <Link
                 href="/pano-ekle"
                 onClick={() => setShowPlusMenu(false)}
                 className="flex items-center gap-3 p-3 rounded-2xl bg-gray-50 dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"

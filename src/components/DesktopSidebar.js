@@ -110,7 +110,7 @@ export default function DesktopSidebar() {
               </span>
               <span className="min-w-0 flex-1 text-left">
                 <span className="block text-sm font-black uppercase tracking-wide">Oluştur</span>
-                <span className="block text-[9px] font-medium opacity-65">Pano veya kitap yaz</span>
+                <span className="block text-[9px] font-medium opacity-65">Alıntı, pano veya kitap paylaş</span>
               </span>
               <svg
                 viewBox="0 0 24 24"
@@ -126,6 +126,20 @@ export default function DesktopSidebar() {
 
             {showCreateMenu && (
               <div className="ml-6 mt-2 space-y-2 animate-in slide-in-from-top-2 duration-200">
+                <Link
+                  href="/alinti-ekle"
+                  onClick={closeMenu}
+                  className="flex items-center gap-3 rounded-2xl bg-red-50 p-3 transition-all hover:bg-red-100 dark:bg-red-950/20 dark:hover:bg-red-950/35"
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-red-600 text-xl font-black text-white">
+                    “
+                  </span>
+                  <span>
+                    <span className="block text-xs font-black uppercase text-gray-800 dark:text-white">Alıntı Paylaş</span>
+                    <span className="block text-[8px] text-gray-500">Bir kitaptan sevdiğin sözü paylaş</span>
+                  </span>
+                </Link>
+
                 <Link
                   href="/pano-ekle"
                   onClick={closeMenu}

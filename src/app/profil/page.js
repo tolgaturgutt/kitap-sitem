@@ -15,6 +15,7 @@ import { usePlusFeatureAccess } from '@/hooks/usePlusFeatureAccess';
 import ProfileBannerEditor from '@/components/ProfileBannerEditor';
 import { cropProfileBanner } from '@/lib/profileBannerCrop';
 import { getMobileProfileBannerUrl, getSourceProfileBannerUrl } from '@/lib/profileBannerUrls';
+import ProfileQuotes from '@/components/ProfileQuotes';
 import {
   isValidUsername,
   normalizeUsername,
@@ -697,7 +698,7 @@ export default function ProfilSayfasi() {
 
         <div className="mb-6 md:mb-8 border-b dark:border-white/5 pb-4">
           <div className="flex gap-3 md:gap-8 overflow-x-auto no-scrollbar px-1">
-            {['eserler', 'taslaklar', 'rozetler', 'panolar', 'kupalar', 'hakkında'].map(t => (
+            {['eserler', 'taslaklar', 'rozetler', 'panolar', 'alıntılar', 'kupalar', 'hakkında'].map(t => (
               <button
                 key={t}
                 onClick={() => setActiveTab(t)}
@@ -739,6 +740,12 @@ export default function ProfilSayfasi() {
                 </div>
               )}
             </div>
+          ) : activeTab === 'alıntılar' ? (
+            <ProfileQuotes
+              profile={{ ...profileData, id: user?.id, email: user?.email }}
+              user={user}
+              adminEmails={adminEmails}
+            />
           ) : activeTab === 'panolar' ? (
             <div className="space-y-4 md:space-y-6">
               {myPanos.length === 0 ? (

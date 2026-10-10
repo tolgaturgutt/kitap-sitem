@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import toast from 'react-hot-toast';
 import Username from '@/components/Username';
 import PanoCarousel from '@/components/PanoCarousel';
+import QuoteCarousel from '@/components/QuoteCarousel';
 import BookCoverImage from '@/components/BookCoverImage';
 import { getAdminEmails } from '@/lib/admins';
 import {
@@ -695,6 +696,7 @@ export default function Home() {
           <>
             <DuyuruPaneli isAdmin={isAdmin} />
             <PanoCarousel onPanoClick={(pano) => setSelectedPano(pano)} adminEmails={adminEmails} />
+            <QuoteCarousel user={user} adminEmails={adminEmails} />
             <HomeFeaturedBook book={homeFeaturedBook} />
             <RecentlyAddedChapters chapters={latestChapters} currentUser={user} />
             <ContinueReadingCarousel books={continueReading} />

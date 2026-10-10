@@ -3,7 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
-const ALLOWED_TYPES = new Set(['chapter_vote', 'pano_vote', 'library_add']);
+const ALLOWED_TYPES = new Set(['chapter_vote', 'pano_vote', 'quote_vote', 'library_add']);
 
 function createSupabaseClient(key) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -107,6 +107,33 @@ async function getPanoVoteNotification(admin, user, voteId) {
   };
 }
 
+async function getQuoteVoteNotification(admin, user, voteId) {
+  if (!voteId) throw new Error('Alıntı beğeni kimliği eksik.');
+
+  const { data: vote } = await admin
+    .from('quote_votes')
+    .select('id, quote_id, created_at')
+    .eq('id', voteId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+  if (!vote) throw new Error('Alıntı beğeni kaydı bulunamadı.');
+
+  const { data: quote } = await admin
+    .from('book_quotes')
+    .select('id, user_id')
+    .eq('id', vote.quote_id)
+    .single();
+  const { data: owner } = await admin.from('profiles').select('email').eq('id', quote?.user_id).maybeSingle();
+  if (!owner?.email) throw new Error('Alıntı sahibi bulunamadı.');
+
+  return {
+    recipientEmail: owner.email,
+    eventCreatedAt: vote.created_at,
+    notification: { type: 'quote_vote', quote_id: quote.id },
+    duplicateFilters: { quote_id: quote.id },
+  };
+}
+
 async function getLibraryNotification(admin, user, bookId) {
   if (!bookId) throw new Error('Kitap kimliği eksik.');
 
@@ -181,6 +208,8 @@ export async function POST(request) {
       activity = await getChapterVoteNotification(admin, user, body.chapter_id);
     } else if (type === 'pano_vote') {
       activity = await getPanoVoteNotification(admin, user, body.vote_id);
+    } else if (type === 'quote_vote') {
+      activity = await getQuoteVoteNotification(admin, user, body.vote_id);
     } else {
       activity = await getLibraryNotification(admin, user, body.book_id);
     }
