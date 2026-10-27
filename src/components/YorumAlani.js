@@ -8,6 +8,8 @@ import { CommentRankBadge } from '@/components/Badges';
 import { fetchCommentBadgeCounts } from '@/lib/badges';
 import CommentLikeButton from '@/components/CommentLikeButton';
 
+const CHAPTER_COMMENTS_PAGE_SIZE = 10;
+
 export default function YorumAlani({ type, targetId, bookId, paraId = null, paraKey = null, onCommentAdded, includeParagraphs = false, onStatsUpdate }) {
   const [comments, setComments] = useState([]);
   const [commentBadgeCounts, setCommentBadgeCounts] = useState({});
@@ -24,6 +26,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
   const [isSending, setIsSending] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isOwner, setIsOwner] = useState(false);
+  const [visibleChapterCommentCount, setVisibleChapterCommentCount] = useState(CHAPTER_COMMENTS_PAGE_SIZE);
 
   const fetchCommentLikes = useCallback(async (commentRows) => {
     const commentIds = (commentRows || [])
@@ -169,6 +172,10 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
       authListener?.subscription?.unsubscribe();
     };
   }, [bookId, fetchComments]);
+
+  useEffect(() => {
+    setVisibleChapterCommentCount(CHAPTER_COMMENTS_PAGE_SIZE);
+  }, [targetId, type]);
 
   useEffect(() => {
     // Sadece yeni yorum eklendiğinde scroll yap
@@ -419,6 +426,10 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
   }
 
   const mainComments = comments.filter(c => !c.parent_id);
+  const visibleMainComments = type === 'chapter'
+    ? mainComments.slice(0, visibleChapterCommentCount)
+    : mainComments;
+  const hasMoreChapterComments = type === 'chapter' && visibleMainComments.length < mainComments.length;
   const getReplies = (parentId) => comments.filter(c => c.parent_id === parentId).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
 
   const InputArea = (
@@ -452,7 +463,7 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
            </div>
         )}
         
-        {mainComments.map(c => (
+        {visibleMainComments.map(c => (
           <div key={c.id} className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             <CommentCard 
                 comment={c} 
@@ -499,6 +510,17 @@ export default function YorumAlani({ type, targetId, bookId, paraId = null, para
             </div>
           </div>
         ))}
+        {hasMoreChapterComments && (
+          <div className="flex justify-center pt-2">
+            <button
+              type="button"
+              onClick={() => setVisibleChapterCommentCount(count => count + CHAPTER_COMMENTS_PAGE_SIZE)}
+              className="rounded-full border border-gray-200 bg-white px-5 py-2 text-[10px] font-black uppercase tracking-widest text-gray-500 transition-colors hover:border-red-600 hover:text-red-600 dark:border-white/10 dark:bg-white/5 dark:text-gray-400 dark:hover:border-red-600 dark:hover:text-red-500"
+            >
+              Daha fazla gör
+            </button>
+          </div>
+        )}
         <div ref={commentsEndRef} />
     </div>
   );
